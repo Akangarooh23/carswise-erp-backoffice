@@ -196,7 +196,9 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
 
     const updated = await query(
       `UPDATE moveadvisor_market_leads
-       SET notified_at = NOW(), status = CASE WHEN status = 'Pendiente' THEN 'Contactado' ELSE status END
+       SET notified_at = NOW(),
+           status = CASE WHEN status IN ('Pendiente', 'Reagendar solicitado') THEN 'Contactado' ELSE status END,
+           reschedule_proposals = NULL
        WHERE id = $1 RETURNING *`,
       [req.params.id]
     );
