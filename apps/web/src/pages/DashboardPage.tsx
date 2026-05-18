@@ -76,6 +76,18 @@ export default function DashboardPage() {
         </section>
       </div>
 
+      {/* Leads / Solicitudes */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Solicitudes (Leads)</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <StatCard label="Total"        value={fmt(stats.leads.total)}     sub={`+${fmt(stats.leads.new_7d)} esta semana`} icon="📩" color="blue" />
+          <StatCard label="Pendientes"   value={fmt(stats.leads.pending)}   icon="⏳" color="yellow" />
+          <StatCard label="Contactados"  value={fmt(stats.leads.contacted)} icon="💬" color="blue" />
+          <StatCard label="Reagendar"    value={fmt(stats.leads.reschedule)} icon="🔄" color="purple" />
+          <StatCard label="Resueltos"    value={fmt(stats.leads.resolved)}  icon="✅" color="green" />
+        </div>
+      </section>
+
       {/* Recent tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent tickets */}

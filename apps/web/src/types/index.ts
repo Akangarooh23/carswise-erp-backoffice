@@ -164,6 +164,9 @@ export interface DashboardStats {
   marketplace: {
     total: number; active: number; avg_price: number; min_price: number; max_price: number;
   };
+  leads: {
+    total: number; pending: number; contacted: number; resolved: number; reschedule: number; new_7d: number;
+  };
   recentTickets: Ticket[];
   upcomingAppointments: Appointment[];
 }
