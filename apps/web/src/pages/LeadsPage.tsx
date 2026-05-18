@@ -11,6 +11,12 @@ interface LeadMeta {
   vehicle_url?: string;
   portal?: string;
   erp_notes?: string;
+  erp_response?: string;
+  appointment_date?: string;
+  appointment_time?: string;
+  appointment_address?: string;
+  appointment_contact?: string;
+  reschedule_proposals?: Array<{ date: string; time: string }>;
 }
 
 interface Lead {
@@ -49,14 +55,16 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  Pendiente:   'bg-amber-100 text-amber-700',
-  Contactado:  'bg-blue-100 text-blue-700',
-  'En proceso':'bg-violet-100 text-violet-700',
-  Cerrado:     'bg-green-100 text-green-700',
-  Descartado:  'bg-slate-100 text-slate-500',
+  Pendiente:              'bg-amber-100 text-amber-700',
+  Contactado:             'bg-blue-100 text-blue-700',
+  'En proceso':           'bg-violet-100 text-violet-700',
+  Cerrado:                'bg-green-100 text-green-700',
+  Descartado:             'bg-slate-100 text-slate-500',
+  'Reagendar solicitado': 'bg-orange-100 text-orange-700',
+  Cancelado:              'bg-red-100 text-red-700',
 };
 
-const STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado'];
+const STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
 const WHEN_LABELS: Record<string, string> = {
   thisweek: 'Esta semana',
@@ -316,6 +324,28 @@ export default function LeadsPage() {
                 </div>
               </div>
             )}
+
+            {/* Reschedule proposals from client */}
+            {selected.status === 'Reagendar solicitado' && selected.meta?.reschedule_proposals?.length ? (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-orange-700">🔄 El cliente propone estas opciones — haz clic para seleccionar</p>
+                <div className="space-y-1">
+                  {selected.meta.reschedule_proposals.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setEditApptDate(p.date); setEditApptTime(p.time || ''); }}
+                      className="w-full text-left text-sm px-3 py-2 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors flex justify-between items-center"
+                    >
+                      <span>
+                        📅 {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
+                        {p.time && <span className="ml-2">⏰ {p.time}</span>}
+                      </span>
+                      <span className="text-xs text-orange-600 font-medium">Usar esta →</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Respuesta al cliente</label>

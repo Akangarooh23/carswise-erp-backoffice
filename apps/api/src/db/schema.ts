@@ -84,12 +84,31 @@ export async function ensureSchema() {
 
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_market_leads
-      ADD COLUMN IF NOT EXISTS erp_response         TEXT         NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS appointment_date     DATE,
-      ADD COLUMN IF NOT EXISTS appointment_time     VARCHAR(10)  NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS appointment_address  TEXT         NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS appointment_contact  VARCHAR(255) NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS notified_at          TIMESTAMPTZ
+      ADD COLUMN IF NOT EXISTS erp_response           TEXT         NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_date       DATE,
+      ADD COLUMN IF NOT EXISTS appointment_time       VARCHAR(10)  NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_address    TEXT         NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_contact    VARCHAR(255) NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS notified_at            TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS reschedule_proposals   JSONB
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS erp_password_resets (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email      TEXT NOT NULL,
+      token      TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at    TIMESTAMPTZ
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS erp_staff_passwords (
+      email         TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      updated_at    TIMESTAMPTZ DEFAULT NOW()
+    )
   `);
 
   console.log('[schema] ERP tables verified');

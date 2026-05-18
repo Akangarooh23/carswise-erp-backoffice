@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import AppLayout from './components/layout/AppLayout.js';
 import LoginPage from './pages/LoginPage.js';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
+import ResetPasswordPage from './pages/ResetPasswordPage.js';
 
 const DashboardPage     = lazy(() => import('./pages/DashboardPage.js'));
 const UsersPage         = lazy(() => import('./pages/UsersPage.js'));
@@ -13,6 +15,7 @@ const TicketDetailPage  = lazy(() => import('./pages/TicketDetailPage.js'));
 const WorkshopsPage     = lazy(() => import('./pages/WorkshopsPage.js'));
 const IdCarsPage        = lazy(() => import('./pages/IdCarsPage.js'));
 const BillingPage       = lazy(() => import('./pages/BillingPage.js'));
+const LeadsPage         = lazy(() => import('./pages/LeadsPage.js'));
 
 const Loader = () => (
   <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
@@ -22,6 +25,8 @@ const Loader = () => (
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     path: '/',
     element: <AppLayout />,
@@ -37,6 +42,7 @@ export const router = createBrowserRouter([
       { path: 'workshops',         element: <Suspense fallback={<Loader />}><WorkshopsPage /></Suspense> },
       { path: 'idcars',            element: <Suspense fallback={<Loader />}><IdCarsPage /></Suspense> },
       { path: 'billing',           element: <Suspense fallback={<Loader />}><BillingPage /></Suspense> },
+      { path: 'leads',             element: <Suspense fallback={<Loader />}><LeadsPage /></Suspense> },
       { path: '*',                 element: <Navigate to="/dashboard" replace /> },
     ],
   },

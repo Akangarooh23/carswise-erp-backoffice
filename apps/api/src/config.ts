@@ -18,6 +18,8 @@ const envSchema = z.object({
   ERP_SALES_PASSWORD: z.string().min(8),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
+  RESEND_TEST_EMAIL: z.string().optional(),
+  APP_URL: z.string().default('http://localhost:5175'),
 });
 
 const parsed = envSchema.safeParse(process.env);

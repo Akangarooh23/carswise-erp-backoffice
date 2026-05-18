@@ -1,12 +1,76 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 import rateLimit from 'express-rate-limit';
 import { config } from '../config.js';
+import { query } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { Role } from '../middleware/auth.js';
 
 export const authRouter = Router();
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${hash.toString('hex')}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  const hashBuf = Buffer.from(hash, 'hex');
+  const derivedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return timingSafeEqual(hashBuf, derivedBuf);
+}
+
+async function sendResetEmail(to: string, name: string, resetUrl: string): Promise<void> {
+  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
+  const recipient = config.RESEND_TEST_EMAIL || to;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'CarsWise <support@carswiseai.com>',
+      to: recipient,
+      subject: 'Recuperación de contraseña — CarsWise ERP',
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+          <div style="background:#2563eb;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+            <div style="font-size:32px;margin-bottom:8px">🔐</div>
+            <h1 style="color:#fff;margin:0;font-size:20px">Recuperación de contraseña</h1>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:28px">
+            <p>Hola <strong>${name}</strong>,</p>
+            <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>CarsWise ERP</strong>.</p>
+            <p>Haz clic en el botón para crear una nueva contraseña:</p>
+            <div style="text-align:center;margin:28px 0">
+              <a href="${resetUrl}"
+                 style="background:#2563eb;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+                Restablecer contraseña
+              </a>
+            </div>
+            <p style="font-size:13px;color:#64748b">
+              Este enlace es válido durante <strong>1 hora</strong>.<br>
+              Si no solicitaste este cambio, ignora este email — tu contraseña no se modificará.
+            </p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+            <p style="font-size:12px;color:#94a3b8;margin:0">
+              El equipo de CarsWise — <a href="https://carswiseai.com" style="color:#94a3b8">carswiseai.com</a>
+            </p>
+          </div>
+        </div>
+      `,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message || `Resend error ${res.status}`);
+  }
+}
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -16,9 +80,17 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { ok: false, error: 'too_many_attempts' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
 
 interface StaffUser { email: string; password: string; role: Role; name: string }
@@ -32,7 +104,7 @@ function getStaffUsers(): StaffUser[] {
   ];
 }
 
-authRouter.post('/auth/login', loginLimiter, (req, res) => {
+authRouter.post('/auth/login', loginLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ ok: false, error: 'invalid_payload' });
@@ -40,17 +112,33 @@ authRouter.post('/auth/login', loginLimiter, (req, res) => {
   }
 
   const { email, password } = parsed.data;
-  const user = getStaffUsers().find(
-    (u) => u.email === email.toLowerCase() && u.password === password
-  );
+  const staffUser = getStaffUsers().find((u) => u.email === email.toLowerCase());
 
-  if (!user) {
+  if (!staffUser) {
+    res.status(401).json({ ok: false, error: 'invalid_credentials' });
+    return;
+  }
+
+  // Check DB-stored password first (set via password reset), fall back to env var
+  let authenticated = false;
+  try {
+    const dbPw = await query('SELECT password_hash FROM erp_staff_passwords WHERE email = $1', [staffUser.email]);
+    if (dbPw.rows.length) {
+      authenticated = await verifyPassword(password, dbPw.rows[0].password_hash);
+    } else {
+      authenticated = staffUser.password === password;
+    }
+  } catch {
+    authenticated = staffUser.password === password;
+  }
+
+  if (!authenticated) {
     res.status(401).json({ ok: false, error: 'invalid_credentials' });
     return;
   }
 
   const token = jwt.sign(
-    { sub: user.email, role: user.role, name: user.name },
+    { sub: staffUser.email, role: staffUser.role, name: staffUser.name },
     config.JWT_SECRET,
     { expiresIn: '8h' }
   );
@@ -58,8 +146,76 @@ authRouter.post('/auth/login', loginLimiter, (req, res) => {
   res.json({
     ok: true,
     token,
-    user: { email: user.email, role: user.role, name: user.name },
+    user: { email: staffUser.email, role: staffUser.role, name: staffUser.name },
   });
+});
+
+authRouter.post('/auth/forgot-password', forgotLimiter, async (req, res) => {
+  const email = String(req.body?.email || '').toLowerCase().trim();
+  const staffUser = getStaffUsers().find((u) => u.email === email);
+
+  // Always respond success to avoid email enumeration
+  if (!staffUser) {
+    res.json({ ok: true });
+    return;
+  }
+
+  try {
+    // Invalidate any previous unused tokens for this email
+    await query(`UPDATE erp_password_resets SET used_at = NOW() WHERE email = $1 AND used_at IS NULL`, [email]);
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await query(
+      `INSERT INTO erp_password_resets (email, token, expires_at) VALUES ($1, $2, $3)`,
+      [email, token, expiresAt]
+    );
+
+    const resetUrl = `${config.APP_URL}/reset-password?token=${token}`;
+    await sendResetEmail(email, staffUser.name, resetUrl);
+  } catch (err) {
+    console.error('[auth] forgot-password error:', (err as Error).message);
+  }
+
+  res.json({ ok: true });
+});
+
+authRouter.post('/auth/reset-password', async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const password = String(req.body?.password || '').trim();
+
+  if (!token || password.length < 8) {
+    res.status(400).json({ ok: false, error: 'invalid_payload' });
+    return;
+  }
+
+  try {
+    const result = await query(
+      `SELECT * FROM erp_password_resets WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [token]
+    );
+
+    if (!result.rows.length) {
+      res.status(400).json({ ok: false, error: 'invalid_or_expired_token' });
+      return;
+    }
+
+    const reset = result.rows[0];
+    const hash = await hashPassword(password);
+
+    await query(
+      `INSERT INTO erp_staff_passwords (email, password_hash)
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET password_hash = $2, updated_at = NOW()`,
+      [reset.email, hash]
+    );
+    await query(`UPDATE erp_password_resets SET used_at = NOW() WHERE id = $1`, [reset.id]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth] reset-password error:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'reset_failed' });
+  }
 });
 
 authRouter.get('/auth/me', requireAuth, (req, res) => {

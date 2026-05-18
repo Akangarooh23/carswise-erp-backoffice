@@ -10,10 +10,12 @@ const FROM_EMAIL = config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
+  // In dev, Resend sandbox only allows sending to the account owner's email
+  const recipient = config.RESEND_TEST_EMAIL || to;
   const res = await fetch(RESEND_API, {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({ from: FROM_EMAIL, to: recipient, subject, html }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -35,6 +37,10 @@ function visitEmailHtml(lead: Record<string, string>): string {
         ${lead.appointment_contact ? `<p style="margin:4px 0">👤 <strong>Pregunta por:</strong> ${lead.appointment_contact}</p>` : ''}
       </div>` : ''}
       ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${lead.erp_response}</p>` : ''}
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin:20px 0;font-size:13px;color:#475569">
+        ¿Necesitas cancelar o cambiar la fecha? Puedes gestionarlo desde tu panel:<br>
+        <a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">carswiseai.com/panel/solicitudes</a>
+      </div>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
       <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
     </div>`;
@@ -94,7 +100,8 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'appointment_date',     TO_CHAR(appointment_date, 'YYYY-MM-DD'),
                   'appointment_time',     appointment_time,
                   'appointment_address',  appointment_address,
-                  'appointment_contact',  appointment_contact
+                  'appointment_contact',   appointment_contact,
+                  'reschedule_proposals',  reschedule_proposals
                 ) AS meta
          FROM moveadvisor_market_leads
          ${where}
@@ -135,7 +142,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
   } = req.body ?? {};
-  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado'];
+  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
@@ -152,6 +159,8 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_time !== undefined)  { values.push(appointment_time ?? '');  sets.push(`appointment_time = $${values.length}`); }
   if (appointment_address !== undefined) { values.push(appointment_address ?? ''); sets.push(`appointment_address = $${values.length}`); }
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
+  // When operator confirms a new appointment, clear any pending reschedule proposals
+  if (appointment_date !== undefined && appointment_date) { sets.push(`reschedule_proposals = NULL`); }
 
   if (!sets.length) { res.status(400).json({ ok: false, error: 'no_fields_to_update' }); return; }
 

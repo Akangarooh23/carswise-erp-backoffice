@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/auth.js';
 import { api } from '../api/client.js';
 
@@ -85,6 +85,12 @@ export default function LoginPage() {
           >
             {loading ? 'Entrando…' : 'Iniciar sesión'}
           </button>
+
+          <div className="text-center">
+            <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-blue-600 transition-colors">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
         </form>
 
         <p className="text-center text-slate-500 text-xs mt-6">
