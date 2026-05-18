@@ -326,24 +326,42 @@ export default function LeadsPage() {
             )}
 
             {/* Reschedule proposals from client */}
-            {selected.status === 'Reagendar solicitado' && selected.meta?.reschedule_proposals?.length ? (
+            {selected.meta?.reschedule_proposals?.length ? (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-orange-700">🔄 El cliente propone estas opciones — haz clic para seleccionar</p>
-                <div className="space-y-1">
-                  {selected.meta.reschedule_proposals.map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { setEditApptDate(p.date); setEditApptTime(p.time || ''); }}
-                      className="w-full text-left text-sm px-3 py-2 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors flex justify-between items-center"
-                    >
-                      <span>
-                        📅 {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
-                        {p.time && <span className="ml-2">⏰ {p.time}</span>}
-                      </span>
-                      <span className="text-xs text-orange-600 font-medium">Usar esta →</span>
-                    </button>
-                  ))}
+                <p className="text-xs font-semibold text-orange-700">🔄 El cliente propone estas opciones — selecciona una para rellenar la fecha</p>
+                <div className="space-y-1.5">
+                  {selected.meta.reschedule_proposals.map((p, i) => {
+                    const isSelected = editApptDate === p.date && editApptTime === (p.time || '');
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditApptDate(p.date);
+                          setEditApptTime(p.time || '');
+                          setEditStatus('Contactado');
+                        }}
+                        className={`w-full text-left text-sm px-3 py-2.5 border rounded-lg transition-colors flex justify-between items-center font-medium ${
+                          isSelected
+                            ? 'bg-green-100 border-green-400 text-green-800'
+                            : 'bg-white border-orange-300 hover:bg-orange-100 text-slate-700 cursor-pointer'
+                        }`}
+                      >
+                        <span>
+                          📅 {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
+                          {p.time && <span className="ml-2 text-slate-500">⏰ {p.time}</span>}
+                        </span>
+                        <span className={`text-xs font-semibold ml-2 shrink-0 ${isSelected ? 'text-green-700' : 'text-orange-600'}`}>
+                          {isSelected ? '✓ Seleccionada' : 'Usar esta →'}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {editApptDate && (
+                  <p className="text-xs text-orange-700 pt-1">✓ Fecha aplicada en el campo de arriba. Completa dirección y contacto, luego notifica.</p>
+                )}
               </div>
             ) : null}
 
