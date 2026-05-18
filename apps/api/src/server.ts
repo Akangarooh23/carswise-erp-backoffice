@@ -20,6 +20,7 @@ const app = express();
 app.use(helmet({ crossOriginEmbedderPolicy: false }));
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '4mb' }));
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 app.use('/api', authRouter);
 app.use('/api', dashboardRouter);
