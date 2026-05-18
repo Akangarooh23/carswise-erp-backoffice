@@ -68,7 +68,7 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
 
 usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
-    const [user, appointments, tickets] = await Promise.all([
+    const [user, appointments, tickets, leads] = await Promise.all([
       query(
         `SELECT mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
                 eu.phone, eu.status, eu.last_seen_at
@@ -87,6 +87,15 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
          FROM erp_tickets WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
         [req.params.id]
       ),
+      query(
+        `SELECT id, lead_type, vehicle_title, vehicle_url, status,
+                TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
+                appointment_time, appointment_address, appointment_contact, created_at
+         FROM moveadvisor_market_leads
+         WHERE user_email = (SELECT email FROM moveadvisor_users WHERE id = $1)
+         ORDER BY created_at DESC LIMIT 20`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] })),
     ]);
 
     if (!user.rows.length) {
@@ -96,7 +105,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
 
     res.json({
       ok: true,
-      data: { ...user.rows[0], appointments: appointments.rows, tickets: tickets.rows },
+      data: { ...user.rows[0], appointments: appointments.rows, tickets: tickets.rows, leads: leads.rows },
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'user_get_failed', detail: (err as Error).message });

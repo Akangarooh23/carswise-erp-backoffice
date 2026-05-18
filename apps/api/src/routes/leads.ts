@@ -133,14 +133,15 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations']),
   try {
     const result = await query(`
       SELECT
-        COUNT(*)::int                                                         AS total,
-        COUNT(*) FILTER (WHERE status = 'Pendiente')::int                    AS pending,
-        COUNT(*) FILTER (WHERE status = 'Contactado')::int                   AS contacted,
-        COUNT(*) FILTER (WHERE status = 'Descartado')::int                   AS discarded,
-        COUNT(*) FILTER (WHERE lead_type = 'info')::int                      AS type_info,
-        COUNT(*) FILTER (WHERE lead_type = 'visit')::int                     AS type_visit,
-        COUNT(*) FILTER (WHERE lead_type = 'question')::int                  AS type_question,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS new_7d
+        COUNT(*)::int                                                                        AS total,
+        COUNT(*) FILTER (WHERE status = 'Pendiente')::int                                   AS pending,
+        COUNT(*) FILTER (WHERE status = 'Contactado')::int                                  AS contacted,
+        COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado'))::int               AS resolved,
+        COUNT(*) FILTER (WHERE status = 'Descartado')::int                                  AS discarded,
+        COUNT(*) FILTER (WHERE lead_type = 'info')::int                                     AS type_info,
+        COUNT(*) FILTER (WHERE lead_type = 'visit')::int                                    AS type_visit,
+        COUNT(*) FILTER (WHERE lead_type = 'question')::int                                 AS type_question,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int               AS new_7d
       FROM moveadvisor_market_leads
     `);
     res.json({ ok: true, data: result.rows[0] });

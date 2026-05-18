@@ -35,6 +35,7 @@ interface Stats {
   total: number;
   pending: number;
   contacted: number;
+  resolved: number;
   discarded: number;
   type_info: number;
   type_visit: number;
@@ -170,7 +171,8 @@ export default function LeadsPage() {
             { label: 'Total', value: stats.total, color: 'bg-slate-50 border-slate-200' },
             { label: 'Pendientes', value: stats.pending, color: 'bg-amber-50 border-amber-200' },
             { label: 'Esta semana', value: stats.new_7d, color: 'bg-blue-50 border-blue-200' },
-            { label: 'Contactados', value: stats.contacted, color: 'bg-green-50 border-green-200' },
+            { label: 'Contactados', value: stats.contacted, color: 'bg-sky-50 border-sky-200' },
+            { label: 'Resueltos', value: stats.resolved, color: 'bg-green-50 border-green-200' },
           ].map((s) => (
             <div key={s.label} className={`${s.color} border rounded-xl p-4`}>
               <p className="text-2xl font-bold text-slate-800">{s.value}</p>

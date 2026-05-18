@@ -6,7 +6,7 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
-    const [users, tickets, appointments, marketplace, recentTickets, recentAppointments] = await Promise.all([
+    const [users, tickets, appointments, marketplace, leads, recentTickets, recentAppointments] = await Promise.all([
       // User stats — base from moveadvisor_users, status from erp_users
       query(`
         SELECT
@@ -55,6 +55,18 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         FROM moveadvisor_marketplace_vo_offers
       `).catch(() => ({ rows: [{ total: 0, active: 0, avg_price: 0, min_price: 0, max_price: 0 }] })),
 
+      // Leads stats
+      query(`
+        SELECT
+          COUNT(*)::int                                                                          AS total,
+          COUNT(*) FILTER (WHERE status = 'Pendiente')::int                                     AS pending,
+          COUNT(*) FILTER (WHERE status = 'Contactado')::int                                    AS contacted,
+          COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado'))::int                 AS resolved,
+          COUNT(*) FILTER (WHERE status IN ('Reagendar solicitado'))::int                       AS reschedule,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int                 AS new_7d
+        FROM moveadvisor_market_leads
+      `).catch(() => ({ rows: [{ total: 0, pending: 0, contacted: 0, resolved: 0, reschedule: 0, new_7d: 0 }] })),
+
       // Recent tickets
       query(`
         SELECT id, title, status, priority, user_id, created_at
@@ -82,6 +94,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         tickets: tickets.rows[0],
         appointments: appointments.rows[0],
         marketplace: marketplace.rows[0],
+        leads: leads.rows[0],
         recentTickets: recentTickets.rows,
         upcomingAppointments: recentAppointments.rows,
       },

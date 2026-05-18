@@ -6,9 +6,23 @@ import { Card } from '../components/ui/Card.js';
 import { StatusBadge } from '../components/ui/Badge.js';
 import type { User, Appointment, Ticket } from '../types/index.js';
 
+interface LeadRecord {
+  id: string;
+  lead_type: string;
+  vehicle_title: string;
+  vehicle_url: string;
+  status: string;
+  appointment_date?: string;
+  appointment_time?: string;
+  appointment_address?: string;
+  appointment_contact?: string;
+  created_at: string;
+}
+
 interface UserDetail extends User {
   appointments: Appointment[];
   tickets: Ticket[];
+  leads: LeadRecord[];
 }
 
 function fmtDate(s: string) {
@@ -138,6 +152,42 @@ export default function UserDetailPage() {
           )}
         </Card>
       </div>
+
+      {/* Leads / Solicitudes */}
+      <Card padding={false}>
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-semibold text-slate-800 text-sm">
+            Solicitudes <span className="text-slate-400 font-normal">({(user.leads ?? []).length})</span>
+          </h3>
+          <Link to={`/leads?q=${encodeURIComponent(user.email)}`} className="text-blue-600 text-xs">Ver en leads →</Link>
+        </div>
+        {(user.leads ?? []).length === 0 ? (
+          <p className="text-slate-400 text-sm text-center py-8">Sin solicitudes</p>
+        ) : (
+          <table className="erp-table">
+            <thead><tr><th>Tipo</th><th>Vehículo</th><th>Cita</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>
+              {(user.leads ?? []).map((l) => (
+                <tr key={l.id}>
+                  <td className="text-xs capitalize text-slate-600">{l.lead_type === 'visit' ? 'Visita' : l.lead_type === 'info' ? 'Info' : 'Pregunta'}</td>
+                  <td className="text-sm text-slate-700 max-w-[200px] truncate">
+                    {l.vehicle_url
+                      ? <a href={l.vehicle_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{l.vehicle_title || '–'}</a>
+                      : (l.vehicle_title || '–')}
+                  </td>
+                  <td className="text-xs text-slate-500">
+                    {l.appointment_date ? (
+                      <span>{new Date(l.appointment_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}{l.appointment_time ? ` ${l.appointment_time}` : ''}</span>
+                    ) : '–'}
+                  </td>
+                  <td><StatusBadge status={l.status} /></td>
+                  <td className="text-xs text-slate-400">{fmtDate(l.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
 
       {/* Tickets */}
       <Card padding={false}>
