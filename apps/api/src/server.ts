@@ -13,6 +13,7 @@ import { ticketsRouter } from './routes/tickets.js';
 import { workshopsRouter } from './routes/workshops.js';
 import { idcarsRouter } from './routes/idcars.js';
 import { billingRouter } from './routes/billing.js';
+import { leadsRouter } from './routes/leads.js';
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api', ticketsRouter);
 app.use('/api', workshopsRouter);
 app.use('/api', idcarsRouter);
 app.use('/api', billingRouter);
+app.use('/api', leadsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ ok: false, error: 'not_found' });
