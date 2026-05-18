@@ -26,9 +26,9 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 function visitEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#2563eb">✅ Tu visita ha sido confirmada</h2>
+      <h2 style="color:#2563eb">📅 Tu cita está lista — acción requerida</h2>
       <p>Hola <strong>${lead.contact_name || 'cliente'}</strong>,</p>
-      <p>Tu solicitud de visita para el vehículo <strong>${lead.vehicle_title}</strong> ha sido gestionada por el equipo de CarsWise.</p>
+      <p>El equipo de CarsWise ha gestionado tu solicitud de visita para el vehículo <strong>${lead.vehicle_title}</strong>.</p>
       ${lead.appointment_date ? `
       <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:20px 0">
         <p style="margin:4px 0">📅 <strong>Fecha:</strong> ${lead.appointment_date}</p>
@@ -37,8 +37,20 @@ function visitEmailHtml(lead: Record<string, string>): string {
         ${lead.appointment_contact ? `<p style="margin:4px 0">👤 <strong>Pregunta por:</strong> ${lead.appointment_contact}</p>` : ''}
       </div>` : ''}
       ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${lead.erp_response}</p>` : ''}
+
+      <div style="background:#fefce8;border:2px solid #fbbf24;border-radius:12px;padding:18px 20px;margin:24px 0">
+        <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#92400e">⚠️ Para reservar el vehículo, confirma tu cita</p>
+        <p style="margin:0 0 14px 0;font-size:13px;color:#78350f">
+          El vehículo no quedará reservado hasta que confirmes la cita desde tu panel personal. Sin confirmación, el vehículo puede ser adquirido por otro cliente.
+        </p>
+        <a href="https://carswiseai.com/panel/solicitudes"
+           style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
+          ✅ Confirmar cita y reservar vehículo →
+        </a>
+      </div>
+
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin:20px 0;font-size:13px;color:#475569">
-        ¿Necesitas cancelar o cambiar la fecha? Puedes gestionarlo desde tu panel:<br>
+        ¿Necesitas cancelar o cambiar la fecha? También puedes gestionarlo desde tu panel:<br>
         <a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">carswiseai.com/panel/solicitudes</a>
       </div>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
@@ -194,14 +206,13 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
 
     await sendEmail(lead.user_email, subject, html);
 
-    const newStatus = isVisit ? 'Cita confirmada' : 'Contactado';
     const updated = await query(
       `UPDATE moveadvisor_market_leads
        SET notified_at = NOW(),
-           status = CASE WHEN status IN ('Pendiente', 'Reagendar solicitado', 'En proceso', 'Cita confirmada') THEN $2 ELSE status END,
+           status = CASE WHEN status IN ('Pendiente', 'Reagendar solicitado', 'En proceso') THEN 'Contactado' ELSE status END,
            reschedule_proposals = NULL
        WHERE id = $1 RETURNING *`,
-      [req.params.id, newStatus]
+      [req.params.id]
     );
 
     res.json({ ok: true, data: updated.rows[0] });
