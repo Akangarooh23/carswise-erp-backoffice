@@ -58,13 +58,14 @@ const STATUS_COLORS: Record<string, string> = {
   Pendiente:              'bg-amber-100 text-amber-700',
   Contactado:             'bg-blue-100 text-blue-700',
   'En proceso':           'bg-violet-100 text-violet-700',
+  'Cita confirmada':      'bg-green-100 text-green-700',
   Cerrado:                'bg-green-100 text-green-700',
   Descartado:             'bg-slate-100 text-slate-500',
   'Reagendar solicitado': 'bg-orange-100 text-orange-700',
   Cancelado:              'bg-red-100 text-red-700',
 };
 
-const STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
+const STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
 const WHEN_LABELS: Record<string, string> = {
   thisweek: 'Esta semana',

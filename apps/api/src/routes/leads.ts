@@ -142,7 +142,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
   } = req.body ?? {};
-  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
+  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada'];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
@@ -194,13 +194,14 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
 
     await sendEmail(lead.user_email, subject, html);
 
+    const newStatus = isVisit ? 'Cita confirmada' : 'Contactado';
     const updated = await query(
       `UPDATE moveadvisor_market_leads
        SET notified_at = NOW(),
-           status = CASE WHEN status IN ('Pendiente', 'Reagendar solicitado') THEN 'Contactado' ELSE status END,
+           status = CASE WHEN status IN ('Pendiente', 'Reagendar solicitado', 'En proceso', 'Cita confirmada') THEN $2 ELSE status END,
            reschedule_proposals = NULL
        WHERE id = $1 RETURNING *`,
-      [req.params.id]
+      [req.params.id, newStatus]
     );
 
     res.json({ ok: true, data: updated.rows[0] });
