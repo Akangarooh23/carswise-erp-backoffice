@@ -7,18 +7,17 @@ export const dashboardRouter = Router();
 dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
     const [users, tickets, appointments, marketplace, recentTickets, recentAppointments] = await Promise.all([
-      // User stats
+      // User stats — base from moveadvisor_users, status from erp_users
       query(`
         SELECT
-          COUNT(*)::int                                                              AS total,
-          COUNT(*) FILTER (WHERE status = 'active')::int                            AS active,
-          COUNT(*) FILTER (WHERE status = 'at_risk')::int                           AS at_risk,
-          COUNT(*) FILTER (WHERE status = 'blocked')::int                           AS blocked,
-          COUNT(*) FILTER (WHERE plan_type = 'plus')::int                           AS plus,
-          COUNT(*) FILTER (WHERE plan_type = 'premium')::int                        AS premium,
-          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int     AS new_30d
-        FROM moveadvisor_users
-      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, plus: 0, premium: 0, new_30d: 0 }] })),
+          COUNT(mu.id)::int                                                          AS total,
+          COUNT(*) FILTER (WHERE COALESCE(eu.status,'active') = 'active')::int      AS active,
+          COUNT(*) FILTER (WHERE eu.status = 'at_risk')::int                        AS at_risk,
+          COUNT(*) FILTER (WHERE eu.status = 'blocked')::int                        AS blocked,
+          COUNT(*) FILTER (WHERE mu.created_at >= NOW() - INTERVAL '30 days')::int  AS new_30d
+        FROM moveadvisor_users mu
+        LEFT JOIN erp_users eu ON eu.email = mu.email
+      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0 }] })),
 
       // Ticket stats
       query(`
@@ -66,10 +65,12 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
 
       // Upcoming appointments
       query(`
-        SELECT id, user_id, type, status, scheduled_at, workshop_name
-        FROM erp_appointments
-        WHERE scheduled_at >= NOW()
-        ORDER BY scheduled_at ASC
+        SELECT a.id, a.user_id, a.type, a.status, a.scheduled_at,
+               mu.name AS user_name, mu.email AS user_email
+        FROM erp_appointments a
+        LEFT JOIN moveadvisor_users mu ON mu.id = a.user_id
+        WHERE a.scheduled_at >= NOW()
+        ORDER BY a.scheduled_at ASC
         LIMIT 5
       `).catch(() => ({ rows: [] })),
     ]);

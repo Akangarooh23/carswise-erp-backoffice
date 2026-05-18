@@ -5,10 +5,12 @@ import { requireRole } from '../middleware/auth.js';
 
 export const usersRouter = Router();
 
+// moveadvisor_users: id, name, email, created_at, last_login_at
+// erp_users:        id, name, email, phone, status, last_seen_at
+
 usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q      = String(req.query.q      || '').trim();
   const status = String(req.query.status || '').trim();
-  const plan   = String(req.query.plan   || '').trim();
   const page   = Math.max(1, Number(req.query.page) || 1);
   const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -18,15 +20,11 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
 
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`(lower(u.email) LIKE $${values.length} OR lower(u.name) LIKE $${values.length} OR lower(u.id::text) LIKE $${values.length})`);
+    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length})`);
   }
   if (status) {
     values.push(status);
-    conditions.push(`u.status = $${values.length}`);
-  }
-  if (plan) {
-    values.push(plan);
-    conditions.push(`u.plan_type = $${values.length}`);
+    conditions.push(`COALESCE(eu.status, 'active') = $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -34,20 +32,28 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
   try {
     const [rows, countResult] = await Promise.all([
       query(
-        `SELECT u.id, u.email, u.name, u.phone, u.status,
-                u.plan_type, u.trial_start, u.trial_end, u.created_at, u.updated_at,
+        `SELECT mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
+                eu.phone, eu.status, eu.last_seen_at,
                 COUNT(DISTINCT a.id)::int AS appointment_count,
                 COUNT(DISTINCT t.id)::int AS ticket_count
-         FROM moveadvisor_users u
-         LEFT JOIN erp_appointments a ON a.user_id = u.id::text
-         LEFT JOIN erp_tickets      t ON t.user_id = u.id::text
+         FROM moveadvisor_users mu
+         LEFT JOIN erp_users eu ON eu.email = mu.email
+         LEFT JOIN erp_appointments a ON a.user_id = mu.id
+         LEFT JOIN erp_tickets      t ON t.user_id = mu.id
          ${where}
-         GROUP BY u.id
-         ORDER BY u.created_at DESC
+         GROUP BY mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
+                  eu.phone, eu.status, eu.last_seen_at
+         ORDER BY mu.created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),
-      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_users u ${where}`, values),
+      query(
+        `SELECT COUNT(*)::int AS total
+         FROM moveadvisor_users mu
+         LEFT JOIN erp_users eu ON eu.email = mu.email
+         ${where}`,
+        values
+      ),
     ]);
 
     res.json({
@@ -63,9 +69,16 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
 usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     const [user, appointments, tickets] = await Promise.all([
-      query(`SELECT * FROM moveadvisor_users WHERE id = $1`, [req.params.id]),
       query(
-        `SELECT id, type, status, scheduled_at, workshop_name, agent, notes
+        `SELECT mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
+                eu.phone, eu.status, eu.last_seen_at
+         FROM moveadvisor_users mu
+         LEFT JOIN erp_users eu ON eu.email = mu.email
+         WHERE mu.id = $1`,
+        [req.params.id]
+      ),
+      query(
+        `SELECT id, type, status, scheduled_at, agent, notes, created_at
          FROM erp_appointments WHERE user_id = $1 ORDER BY scheduled_at DESC LIMIT 20`,
         [req.params.id]
       ),
@@ -91,7 +104,6 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
 });
 
 const statusSchema = z.enum(['active', 'at_risk', 'blocked']);
-const planSchema   = z.enum(['free', 'plus', 'premium']);
 
 usersRouter.patch('/users/:id/status', requireRole(['admin', 'support', 'operations']), async (req, res) => {
   const parsed = statusSchema.safeParse(req.body?.status);
@@ -100,37 +112,21 @@ usersRouter.patch('/users/:id/status', requireRole(['admin', 'support', 'operati
     return;
   }
   try {
-    const result = await query(
-      `UPDATE moveadvisor_users SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [parsed.data, req.params.id]
-    );
-    if (!result.rows.length) {
+    // Upsert into erp_users
+    const mu = await query(`SELECT id, name, email FROM moveadvisor_users WHERE id = $1`, [req.params.id]);
+    if (!mu.rows.length) {
       res.status(404).json({ ok: false, error: 'user_not_found' });
       return;
     }
-    res.json({ ok: true, data: result.rows[0] });
+    const u = mu.rows[0] as { id: string; name: string; email: string };
+    await query(
+      `INSERT INTO erp_users (id, name, email, status)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
+      [u.id, u.name, u.email, parsed.data]
+    );
+    res.json({ ok: true, data: { id: u.id, status: parsed.data } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'user_status_update_failed', detail: (err as Error).message });
-  }
-});
-
-usersRouter.patch('/users/:id/plan', requireRole(['admin', 'operations']), async (req, res) => {
-  const parsed = planSchema.safeParse(req.body?.plan);
-  if (!parsed.success) {
-    res.status(400).json({ ok: false, error: 'invalid_plan' });
-    return;
-  }
-  try {
-    const result = await query(
-      `UPDATE moveadvisor_users SET plan_type = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [parsed.data, req.params.id]
-    );
-    if (!result.rows.length) {
-      res.status(404).json({ ok: false, error: 'user_not_found' });
-      return;
-    }
-    res.json({ ok: true, data: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: 'user_plan_update_failed', detail: (err as Error).message });
   }
 });

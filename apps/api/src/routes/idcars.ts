@@ -55,9 +55,9 @@ idcarsRouter.get('/idcars', requireRole(['admin', 'support', 'operations', 'sale
 idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     const result = await query(
-      `SELECT v.*, u.name AS owner_name, u.email AS owner_email, u.plan_type AS owner_plan
+      `SELECT v.*, u.name AS owner_name, u.email AS owner_email
        FROM moveadvisor_user_vehicles v
-       LEFT JOIN moveadvisor_users u ON u.id::text = v.user_id
+       LEFT JOIN moveadvisor_users u ON u.id = v.user_id
        WHERE v.id = $1`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
@@ -78,9 +78,9 @@ idcarsRouter.get('/idcars/stats/summary', requireRole(['admin', 'operations']), 
       `SELECT
         COUNT(*)::int                                          AS total,
         COUNT(DISTINCT user_id)::int                          AS unique_owners,
-        COUNT(*) FILTER (WHERE fuel_type = 'electric')::int   AS electric,
-        COUNT(*) FILTER (WHERE fuel_type = 'hybrid')::int     AS hybrid,
-        ROUND(AVG(EXTRACT(YEAR FROM NOW()) - year)::numeric, 1) AS avg_age_years
+        COUNT(*) FILTER (WHERE lower(fuel) = 'eléctrico' OR lower(fuel) = 'electrico')::int AS electric,
+        COUNT(*) FILTER (WHERE lower(fuel) LIKE '%híbrido%' OR lower(fuel) LIKE '%hibrido%')::int AS hybrid,
+        ROUND(AVG(EXTRACT(YEAR FROM NOW()) - year_int)::numeric, 1) AS avg_age_years
        FROM moveadvisor_user_vehicles`
     ).catch(() => ({ rows: [{ total: 0, unique_owners: 0, electric: 0, hybrid: 0, avg_age_years: 0 }] }));
 

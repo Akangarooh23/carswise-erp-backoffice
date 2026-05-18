@@ -5,14 +5,15 @@ import { requireRole } from '../middleware/auth.js';
 
 export const appointmentsRouter = Router();
 
+// erp_appointments: id, user_id, type, scheduled_at, status, agent, notes, created_at
+
 appointmentsRouter.get('/appointments', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
-  const status     = String(req.query.status      || '').trim();
-  const q          = String(req.query.q           || '').trim();
-  const workshopId = String(req.query.workshop_id || '').trim();
-  const upcoming   = req.query.upcoming === 'true';
-  const page       = Math.max(1, Number(req.query.page) || 1);
-  const limit      = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
-  const offset     = (page - 1) * limit;
+  const status   = String(req.query.status || '').trim();
+  const q        = String(req.query.q      || '').trim();
+  const upcoming = req.query.upcoming === 'true';
+  const page     = Math.max(1, Number(req.query.page) || 1);
+  const limit    = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset   = (page - 1) * limit;
 
   const conditions: string[] = [];
   const values: unknown[]    = [];
@@ -21,16 +22,12 @@ appointmentsRouter.get('/appointments', requireRole(['admin', 'support', 'operat
     values.push(status);
     conditions.push(`a.status = $${values.length}`);
   }
-  if (workshopId) {
-    values.push(workshopId);
-    conditions.push(`a.workshop_id = $${values.length}`);
-  }
   if (upcoming) {
     conditions.push(`a.scheduled_at >= NOW()`);
   }
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`(lower(a.user_id) LIKE $${values.length} OR lower(a.type) LIKE $${values.length} OR lower(COALESCE(a.workshop_name,'')) LIKE $${values.length})`);
+    conditions.push(`(lower(a.user_id) LIKE $${values.length} OR lower(a.type) LIKE $${values.length} OR lower(COALESCE(mu.name,'')) LIKE $${values.length} OR lower(COALESCE(mu.email,'')) LIKE $${values.length})`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -38,15 +35,15 @@ appointmentsRouter.get('/appointments', requireRole(['admin', 'support', 'operat
   try {
     const [rows, total] = await Promise.all([
       query(
-        `SELECT a.*, w.name AS workshop_name_resolved
+        `SELECT a.*, mu.name AS user_name, mu.email AS user_email
          FROM erp_appointments a
-         LEFT JOIN erp_workshops w ON w.id = a.workshop_id
+         LEFT JOIN moveadvisor_users mu ON mu.id = a.user_id
          ${where}
          ORDER BY a.scheduled_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),
-      query(`SELECT COUNT(*)::int AS total FROM erp_appointments a ${where}`, values),
+      query(`SELECT COUNT(*)::int AS total FROM erp_appointments a LEFT JOIN moveadvisor_users mu ON mu.id = a.user_id ${where}`, values),
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
@@ -57,9 +54,9 @@ appointmentsRouter.get('/appointments', requireRole(['admin', 'support', 'operat
 appointmentsRouter.get('/appointments/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     const result = await query(
-      `SELECT a.*, w.name AS workshop_name_resolved, w.address AS workshop_address, w.phone AS workshop_phone
+      `SELECT a.*, mu.name AS user_name, mu.email AS user_email
        FROM erp_appointments a
-       LEFT JOIN erp_workshops w ON w.id = a.workshop_id
+       LEFT JOIN moveadvisor_users mu ON mu.id = a.user_id
        WHERE a.id = $1`,
       [req.params.id]
     );
@@ -77,8 +74,6 @@ const createSchema = z.object({
   user_id:      z.string().min(1),
   scheduled_at: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)),
   type:         z.enum(['oil_change', 'brakes', 'tires', 'inspection', 'itv', 'general', 'other']),
-  workshop_id:  z.string().uuid().optional(),
-  workshop_name:z.string().optional(),
   agent:        z.string().optional(),
   notes:        z.string().optional(),
 });
@@ -92,10 +87,10 @@ appointmentsRouter.post('/appointments', requireRole(['admin', 'support', 'opera
   const d = parsed.data;
   try {
     const result = await query(
-      `INSERT INTO erp_appointments (user_id, scheduled_at, type, workshop_id, workshop_name, agent, notes, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+      `INSERT INTO erp_appointments (id, user_id, scheduled_at, type, agent, notes, status, created_at)
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, 'scheduled', NOW())
        RETURNING *`,
-      [d.user_id, d.scheduled_at, d.type, d.workshop_id ?? null, d.workshop_name ?? null, d.agent ?? null, d.notes ?? null]
+      [d.user_id, d.scheduled_at, d.type, d.agent ?? null, d.notes ?? null]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
@@ -108,8 +103,6 @@ const updateSchema = z.object({
   scheduled_at: z.string().optional(),
   agent:        z.string().optional(),
   notes:        z.string().optional(),
-  workshop_id:  z.string().uuid().optional(),
-  workshop_name:z.string().optional(),
 });
 
 appointmentsRouter.patch('/appointments/:id', requireRole(['admin', 'support', 'operations']), async (req, res) => {
@@ -131,7 +124,7 @@ appointmentsRouter.patch('/appointments/:id', requireRole(['admin', 'support', '
 
   try {
     const result = await query(
-      `UPDATE erp_appointments SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`,
+      `UPDATE erp_appointments SET ${setClauses} WHERE id = $${values.length} RETURNING *`,
       values
     );
     if (!result.rows.length) {
