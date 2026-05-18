@@ -1,0 +1,91 @@
+import { Router } from 'express';
+import { query } from '../db/pool.js';
+import { requireRole } from '../middleware/auth.js';
+
+export const dashboardRouter = Router();
+
+dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
+  try {
+    const [users, tickets, appointments, marketplace, recentTickets, recentAppointments] = await Promise.all([
+      // User stats
+      query(`
+        SELECT
+          COUNT(*)::int                                                              AS total,
+          COUNT(*) FILTER (WHERE status = 'active')::int                            AS active,
+          COUNT(*) FILTER (WHERE status = 'at_risk')::int                           AS at_risk,
+          COUNT(*) FILTER (WHERE status = 'blocked')::int                           AS blocked,
+          COUNT(*) FILTER (WHERE plan_type = 'plus')::int                           AS plus,
+          COUNT(*) FILTER (WHERE plan_type = 'premium')::int                        AS premium,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int     AS new_30d
+        FROM moveadvisor_users
+      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, plus: 0, premium: 0, new_30d: 0 }] })),
+
+      // Ticket stats
+      query(`
+        SELECT
+          COUNT(*)::int                                                              AS total,
+          COUNT(*) FILTER (WHERE status = 'open')::int                              AS open,
+          COUNT(*) FILTER (WHERE status = 'in_progress')::int                       AS in_progress,
+          COUNT(*) FILTER (WHERE status = 'waiting_customer')::int                  AS waiting_customer,
+          COUNT(*) FILTER (WHERE status = 'resolved')::int                          AS resolved,
+          COUNT(*) FILTER (WHERE priority = 'urgent')::int                          AS urgent,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int      AS new_7d
+        FROM erp_tickets
+      `).catch(() => ({ rows: [{ total: 0, open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, urgent: 0, new_7d: 0 }] })),
+
+      // Appointment stats
+      query(`
+        SELECT
+          COUNT(*)::int                                                              AS total,
+          COUNT(*) FILTER (WHERE status = 'scheduled')::int                         AS scheduled,
+          COUNT(*) FILTER (WHERE status = 'confirmed')::int                         AS confirmed,
+          COUNT(*) FILTER (WHERE status = 'completed')::int                         AS completed,
+          COUNT(*) FILTER (WHERE status = 'cancelled')::int                         AS cancelled,
+          COUNT(*) FILTER (WHERE scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '7 days')::int AS upcoming_7d
+        FROM erp_appointments
+      `).catch(() => ({ rows: [{ total: 0, scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, upcoming_7d: 0 }] })),
+
+      // Marketplace stats
+      query(`
+        SELECT
+          COUNT(*)::int                                                              AS total,
+          COUNT(*) FILTER (WHERE is_active = TRUE)::int                             AS active,
+          ROUND(AVG(price)::numeric, 0)::int                                        AS avg_price,
+          MIN(price)::int                                                            AS min_price,
+          MAX(price)::int                                                            AS max_price
+        FROM moveadvisor_marketplace_vo_offers
+      `).catch(() => ({ rows: [{ total: 0, active: 0, avg_price: 0, min_price: 0, max_price: 0 }] })),
+
+      // Recent tickets
+      query(`
+        SELECT id, title, status, priority, user_id, created_at
+        FROM erp_tickets
+        ORDER BY created_at DESC
+        LIMIT 5
+      `).catch(() => ({ rows: [] })),
+
+      // Upcoming appointments
+      query(`
+        SELECT id, user_id, type, status, scheduled_at, workshop_name
+        FROM erp_appointments
+        WHERE scheduled_at >= NOW()
+        ORDER BY scheduled_at ASC
+        LIMIT 5
+      `).catch(() => ({ rows: [] })),
+    ]);
+
+    res.json({
+      ok: true,
+      data: {
+        users: users.rows[0],
+        tickets: tickets.rows[0],
+        appointments: appointments.rows[0],
+        marketplace: marketplace.rows[0],
+        recentTickets: recentTickets.rows,
+        upcomingAppointments: recentAppointments.rows,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'dashboard_stats_failed', detail: (err as Error).message });
+  }
+});

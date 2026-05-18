@@ -1,0 +1,177 @@
+// ── Auth ─────────────────────────────────────────────────────────────────────
+export type Role = 'admin' | 'support' | 'operations' | 'sales';
+
+export interface AuthUser {
+  email: string;
+  role: Role;
+  name: string;
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+export type UserStatus = 'active' | 'at_risk' | 'blocked';
+export type PlanType   = 'free' | 'plus' | 'premium';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  status: UserStatus;
+  plan_type: PlanType;
+  trial_start?: string;
+  trial_end?: string;
+  created_at: string;
+  updated_at: string;
+  appointment_count?: number;
+  ticket_count?: number;
+}
+
+// ── Marketplace ───────────────────────────────────────────────────────────────
+export interface VoOffer {
+  id: string;
+  title: string;
+  brand: string;
+  model: string;
+  year: number;
+  price: number;
+  km: number;
+  fuel_type: string;
+  body_type: string;
+  color: string;
+  doors: number;
+  seats: number;
+  power_cv: number;
+  traction?: string;
+  image_url?: string;
+  images?: string;
+  is_active: boolean;
+  portal_score?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MarketOffer {
+  id: string;
+  portal: string;
+  title: string;
+  brand: string;
+  model: string;
+  year: number;
+  price: number;
+  km: number;
+  fuel_type: string;
+  image_url?: string;
+  url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Appointments ──────────────────────────────────────────────────────────────
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+export type AppointmentType   = 'oil_change' | 'brakes' | 'tires' | 'inspection' | 'itv' | 'general' | 'other';
+
+export interface Appointment {
+  id: string;
+  user_id: string;
+  agent?: string;
+  workshop_id?: string;
+  workshop_name?: string;
+  workshop_name_resolved?: string;
+  scheduled_at: string;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Tickets ───────────────────────────────────────────────────────────────────
+export type TicketStatus   = 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TicketChannel  = 'web' | 'phone' | 'email' | 'whatsapp';
+
+export interface TicketEvent {
+  id: string;
+  actor: string;
+  message: string;
+  event_at: string;
+}
+
+export interface Ticket {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  user_email?: string;
+  title: string;
+  description: string;
+  channel: TicketChannel;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assigned_to?: string;
+  created_at: string;
+  updated_at: string;
+  events?: TicketEvent[];
+}
+
+// ── Workshops ─────────────────────────────────────────────────────────────────
+export interface Workshop {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  is_active: boolean;
+  appointment_count?: number;
+  pending_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── IDCars ────────────────────────────────────────────────────────────────────
+export interface IdCar {
+  id: string;
+  user_id: string;
+  owner_name?: string;
+  owner_email?: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+  plate?: string;
+  fuel_type?: string;
+  km?: number;
+  created_at: string;
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+export interface DashboardStats {
+  users: {
+    total: number; active: number; at_risk: number; blocked: number;
+    plus: number; premium: number; new_30d: number;
+  };
+  tickets: {
+    total: number; open: number; in_progress: number;
+    waiting_customer: number; resolved: number; urgent: number; new_7d: number;
+  };
+  appointments: {
+    total: number; scheduled: number; confirmed: number;
+    completed: number; cancelled: number; upcoming_7d: number;
+  };
+  marketplace: {
+    total: number; active: number; avg_price: number; min_price: number; max_price: number;
+  };
+  recentTickets: Ticket[];
+  upcomingAppointments: Appointment[];
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+export interface ApiResponse<T> {
+  ok: boolean;
+  data: T;
+  meta?: { total: number; page: number; limit: number };
+  error?: string;
+}
