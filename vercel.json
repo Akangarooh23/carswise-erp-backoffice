@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build -w @carswise/api && npm run build -w @carswise/web",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "npm install",
+  "installCommand": "npm install --include=dev",
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
