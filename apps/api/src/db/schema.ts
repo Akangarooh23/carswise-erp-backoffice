@@ -82,5 +82,15 @@ export async function ensureSchema() {
       ON erp_audit_log(resource, resource_id)
   `);
 
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_market_leads
+      ADD COLUMN IF NOT EXISTS erp_response         TEXT         NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_date     DATE,
+      ADD COLUMN IF NOT EXISTS appointment_time     VARCHAR(10)  NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_address  TEXT         NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS appointment_contact  VARCHAR(255) NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS notified_at          TIMESTAMPTZ
+  `);
+
   console.log('[schema] ERP tables verified');
 }

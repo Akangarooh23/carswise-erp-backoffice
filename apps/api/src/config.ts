@@ -1,4 +1,9 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(__dirname, '../../../.env') });
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -11,6 +16,8 @@ const envSchema = z.object({
   ERP_SUPPORT_PASSWORD: z.string().min(8),
   ERP_OPS_PASSWORD: z.string().min(8),
   ERP_SALES_PASSWORD: z.string().min(8),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
