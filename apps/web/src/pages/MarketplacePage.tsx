@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -342,6 +342,47 @@ export default function MarketplacePage() {
   const [statusFilter, setStatus] = useState('');
   const [loading, setLoading]     = useState(true);
 
+  const [sortCol, setSortCol]   = useState<string>('');
+  const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
+  const [colF, setColF] = useState({ fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '' });
+
+  function toggleSort(col: string) {
+    setSortCol((prev) => {
+      if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); return col; }
+      setSortDir('asc'); return col;
+    });
+  }
+  function setCol(key: keyof typeof colF, val: string) { setColF((f) => ({ ...f, [key]: val })); }
+
+  const displayItems = useMemo(() => {
+    let r = [...items];
+    if (colF.fuel)      r = r.filter(i => (i.fuel || '') === colF.fuel);
+    if (colF.year)      r = r.filter(i => String(i.year) === colF.year);
+    if (colF.priceMax)  r = r.filter(i => i.price <= Number(colF.priceMax));
+    if (colF.color)     r = r.filter(i => i.available_colors?.includes(colF.color) || (i.color || '') === colF.color);
+    if (colF.seller)    r = r.filter(i => (i.seller || '') === colF.seller);
+    if (colF.units === 'stock') r = r.filter(i => (i.units_available ?? 0) > 0);
+    if (colF.modality === 'compra')   r = r.filter(i => i.available_for_purchase !== false);
+    if (colF.modality === 'renting')  r = r.filter(i => i.renting_available);
+    if (colF.modality === 'both')     r = r.filter(i => i.available_for_purchase !== false && i.renting_available);
+    if (sortCol) {
+      r.sort((a, b) => {
+        const av = (a as Record<string,unknown>)[sortCol] ?? '';
+        const bv = (b as Record<string,unknown>)[sortCol] ?? '';
+        const cmp = typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv), 'es');
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return r;
+  }, [items, colF, sortCol, sortDir]);
+
+  const fuelOptions   = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
+  const yearOptions   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
+  const colorOptions  = useMemo(() => [...new Set(items.flatMap(i => i.available_colors ?? []).filter(Boolean))].sort(), [items]);
+  const sellerOptions = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
+
   const [editOffer, setEditOffer] = useState<VoOffer | null>(null);
   const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
   const [saving, setSaving]       = useState(false);
@@ -371,7 +412,7 @@ export default function MarketplacePage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     if (tab === 'vo') {
-      const params = new URLSearchParams({ page: String(p), limit: '50' });
+      const params = new URLSearchParams({ page: String(p), limit: '500' });
       if (q)            params.set('q', q);
       if (brand)        params.set('brand', brand);
       if (statusFilter) params.set('is_active', statusFilter);
@@ -548,14 +589,104 @@ export default function MarketplacePage() {
             <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
           ) : (
             <>
-              <table className="erp-table">
+              {/* Active column filters summary */}
+              {Object.values(colF).some(Boolean) && (
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
+                  <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
+                  <button onClick={() => setColF({ fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'' })}
+                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+              <table className="erp-table w-full">
                 <thead>
+                  {/* ── Row 1: sortable labels ── */}
                   <tr>
-                    <th>Vehículo</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Vendedor</th><th>Estado</th><th></th>
+                    {([
+                      { key: 'title',   label: 'Vehículo'    },
+                      { key: 'price',   label: 'Precio'      },
+                      { key: 'mileage', label: 'Km'          },
+                      { key: 'year',    label: 'Año'         },
+                      { key: 'fuel',    label: 'Combustible' },
+                      { key: 'modalidad', label: 'Modalidad' },
+                      { key: 'units_available', label: 'Unidades' },
+                      { key: 'seller',  label: 'Vendedor'    },
+                      { key: 'is_active', label: 'Estado'    },
+                    ] as const).map(({ key, label }) => (
+                      <th key={key} onClick={() => toggleSort(key)}
+                        className="cursor-pointer select-none whitespace-nowrap group">
+                        <span className="flex items-center gap-1">
+                          {label}
+                          <span className={`text-xs transition-colors ${sortCol === key ? 'text-blue-500' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                            {sortCol === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                          </span>
+                        </span>
+                      </th>
+                    ))}
+                    <th></th>
+                  </tr>
+                  {/* ── Row 2: column filters ── */}
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <td className="px-3 py-1.5"></td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Cualquier precio</option>
+                        {[15000,20000,25000,30000,40000,60000].map(p =>
+                          <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5"></td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.year} onChange={e => setCol('year', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.fuel} onChange={e => setCol('fuel', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {fuelOptions.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.modality} onChange={e => setCol('modality', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="compra">Solo compra</option>
+                        <option value="renting">Solo renting</option>
+                        <option value="both">Compra + Renting</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <select value={colF.color} onChange={e => setCol('color', e.target.value)}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                          <option value="">Todos colores</option>
+                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                          <input type="checkbox" checked={colF.units === 'stock'}
+                            onChange={e => setCol('units', e.target.checked ? 'stock' : '')} />
+                          Stock
+                        </label>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.seller} onChange={e => setCol('seller', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {sellerOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5"></td>
+                    <td></td>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {displayItems.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="flex items-center gap-3">
@@ -574,6 +705,29 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
+                      {/* Modalidad — columna separada */}
+                      <td>
+                        <div className="flex gap-1 flex-wrap">
+                          {item.available_for_purchase !== false && <Badge variant="blue">Compra</Badge>}
+                          {item.renting_available && <Badge variant="purple">Renting</Badge>}
+                        </div>
+                      </td>
+                      {/* Unidades */}
+                      <td>
+                        {item.has_stock_management ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-xs font-semibold ${(item.units_available ?? 0) > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                              {item.units_available ?? 0} uds
+                            </span>
+                            {item.available_colors?.length ? (
+                              <span className="text-xs text-slate-400">{item.available_colors.join(', ')}</span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-300">—</span>
+                        )}
+                      </td>
+                      {/* Vendedor */}
                       <td>
                         <div className="flex flex-col gap-1">
                           <span className="text-xs text-slate-600">{item.seller || '–'}</span>
@@ -584,22 +738,11 @@ export default function MarketplacePage() {
                           )}
                         </div>
                       </td>
+                      {/* Estado */}
                       <td>
-                        <div className="flex flex-col gap-1">
-                          <Badge variant={item.is_active ? 'green' : 'slate'}>
-                            {item.is_active ? 'Publicado' : 'Despublicado'}
-                          </Badge>
-                          <div className="flex gap-1 flex-wrap">
-                            {item.available_for_purchase !== false && <Badge variant="blue">Compra</Badge>}
-                            {item.renting_available && <Badge variant="purple">Renting</Badge>}
-                          </div>
-                          {item.has_stock_management && (
-                            <span className="text-xs text-slate-500">
-                              {item.units_available ?? 0} uds
-                              {item.available_colors?.length ? ` · ${item.available_colors.join(', ')}` : ''}
-                            </span>
-                          )}
-                        </div>
+                        <Badge variant={item.is_active ? 'green' : 'slate'}>
+                          {item.is_active ? 'Publicado' : 'Despublicado'}
+                        </Badge>
                       </td>
                       <td>
                         <div className="flex gap-1 items-center">
@@ -623,7 +766,10 @@ export default function MarketplacePage() {
                   ))}
                 </tbody>
               </table>
-              <Pagination page={page} total={total} limit={50} onChange={setPage} />
+              </div>
+              {displayItems.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-sm">Sin resultados con los filtros actuales</div>
+              )}
             </>
           )
         ) : (
