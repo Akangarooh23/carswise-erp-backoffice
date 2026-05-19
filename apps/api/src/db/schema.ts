@@ -111,5 +111,38 @@ export async function ensureSchema() {
     )
   `);
 
+  // ── moveadvisor_marketplace_vo_offers column migrations ──────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_marketplace_vo_offers
+      ADD COLUMN IF NOT EXISTS seller_type          VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS image_urls           TEXT,
+      ADD COLUMN IF NOT EXISTS has_stock_management BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS renting_12m          NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS renting_24m          NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS renting_36m          NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS renting_48m          NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS renting_60m          NUMERIC(10,2)
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_marketplace_vo_units (
+      id           VARCHAR(64)  PRIMARY KEY,
+      offer_id     VARCHAR(64)  NOT NULL REFERENCES moveadvisor_marketplace_vo_offers(id) ON DELETE CASCADE,
+      color        VARCHAR(80),
+      mileage      INTEGER      DEFAULT 0,
+      status       VARCHAR(20)  DEFAULT 'available',
+      notes        TEXT,
+      rented_at    TIMESTAMPTZ,
+      returned_at  TIMESTAMPTZ,
+      created_at   TIMESTAMPTZ  DEFAULT NOW(),
+      updated_at   TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS ix_vo_units_offer_id
+      ON moveadvisor_marketplace_vo_units (offer_id, status)
+  `);
+
   console.log('[schema] ERP tables verified');
 }
