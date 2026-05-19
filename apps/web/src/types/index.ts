@@ -49,6 +49,9 @@ export interface VoOffer {
   warranty_months: number;
   seller_type?: 'professional' | 'particular' | null;
   image_urls?: string[] | null;
+  has_stock_management?: boolean;
+  units_available?: number;
+  available_colors?: string[];
   available_for_purchase: boolean;
   renting_available: boolean;
   renting_km_year: number;
@@ -58,6 +61,21 @@ export interface VoOffer {
   renting_48m?: number | null;
   renting_60m?: number | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type UnitStatus = 'available' | 'reserved' | 'rented' | 'returned';
+
+export interface VoUnit {
+  id: string;
+  offer_id: string;
+  color: string;
+  mileage: number;
+  status: UnitStatus;
+  notes?: string | null;
+  rented_at?: string | null;
+  returned_at?: string | null;
   created_at: string;
   updated_at: string;
 }

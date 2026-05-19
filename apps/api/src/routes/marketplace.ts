@@ -334,6 +334,229 @@ marketplaceRouter.delete('/marketplace/vo/:id', requireRole(['admin', 'operation
   }
 });
 
+// ── Units CRUD ────────────────────────────────────────────────────────────────
+
+marketplaceRouter.get('/marketplace/vo/:id/units', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT * FROM moveadvisor_marketplace_vo_units WHERE offer_id = $1 ORDER BY status, color, mileage`,
+      [req.params.id]
+    );
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'units_list_failed', detail: (err as Error).message });
+  }
+});
+
+const unitCreateSchema = z.object({
+  color:   z.string().default(''),
+  mileage: z.coerce.number().int().min(0).default(0),
+  notes:   z.string().optional(),
+});
+
+marketplaceRouter.post('/marketplace/vo/:id/units', requireRole(['admin', 'operations']), async (req, res) => {
+  const parsed = unitCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, error: 'invalid_payload', detail: parsed.error.flatten() });
+    return;
+  }
+  const d  = parsed.data;
+  const id = `unit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  try {
+    await query(
+      `INSERT INTO moveadvisor_marketplace_vo_units (id, offer_id, color, mileage, notes, status, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,'available',NOW(),NOW())`,
+      [id, req.params.id, d.color, d.mileage, d.notes ?? null]
+    );
+    await query(
+      `UPDATE moveadvisor_marketplace_vo_offers SET has_stock_management = TRUE, updated_at = NOW() WHERE id = $1`,
+      [req.params.id]
+    );
+    const result = await query(`SELECT * FROM moveadvisor_marketplace_vo_units WHERE id = $1`, [id]);
+    res.status(201).json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'unit_create_failed', detail: (err as Error).message });
+  }
+});
+
+const UNIT_STATUSES = ['available', 'reserved', 'rented', 'returned'] as const;
+
+marketplaceRouter.patch('/marketplace/vo/units/:unitId', requireRole(['admin', 'operations']), async (req, res) => {
+  const schema = z.object({
+    color:   z.string().optional(),
+    mileage: z.coerce.number().int().min(0).optional(),
+    status:  z.enum(UNIT_STATUSES).optional(),
+    notes:   z.string().optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, error: 'invalid_payload', detail: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const setParts: string[] = [];
+  const vals: unknown[]    = [];
+  if (d.color   !== undefined) { vals.push(d.color);   setParts.push(`color = $${vals.length}`); }
+  if (d.mileage !== undefined) { vals.push(d.mileage); setParts.push(`mileage = $${vals.length}`); }
+  if (d.notes   !== undefined) { vals.push(d.notes);   setParts.push(`notes = $${vals.length}`); }
+  if (d.status  !== undefined) {
+    vals.push(d.status); setParts.push(`status = $${vals.length}`);
+    if (d.status === 'rented')   { setParts.push('rented_at = NOW()');   }
+    if (d.status === 'returned') { setParts.push('returned_at = NOW()'); }
+  }
+  if (!setParts.length) { res.status(400).json({ ok: false, error: 'no_fields' }); return; }
+  vals.push(req.params.unitId);
+  try {
+    const result = await query(
+      `UPDATE moveadvisor_marketplace_vo_units SET ${setParts.join(', ')}, updated_at = NOW() WHERE id = $${vals.length} RETURNING *`,
+      vals
+    );
+    if (!result.rows.length) { res.status(404).json({ ok: false, error: 'unit_not_found' }); return; }
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'unit_update_failed', detail: (err as Error).message });
+  }
+});
+
+marketplaceRouter.delete('/marketplace/vo/units/:unitId', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const result = await query(
+      `DELETE FROM moveadvisor_marketplace_vo_units WHERE id = $1 RETURNING id`, [req.params.unitId]
+    );
+    if (!result.rows.length) { res.status(404).json({ ok: false, error: 'unit_not_found' }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'unit_delete_failed', detail: (err as Error).message });
+  }
+});
+
+// ── Bulk import with units (one row per unit, grouped by brand+model+year+price) ──
+
+const voBulkUnitRowSchema = z.object({
+  title:                 z.string().min(1),
+  brand:                 z.string().min(1),
+  model:                 z.string().min(1),
+  year:                  z.coerce.number().int().min(1990).max(2035),
+  price:                 z.coerce.number().min(0).default(0),
+  fuel:                  z.string().default(''),
+  power:                 z.string().default(''),
+  location:              z.string().default(''),
+  seller:                z.string().default(''),
+  seller_type:           z.string().default(''),
+  image_urls:            z.string().default(''),
+  source_url:            z.string().default(''),
+  description:           z.string().default(''),
+  available_for_purchase: z.coerce.number().default(1),
+  renting_available:     z.coerce.number().default(0),
+  renting_km_year:       z.coerce.number().int().default(15000),
+  renting_12m:           z.coerce.number().nullable().default(null),
+  renting_24m:           z.coerce.number().nullable().default(null),
+  renting_36m:           z.coerce.number().nullable().default(null),
+  renting_48m:           z.coerce.number().nullable().default(null),
+  renting_60m:           z.coerce.number().nullable().default(null),
+  unit_color:            z.string().default(''),
+  unit_mileage:          z.coerce.number().int().min(0).default(0),
+});
+
+marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 'operations']), async (req, res) => {
+  const rows = req.body?.rows;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ ok: false, error: 'no_rows' });
+    return;
+  }
+  if (rows.length > 2000) {
+    res.status(400).json({ ok: false, error: 'too_many_rows', detail: 'Max 2000 rows' });
+    return;
+  }
+
+  const results = { offers_created: 0, offers_updated: 0, units_added: 0, errors: 0, errorDetails: [] as string[] };
+
+  // Group rows by brand+model+year+price
+  const groups = new Map<string, typeof rows>();
+  for (const raw of rows) {
+    const d = voBulkUnitRowSchema.safeParse(raw);
+    if (!d.success) { results.errors++; results.errorDetails.push(`Fila inválida: ${JSON.stringify(raw).slice(0, 80)}`); continue; }
+    const key = `${d.data.brand.toLowerCase()}|${d.data.model.toLowerCase()}|${d.data.year}|${d.data.price}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(d.data);
+  }
+
+  for (const groupRows of groups.values()) {
+    const first = groupRows[0] as ReturnType<typeof voBulkUnitRowSchema.parse>;
+    try {
+      // Upsert offer — find existing by brand+model+year+price
+      const existing = await query(
+        `SELECT id FROM moveadvisor_marketplace_vo_offers WHERE lower(brand)=$1 AND lower(model)=$2 AND year=$3 AND price=$4 LIMIT 1`,
+        [first.brand.toLowerCase(), first.model.toLowerCase(), first.year, first.price]
+      );
+
+      let offerId: string;
+      const imageUrlsArr = first.image_urls ? first.image_urls.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
+      const sellerTypeVal = ['professional','particular'].includes(first.seller_type) ? first.seller_type : null;
+
+      if (existing.rows.length) {
+        offerId = existing.rows[0].id;
+        await query(
+          `UPDATE moveadvisor_marketplace_vo_offers SET
+             title=$1, fuel=$2, power=$3, location=$4, seller=$5, seller_type=$6,
+             image_url=$7, image_urls=$8, source_url=$9, description=$10,
+             available_for_purchase=$11, renting_available=$12, renting_km_year=$13,
+             renting_12m=$14, renting_24m=$15, renting_36m=$16, renting_48m=$17, renting_60m=$18,
+             has_stock_management=TRUE, updated_at=NOW()
+           WHERE id=$19`,
+          [first.title, first.fuel, first.power, first.location, first.seller, sellerTypeVal,
+           imageUrlsArr[0] ?? null, JSON.stringify(imageUrlsArr), first.source_url, first.description,
+           first.available_for_purchase !== 0, first.renting_available !== 0, first.renting_km_year,
+           first.renting_12m || null, first.renting_24m || null, first.renting_36m || null,
+           first.renting_48m || null, first.renting_60m || null, offerId]
+        );
+        results.offers_updated++;
+      } else {
+        offerId = `erp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        await query(
+          `INSERT INTO moveadvisor_marketplace_vo_offers
+             (id, title, brand, model, year, price, fuel, power, location, seller, seller_type,
+              image_url, image_urls, source_url, description,
+              available_for_purchase, renting_available, renting_km_year,
+              renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
+              portal_score, warranty_months, has_guarantee_seal, is_active, portal,
+              has_stock_management, created_at, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,80,0,false,true,'manual',TRUE,NOW(),NOW())`,
+          [offerId, first.title, first.brand, first.model, first.year, first.price,
+           first.fuel, first.power, first.location, first.seller, sellerTypeVal,
+           imageUrlsArr[0] ?? null, JSON.stringify(imageUrlsArr), first.source_url, first.description,
+           first.available_for_purchase !== 0, first.renting_available !== 0, first.renting_km_year,
+           first.renting_12m || null, first.renting_24m || null, first.renting_36m || null,
+           first.renting_48m || null, first.renting_60m || null]
+        );
+        results.offers_created++;
+      }
+
+      // Add units — skip if same color+mileage already exists as available
+      for (const row of groupRows) {
+        const r = row as ReturnType<typeof voBulkUnitRowSchema.parse>;
+        const dup = await query(
+          `SELECT id FROM moveadvisor_marketplace_vo_units WHERE offer_id=$1 AND color=$2 AND mileage=$3 AND status='available' LIMIT 1`,
+          [offerId, r.unit_color, r.unit_mileage]
+        );
+        if (dup.rows.length) continue;
+        const unitId = `unit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        await query(
+          `INSERT INTO moveadvisor_marketplace_vo_units (id, offer_id, color, mileage, status, created_at, updated_at)
+           VALUES ($1,$2,$3,$4,'available',NOW(),NOW())`,
+          [unitId, offerId, r.unit_color, r.unit_mileage]
+        );
+        results.units_added++;
+      }
+    } catch (err) {
+      results.errors++;
+      results.errorDetails.push((err as Error).message.slice(0, 120));
+    }
+  }
+
+  res.json({ ok: true, data: results });
+});
+
 // ── Brands list ───────────────────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {

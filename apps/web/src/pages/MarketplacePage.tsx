@@ -6,7 +6,7 @@ import { SearchInput } from '../components/ui/SearchInput.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
-import type { VoOffer } from '../types/index.js';
+import type { VoOffer, VoUnit, UnitStatus } from '../types/index.js';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ const STATUS_FILTERS = [
   { value: 'false', label: 'Despublicados' },
 ];
 
-const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','seller_type','image_urls','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m'];
+const EXCEL_HEADERS = ['title','brand','model','year','price','fuel','power','location','seller','seller_type','image_urls','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','unit_color','unit_mileage'];
 
 const EMPTY_FORM: Partial<VoOffer> = {
   title: '', brand: '', model: '', year: new Date().getFullYear(),
@@ -88,15 +88,37 @@ function exportXlsx(items: VoOffer[]) {
 }
 
 function downloadTemplate() {
-  const example = [{
-    title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
-    year: 2020, price: 14500, mileage: 85000, fuel: 'Diésel', power: '85 CV',
-    color: 'Blanco', location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
-    image_urls: 'https://example.com/foto1.jpg|https://example.com/foto2.jpg',
-    source_url: '', description: 'Vehículo en excelente estado. Único propietario.',
-    available_for_purchase: 1, renting_available: 1,
-    renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
-  }];
+  // Three units of the same Golf (same offer, different colors/mileage)
+  const example = [
+    {
+      title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
+      year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
+      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      image_urls: 'https://example.com/foto1.jpg|https://example.com/foto2.jpg',
+      source_url: '', description: 'Vehículo en excelente estado.',
+      available_for_purchase: 0, renting_available: 1,
+      renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
+      unit_color: 'Blanco', unit_mileage: 9000,
+    },
+    {
+      title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
+      year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
+      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      image_urls: '', source_url: '', description: '',
+      available_for_purchase: 0, renting_available: 1,
+      renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
+      unit_color: 'Negro', unit_mileage: 15000,
+    },
+    {
+      title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
+      year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
+      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      image_urls: '', source_url: '', description: '',
+      available_for_purchase: 0, renting_available: 1,
+      renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
+      unit_color: 'Blanco', unit_mileage: 18500,
+    },
+  ];
   const ws = XLSX.utils.json_to_sheet(example, { header: EXCEL_HEADERS });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
@@ -323,6 +345,10 @@ export default function MarketplacePage() {
   const [editOffer, setEditOffer] = useState<VoOffer | null>(null);
   const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
   const [saving, setSaving]       = useState(false);
+  const [units, setUnits]           = useState<VoUnit[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [newUnit, setNewUnit]       = useState({ color: '', mileage: '' });
+  const [addingUnit, setAddingUnit] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<Partial<VoOffer>>(EMPTY_FORM);
@@ -335,7 +361,7 @@ export default function MarketplacePage() {
   const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
   const [importFileName, setImportFileName] = useState('');
   const [importing, setImporting]           = useState(false);
-  const [importResult, setImportResult]     = useState<{ inserted: number; errors: number } | null>(null);
+  const [importResult, setImportResult]     = useState<{ offers_created?: number; offers_updated?: number; units_added?: number; inserted?: number; errors: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -363,7 +389,36 @@ export default function MarketplacePage() {
   useEffect(() => { setPage(1); load(1); }, [tab, q, brand, statusFilter, load]);
   useEffect(() => { load(page); }, [page, load]);
 
-  function openEdit(offer: VoOffer) { setEditOffer(offer); setEditForm({ ...offer }); }
+  async function openEdit(offer: VoOffer) {
+    setEditOffer(offer);
+    setEditForm({ ...offer });
+    setUnits([]);
+    setNewUnit({ color: '', mileage: '' });
+    setLoadingUnits(true);
+    const res = await api.get<VoUnit[]>(`/marketplace/vo/${offer.id}/units`);
+    if (res.ok) setUnits(res.data);
+    setLoadingUnits(false);
+  }
+
+  async function addUnit() {
+    if (!editOffer || !newUnit.color || !newUnit.mileage) return;
+    setAddingUnit(true);
+    const res = await api.post<VoUnit>(`/marketplace/vo/${editOffer.id}/units`, {
+      color: newUnit.color, mileage: Number(newUnit.mileage),
+    });
+    if (res.ok) { setUnits((u) => [...u, res.data]); setNewUnit({ color: '', mileage: '' }); }
+    setAddingUnit(false);
+  }
+
+  async function changeUnitStatus(unitId: string, status: UnitStatus) {
+    const res = await api.patch<VoUnit>(`/marketplace/vo/units/${unitId}`, { status });
+    if (res.ok) setUnits((u) => u.map((x) => x.id === unitId ? res.data : x));
+  }
+
+  async function deleteUnit(unitId: string) {
+    const res = await api.delete(`/marketplace/vo/units/${unitId}`);
+    if (res.ok) setUnits((u) => u.filter((x) => x.id !== unitId));
+  }
 
   async function saveEdit() {
     if (!editOffer) return;
@@ -406,7 +461,9 @@ export default function MarketplacePage() {
   async function doImport() {
     if (!importRows.length) return;
     setImporting(true);
-    const res = await api.post<{ inserted: number; errors: number }>('/marketplace/vo/bulk', { rows: importRows });
+    const res = await api.post<{ offers_created: number; offers_updated: number; units_added: number; errors: number }>(
+      '/marketplace/vo/bulk-with-units', { rows: importRows }
+    );
     if (res.ok) {
       setImportResult(res.data);
       setImportRows([]); setImportFileName('');
@@ -536,6 +593,12 @@ export default function MarketplacePage() {
                             {item.available_for_purchase !== false && <Badge variant="blue">Compra</Badge>}
                             {item.renting_available && <Badge variant="purple">Renting</Badge>}
                           </div>
+                          {item.has_stock_management && (
+                            <span className="text-xs text-slate-500">
+                              {item.units_available ?? 0} uds
+                              {item.available_colors?.length ? ` · ${item.available_colors.join(', ')}` : ''}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -602,9 +665,103 @@ export default function MarketplacePage() {
         {editOffer && (
           <>
             <VehicleFormFields form={editForm} setForm={setEditForm} idPrefix="edit" />
-            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+
+            {/* Units panel */}
+            <div className="mt-6 border-t border-slate-100 pt-5">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">
+                Unidades en stock
+                {units.length > 0 && (
+                  <span className="ml-2 font-normal normal-case text-slate-400">
+                    {units.filter(u => u.status === 'available').length} disponibles · {units.length} total
+                  </span>
+                )}
+              </p>
+
+              {loadingUnits ? (
+                <p className="text-sm text-slate-400">Cargando unidades…</p>
+              ) : (
+                <>
+                  {units.length > 0 && (
+                    <div className="overflow-x-auto mb-4">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50">
+                            <th className="text-left p-2 font-medium text-slate-500">Color</th>
+                            <th className="text-left p-2 font-medium text-slate-500">Km</th>
+                            <th className="text-left p-2 font-medium text-slate-500">Estado</th>
+                            <th className="p-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {units.map((u) => {
+                            const statusMap: Record<UnitStatus, { label: string; variant: 'green'|'blue'|'purple'|'slate' }> = {
+                              available: { label: 'Disponible', variant: 'green' },
+                              reserved:  { label: 'Reservada',  variant: 'blue'  },
+                              rented:    { label: 'Rentada',    variant: 'purple'},
+                              returned:  { label: 'Devuelta',   variant: 'slate' },
+                            };
+                            const s = statusMap[u.status] ?? statusMap.available;
+                            return (
+                              <tr key={u.id} className="border-t border-slate-100">
+                                <td className="p-2 font-medium text-slate-700">{u.color || '—'}</td>
+                                <td className="p-2 text-slate-500">{u.mileage.toLocaleString('es-ES')} km</td>
+                                <td className="p-2"><Badge variant={s.variant}>{s.label}</Badge></td>
+                                <td className="p-2">
+                                  <div className="flex gap-1 flex-wrap justify-end">
+                                    {u.status !== 'available' && (
+                                      <button onClick={() => changeUnitStatus(u.id, 'available')}
+                                        className="text-xs text-emerald-600 hover:bg-emerald-50 px-1.5 py-0.5 rounded">Liberar</button>
+                                    )}
+                                    {u.status === 'available' && (
+                                      <button onClick={() => changeUnitStatus(u.id, 'reserved')}
+                                        className="text-xs text-blue-600 hover:bg-blue-50 px-1.5 py-0.5 rounded">Reservar</button>
+                                    )}
+                                    {u.status === 'reserved' && (
+                                      <button onClick={() => changeUnitStatus(u.id, 'rented')}
+                                        className="text-xs text-purple-600 hover:bg-purple-50 px-1.5 py-0.5 rounded">Rentar</button>
+                                    )}
+                                    {u.status === 'rented' && (
+                                      <button onClick={() => changeUnitStatus(u.id, 'returned')}
+                                        className="text-xs text-slate-600 hover:bg-slate-50 px-1.5 py-0.5 rounded">Devolver</button>
+                                    )}
+                                    <button onClick={() => deleteUnit(u.id)}
+                                      className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-1.5 py-0.5 rounded">✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Add unit row */}
+                  <div className="flex gap-2 items-end">
+                    <div>
+                      <label className={LABEL_CLS}>Color</label>
+                      <input className={INPUT_CLS} style={{ width: 120 }} value={newUnit.color}
+                        onChange={(e) => setNewUnit((n) => ({ ...n, color: e.target.value }))}
+                        placeholder="Blanco" />
+                    </div>
+                    <div>
+                      <label className={LABEL_CLS}>Kilómetros</label>
+                      <input type="number" className={INPUT_CLS} style={{ width: 110 }} value={newUnit.mileage}
+                        onChange={(e) => setNewUnit((n) => ({ ...n, mileage: e.target.value }))}
+                        placeholder="15000" min={0} />
+                    </div>
+                    <button onClick={addUnit} disabled={addingUnit || !newUnit.color || !newUnit.mileage}
+                      className="px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 shrink-0">
+                      {addingUnit ? '…' : '+ Añadir unidad'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-100">
               <button onClick={() => setEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-                Cancelar
+                Cerrar
               </button>
               <button onClick={saveEdit} disabled={saving}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
@@ -700,8 +857,14 @@ export default function MarketplacePage() {
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm">
               <p className="font-medium text-emerald-700">Importación completada</p>
               <p className="text-emerald-600">
-                {importResult.inserted} vehículos importados
-                {importResult.errors > 0 ? `, ${importResult.errors} errores` : ''}
+                {importResult.offers_created !== undefined ? (
+                  <>
+                    {importResult.offers_created} ofertas creadas · {importResult.offers_updated} actualizadas · {importResult.units_added} unidades añadidas
+                    {importResult.errors > 0 ? ` · ${importResult.errors} errores` : ''}
+                  </>
+                ) : (
+                  <>{importResult.inserted} importados{importResult.errors > 0 ? ` · ${importResult.errors} errores` : ''}</>
+                )}
               </p>
             </div>
           )}
