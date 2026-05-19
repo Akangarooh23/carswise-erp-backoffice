@@ -40,10 +40,10 @@ export default function DashboardPage() {
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Usuarios</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total usuarios"    value={fmt(stats.users.total)}   sub={`+${fmt(stats.users.new_30d)} este mes`} icon="👤" color="blue" />
-          <StatCard label="Activos"           value={fmt(stats.users.active)}  icon="✅" color="green" />
-          <StatCard label="Plan Plus"         value={fmt(stats.users.plus)}    icon="⭐" color="blue" />
-          <StatCard label="Plan Premium"      value={fmt(stats.users.premium)} icon="💎" color="purple" />
+          <StatCard label="Total usuarios"    value={fmt(stats.users?.total)}   sub={`+${fmt(stats.users?.new_30d)} este mes`} icon="👤" color="blue" />
+          <StatCard label="Activos"           value={fmt(stats.users?.active)}  icon="✅" color="green" />
+          <StatCard label="Plan Plus"         value={fmt(stats.users?.plus)}    icon="⭐" color="blue" />
+          <StatCard label="Plan Premium"      value={fmt(stats.users?.premium)} icon="💎" color="purple" />
         </div>
       </section>
 
@@ -51,10 +51,10 @@ export default function DashboardPage() {
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Tickets de soporte</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Abiertos"     value={fmt(stats.tickets.open)}        icon="🎫" color="blue" />
-          <StatCard label="En curso"     value={fmt(stats.tickets.in_progress)} icon="⚡" color="purple" />
-          <StatCard label="Urgentes"     value={fmt(stats.tickets.urgent)}      icon="🔴" color="red" />
-          <StatCard label="Resueltos"    value={fmt(stats.tickets.resolved)}    sub={`${fmt(stats.tickets.new_7d)} nuevos esta semana`} icon="✅" color="green" />
+          <StatCard label="Abiertos"     value={fmt(stats.tickets?.open)}        icon="🎫" color="blue" />
+          <StatCard label="En curso"     value={fmt(stats.tickets?.in_progress)} icon="⚡" color="purple" />
+          <StatCard label="Urgentes"     value={fmt(stats.tickets?.urgent)}      icon="🔴" color="red" />
+          <StatCard label="Resueltos"    value={fmt(stats.tickets?.resolved)}    sub={`${fmt(stats.tickets?.new_7d)} nuevos esta semana`} icon="✅" color="green" />
         </div>
       </section>
 
@@ -63,30 +63,32 @@ export default function DashboardPage() {
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Citas</h2>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard label="Programadas"  value={fmt(stats.appointments.scheduled)}  icon="📅" color="blue" />
-            <StatCard label="Próximos 7d"  value={fmt(stats.appointments.upcoming_7d)} icon="⏰" color="yellow" />
+            <StatCard label="Programadas"  value={fmt(stats.appointments?.scheduled)}  icon="📅" color="blue" />
+            <StatCard label="Próximos 7d"  value={fmt(stats.appointments?.upcoming_7d)} icon="⏰" color="yellow" />
           </div>
         </section>
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Marketplace VO</h2>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard label="Activos"      value={fmt(stats.marketplace.active)}    icon="🚗" color="blue" />
-            <StatCard label="Precio medio" value={fmtPrice(stats.marketplace.avg_price)} icon="💶" color="green" />
+            <StatCard label="Activos"      value={fmt(stats.marketplace?.active)}    icon="🚗" color="blue" />
+            <StatCard label="Precio medio" value={fmtPrice(stats.marketplace?.avg_price ?? 0)} icon="💶" color="green" />
           </div>
         </section>
       </div>
 
       {/* Leads / Solicitudes */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Solicitudes (Leads)</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <StatCard label="Total"        value={fmt(stats.leads.total)}     sub={`+${fmt(stats.leads.new_7d)} esta semana`} icon="📩" color="blue" />
-          <StatCard label="Pendientes"   value={fmt(stats.leads.pending)}   icon="⏳" color="yellow" />
-          <StatCard label="Contactados"  value={fmt(stats.leads.contacted)} icon="💬" color="blue" />
-          <StatCard label="Reagendar"    value={fmt(stats.leads.reschedule)} icon="🔄" color="purple" />
-          <StatCard label="Resueltos"    value={fmt(stats.leads.resolved)}  icon="✅" color="green" />
-        </div>
-      </section>
+      {stats.leads && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Solicitudes (Leads)</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <StatCard label="Total"        value={fmt(stats.leads.total)}      sub={`+${fmt(stats.leads.new_7d)} esta semana`} icon="📩" color="blue" />
+            <StatCard label="Pendientes"   value={fmt(stats.leads.pending)}    icon="⏳" color="yellow" />
+            <StatCard label="Contactados"  value={fmt(stats.leads.contacted)}  icon="💬" color="blue" />
+            <StatCard label="Reagendar"    value={fmt(stats.leads.reschedule)} icon="🔄" color="purple" />
+            <StatCard label="Resueltos"    value={fmt(stats.leads.resolved)}   icon="✅" color="green" />
+          </div>
+        </section>
+      )}
 
       {/* Recent tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
