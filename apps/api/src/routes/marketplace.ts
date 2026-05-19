@@ -87,7 +87,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
                 o.has_stock_management,
                 COALESCE((SELECT COUNT(*)::int FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id), 0) AS total_units,
                 COALESCE((SELECT COUNT(*)::int FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id AND u.status = 'available'), 0) AS units_available,
-                COALESCE((SELECT ARRAY_AGG(DISTINCT u.color ORDER BY u.color) FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id AND u.status = 'available' AND u.color IS NOT NULL), '{}') AS available_colors,
+                (SELECT ARRAY_AGG(DISTINCT u.color) FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id AND u.status = 'available' AND u.color IS NOT NULL) AS available_colors,
                 o.created_at, o.updated_at
          FROM moveadvisor_marketplace_vo_offers o ${where}
          ORDER BY o.portal_score DESC NULLS LAST, o.updated_at DESC
