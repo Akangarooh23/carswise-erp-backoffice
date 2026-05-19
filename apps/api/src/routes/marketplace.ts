@@ -81,7 +81,8 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
         `SELECT id, title, brand, model, year, price, mileage, fuel,
                 color, displacement, power, location, seller, image_url, source_url,
                 description, portal_score, warranty_months, has_guarantee_seal, is_active,
-                available_for_purchase, renting_available, renting_monthly, renting_months, renting_km_year,
+                available_for_purchase, renting_available, renting_km_year,
+                renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
                 created_at, updated_at
          FROM moveadvisor_marketplace_vo_offers ${where}
          ORDER BY portal_score DESC NULLS LAST, updated_at DESC
@@ -133,9 +134,12 @@ const voCreateSchema = z.object({
   is_active:             z.boolean().default(true),
   available_for_purchase: z.boolean().default(true),
   renting_available:     z.boolean().default(false),
-  renting_monthly:       z.number().min(0).default(0),
-  renting_months:        z.number().int().min(1).default(48),
   renting_km_year:       z.number().int().min(0).default(15000),
+  renting_12m:           z.number().min(0).nullable().default(null),
+  renting_24m:           z.number().min(0).nullable().default(null),
+  renting_36m:           z.number().min(0).nullable().default(null),
+  renting_48m:           z.number().min(0).nullable().default(null),
+  renting_60m:           z.number().min(0).nullable().default(null),
 });
 
 marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), async (req, res) => {
@@ -154,15 +158,17 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
          (id, title, brand, model, year, price, mileage, fuel, power, displacement,
           color, location, seller, description, image_url, source_url,
           warranty_months, has_guarantee_seal, portal_score, is_active, portal,
-          available_for_purchase, renting_available, renting_monthly, renting_months, renting_km_year,
+          available_for_purchase, renting_available, renting_km_year,
+          renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
           created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'manual',
-               $21,$22,$23,$24,$25,NOW(),NOW())
+               $21,$22,$23,$24,$25,$26,$27,$28,$29,NOW(),NOW())
        RETURNING *`,
       [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
        d.displacement, d.color, d.location, d.seller, d.description, d.image_url,
        d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
-       d.available_for_purchase, d.renting_available, d.renting_monthly || null, d.renting_months, d.renting_km_year]
+       d.available_for_purchase, d.renting_available, d.renting_km_year,
+       d.renting_12m, d.renting_24m, d.renting_36m, d.renting_48m, d.renting_60m]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
@@ -255,9 +261,12 @@ const voUpdateSchema = z.object({
   is_active:             z.boolean().optional(),
   available_for_purchase: z.boolean().optional(),
   renting_available:     z.boolean().optional(),
-  renting_monthly:       z.number().min(0).optional(),
-  renting_months:        z.number().int().min(1).optional(),
   renting_km_year:       z.number().int().min(0).optional(),
+  renting_12m:           z.number().min(0).nullable().optional(),
+  renting_24m:           z.number().min(0).nullable().optional(),
+  renting_36m:           z.number().min(0).nullable().optional(),
+  renting_48m:           z.number().min(0).nullable().optional(),
+  renting_60m:           z.number().min(0).nullable().optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {

@@ -49,9 +49,12 @@ export interface VoOffer {
   warranty_months: number;
   available_for_purchase: boolean;
   renting_available: boolean;
-  renting_monthly: number;
-  renting_months: number;
   renting_km_year: number;
+  renting_12m?: number | null;
+  renting_24m?: number | null;
+  renting_36m?: number | null;
+  renting_48m?: number | null;
+  renting_60m?: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
