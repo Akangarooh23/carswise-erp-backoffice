@@ -6,10 +6,6 @@ import { requireRole } from '../middleware/auth.js';
 export const marketplaceRouter = Router();
 
 // ── Offers from portal scraping ───────────────────────────────────────────────
-// moveadvisor_market_offers columns:
-//   id, portal, url, brand, model, version, year, mileage, price, fuel,
-//   transmission, color, location, images, body_type, doors, seats, power_cv,
-//   traction, displacement, co2, title, image_url, scraped_at, updated_at, ...
 
 marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q      = String(req.query.q      || '').trim();
@@ -52,18 +48,13 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
 });
 
 // ── Carswise VO Marketplace ───────────────────────────────────────────────────
-// moveadvisor_marketplace_vo_offers columns:
-//   id, title, brand, model, price, year, mileage, location, color,
-//   displacement, fuel, power, seller, has_guarantee_seal, portal_score,
-//   warranty_months, description, image_url, source_url, portal,
-//   is_active, created_at, updated_at
 
 marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q        = String(req.query.q        || '').trim();
   const brand    = String(req.query.brand    || '').trim();
   const isActive = req.query.is_active;
   const page     = Math.max(1, Number(req.query.page) || 1);
-  const limit    = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const limit    = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
   const offset   = (page - 1) * limit;
 
   const conditions: string[] = [];
@@ -88,8 +79,8 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     const [rows, total] = await Promise.all([
       query(
         `SELECT id, title, brand, model, year, price, mileage, fuel,
-                color, displacement, power, location, image_url, source_url,
-                portal_score, warranty_months, has_guarantee_seal, is_active,
+                color, displacement, power, location, seller, image_url, source_url,
+                description, portal_score, warranty_months, has_guarantee_seal, is_active,
                 created_at, updated_at
          FROM moveadvisor_marketplace_vo_offers ${where}
          ORDER BY portal_score DESC NULLS LAST, updated_at DESC
@@ -117,18 +108,142 @@ marketplaceRouter.get('/marketplace/vo/:id', requireRole(['admin', 'support', 'o
   }
 });
 
+// ── Create single vehicle ─────────────────────────────────────────────────────
+
+const voCreateSchema = z.object({
+  title:              z.string().min(1),
+  brand:              z.string().min(1),
+  model:              z.string().min(1),
+  year:               z.number().int().min(1990).max(2035),
+  price:              z.number().positive(),
+  mileage:            z.number().int().min(0).default(0),
+  fuel:               z.string().default(''),
+  power:              z.string().default(''),
+  displacement:       z.number().int().min(0).default(0),
+  color:              z.string().default(''),
+  location:           z.string().default(''),
+  seller:             z.string().default(''),
+  description:        z.string().default(''),
+  image_url:          z.string().default(''),
+  source_url:         z.string().default(''),
+  warranty_months:    z.number().int().min(0).default(0),
+  has_guarantee_seal: z.boolean().default(false),
+  portal_score:       z.number().int().min(0).max(100).default(80),
+  is_active:          z.boolean().default(true),
+});
+
+marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), async (req, res) => {
+  const parsed = voCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, error: 'invalid_payload', detail: parsed.error.flatten() });
+    return;
+  }
+
+  const d = parsed.data;
+  const id = `erp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  try {
+    const result = await query(
+      `INSERT INTO moveadvisor_marketplace_vo_offers
+         (id, title, brand, model, year, price, mileage, fuel, power, displacement,
+          color, location, seller, description, image_url, source_url,
+          warranty_months, has_guarantee_seal, portal_score, is_active, portal,
+          created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'manual',NOW(),NOW())
+       RETURNING *`,
+      [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
+       d.displacement, d.color, d.location, d.seller, d.description, d.image_url,
+       d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active]
+    );
+    res.status(201).json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'offer_create_failed', detail: (err as Error).message });
+  }
+});
+
+// ── Bulk create from CSV/Excel import ────────────────────────────────────────
+
+const voBulkRowSchema = z.object({
+  title:        z.string().min(1),
+  brand:        z.string().min(1),
+  model:        z.string().min(1),
+  year:         z.coerce.number().int().min(1990).max(2035),
+  price:        z.coerce.number().positive(),
+  mileage:      z.coerce.number().int().min(0).default(0),
+  fuel:         z.string().default(''),
+  power:        z.string().default(''),
+  color:        z.string().default(''),
+  location:     z.string().default(''),
+  seller:       z.string().default(''),
+  image_url:    z.string().default(''),
+  source_url:   z.string().default(''),
+  description:  z.string().default(''),
+});
+
+marketplaceRouter.post('/marketplace/vo/bulk', requireRole(['admin', 'operations']), async (req, res) => {
+  const rows = req.body?.rows;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ ok: false, error: 'no_rows' });
+    return;
+  }
+  if (rows.length > 500) {
+    res.status(400).json({ ok: false, error: 'too_many_rows', detail: 'Max 500 rows per import' });
+    return;
+  }
+
+  const results = { inserted: 0, errors: 0, errorDetails: [] as string[] };
+
+  for (const raw of rows) {
+    const parsed = voBulkRowSchema.safeParse(raw);
+    if (!parsed.success) {
+      results.errors++;
+      results.errorDetails.push(`Fila inválida: ${JSON.stringify(raw).slice(0, 80)}`);
+      continue;
+    }
+    const d = parsed.data;
+    const id = `erp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    try {
+      await query(
+        `INSERT INTO moveadvisor_marketplace_vo_offers
+           (id, title, brand, model, year, price, mileage, fuel, power, color,
+            location, seller, image_url, source_url, description,
+            portal_score, warranty_months, has_guarantee_seal, is_active, portal,
+            created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,80,0,false,true,'manual',NOW(),NOW())`,
+        [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel,
+         d.power, d.color, d.location, d.seller, d.image_url, d.source_url, d.description]
+      );
+      results.inserted++;
+    } catch {
+      results.errors++;
+    }
+  }
+
+  res.json({ ok: true, data: results });
+});
+
+// ── Update vehicle ────────────────────────────────────────────────────────────
+
 const voUpdateSchema = z.object({
-  title:        z.string().min(1).optional(),
-  price:        z.number().positive().optional(),
-  mileage:      z.number().min(0).optional(),
-  year:         z.number().min(1990).max(2030).optional(),
-  color:        z.string().optional(),
-  fuel:         z.string().optional(),
-  power:        z.string().optional(),
-  displacement: z.number().int().min(0).optional(),
-  description:  z.string().optional(),
-  is_active:    z.boolean().optional(),
-  portal_score: z.number().min(0).max(100).optional(),
+  title:              z.string().min(1).optional(),
+  brand:              z.string().min(1).optional(),
+  model:              z.string().min(1).optional(),
+  year:               z.number().int().min(1990).max(2035).optional(),
+  price:              z.number().positive().optional(),
+  mileage:            z.number().int().min(0).optional(),
+  fuel:               z.string().optional(),
+  power:              z.string().optional(),
+  displacement:       z.number().int().min(0).optional(),
+  color:              z.string().optional(),
+  location:           z.string().optional(),
+  seller:             z.string().optional(),
+  description:        z.string().optional(),
+  image_url:          z.string().optional(),
+  source_url:         z.string().optional(),
+  warranty_months:    z.number().int().min(0).optional(),
+  has_guarantee_seal: z.boolean().optional(),
+  portal_score:       z.number().int().min(0).max(100).optional(),
+  is_active:          z.boolean().optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
@@ -163,10 +278,12 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
   }
 });
 
+// ── Hard delete vehicle ───────────────────────────────────────────────────────
+
 marketplaceRouter.delete('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     const result = await query(
-      `UPDATE moveadvisor_marketplace_vo_offers SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING id`,
+      `DELETE FROM moveadvisor_marketplace_vo_offers WHERE id = $1 RETURNING id`,
       [req.params.id]
     );
     if (!result.rows.length) {
@@ -178,6 +295,8 @@ marketplaceRouter.delete('/marketplace/vo/:id', requireRole(['admin', 'operation
     res.status(500).json({ ok: false, error: 'offer_delete_failed', detail: (err as Error).message });
   }
 });
+
+// ── Brands list ───────────────────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {

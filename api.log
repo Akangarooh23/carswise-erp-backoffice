@@ -1,0 +1,7 @@
+[config] Missing or invalid environment variables:
+  JWT_SECRET: Required
+  DATABASE_URL: Required
+  ERP_ADMIN_PASSWORD: Required
+  ERP_SUPPORT_PASSWORD: Required
+  ERP_OPS_PASSWORD: Required
+  ERP_SALES_PASSWORD: Required

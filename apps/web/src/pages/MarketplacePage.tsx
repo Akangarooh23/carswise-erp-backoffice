@@ -1,16 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { SearchInput } from '../components/ui/SearchInput.js';
-import { StatusBadge } from '../components/ui/Badge.js';
+import { Badge } from '../components/ui/Badge.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import type { VoOffer } from '../types/index.js';
+
+// ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmtPrice(n: number) {
   return n ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n) : '–';
 }
 function fmtKm(n: number) { return n ? `${n.toLocaleString('es-ES')} km` : '–'; }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = [
   { key: 'vo',     label: 'Marketplace CarsWise' },
@@ -18,42 +23,256 @@ const TABS = [
 ] as const;
 type Tab = typeof TABS[number]['key'];
 
-export default function MarketplacePage() {
-  const [tab, setTab]         = useState<Tab>('vo');
-  const [items, setItems]     = useState<VoOffer[]>([]);
-  const [total, setTotal]     = useState(0);
-  const [page, setPage]       = useState(1);
-  const [q, setQ]             = useState('');
-  const [brands, setBrands]   = useState<string[]>([]);
-  const [brand, setBrand]     = useState('');
-  const [loading, setLoading] = useState(true);
-  const [editOffer, setEditOffer]   = useState<VoOffer | null>(null);
-  const [editForm, setEditForm]     = useState<Partial<VoOffer>>({});
-  const [saving, setSaving]         = useState(false);
+const STATUS_FILTERS = [
+  { value: '',      label: 'Todos'         },
+  { value: 'true',  label: 'Publicados'    },
+  { value: 'false', label: 'Despublicados' },
+];
 
-  // Load brands once
+const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','image_url','source_url','description'];
+
+const EMPTY_FORM: Partial<VoOffer> = {
+  title: '', brand: '', model: '', year: new Date().getFullYear(),
+  price: 0, mileage: 0, fuel: '', power: '', displacement: 0,
+  color: '', location: '', seller: '', description: '',
+  image_url: '', source_url: '',
+  warranty_months: 0, has_guarantee_seal: false, portal_score: 80, is_active: true,
+};
+
+const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+const LABEL_CLS = 'block text-xs font-medium text-slate-600 mb-1';
+const FUELS = ['Gasolina','Diésel','Híbrido','Híbrido enchufable','Eléctrico','GLP','Gas Natural','Otros'];
+
+// ── Excel helpers (xlsx) ──────────────────────────────────────────────────────
+
+function xlsxDownload(wb: XLSX.WorkBook, filename: string) {
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseXlsx(buffer: ArrayBuffer): Record<string, string>[] {
+  const wb    = XLSX.read(buffer, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows  = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+  return rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, String(v ?? '')])));
+}
+
+function exportXlsx(items: VoOffer[]) {
+  const data = items.map((o) => ({
+    title: o.title, brand: o.brand, model: o.model, year: o.year,
+    price: o.price, mileage: o.mileage, fuel: o.fuel ?? '', power: o.power ?? '',
+    color: o.color ?? '', location: o.location ?? '', seller: o.seller ?? '',
+    image_url: o.image_url ?? '', source_url: o.source_url ?? '', description: o.description ?? '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(data, { header: EXCEL_HEADERS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Marketplace VO');
+  xlsxDownload(wb, `marketplace-vo-${Date.now()}.xlsx`);
+}
+
+function downloadTemplate() {
+  const example = [{
+    title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
+    year: 2020, price: 14500, mileage: 85000, fuel: 'Diésel', power: '85 CV',
+    color: 'Blanco', location: 'Madrid', seller: 'CarsWise',
+    image_url: '', source_url: '', description: 'Vehículo en excelente estado',
+  }];
+  const ws = XLSX.utils.json_to_sheet(example, { header: EXCEL_HEADERS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+  xlsxDownload(wb, 'plantilla-importacion-marketplace.xlsx');
+}
+
+// ── VehicleFormFields (standalone component) ──────────────────────────────────
+
+interface FormFieldsProps {
+  form: Partial<VoOffer>;
+  setForm: React.Dispatch<React.SetStateAction<Partial<VoOffer>>>;
+  idPrefix: string;
+}
+
+function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
+  function onText(key: keyof VoOffer) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+  }
+  function onNum(key: keyof VoOffer) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: Number(e.target.value) }));
+  }
+  function onBool(key: keyof VoOffer) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.checked }));
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className={LABEL_CLS}>Título *</label>
+        <input className={INPUT_CLS} value={form.title ?? ''} onChange={onText('title')} placeholder="Volkswagen Golf 1.6 TDI Comfortline" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Marca *</label>
+          <input className={INPUT_CLS} value={form.brand ?? ''} onChange={onText('brand')} placeholder="Volkswagen" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Modelo *</label>
+          <input className={INPUT_CLS} value={form.model ?? ''} onChange={onText('model')} placeholder="Golf" />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Año *</label>
+          <input type="number" className={INPUT_CLS} value={form.year ?? ''} onChange={onNum('year')} />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Precio (€) *</label>
+          <input type="number" className={INPUT_CLS} value={form.price ?? ''} onChange={onNum('price')} />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Kilómetros</label>
+          <input type="number" className={INPUT_CLS} value={form.mileage ?? ''} onChange={onNum('mileage')} />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Combustible</label>
+          <select className={INPUT_CLS} value={form.fuel ?? ''} onChange={onText('fuel')}>
+            <option value="">—</option>
+            {FUELS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Potencia</label>
+          <input className={INPUT_CLS} value={form.power ?? ''} onChange={onText('power')} placeholder="90 CV" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Cilindrada (cc)</label>
+          <input type="number" className={INPUT_CLS} value={form.displacement ?? ''} onChange={onNum('displacement')} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Color</label>
+          <input className={INPUT_CLS} value={form.color ?? ''} onChange={onText('color')} placeholder="Blanco" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Ubicación</label>
+          <input className={INPUT_CLS} value={form.location ?? ''} onChange={onText('location')} placeholder="Madrid" />
+        </div>
+      </div>
+      <div>
+        <label className={LABEL_CLS}>Vendedor</label>
+        <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="CarsWise" />
+      </div>
+      <div>
+        <label className={LABEL_CLS}>URL de foto</label>
+        <input className={INPUT_CLS} value={form.image_url ?? ''} onChange={onText('image_url')} placeholder="https://..." />
+        {form.image_url && (
+          <img src={form.image_url} alt="" className="mt-2 h-24 w-auto rounded-lg object-cover border border-slate-200"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        )}
+      </div>
+      <div>
+        <label className={LABEL_CLS}>URL del anuncio original</label>
+        <input className={INPUT_CLS} value={form.source_url ?? ''} onChange={onText('source_url')} placeholder="https://..." />
+      </div>
+      <div>
+        <label className={LABEL_CLS}>Descripción</label>
+        <textarea className={`${INPUT_CLS} resize-none`} rows={3} value={form.description ?? ''} onChange={onText('description')} />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Garantía (meses)</label>
+          <input type="number" className={INPUT_CLS} value={form.warranty_months ?? 0} onChange={onNum('warranty_months')} min={0} />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Puntuación portal</label>
+          <input type="number" className={INPUT_CLS} value={form.portal_score ?? 80} onChange={onNum('portal_score')} min={0} max={100} />
+        </div>
+        <div className="flex items-center gap-2 pt-5">
+          <input type="checkbox" id={`${idPrefix}-gs`} checked={form.has_guarantee_seal ?? false} onChange={onBool('has_guarantee_seal')} className="rounded" />
+          <label htmlFor={`${idPrefix}-gs`} className="text-sm text-slate-700">Sello garantía</label>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id={`${idPrefix}-active`} checked={form.is_active ?? true} onChange={onBool('is_active')} className="rounded" />
+        <label htmlFor={`${idPrefix}-active`} className="text-sm font-medium text-slate-700">Publicado en marketplace</label>
+      </div>
+    </div>
+  );
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type PortalOffer = {
+  id: string; portal: string; title: string; brand: string; model: string;
+  year: number; price: number; mileage: number; fuel: string; image_url?: string; url?: string;
+};
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function MarketplacePage() {
+  const [tab, setTab]             = useState<Tab>('vo');
+  const [items, setItems]         = useState<VoOffer[]>([]);
+  const [portalItems, setPortalItems] = useState<PortalOffer[]>([]);
+  const [total, setTotal]         = useState(0);
+  const [page, setPage]           = useState(1);
+  const [q, setQ]                 = useState('');
+  const [brands, setBrands]       = useState<string[]>([]);
+  const [brand, setBrand]         = useState('');
+  const [statusFilter, setStatus] = useState('');
+  const [loading, setLoading]     = useState(true);
+
+  const [editOffer, setEditOffer] = useState<VoOffer | null>(null);
+  const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
+  const [saving, setSaving]       = useState(false);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState<Partial<VoOffer>>(EMPTY_FORM);
+  const [creating, setCreating]     = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<VoOffer | null>(null);
+  const [deleting, setDeleting]         = useState(false);
+
+  const [showImport, setShowImport]         = useState(false);
+  const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
+  const [importFileName, setImportFileName] = useState('');
+  const [importing, setImporting]           = useState(false);
+  const [importResult, setImportResult]     = useState<{ inserted: number; errors: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     api.get<string[]>('/marketplace/brands').then((r) => { if (r.ok) setBrands(r.data); });
   }, []);
 
-  const load = useCallback(async (p = page) => {
+  const load = useCallback(async (p: number) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(p), limit: '50' });
-    if (q)     params.set('q', q);
-    if (brand) params.set('brand', brand);
-    const endpoint = tab === 'vo' ? `/marketplace/vo?${params}` : `/marketplace/offers?${params}`;
-    const res = await api.get<VoOffer[]>(endpoint);
-    if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
+    if (tab === 'vo') {
+      const params = new URLSearchParams({ page: String(p), limit: '50' });
+      if (q)            params.set('q', q);
+      if (brand)        params.set('brand', brand);
+      if (statusFilter) params.set('is_active', statusFilter);
+      const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
+      if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
+    } else {
+      const params = new URLSearchParams({ page: String(p), limit: '50' });
+      if (q) params.set('q', q);
+      const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
+      if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
+    }
     setLoading(false);
-  }, [tab, q, brand, page]);
+  }, [tab, q, brand, statusFilter]);
 
-  useEffect(() => { setPage(1); }, [tab, q, brand]);
+  useEffect(() => { setPage(1); load(1); }, [tab, q, brand, statusFilter, load]);
   useEffect(() => { load(page); }, [page, load]);
 
-  function openEdit(offer: VoOffer) {
-    setEditOffer(offer);
-    setEditForm({ price: offer.price, km: offer.km, color: offer.color, is_active: offer.is_active });
-  }
+  function openEdit(offer: VoOffer) { setEditOffer(offer); setEditForm({ ...offer }); }
 
   async function saveEdit() {
     if (!editOffer) return;
@@ -68,9 +287,79 @@ export default function MarketplacePage() {
     load(page);
   }
 
+  async function saveCreate() {
+    setCreating(true);
+    const res = await api.post('/marketplace/vo', createForm);
+    if (res.ok) { setShowCreate(false); setCreateForm(EMPTY_FORM); setPage(1); load(1); }
+    setCreating(false);
+  }
+
+  async function doDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await api.delete(`/marketplace/vo/${deleteTarget.id}`);
+    if (res.ok) { setDeleteTarget(null); load(page); }
+    setDeleting(false);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    setImportResult(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImportRows(parseXlsx(ev.target?.result as ArrayBuffer));
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function doImport() {
+    if (!importRows.length) return;
+    setImporting(true);
+    const res = await api.post<{ inserted: number; errors: number }>('/marketplace/vo/bulk', { rows: importRows });
+    if (res.ok) {
+      setImportResult(res.data);
+      setImportRows([]); setImportFileName('');
+      if (fileRef.current) fileRef.current.value = '';
+      setPage(1); load(1);
+    }
+    setImporting(false);
+  }
+
+  async function doExport() {
+    const params = new URLSearchParams({ limit: '2500', page: '1' });
+    if (q)            params.set('q', q);
+    if (brand)        params.set('brand', brand);
+    if (statusFilter) params.set('is_active', statusFilter);
+    const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
+    if (res.ok) exportXlsx(res.data);
+  }
+
   return (
     <div>
-      <PageHeader title="Marketplace" subtitle={`${total.toLocaleString('es-ES')} vehículos`} />
+      <PageHeader
+        title="Marketplace"
+        subtitle={`${total.toLocaleString('es-ES')} vehículos`}
+        actions={tab === 'vo' ? (
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={downloadTemplate}
+              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              📄 Plantilla Excel
+            </button>
+            <button onClick={() => { setShowImport(true); setImportResult(null); setImportRows([]); setImportFileName(''); }}
+              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              📥 Importar Excel
+            </button>
+            <button onClick={doExport}
+              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              📤 Exportar Excel
+            </button>
+            <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_FORM); }}
+              className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              + Añadir vehículo
+            </button>
+          </div>
+        ) : undefined}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit mb-5">
@@ -88,11 +377,17 @@ export default function MarketplacePage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar marca, modelo…" className="w-72" />
         {tab === 'vo' && (
-          <select value={brand} onChange={(e) => setBrand(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Todas las marcas</option>
-            {brands.map((b) => <option key={b} value={b}>{b}</option>)}
-          </select>
+          <>
+            <select value={brand} onChange={(e) => setBrand(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todas las marcas</option>
+              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatus(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {STATUS_FILTERS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </>
         )}
       </div>
 
@@ -100,95 +395,107 @@ export default function MarketplacePage() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
-        ) : (
-          <>
-            <table className="erp-table">
-              <thead>
-                <tr>
-                  <th>Vehículo</th>
-                  <th>Precio</th>
-                  <th>Km</th>
-                  <th>Año</th>
-                  <th>Combustible</th>
-                  <th>Estado</th>
-                  {tab === 'vo' && <th></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        {item.image_url && (
-                          <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />
-                        )}
-                        <div>
-                          <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                          <p className="text-xs text-slate-400">{item.brand} {item.model}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
-                    <td className="text-sm text-slate-500">{fmtKm(item.km)}</td>
-                    <td className="text-sm text-slate-500">{item.year}</td>
-                    <td className="text-sm text-slate-500 capitalize">{item.fuel_type || '–'}</td>
-                    <td><StatusBadge status={item.is_active ? 'active' : 'blocked'} /></td>
-                    {tab === 'vo' && (
+        ) : tab === 'vo' ? (
+          items.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
+          ) : (
+            <>
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Vehículo</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Estado</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id}>
                       <td>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-3">
+                          {item.image_url ? (
+                            <img src={item.image_url} alt="" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                          ) : (
+                            <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
+                          )}
+                          <div>
+                            <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
+                            <p className="text-xs text-slate-400">{item.brand} · {item.location || '–'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-slate-500">{item.year}</td>
+                      <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
+                      <td>
+                        <Badge variant={item.is_active ? 'green' : 'slate'}>
+                          {item.is_active ? 'Publicado' : 'Despublicado'}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="flex gap-1 items-center">
                           <button onClick={() => openEdit(item)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
                             Editar
                           </button>
                           <button onClick={() => toggleActive(item)}
-                            className="text-xs text-slate-400 hover:text-slate-600">
-                            {item.is_active ? 'Retirar' : 'Publicar'}
+                            className={`text-xs font-medium px-2 py-1 rounded ${item.is_active
+                              ? 'text-amber-600 hover:bg-amber-50'
+                              : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                            {item.is_active ? 'Despublicar' : 'Publicar'}
+                          </button>
+                          <button onClick={() => setDeleteTarget(item)}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50">
+                            Eliminar
                           </button>
                         </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination page={page} total={total} limit={50} onChange={setPage} />
-          </>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination page={page} total={total} limit={50} onChange={setPage} />
+            </>
+          )
+        ) : (
+          portalItems.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
+          ) : (
+            <>
+              <table className="erp-table">
+                <thead><tr><th>Vehículo</th><th>Portal</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr></thead>
+                <tbody>
+                  {portalItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
+                          <div>
+                            <p className="font-medium text-slate-800 text-sm">{item.title}</p>
+                            <p className="text-xs text-slate-400">{item.brand} {item.model}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td><Badge variant="blue">{item.portal}</Badge></td>
+                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-slate-500">{item.year}</td>
+                      <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination page={page} total={total} limit={50} onChange={setPage} />
+            </>
+          )
         )}
       </div>
 
-      {/* Edit modal */}
-      <Modal open={!!editOffer} onClose={() => setEditOffer(null)} title="Editar oferta">
+      {/* ── Edit modal ──────────────────────────────────────────────────────── */}
+      <Modal open={!!editOffer} onClose={() => setEditOffer(null)} title="Editar vehículo" size="lg">
         {editOffer && (
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-1">{editOffer.title}</p>
-              <p className="text-xs text-slate-400">{editOffer.brand} {editOffer.model} · {editOffer.year}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Precio (€)</label>
-                <input type="number" value={editForm.price ?? ''} onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Kilometraje</label>
-                <input type="number" value={editForm.km ?? ''} onChange={(e) => setEditForm({ ...editForm, km: Number(e.target.value) })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Color</label>
-                <input type="text" value={editForm.color ?? ''} onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="flex items-center gap-2 pt-5">
-                <input type="checkbox" id="is_active" checked={editForm.is_active ?? true} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                  className="rounded" />
-                <label htmlFor="is_active" className="text-sm text-slate-700">Publicado</label>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
+          <>
+            <VehicleFormFields form={editForm} setForm={setEditForm} idPrefix="edit" />
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
               <button onClick={() => setEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
                 Cancelar
               </button>
@@ -197,8 +504,111 @@ export default function MarketplacePage() {
                 {saving ? 'Guardando…' : 'Guardar cambios'}
               </button>
             </div>
+          </>
+        )}
+      </Modal>
+
+      {/* ── Create modal ────────────────────────────────────────────────────── */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Añadir vehículo" size="lg">
+        <VehicleFormFields form={createForm} setForm={setCreateForm} idPrefix="create" />
+        <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+          <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button onClick={saveCreate} disabled={creating || !createForm.title || !createForm.brand || !createForm.model}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+            {creating ? 'Creando…' : 'Crear vehículo'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* ── Delete confirm ──────────────────────────────────────────────────── */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Eliminar vehículo" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              ¿Seguro que quieres eliminar <strong>{deleteTarget.title}</strong>? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button onClick={doDelete} disabled={deleting}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
+                {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
           </div>
         )}
+      </Modal>
+
+      {/* ── Import CSV modal ────────────────────────────────────────────────── */}
+      <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar vehículos desde Excel" size="lg">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Descarga la plantilla, rellena los datos en Excel y sube el fichero .xlsx. Máximo 500 filas.
+          </p>
+          <button onClick={downloadTemplate}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            📄 Descargar plantilla Excel
+          </button>
+
+          <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center">
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" id="xlsx-upload" />
+            <label htmlFor="xlsx-upload" className="cursor-pointer block">
+              <div className="text-3xl mb-2">📥</div>
+              <p className="text-sm font-medium text-slate-700">
+                {importFileName || 'Haz clic para seleccionar el fichero Excel'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Archivos .xlsx o .xls</p>
+            </label>
+          </div>
+
+          {importRows.length > 0 && (
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-slate-700 mb-2">{importRows.length} filas detectadas — vista previa:</p>
+              <div className="overflow-x-auto">
+                <table className="text-xs w-full">
+                  <thead>
+                    <tr className="text-slate-500">
+                      {Object.keys(importRows[0]).slice(0, 6).map((h) => <th key={h} className="text-left px-2 py-1">{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importRows.slice(0, 3).map((row, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        {Object.values(row).slice(0, 6).map((v, j) => (
+                          <td key={j} className="px-2 py-1 text-slate-600 max-w-[120px] truncate">{v}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {importRows.length > 3 && <p className="text-xs text-slate-400 mt-1">…y {importRows.length - 3} filas más</p>}
+            </div>
+          )}
+
+          {importResult && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm">
+              <p className="font-medium text-emerald-700">Importación completada</p>
+              <p className="text-emerald-600">
+                {importResult.inserted} vehículos importados
+                {importResult.errors > 0 ? `, ${importResult.errors} errores` : ''}
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cerrar
+            </button>
+            <button onClick={doImport} disabled={importing || importRows.length === 0}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+              {importing ? 'Importando…' : `Importar ${importRows.length} vehículos`}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
