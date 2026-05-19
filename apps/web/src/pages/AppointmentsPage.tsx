@@ -60,7 +60,7 @@ export default function AppointmentsPage() {
 
   return (
     <div>
-      <PageHeader title="Citas" subtitle={`${total.toLocaleString('es-ES')} citas totales`} />
+      <PageHeader title="Citas Mantenimiento" subtitle={`${total.toLocaleString('es-ES')} citas de mantenimiento`} />
 
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar usuario, taller…" className="w-72" />

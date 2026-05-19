@@ -13,7 +13,7 @@ const NAV: NavItem[] = [
   { to: '/dashboard',    label: 'Dashboard',    icon: '⊞',  roles: ['admin','support','operations','sales'] },
   { to: '/users',        label: 'Usuarios',     icon: '👤', roles: ['admin','support','operations','sales'] },
   { to: '/marketplace',  label: 'Marketplace',  icon: '🚗', roles: ['admin','support','operations','sales'] },
-  { to: '/appointments', label: 'Citas',        icon: '📅', roles: ['admin','support','operations','sales'] },
+  { to: '/appointments', label: 'Citas Mant.',   icon: '📅', roles: ['admin','support','operations','sales'] },
   { to: '/tickets',      label: 'Tickets',      icon: '🎫', roles: ['admin','support','operations','sales'] },
   { to: '/idcars',       label: 'IDCars',       icon: '🔑', roles: ['admin','support','operations'] },
   { to: '/leads',        label: 'Leads',        icon: '📩', roles: ['admin','support','operations','sales'] },
