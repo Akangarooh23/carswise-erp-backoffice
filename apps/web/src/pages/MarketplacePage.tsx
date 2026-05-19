@@ -691,7 +691,7 @@ export default function MarketplacePage() {
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
-                            <img src={item.image_url || item.image_urls?.[0]} alt="" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
                           ) : (
                             <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
                           )}
