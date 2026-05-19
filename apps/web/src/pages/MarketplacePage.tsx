@@ -736,6 +736,9 @@ export default function MarketplacePage() {
                               {item.seller_type === 'professional' ? 'Profesional' : 'Particular'}
                             </Badge>
                           )}
+                          {item.id.startsWith('idcar-') && (
+                            <Badge variant="orange">IDCar cliente</Badge>
+                          )}
                         </div>
                       </td>
                       {/* Estado */}

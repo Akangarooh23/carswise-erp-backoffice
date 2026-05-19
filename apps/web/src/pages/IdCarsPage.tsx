@@ -59,9 +59,9 @@ export default function IdCarsPage() {
                 {idcars.map((v) => (
                   <tr key={v.id}>
                     <td>
-                      <p className="font-medium text-slate-800 text-sm">
+                      <Link to={`/idcars/${v.id}`} className="font-medium text-blue-600 hover:underline text-sm">
                         {[v.brand, v.model].filter(Boolean).join(' ') || '(sin datos)'}
-                      </p>
+                      </Link>
                     </td>
                     <td>
                       {v.owner_name ? (

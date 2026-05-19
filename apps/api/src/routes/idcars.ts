@@ -72,6 +72,101 @@ idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', '
   }
 });
 
+idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    const [photos, docs] = await Promise.all([
+      query(
+        `SELECT id, file_type, file_name, file_size, file_mime_type, file_url, created_at
+         FROM moveadvisor_user_vehicle_files
+         WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] })),
+      query(
+        `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type, file_url, created_at
+         FROM moveadvisor_user_vehicle_documents
+         WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] })),
+    ]);
+    res.json({ ok: true, data: [...photos.rows, ...docs.rows] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'idcar_files_failed', detail: (err as Error).message });
+  }
+});
+
+idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const vehicle = await query(
+      `SELECT * FROM moveadvisor_user_vehicles WHERE id = $1`,
+      [req.params.id]
+    ).catch(() => ({ rows: [] }));
+
+    if (!vehicle.rows.length) {
+      res.status(404).json({ ok: false, error: 'idcar_not_found' });
+      return;
+    }
+    const v = vehicle.rows[0];
+
+    const { price, title, brand, model, year, mileage, fuel, color, notes, cv, co2 } = v;
+
+    // Get first photo URL for the main image
+    const photoResult = await query(
+      `SELECT file_url, file_name FROM moveadvisor_user_vehicle_files
+       WHERE vehicle_id = $1 AND file_type = 'photo' AND file_url != '' ORDER BY created_at ASC LIMIT 1`,
+      [req.params.id]
+    ).catch(() => ({ rows: [] }));
+    const imageUrl = photoResult.rows[0]?.file_url || '';
+
+    const offerId = `idcar-${req.params.id}`;
+    const seller  = (req.body?.seller as string) || v.user_email || 'particular';
+    const priceNum = parseFloat(String(price || req.body?.price || 0)) || 0;
+
+    const existing = await query(`SELECT id FROM moveadvisor_marketplace_vo_offers WHERE id = $1`, [offerId]);
+
+    if (existing.rows.length) {
+      await query(
+        `UPDATE moveadvisor_marketplace_vo_offers SET
+          title = $1, brand = $2, model = $3, year = $4, price = $5, mileage = $6,
+          fuel = $7, color = $8, description = $9, image_url = $10,
+          seller_type = 'particular', is_active = TRUE, updated_at = NOW()
+         WHERE id = $11`,
+        [
+          title || `${brand} ${model} ${year}`,
+          brand || '', model || '',
+          Number(year) || 0, priceNum, Number(mileage) || 0,
+          fuel || '', color || '', notes || '',
+          imageUrl, offerId,
+        ]
+      );
+    } else {
+      await query(
+        `INSERT INTO moveadvisor_marketplace_vo_offers
+           (id, title, brand, model, year, price, mileage, fuel, color, description,
+            image_url, seller, seller_type, location, power, displacement,
+            has_guarantee_seal, portal_score, warranty_months,
+            available_for_purchase, renting_available, renting_km_year,
+            has_stock_management, is_active, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'particular','',
+                 $13,$14, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
+        [
+          offerId,
+          title || `${brand} ${model} ${year}`,
+          brand || '', model || '',
+          Number(year) || 0, priceNum, Number(mileage) || 0,
+          fuel || '', color || '', notes || '',
+          imageUrl, seller,
+          `${cv || ''} CV`.trim(),
+          parseFloat(String(co2 || 0)) || 0,
+        ]
+      );
+    }
+
+    res.json({ ok: true, offer_id: offerId });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'idcar_publish_failed', detail: (err as Error).message });
+  }
+});
+
 idcarsRouter.get('/idcars/stats/summary', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
     const result = await query(

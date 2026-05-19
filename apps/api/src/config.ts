@@ -20,6 +20,8 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   RESEND_TEST_EMAIL: z.string().optional(),
   APP_URL: z.string().default('http://localhost:5175'),
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_SERVICE_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

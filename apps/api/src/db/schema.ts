@@ -144,5 +144,16 @@ export async function ensureSchema() {
       ON moveadvisor_marketplace_vo_units (offer_id, status)
   `);
 
+  // ── moveadvisor_user_vehicle_files / documents column migrations ─────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_user_vehicle_files
+      ADD COLUMN IF NOT EXISTS file_url TEXT NOT NULL DEFAULT ''
+  `);
+
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_user_vehicle_documents
+      ADD COLUMN IF NOT EXISTS file_url TEXT NOT NULL DEFAULT ''
+  `);
+
   console.log('[schema] ERP tables verified');
 }

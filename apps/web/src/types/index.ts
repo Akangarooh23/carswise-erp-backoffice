@@ -164,6 +164,16 @@ export interface Workshop {
 }
 
 // ── IDCars ────────────────────────────────────────────────────────────────────
+export interface IdCarFile {
+  id: number;
+  file_type: 'photo' | 'document' | 'technical_sheet' | 'circulation_permit' | 'itv';
+  file_name: string;
+  file_size: number;
+  file_mime_type: string;
+  file_url: string;
+  created_at: string;
+}
+
 export interface IdCar {
   id: string;
   user_id: string;

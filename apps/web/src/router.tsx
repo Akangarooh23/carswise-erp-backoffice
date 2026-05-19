@@ -14,6 +14,7 @@ const TicketsPage       = lazy(() => import('./pages/TicketsPage.js'));
 const TicketDetailPage  = lazy(() => import('./pages/TicketDetailPage.js'));
 const WorkshopsPage     = lazy(() => import('./pages/WorkshopsPage.js'));
 const IdCarsPage        = lazy(() => import('./pages/IdCarsPage.js'));
+const IdCarDetailPage   = lazy(() => import('./pages/IdCarDetailPage.js'));
 const BillingPage       = lazy(() => import('./pages/BillingPage.js'));
 const LeadsPage         = lazy(() => import('./pages/LeadsPage.js'));
 
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: 'tickets/:id',       element: <Suspense fallback={<Loader />}><TicketDetailPage /></Suspense> },
       { path: 'workshops',         element: <Suspense fallback={<Loader />}><WorkshopsPage /></Suspense> },
       { path: 'idcars',            element: <Suspense fallback={<Loader />}><IdCarsPage /></Suspense> },
+      { path: 'idcars/:id',        element: <Suspense fallback={<Loader />}><IdCarDetailPage /></Suspense> },
       { path: 'billing',           element: <Suspense fallback={<Loader />}><BillingPage /></Suspense> },
       { path: 'leads',             element: <Suspense fallback={<Loader />}><LeadsPage /></Suspense> },
       { path: '*',                 element: <Navigate to="/dashboard" replace /> },
