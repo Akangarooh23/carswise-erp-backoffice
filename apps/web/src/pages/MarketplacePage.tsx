@@ -91,11 +91,10 @@ function downloadTemplate() {
   const example = [{
     title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
     year: 2020, price: 14500, mileage: 85000, fuel: 'Diésel', power: '85 CV',
-    color: 'Blanco', location: 'Madrid', seller: 'CarsWise',
-    image_url: '', source_url: '', description: 'Vehículo en excelente estado',
-    seller_type: 'professional',
+    color: 'Blanco', location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
     image_urls: 'https://example.com/foto1.jpg|https://example.com/foto2.jpg',
-    available_for_purchase: 1, renting_available: 0,
+    source_url: '', description: 'Vehículo en excelente estado. Único propietario.',
+    available_for_purchase: 1, renting_available: 1,
     renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
   }];
   const ws = XLSX.utils.json_to_sheet(example, { header: EXCEL_HEADERS });
