@@ -78,15 +78,19 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   try {
     const [rows, total] = await Promise.all([
       query(
-        `SELECT id, title, brand, model, year, price, mileage, fuel,
-                color, displacement, power, location, seller, seller_type, image_url,
-                CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls,
-                source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active,
-                available_for_purchase, renting_available, renting_km_year,
-                renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
-                created_at, updated_at
-         FROM moveadvisor_marketplace_vo_offers ${where}
-         ORDER BY portal_score DESC NULLS LAST, updated_at DESC
+        `SELECT o.id, o.title, o.brand, o.model, o.year, o.price, o.mileage, o.fuel,
+                o.color, o.displacement, o.power, o.location, o.seller, o.seller_type, o.image_url,
+                CASE WHEN o.image_urls IS NOT NULL AND o.image_urls <> '' THEN o.image_urls::json ELSE '[]'::json END AS image_urls,
+                o.source_url, o.description, o.portal_score, o.warranty_months, o.has_guarantee_seal, o.is_active,
+                o.available_for_purchase, o.renting_available, o.renting_km_year,
+                o.renting_12m, o.renting_24m, o.renting_36m, o.renting_48m, o.renting_60m,
+                o.has_stock_management,
+                COALESCE((SELECT COUNT(*)::int FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id), 0) AS total_units,
+                COALESCE((SELECT COUNT(*)::int FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id AND u.status = 'available'), 0) AS units_available,
+                COALESCE((SELECT ARRAY_AGG(DISTINCT u.color ORDER BY u.color) FROM moveadvisor_marketplace_vo_units u WHERE u.offer_id = o.id AND u.status = 'available' AND u.color IS NOT NULL), '{}') AS available_colors,
+                o.created_at, o.updated_at
+         FROM moveadvisor_marketplace_vo_offers o ${where}
+         ORDER BY o.portal_score DESC NULLS LAST, o.updated_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),

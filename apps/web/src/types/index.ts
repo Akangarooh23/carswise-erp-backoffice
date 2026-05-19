@@ -50,6 +50,7 @@ export interface VoOffer {
   seller_type?: 'professional' | 'particular' | null;
   image_urls?: string[] | null;
   has_stock_management?: boolean;
+  total_units?: number;
   units_available?: number;
   available_colors?: string[];
   available_for_purchase: boolean;

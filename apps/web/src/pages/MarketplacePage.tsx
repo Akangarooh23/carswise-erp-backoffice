@@ -690,8 +690,8 @@ export default function MarketplacePage() {
                     <tr key={item.id}>
                       <td>
                         <div className="flex items-center gap-3">
-                          {item.image_url ? (
-                            <img src={item.image_url} alt="" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                          {(item.image_url || item.image_urls?.[0]) ? (
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
                           ) : (
                             <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
                           )}
@@ -716,15 +716,15 @@ export default function MarketplacePage() {
                       <td>
                         {item.has_stock_management ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className={`text-xs font-semibold ${(item.units_available ?? 0) > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                              {item.units_available ?? 0} uds
+                            <span className={`text-xs font-semibold ${(item.units_available ?? 0) > 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                              {item.units_available ?? 0} disp. / {item.total_units ?? 0}
                             </span>
                             {item.available_colors?.length ? (
-                              <span className="text-xs text-slate-400">{item.available_colors.join(', ')}</span>
+                              <span className="text-[10px] text-slate-400 leading-tight">{item.available_colors.join(', ')}</span>
                             ) : null}
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-300">—</span>
+                          <span className="text-xs text-slate-500">1</span>
                         )}
                       </td>
                       {/* Vendedor */}
