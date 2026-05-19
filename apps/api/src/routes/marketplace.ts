@@ -79,8 +79,9 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     const [rows, total] = await Promise.all([
       query(
         `SELECT id, title, brand, model, year, price, mileage, fuel,
-                color, displacement, power, location, seller, image_url, source_url,
-                description, portal_score, warranty_months, has_guarantee_seal, is_active,
+                color, displacement, power, location, seller, seller_type, image_url,
+                CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls,
+                source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active,
                 available_for_purchase, renting_available, renting_km_year,
                 renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
                 created_at, updated_at
@@ -140,6 +141,8 @@ const voCreateSchema = z.object({
   renting_36m:           z.number().min(0).nullable().default(null),
   renting_48m:           z.number().min(0).nullable().default(null),
   renting_60m:           z.number().min(0).nullable().default(null),
+  seller_type:           z.enum(['professional', 'particular']).nullable().default(null),
+  image_urls:            z.array(z.string()).max(10).default([]),
 });
 
 marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), async (req, res) => {
@@ -156,16 +159,17 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
     const result = await query(
       `INSERT INTO moveadvisor_marketplace_vo_offers
          (id, title, brand, model, year, price, mileage, fuel, power, displacement,
-          color, location, seller, description, image_url, source_url,
+          color, location, seller, seller_type, description, image_url, image_urls, source_url,
           warranty_months, has_guarantee_seal, portal_score, is_active, portal,
           available_for_purchase, renting_available, renting_km_year,
           renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
           created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'manual',
-               $21,$22,$23,$24,$25,$26,$27,$28,$29,NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'manual',
+               $22,$23,$24,$25,$26,$27,$28,$29,$30,NOW(),NOW())
        RETURNING *`,
       [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
-       d.displacement, d.color, d.location, d.seller, d.description, d.image_url,
+       d.displacement, d.color, d.location, d.seller, d.seller_type,
+       d.description, d.image_urls?.[0] ?? d.image_url, JSON.stringify(d.image_urls ?? []),
        d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
        d.available_for_purchase, d.renting_available, d.renting_km_year,
        d.renting_12m, d.renting_24m, d.renting_36m, d.renting_48m, d.renting_60m]
@@ -267,6 +271,8 @@ const voUpdateSchema = z.object({
   renting_36m:           z.number().min(0).nullable().optional(),
   renting_48m:           z.number().min(0).nullable().optional(),
   renting_60m:           z.number().min(0).nullable().optional(),
+  seller_type:           z.enum(['professional', 'particular']).nullable().optional(),
+  image_urls:            z.array(z.string()).max(10).optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
@@ -283,12 +289,21 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
     return;
   }
 
-  const setClauses = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
-  const values     = [...keys.map((k) => fields[k]), req.params.id];
+  // Serialize image_urls array to JSON string; also sync image_url to first element
+  const dbFields: Record<string, unknown> = { ...fields };
+  if (Array.isArray(dbFields.image_urls)) {
+    const arr = dbFields.image_urls as string[];
+    dbFields.image_url = arr[0] ?? null;
+    dbFields.image_urls = JSON.stringify(arr);
+  }
+
+  const dbKeys = Object.keys(dbFields);
+  const setClauses = dbKeys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+  const values     = [...dbKeys.map((k) => dbFields[k]), req.params.id];
 
   try {
     const result = await query(
-      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`,
+      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, year, price, mileage, fuel, color, displacement, power, location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
       values
     );
     if (!result.rows.length) {

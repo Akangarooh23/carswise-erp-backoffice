@@ -29,13 +29,13 @@ const STATUS_FILTERS = [
   { value: 'false', label: 'Despublicados' },
 ];
 
-const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','image_url','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m'];
+const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','seller_type','image_urls','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m'];
 
 const EMPTY_FORM: Partial<VoOffer> = {
   title: '', brand: '', model: '', year: new Date().getFullYear(),
   price: 0, mileage: 0, fuel: '', power: '', displacement: 0,
-  color: '', location: '', seller: '', description: '',
-  image_url: '', source_url: '',
+  color: '', location: '', seller: '', seller_type: null, description: '',
+  image_url: '', image_urls: [], source_url: '',
   warranty_months: 0, has_guarantee_seal: false, portal_score: 80, is_active: true,
   available_for_purchase: true, renting_available: false,
   renting_km_year: 15000,
@@ -69,7 +69,9 @@ function exportXlsx(items: VoOffer[]) {
     title: o.title, brand: o.brand, model: o.model, year: o.year,
     price: o.price, mileage: o.mileage, fuel: o.fuel ?? '', power: o.power ?? '',
     color: o.color ?? '', location: o.location ?? '', seller: o.seller ?? '',
-    image_url: o.image_url ?? '', source_url: o.source_url ?? '', description: o.description ?? '',
+    seller_type: o.seller_type ?? '',
+    image_urls: Array.isArray(o.image_urls) ? o.image_urls.join('|') : (o.image_url ?? ''),
+    source_url: o.source_url ?? '', description: o.description ?? '',
     available_for_purchase: o.available_for_purchase !== false ? 1 : 0,
     renting_available: o.renting_available ? 1 : 0,
     renting_km_year: o.renting_km_year ?? 15000,
@@ -91,6 +93,8 @@ function downloadTemplate() {
     year: 2020, price: 14500, mileage: 85000, fuel: 'Diésel', power: '85 CV',
     color: 'Blanco', location: 'Madrid', seller: 'CarsWise',
     image_url: '', source_url: '', description: 'Vehículo en excelente estado',
+    seller_type: 'professional',
+    image_urls: 'https://example.com/foto1.jpg|https://example.com/foto2.jpg',
     available_for_purchase: 1, renting_available: 0,
     renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
   }];
@@ -179,16 +183,52 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input className={INPUT_CLS} value={form.location ?? ''} onChange={onText('location')} placeholder="Madrid" />
         </div>
       </div>
-      <div>
-        <label className={LABEL_CLS}>Vendedor</label>
-        <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="CarsWise" />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Vendedor</label>
+          <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="CarsWise" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Tipo de vendedor</label>
+          <select className={INPUT_CLS} value={form.seller_type ?? ''} onChange={onText('seller_type')}>
+            <option value="">Sin especificar</option>
+            <option value="professional">Profesional</option>
+            <option value="particular">Particular</option>
+          </select>
+        </div>
       </div>
       <div>
-        <label className={LABEL_CLS}>URL de foto</label>
-        <input className={INPUT_CLS} value={form.image_url ?? ''} onChange={onText('image_url')} placeholder="https://..." />
-        {form.image_url && (
-          <img src={form.image_url} alt="" className="mt-2 h-24 w-auto rounded-lg object-cover border border-slate-200"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        <label className={LABEL_CLS}>Fotos (hasta 10 URLs)</label>
+        {(form.image_urls?.length ? form.image_urls : ['']).map((url, idx) => (
+          <div key={idx} className="flex gap-2 mb-2 items-center">
+            <input
+              className={INPUT_CLS}
+              value={url}
+              onChange={(e) => {
+                const next = [...(form.image_urls ?? [''])];
+                next[idx] = e.target.value;
+                setForm((f) => ({ ...f, image_urls: next, image_url: next[0] ?? '' }));
+              }}
+              placeholder={idx === 0 ? 'https://... (foto principal)' : `https://... (foto ${idx + 1})`}
+            />
+            {(form.image_urls?.length ?? 0) > 1 && (
+              <button type="button" onClick={() => {
+                const next = (form.image_urls ?? []).filter((_, i) => i !== idx);
+                setForm((f) => ({ ...f, image_urls: next, image_url: next[0] ?? '' }));
+              }} className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0">✕</button>
+            )}
+            {url && (
+              <img src={url} alt="" className="w-14 h-10 object-cover rounded border border-slate-200 shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            )}
+          </div>
+        ))}
+        {(form.image_urls?.length ?? 0) < 10 && (
+          <button type="button"
+            onClick={() => setForm((f) => ({ ...f, image_urls: [...(f.image_urls ?? ['']), ''] }))}
+            className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+            + Añadir foto
+          </button>
         )}
       </div>
       <div>
@@ -455,7 +495,7 @@ export default function MarketplacePage() {
               <table className="erp-table">
                 <thead>
                   <tr>
-                    <th>Vehículo</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Estado</th><th></th>
+                    <th>Vehículo</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Vendedor</th><th>Estado</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -478,6 +518,16 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
+                      <td>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-slate-600">{item.seller || '–'}</span>
+                          {item.seller_type && (
+                            <Badge variant={item.seller_type === 'professional' ? 'blue' : 'slate'}>
+                              {item.seller_type === 'professional' ? 'Profesional' : 'Particular'}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         <div className="flex flex-col gap-1">
                           <Badge variant={item.is_active ? 'green' : 'slate'}>
