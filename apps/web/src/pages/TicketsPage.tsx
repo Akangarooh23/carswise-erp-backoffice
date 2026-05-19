@@ -143,7 +143,7 @@ export default function TicketsPage() {
             <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Canal</label>
               <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}

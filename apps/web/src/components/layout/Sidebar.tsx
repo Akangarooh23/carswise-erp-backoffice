@@ -28,7 +28,12 @@ const ROLE_COLORS: Record<Role, string> = {
   admin: 'bg-red-500', support: 'bg-sky-500', operations: 'bg-violet-500', sales: 'bg-emerald-500',
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -42,11 +47,18 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col w-60 shrink-0 h-screen overflow-y-auto"
+      className={[
+        'flex flex-col w-60 shrink-0 h-screen overflow-y-auto',
+        // Mobile: fixed drawer with slide animation
+        'fixed inset-y-0 left-0 z-50 transition-transform duration-200',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        // Desktop: static in flow, always visible
+        'md:relative md:translate-x-0 md:z-auto',
+      ].join(' ')}
       style={{ background: 'var(--color-sidebar)' }}
     >
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-5 border-b border-slate-800">
+      {/* Logo + mobile close button */}
+      <div className="px-5 pt-6 pb-5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🚗</span>
           <div>
@@ -54,6 +66,15 @@ export default function Sidebar() {
             <p className="text-slate-400 text-[11px]">ERP Backoffice</p>
           </div>
         </div>
+        <button
+          onClick={onClose}
+          className="md:hidden p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          aria-label="Cerrar menú"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M3.293 3.293a1 1 0 011.414 0L8 6.586l3.293-3.293a1 1 0 111.414 1.414L9.414 8l3.293 3.293a1 1 0 01-1.414 1.414L8 9.414l-3.293 3.293a1 1 0 01-1.414-1.414L6.586 8 3.293 4.707a1 1 0 010-1.414z" />
+          </svg>
+        </button>
       </div>
 
       {/* Nav */}
@@ -62,6 +83,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive

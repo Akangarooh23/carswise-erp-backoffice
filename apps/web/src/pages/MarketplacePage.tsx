@@ -153,7 +153,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
         <label className={LABEL_CLS}>Título *</label>
         <input className={INPUT_CLS} value={form.title ?? ''} onChange={onText('title')} placeholder="Volkswagen Golf 1.6 TDI Comfortline" />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL_CLS}>Marca *</label>
           <input className={INPUT_CLS} value={form.brand ?? ''} onChange={onText('brand')} placeholder="Volkswagen" />
@@ -163,7 +163,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input className={INPUT_CLS} value={form.model ?? ''} onChange={onText('model')} placeholder="Golf" />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={LABEL_CLS}>Año *</label>
           <input type="number" className={INPUT_CLS} value={form.year ?? ''} onChange={onNum('year')} />
@@ -177,7 +177,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input type="number" className={INPUT_CLS} value={form.mileage ?? ''} onChange={onNum('mileage')} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={LABEL_CLS}>Combustible</label>
           <select className={INPUT_CLS} value={form.fuel ?? ''} onChange={onText('fuel')}>
@@ -194,7 +194,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input type="number" className={INPUT_CLS} value={form.displacement ?? ''} onChange={onNum('displacement')} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL_CLS}>Color</label>
           <input className={INPUT_CLS} value={form.color ?? ''} onChange={onText('color')} placeholder="Blanco" />
@@ -204,7 +204,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input className={INPUT_CLS} value={form.location ?? ''} onChange={onText('location')} placeholder="Madrid" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL_CLS}>Vendedor</label>
           <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="CarsWise" />
@@ -260,7 +260,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
         <label className={LABEL_CLS}>Descripción</label>
         <textarea className={`${INPUT_CLS} resize-none`} rows={3} value={form.description ?? ''} onChange={onText('description')} />
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={LABEL_CLS}>Garantía (meses)</label>
           <input type="number" className={INPUT_CLS} value={form.warranty_months ?? 0} onChange={onNum('warranty_months')} min={0} />
@@ -296,7 +296,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
                 <input type="number" className={INPUT_CLS} value={form.renting_km_year ?? 15000} onChange={onNum('renting_km_year')} min={0} />
               </div>
               <p className="text-xs text-slate-400">Cuota mensual por plazo (dejar en blanco los plazos no disponibles)</p>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {([12,24,36,48,60] as const).map((m) => {
                   const key = `renting_${m}m` as keyof VoOffer;
                   return (
