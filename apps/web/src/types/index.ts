@@ -47,6 +47,11 @@ export interface VoOffer {
   has_guarantee_seal: boolean;
   portal_score: number;
   warranty_months: number;
+  available_for_purchase: boolean;
+  renting_available: boolean;
+  renting_monthly: number;
+  renting_months: number;
+  renting_km_year: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;

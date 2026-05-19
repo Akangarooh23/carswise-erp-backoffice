@@ -29,7 +29,7 @@ const STATUS_FILTERS = [
   { value: 'false', label: 'Despublicados' },
 ];
 
-const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','image_url','source_url','description'];
+const EXCEL_HEADERS = ['title','brand','model','year','price','mileage','fuel','power','color','location','seller','image_url','source_url','description','available_for_purchase','renting_available','renting_monthly','renting_months','renting_km_year'];
 
 const EMPTY_FORM: Partial<VoOffer> = {
   title: '', brand: '', model: '', year: new Date().getFullYear(),
@@ -37,6 +37,8 @@ const EMPTY_FORM: Partial<VoOffer> = {
   color: '', location: '', seller: '', description: '',
   image_url: '', source_url: '',
   warranty_months: 0, has_guarantee_seal: false, portal_score: 80, is_active: true,
+  available_for_purchase: true, renting_available: false,
+  renting_monthly: 0, renting_months: 48, renting_km_year: 15000,
 };
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -67,6 +69,11 @@ function exportXlsx(items: VoOffer[]) {
     price: o.price, mileage: o.mileage, fuel: o.fuel ?? '', power: o.power ?? '',
     color: o.color ?? '', location: o.location ?? '', seller: o.seller ?? '',
     image_url: o.image_url ?? '', source_url: o.source_url ?? '', description: o.description ?? '',
+    available_for_purchase: o.available_for_purchase !== false ? 1 : 0,
+    renting_available: o.renting_available ? 1 : 0,
+    renting_monthly: o.renting_monthly ?? 0,
+    renting_months: o.renting_months ?? 48,
+    renting_km_year: o.renting_km_year ?? 15000,
   }));
   const ws = XLSX.utils.json_to_sheet(data, { header: EXCEL_HEADERS });
   const wb = XLSX.utils.book_new();
@@ -80,6 +87,8 @@ function downloadTemplate() {
     year: 2020, price: 14500, mileage: 85000, fuel: 'Diésel', power: '85 CV',
     color: 'Blanco', location: 'Madrid', seller: 'CarsWise',
     image_url: '', source_url: '', description: 'Vehículo en excelente estado',
+    available_for_purchase: 1, renting_available: 0,
+    renting_monthly: 0, renting_months: 48, renting_km_year: 15000,
   }];
   const ws = XLSX.utils.json_to_sheet(example, { header: EXCEL_HEADERS });
   const wb = XLSX.utils.book_new();
@@ -200,6 +209,40 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <label htmlFor={`${idPrefix}-gs`} className="text-sm text-slate-700">Sello garantía</label>
         </div>
       </div>
+      {/* Modalidad */}
+      <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
+        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Modalidad de venta</p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id={`${idPrefix}-purchase`} checked={form.available_for_purchase ?? true} onChange={onBool('available_for_purchase')} className="rounded" />
+            <label htmlFor={`${idPrefix}-purchase`} className="text-sm font-medium text-slate-700">Disponible para compra</label>
+          </div>
+          {(form.available_for_purchase ?? true) && (
+            <p className="ml-6 text-xs text-slate-400">El precio de compra se indica en el campo "Precio (€)" de arriba.</p>
+          )}
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id={`${idPrefix}-renting`} checked={form.renting_available ?? false} onChange={onBool('renting_available')} className="rounded" />
+            <label htmlFor={`${idPrefix}-renting`} className="text-sm font-medium text-slate-700">Disponible para renting</label>
+          </div>
+          {form.renting_available && (
+            <div className="ml-6 grid grid-cols-3 gap-3">
+              <div>
+                <label className={LABEL_CLS}>Cuota mensual (€)</label>
+                <input type="number" className={INPUT_CLS} value={form.renting_monthly ?? ''} onChange={onNum('renting_monthly')} placeholder="0" />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Duración (meses)</label>
+                <input type="number" className={INPUT_CLS} value={form.renting_months ?? 48} onChange={onNum('renting_months')} min={1} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Km/año incluidos</label>
+                <input type="number" className={INPUT_CLS} value={form.renting_km_year ?? 15000} onChange={onNum('renting_km_year')} min={0} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
         <input type="checkbox" id={`${idPrefix}-active`} checked={form.is_active ?? true} onChange={onBool('is_active')} className="rounded" />
         <label htmlFor={`${idPrefix}-active`} className="text-sm font-medium text-slate-700">Publicado en marketplace</label>
@@ -427,9 +470,15 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
                       <td>
-                        <Badge variant={item.is_active ? 'green' : 'slate'}>
-                          {item.is_active ? 'Publicado' : 'Despublicado'}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={item.is_active ? 'green' : 'slate'}>
+                            {item.is_active ? 'Publicado' : 'Despublicado'}
+                          </Badge>
+                          <div className="flex gap-1 flex-wrap">
+                            {item.available_for_purchase !== false && <Badge variant="blue">Compra</Badge>}
+                            {item.renting_available && <Badge variant="purple">Renting</Badge>}
+                          </div>
+                        </div>
                       </td>
                       <td>
                         <div className="flex gap-1 items-center">

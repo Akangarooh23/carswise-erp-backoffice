@@ -81,6 +81,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
         `SELECT id, title, brand, model, year, price, mileage, fuel,
                 color, displacement, power, location, seller, image_url, source_url,
                 description, portal_score, warranty_months, has_guarantee_seal, is_active,
+                available_for_purchase, renting_available, renting_monthly, renting_months, renting_km_year,
                 created_at, updated_at
          FROM moveadvisor_marketplace_vo_offers ${where}
          ORDER BY portal_score DESC NULLS LAST, updated_at DESC
@@ -111,25 +112,30 @@ marketplaceRouter.get('/marketplace/vo/:id', requireRole(['admin', 'support', 'o
 // ── Create single vehicle ─────────────────────────────────────────────────────
 
 const voCreateSchema = z.object({
-  title:              z.string().min(1),
-  brand:              z.string().min(1),
-  model:              z.string().min(1),
-  year:               z.number().int().min(1990).max(2035),
-  price:              z.number().positive(),
-  mileage:            z.number().int().min(0).default(0),
-  fuel:               z.string().default(''),
-  power:              z.string().default(''),
-  displacement:       z.number().int().min(0).default(0),
-  color:              z.string().default(''),
-  location:           z.string().default(''),
-  seller:             z.string().default(''),
-  description:        z.string().default(''),
-  image_url:          z.string().default(''),
-  source_url:         z.string().default(''),
-  warranty_months:    z.number().int().min(0).default(0),
-  has_guarantee_seal: z.boolean().default(false),
-  portal_score:       z.number().int().min(0).max(100).default(80),
-  is_active:          z.boolean().default(true),
+  title:                 z.string().min(1),
+  brand:                 z.string().min(1),
+  model:                 z.string().min(1),
+  year:                  z.number().int().min(1990).max(2035),
+  price:                 z.number().min(0).default(0),
+  mileage:               z.number().int().min(0).default(0),
+  fuel:                  z.string().default(''),
+  power:                 z.string().default(''),
+  displacement:          z.number().int().min(0).default(0),
+  color:                 z.string().default(''),
+  location:              z.string().default(''),
+  seller:                z.string().default(''),
+  description:           z.string().default(''),
+  image_url:             z.string().default(''),
+  source_url:            z.string().default(''),
+  warranty_months:       z.number().int().min(0).default(0),
+  has_guarantee_seal:    z.boolean().default(false),
+  portal_score:          z.number().int().min(0).max(100).default(80),
+  is_active:             z.boolean().default(true),
+  available_for_purchase: z.boolean().default(true),
+  renting_available:     z.boolean().default(false),
+  renting_monthly:       z.number().min(0).default(0),
+  renting_months:        z.number().int().min(1).default(48),
+  renting_km_year:       z.number().int().min(0).default(15000),
 });
 
 marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), async (req, res) => {
@@ -148,12 +154,15 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
          (id, title, brand, model, year, price, mileage, fuel, power, displacement,
           color, location, seller, description, image_url, source_url,
           warranty_months, has_guarantee_seal, portal_score, is_active, portal,
+          available_for_purchase, renting_available, renting_monthly, renting_months, renting_km_year,
           created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'manual',NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'manual',
+               $21,$22,$23,$24,$25,NOW(),NOW())
        RETURNING *`,
       [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
        d.displacement, d.color, d.location, d.seller, d.description, d.image_url,
-       d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active]
+       d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
+       d.available_for_purchase, d.renting_available, d.renting_monthly || null, d.renting_months, d.renting_km_year]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
@@ -225,25 +234,30 @@ marketplaceRouter.post('/marketplace/vo/bulk', requireRole(['admin', 'operations
 // ── Update vehicle ────────────────────────────────────────────────────────────
 
 const voUpdateSchema = z.object({
-  title:              z.string().min(1).optional(),
-  brand:              z.string().min(1).optional(),
-  model:              z.string().min(1).optional(),
-  year:               z.number().int().min(1990).max(2035).optional(),
-  price:              z.number().positive().optional(),
-  mileage:            z.number().int().min(0).optional(),
-  fuel:               z.string().optional(),
-  power:              z.string().optional(),
-  displacement:       z.number().int().min(0).optional(),
-  color:              z.string().optional(),
-  location:           z.string().optional(),
-  seller:             z.string().optional(),
-  description:        z.string().optional(),
-  image_url:          z.string().optional(),
-  source_url:         z.string().optional(),
-  warranty_months:    z.number().int().min(0).optional(),
-  has_guarantee_seal: z.boolean().optional(),
-  portal_score:       z.number().int().min(0).max(100).optional(),
-  is_active:          z.boolean().optional(),
+  title:                 z.string().min(1).optional(),
+  brand:                 z.string().min(1).optional(),
+  model:                 z.string().min(1).optional(),
+  year:                  z.number().int().min(1990).max(2035).optional(),
+  price:                 z.number().min(0).optional(),
+  mileage:               z.number().int().min(0).optional(),
+  fuel:                  z.string().optional(),
+  power:                 z.string().optional(),
+  displacement:          z.number().int().min(0).optional(),
+  color:                 z.string().optional(),
+  location:              z.string().optional(),
+  seller:                z.string().optional(),
+  description:           z.string().optional(),
+  image_url:             z.string().optional(),
+  source_url:            z.string().optional(),
+  warranty_months:       z.number().int().min(0).optional(),
+  has_guarantee_seal:    z.boolean().optional(),
+  portal_score:          z.number().int().min(0).max(100).optional(),
+  is_active:             z.boolean().optional(),
+  available_for_purchase: z.boolean().optional(),
+  renting_available:     z.boolean().optional(),
+  renting_monthly:       z.number().min(0).optional(),
+  renting_months:        z.number().int().min(1).optional(),
+  renting_km_year:       z.number().int().min(0).optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
