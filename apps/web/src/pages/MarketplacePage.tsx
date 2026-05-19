@@ -367,8 +367,8 @@ export default function MarketplacePage() {
     if (colF.modality === 'both')     r = r.filter(i => i.available_for_purchase !== false && i.renting_available);
     if (sortCol) {
       r.sort((a, b) => {
-        const av = (a as Record<string,unknown>)[sortCol] ?? '';
-        const bv = (b as Record<string,unknown>)[sortCol] ?? '';
+        const av = (a as unknown as Record<string,unknown>)[sortCol] ?? '';
+        const bv = (b as unknown as Record<string,unknown>)[sortCol] ?? '';
         const cmp = typeof av === 'number' && typeof bv === 'number'
           ? av - bv
           : String(av).localeCompare(String(bv), 'es');
