@@ -84,7 +84,7 @@ export default function AppointmentsPage() {
           <div className="text-center py-12 text-slate-400 text-sm">Sin citas</div>
         ) : (
           <>
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead>
                 <tr><th>Usuario</th><th>Tipo</th><th>Taller</th><th>Fecha</th><th>Agente</th><th>Estado</th><th></th></tr>
               </thead>
@@ -106,7 +106,7 @@ export default function AppointmentsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <Pagination page={page} total={total} limit={50} onChange={setPage} />
           </>
         )}

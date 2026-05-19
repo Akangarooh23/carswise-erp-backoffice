@@ -89,7 +89,7 @@ export default function BillingPage() {
             <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
           ) : (
             <>
-              <table className="erp-table">
+              <div className="overflow-x-auto"><table className="erp-table">
                 <thead>
                   <tr>
                     <th>Usuario</th>
@@ -124,7 +124,7 @@ export default function BillingPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )}

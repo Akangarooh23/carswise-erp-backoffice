@@ -218,6 +218,7 @@ export default function LeadsPage() {
         ) : leads.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">No hay solicitudes todavía.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="erp-table">
             <thead>
               <tr>
@@ -258,6 +259,7 @@ export default function LeadsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

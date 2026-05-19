@@ -101,7 +101,7 @@ export default function DashboardPage() {
           {stats.recentTickets.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin tickets</p>
           ) : (
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead><tr><th>Título</th><th>Prioridad</th><th>Estado</th></tr></thead>
               <tbody>
                 {stats.recentTickets.map((t) => (
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
 
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           {stats.upcomingAppointments.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin citas próximas</p>
           ) : (
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead><tr><th>Usuario</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead>
               <tbody>
                 {stats.upcomingAppointments.map((a) => (
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>

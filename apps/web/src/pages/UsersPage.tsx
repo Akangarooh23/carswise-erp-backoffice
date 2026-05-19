@@ -64,7 +64,7 @@ export default function UsersPage() {
           <div className="text-center py-12 text-slate-400 text-sm">No se encontraron usuarios</div>
         ) : (
           <>
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead>
                 <tr>
                   <th>Usuario</th>
@@ -97,7 +97,7 @@ export default function UsersPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <Pagination page={page} total={total} limit={50} onChange={setPage} />
           </>
         )}

@@ -90,7 +90,7 @@ export default function TicketsPage() {
           <div className="text-center py-12 text-slate-400 text-sm">Sin tickets</div>
         ) : (
           <>
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead>
                 <tr><th>Ticket</th><th>Usuario</th><th>Canal</th><th>Prioridad</th><th>Estado</th><th>Fecha</th><th></th></tr>
               </thead>
@@ -119,7 +119,7 @@ export default function TicketsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <Pagination page={page} total={total} limit={50} onChange={setPage} />
           </>
         )}

@@ -136,7 +136,7 @@ export default function UserDetailPage() {
           {user.appointments.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin citas</p>
           ) : (
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead><tr><th>Tipo</th><th>Taller</th><th>Fecha</th><th>Estado</th></tr></thead>
               <tbody>
                 {user.appointments.map((a) => (
@@ -149,6 +149,7 @@ export default function UserDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       </div>
@@ -164,7 +165,7 @@ export default function UserDetailPage() {
         {(user.leads ?? []).length === 0 ? (
           <p className="text-slate-400 text-sm text-center py-8">Sin solicitudes</p>
         ) : (
-          <table className="erp-table">
+          <div className="overflow-x-auto"><table className="erp-table">
             <thead><tr><th>Tipo</th><th>Vehículo</th><th>Cita</th><th>Estado</th><th>Fecha</th></tr></thead>
             <tbody>
               {(user.leads ?? []).map((l) => (
@@ -185,7 +186,7 @@ export default function UserDetailPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 
@@ -200,7 +201,7 @@ export default function UserDetailPage() {
         {user.tickets.length === 0 ? (
           <p className="text-slate-400 text-sm text-center py-8">Sin tickets</p>
         ) : (
-          <table className="erp-table">
+          <div className="overflow-x-auto"><table className="erp-table">
             <thead><tr><th>Título</th><th>Canal</th><th>Prioridad</th><th>Estado</th><th>Fecha</th></tr></thead>
             <tbody>
               {user.tickets.map((t) => (
@@ -217,7 +218,7 @@ export default function UserDetailPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
     </div>

@@ -51,7 +51,7 @@ export default function IdCarsPage() {
           </div>
         ) : (
           <>
-            <table className="erp-table">
+            <div className="overflow-x-auto"><table className="erp-table">
               <thead>
                 <tr><th>Vehículo</th><th>Propietario</th><th>Matrícula</th><th>Combustible</th><th>Km</th><th>Año</th><th>Registro</th></tr>
               </thead>
@@ -85,7 +85,7 @@ export default function IdCarsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <Pagination page={page} total={total} limit={50} onChange={setPage} />
           </>
         )}
