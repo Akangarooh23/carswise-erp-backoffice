@@ -469,8 +469,13 @@ export default function MarketplacePage() {
   async function saveEdit() {
     if (!editOffer) return;
     setSaving(true);
+    const ALLOWED = new Set(['title','brand','model','year','price','mileage','fuel','power',
+      'displacement','color','location','seller','description','image_url','source_url',
+      'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
+      'available_for_purchase','renting_available','renting_km_year',
+      'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
     const payload = Object.fromEntries(
-      Object.entries(editForm).filter(([, v]) => v !== null && v !== undefined)
+      Object.entries(editForm).filter(([k, v]) => ALLOWED.has(k) && v !== null && v !== undefined && v !== '')
     );
     const res = await api.patch(`/marketplace/vo/${editOffer.id}`, payload);
     if (res.ok) { setEditOffer(null); load(page); }
