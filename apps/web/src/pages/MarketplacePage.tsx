@@ -476,12 +476,17 @@ export default function MarketplacePage() {
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
       'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
+    const NUMERIC = new Set(['year','price','mileage','displacement','warranty_months','portal_score',
+      'renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m']);
     const payload = Object.fromEntries(
-      Object.entries(editForm).filter(([k, v]) =>
-        ALLOWED.has(k) && v !== null && v !== undefined && v !== '' && !Number.isNaN(v)
-      )
+      Object.entries(editForm)
+        .filter(([k, v]) => ALLOWED.has(k) && v !== null && v !== undefined && v !== '')
+        .map(([k, v]) => {
+          if (NUMERIC.has(k)) { const n = Number(v); return [k, Number.isNaN(n) ? undefined : n]; }
+          return [k, v];
+        })
+        .filter(([, v]) => v !== undefined)
     );
-    console.log('[saveEdit] payload', payload);
     const res = await api.patch<{ detail?: unknown }>(`/marketplace/vo/${editOffer.id}`, payload);
     if (res.ok) { setEditOffer(null); load(page); }
     else setSaveError(JSON.stringify((res as { detail?: unknown }).detail ?? res, null, 2));
