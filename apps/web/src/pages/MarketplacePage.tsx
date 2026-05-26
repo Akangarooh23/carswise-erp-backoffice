@@ -387,6 +387,7 @@ export default function MarketplacePage() {
   const [editOffer, setEditOffer] = useState<VoOffer | null>(null);
   const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
   const [saving, setSaving]       = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [units, setUnits]           = useState<VoUnit[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [newUnit, setNewUnit]       = useState({ color: '', mileage: '' });
@@ -469,16 +470,21 @@ export default function MarketplacePage() {
   async function saveEdit() {
     if (!editOffer) return;
     setSaving(true);
+    setSaveError('');
     const ALLOWED = new Set(['title','brand','model','year','price','mileage','fuel','power',
       'displacement','color','location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
       'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
     const payload = Object.fromEntries(
-      Object.entries(editForm).filter(([k, v]) => ALLOWED.has(k) && v !== null && v !== undefined && v !== '')
+      Object.entries(editForm).filter(([k, v]) =>
+        ALLOWED.has(k) && v !== null && v !== undefined && v !== '' && !Number.isNaN(v)
+      )
     );
-    const res = await api.patch(`/marketplace/vo/${editOffer.id}`, payload);
+    console.log('[saveEdit] payload', payload);
+    const res = await api.patch<{ detail?: unknown }>(`/marketplace/vo/${editOffer.id}`, payload);
     if (res.ok) { setEditOffer(null); load(page); }
+    else setSaveError(JSON.stringify((res as { detail?: unknown }).detail ?? res, null, 2));
     setSaving(false);
   }
 
@@ -942,6 +948,9 @@ export default function MarketplacePage() {
               )}
             </div>
 
+            {saveError && (
+              <pre className="mt-3 text-xs text-red-600 bg-red-50 rounded-lg p-3 overflow-auto max-h-40">{saveError}</pre>
+            )}
             <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-100">
               <button onClick={() => setEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
                 Cerrar
