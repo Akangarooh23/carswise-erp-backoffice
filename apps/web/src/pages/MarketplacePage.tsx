@@ -344,7 +344,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '' });
+  const [colF, setColF] = useState({ fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
 
   function toggleSort(col: string) {
     setSortCol((prev) => {
@@ -365,6 +365,7 @@ export default function MarketplacePage() {
     if (colF.modality === 'compra')   r = r.filter(i => i.available_for_purchase !== false);
     if (colF.modality === 'renting')  r = r.filter(i => i.renting_available);
     if (colF.modality === 'both')     r = r.filter(i => i.available_for_purchase !== false && i.renting_available);
+    if (colF.noImage) r = r.filter(i => !i.image_url && !(i.image_urls?.length));
     if (sortCol) {
       r.sort((a, b) => {
         const av = (a as unknown as Record<string,unknown>)[sortCol] ?? '';
@@ -397,6 +398,10 @@ export default function MarketplacePage() {
 
   const [deleteTarget, setDeleteTarget] = useState<VoOffer | null>(null);
   const [deleting, setDeleting]         = useState(false);
+
+  const [imageEditOffer, setImageEditOffer] = useState<VoOffer | null>(null);
+  const [imageUrls, setImageUrls]           = useState<string[]>(['']);
+  const [savingImages, setSavingImages]     = useState(false);
 
   const [showImport, setShowImport]         = useState(false);
   const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
@@ -464,7 +469,10 @@ export default function MarketplacePage() {
   async function saveEdit() {
     if (!editOffer) return;
     setSaving(true);
-    const res = await api.patch(`/marketplace/vo/${editOffer.id}`, editForm);
+    const payload = Object.fromEntries(
+      Object.entries(editForm).filter(([, v]) => v !== null && v !== undefined)
+    );
+    const res = await api.patch(`/marketplace/vo/${editOffer.id}`, payload);
     if (res.ok) { setEditOffer(null); load(page); }
     setSaving(false);
   }
@@ -487,6 +495,15 @@ export default function MarketplacePage() {
     const res = await api.delete(`/marketplace/vo/${deleteTarget.id}`);
     if (res.ok) { setDeleteTarget(null); load(page); }
     setDeleting(false);
+  }
+
+  async function saveImages() {
+    if (!imageEditOffer) return;
+    setSavingImages(true);
+    const cleanUrls = imageUrls.filter(u => u.trim());
+    const res = await api.patch(`/marketplace/vo/${imageEditOffer.id}`, { image_urls: cleanUrls });
+    if (res.ok) { setImageEditOffer(null); load(page); }
+    setSavingImages(false);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -593,7 +610,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'' })}
+                  <button onClick={() => setColF({ fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -627,7 +644,13 @@ export default function MarketplacePage() {
                   </tr>
                   {/* ── Row 2: column filters ── */}
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <td className="px-3 py-1.5"></td>
+                    <td className="px-3 py-1.5">
+                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                        <input type="checkbox" checked={!!colF.noImage}
+                          onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
+                        Sin imagen
+                      </label>
+                    </td>
                     <td className="px-3 py-1.5">
                       <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -752,6 +775,12 @@ export default function MarketplacePage() {
                           <button onClick={() => openEdit(item)}
                             className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
                             Editar
+                          </button>
+                          <button
+                            onClick={() => { setImageEditOffer(item); setImageUrls(item.image_urls?.length ? item.image_urls : ['']); }}
+                            title="Editar imágenes"
+                            className={`text-xs font-medium px-2 py-1 rounded ${!item.image_url && !(item.image_urls?.length) ? 'text-orange-500 hover:bg-orange-50' : 'text-violet-500 hover:bg-violet-50'}`}>
+                            🖼️
                           </button>
                           <button onClick={() => toggleActive(item)}
                             className={`text-xs font-medium px-2 py-1 rounded ${item.is_active
@@ -949,6 +978,51 @@ export default function MarketplacePage() {
               <button onClick={doDelete} disabled={deleting}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
                 {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Image edit modal ────────────────────────────────────────────────── */}
+      <Modal open={!!imageEditOffer} onClose={() => setImageEditOffer(null)} title="Editar imágenes" size="md">
+        {imageEditOffer && (
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-slate-700">{imageEditOffer.title}</p>
+            <div className="space-y-2">
+              {imageUrls.map((url, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <input
+                    className={INPUT_CLS}
+                    value={url}
+                    onChange={(e) => { const next = [...imageUrls]; next[idx] = e.target.value; setImageUrls(next); }}
+                    placeholder={idx === 0 ? 'https://... (foto principal)' : `https://... (foto ${idx + 1})`}
+                  />
+                  {imageUrls.length > 1 && (
+                    <button type="button" onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== idx))}
+                      className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0">✕</button>
+                  )}
+                  {url && (
+                    <img src={url} alt="" referrerPolicy="no-referrer"
+                      className="w-14 h-10 object-cover rounded border border-slate-200 shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  )}
+                </div>
+              ))}
+            </div>
+            {imageUrls.length < 10 && (
+              <button type="button" onClick={() => setImageUrls([...imageUrls, ''])}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                + Añadir foto
+              </button>
+            )}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button onClick={() => setImageEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button onClick={saveImages} disabled={savingImages}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {savingImages ? 'Guardando…' : 'Guardar imágenes'}
               </button>
             </div>
           </div>
