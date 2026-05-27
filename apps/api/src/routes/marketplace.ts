@@ -2,8 +2,55 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { config } from '../config.js';
 
 export const marketplaceRouter = Router();
+
+// Downloads an external image URL and uploads it to Supabase Storage.
+// Returns the public Supabase URL, or the original URL if upload fails/not configured.
+async function mirrorImageToSupabase(imageUrl: string, offerId: string): Promise<string> {
+  if (!imageUrl || !imageUrl.startsWith('http')) return imageUrl;
+  // Already in Supabase — no need to re-upload
+  if (imageUrl.includes('.supabase.co')) return imageUrl;
+
+  const supabaseUrl = config.SUPABASE_URL;
+  const serviceKey  = config.SUPABASE_SERVICE_KEY;
+  if (!supabaseUrl || !serviceKey) return imageUrl;
+
+  try {
+    const res = await fetch(imageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'image/*,*/*' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return imageUrl;
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) return imageUrl;
+
+    const buffer = await res.arrayBuffer();
+    if (buffer.byteLength < 500) return imageUrl;
+
+    const ext  = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+    const path = `erp-uploads/${offerId}/img-0.${ext}`;
+    const bucket = 'vehicle-files';
+
+    const upload = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': contentType,
+        'x-upsert': 'true',
+      },
+      body: buffer,
+    });
+
+    if (!upload.ok) return imageUrl;
+
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  } catch {
+    return imageUrl;
+  }
+}
 
 // ── Offers from portal scraping ───────────────────────────────────────────────
 
@@ -300,6 +347,15 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
     const arr = dbFields.image_urls as string[];
     dbFields.image_url = arr[0] ?? null;
     dbFields.image_urls = JSON.stringify(arr);
+  }
+
+  // Auto-mirror external image URLs to Supabase Storage
+  if (typeof dbFields.image_url === 'string' && dbFields.image_url) {
+    const mirrored = await mirrorImageToSupabase(dbFields.image_url, req.params.id);
+    if (mirrored !== dbFields.image_url) {
+      dbFields.image_url  = mirrored;
+      dbFields.image_urls = JSON.stringify([mirrored]);
+    }
   }
 
   const dbKeys = Object.keys(dbFields);
