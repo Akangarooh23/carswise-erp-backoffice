@@ -843,7 +843,6 @@ export default function MarketplacePage() {
                       </td>
                       <td><Badge variant="blue">{item.portal}</Badge></td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
-                      <td className="font-semibold text-emerald-700 text-sm">{item.sale_price != null ? fmtPrice(item.sale_price) : '—'}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
