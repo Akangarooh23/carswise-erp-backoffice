@@ -277,6 +277,7 @@ const voUpdateSchema = z.object({
   renting_60m:           z.number().min(0).nullable().optional(),
   seller_type:           z.enum(['professional', 'particular']).nullable().optional(),
   image_urls:            z.array(z.string()).max(10).optional(),
+  sale_price:            z.number().min(0).nullable().optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {

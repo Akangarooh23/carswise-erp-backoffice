@@ -53,6 +53,7 @@ export interface VoOffer {
   total_units?: number;
   units_available?: number;
   available_colors?: string[];
+  sale_price?: number | null;
   available_for_purchase: boolean;
   renting_available: boolean;
   renting_km_year: number;
