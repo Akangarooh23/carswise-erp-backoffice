@@ -32,7 +32,7 @@ const STATUS_FILTERS = [
 const EXCEL_HEADERS = ['title','brand','model','year','price','fuel','power','location','seller','seller_type','image_urls','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','unit_color','unit_mileage'];
 
 const EMPTY_FORM: Partial<VoOffer> = {
-  title: '', brand: '', model: '', year: new Date().getFullYear(),
+  title: '', brand: '', model: '', version: '', year: new Date().getFullYear(),
   price: 0, sale_price: null, mileage: 0, fuel: '', power: '', displacement: 0,
   color: '', location: '', internal_location: '', seller: '', seller_type: null, description: '',
   image_url: '', image_urls: [], source_url: '',
@@ -153,7 +153,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
         <label className={LABEL_CLS}>Título *</label>
         <input className={INPUT_CLS} value={form.title ?? ''} onChange={onText('title')} placeholder="Volkswagen Golf 1.6 TDI Comfortline" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={LABEL_CLS}>Marca *</label>
           <input className={INPUT_CLS} value={form.brand ?? ''} onChange={onText('brand')} placeholder="Volkswagen" />
@@ -161,6 +161,10 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
         <div>
           <label className={LABEL_CLS}>Modelo *</label>
           <input className={INPUT_CLS} value={form.model ?? ''} onChange={onText('model')} placeholder="Golf" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Versión</label>
+          <input className={INPUT_CLS} value={form.version ?? ''} onChange={onText('version')} placeholder="1.6 TDI Comfortline" />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -482,7 +486,7 @@ export default function MarketplacePage() {
     if (!editOffer) return;
     setSaving(true);
     setSaveError('');
-    const ALLOWED = new Set(['title','brand','model','year','price','sale_price','mileage','fuel','power',
+    const ALLOWED = new Set(['title','brand','model','version','year','price','sale_price','mileage','fuel','power',
       'displacement','color','location','internal_location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
@@ -788,7 +792,10 @@ export default function MarketplacePage() {
                         </div>
                       </td>
                       <td className="text-sm font-medium text-slate-700 whitespace-nowrap">{item.brand}</td>
-                      <td className="text-sm text-slate-500">{item.model}</td>
+                      <td>
+                        <p className="text-sm text-slate-500">{item.model}</p>
+                        {item.version && <p className="text-[11px] text-slate-400 leading-tight">{item.version}</p>}
+                      </td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
                       <td className="font-semibold text-emerald-700 text-sm">{item.sale_price != null ? fmtPrice(item.sale_price) : '—'}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
