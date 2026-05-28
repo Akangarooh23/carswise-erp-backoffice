@@ -33,7 +33,7 @@ const EXCEL_HEADERS = ['title','brand','model','year','price','fuel','power','lo
 
 const EMPTY_FORM: Partial<VoOffer> = {
   title: '', brand: '', model: '', year: new Date().getFullYear(),
-  price: 0, mileage: 0, fuel: '', power: '', displacement: 0,
+  price: 0, sale_price: null, mileage: 0, fuel: '', power: '', displacement: 0,
   color: '', location: '', seller: '', seller_type: null, description: '',
   image_url: '', image_urls: [], source_url: '',
   warranty_months: 0, has_guarantee_seal: false, portal_score: 80, is_active: true,
@@ -163,14 +163,18 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input className={INPUT_CLS} value={form.model ?? ''} onChange={onText('model')} placeholder="Golf" />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div>
           <label className={LABEL_CLS}>Año *</label>
           <input type="number" className={INPUT_CLS} value={form.year ?? ''} onChange={onNum('year')} />
         </div>
         <div>
-          <label className={LABEL_CLS}>Precio (€) *</label>
+          <label className={LABEL_CLS}>P. Compra (€) *</label>
           <input type="number" className={INPUT_CLS} value={form.price ?? ''} onChange={onNum('price')} />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>P. Venta (€)</label>
+          <input type="number" className={INPUT_CLS} value={(form.sale_price as number | null | undefined) ?? ''} onChange={onNum('sale_price')} placeholder={form.price ? String(Math.round((Number(form.price) + 1250) * 100) / 100) : '—'} />
         </div>
         <div>
           <label className={LABEL_CLS}>Kilómetros</label>
@@ -471,19 +475,24 @@ export default function MarketplacePage() {
     if (!editOffer) return;
     setSaving(true);
     setSaveError('');
-    const ALLOWED = new Set(['title','brand','model','year','price','mileage','fuel','power',
+    const ALLOWED = new Set(['title','brand','model','year','price','sale_price','mileage','fuel','power',
       'displacement','color','location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
       'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
-    const NUMERIC = new Set(['year','price','mileage','displacement','warranty_months','portal_score',
+    const NUMERIC = new Set(['year','price','sale_price','mileage','displacement','warranty_months','portal_score',
       'renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m']);
     const payload = Object.fromEntries(
       Object.entries(editForm)
-        .filter(([k, v]) => ALLOWED.has(k) && v !== null && v !== undefined && v !== '')
+        .filter(([k]) => ALLOWED.has(k))
         .map(([k, v]) => {
-          if (NUMERIC.has(k)) { const n = Number(v); return [k, Number.isNaN(n) ? undefined : n]; }
-          return [k, v];
+          if (NUMERIC.has(k)) {
+            // null/empty numeric = send null (clears the field); NaN values are dropped
+            if (v === null || v === undefined || v === '') return [k, null];
+            const n = Number(v);
+            return [k, Number.isNaN(n) ? undefined : n];
+          }
+          return [k, v ?? null]; // undefined → null for string/bool fields
         })
         .filter(([, v]) => v !== undefined)
     );
