@@ -55,6 +55,7 @@ export interface VoOffer {
   available_colors?: string[];
   sale_price?: number | null;
   version?: string | null;
+  transmission?: string | null;
   internal_location?: string | null;
   available_for_purchase: boolean;
   renting_available: boolean;

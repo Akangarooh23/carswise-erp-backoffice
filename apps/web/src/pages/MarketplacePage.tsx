@@ -32,7 +32,7 @@ const STATUS_FILTERS = [
 const EXCEL_HEADERS = ['title','brand','model','year','price','fuel','power','location','seller','seller_type','image_urls','source_url','description','available_for_purchase','renting_available','renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','unit_color','unit_mileage'];
 
 const EMPTY_FORM: Partial<VoOffer> = {
-  title: '', brand: '', model: '', version: '', year: new Date().getFullYear(),
+  title: '', brand: '', model: '', version: '', transmission: '', year: new Date().getFullYear(),
   price: 0, sale_price: null, mileage: 0, fuel: '', power: '', displacement: 0,
   color: '', location: '', internal_location: '', seller: '', seller_type: null, description: '',
   image_url: '', image_urls: [], source_url: '',
@@ -185,12 +185,20 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input type="number" className={INPUT_CLS} value={form.mileage ?? ''} onChange={onNum('mileage')} />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div>
           <label className={LABEL_CLS}>Combustible</label>
           <select className={INPUT_CLS} value={form.fuel ?? ''} onChange={onText('fuel')}>
             <option value="">—</option>
             {FUELS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Transmisión</label>
+          <select className={INPUT_CLS} value={form.transmission ?? ''} onChange={onText('transmission')}>
+            <option value="">—</option>
+            <option value="Manual">Manual</option>
+            <option value="Automático">Automático</option>
           </select>
         </div>
         <div>
@@ -356,7 +364,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ brand: '', model: '', fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+  const [colF, setColF] = useState({ brand: '', model: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
 
   function toggleSort(col: string) {
     setSortCol((prev) => {
@@ -370,7 +378,8 @@ export default function MarketplacePage() {
     let r = [...items];
     if (colF.brand)     r = r.filter(i => (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
     if (colF.model)     r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
-    if (colF.fuel)      r = r.filter(i => (i.fuel || '') === colF.fuel);
+    if (colF.fuel)         r = r.filter(i => (i.fuel || '') === colF.fuel);
+    if (colF.transmission) r = r.filter(i => (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
     if (colF.year)      r = r.filter(i => String(i.year) === colF.year);
     if (colF.priceMax)  r = r.filter(i => i.price <= Number(colF.priceMax));
     if (colF.color)     r = r.filter(i => i.available_colors?.includes(colF.color) || (i.color || '') === colF.color);
@@ -486,7 +495,7 @@ export default function MarketplacePage() {
     if (!editOffer) return;
     setSaving(true);
     setSaveError('');
-    const ALLOWED = new Set(['title','brand','model','version','year','price','sale_price','mileage','fuel','power',
+    const ALLOWED = new Set(['title','brand','model','version','transmission','year','price','sale_price','mileage','fuel','power',
       'displacement','color','location','internal_location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
@@ -646,7 +655,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ brand:'', model:'', fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
+                  <button onClick={() => setColF({ brand:'', model:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -663,8 +672,9 @@ export default function MarketplacePage() {
                       { key: 'sale_price', label: 'P. Venta' },
                       { key: 'mileage', label: 'Km'          },
                       { key: 'year',    label: 'Año'         },
-                      { key: 'fuel',    label: 'Combustible' },
-                      { key: 'modalidad', label: 'Modalidad' },
+                      { key: 'fuel',         label: 'Combustible'  },
+                      { key: 'transmission', label: 'Cambio'       },
+                      { key: 'modalidad',    label: 'Modalidad'    },
                       { key: 'units_available', label: 'Unidades' },
                       { key: 'seller',  label: 'Vendedor'    },
                       { key: 'is_active', label: 'Estado'    },
@@ -734,6 +744,15 @@ export default function MarketplacePage() {
                         {fuelOptions.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
+                    {/* Cambio */}
+                    <td className="px-3 py-1.5">
+                      <select value={colF.transmission} onChange={e => setCol('transmission', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="manual">Manual</option>
+                        <option value="auto">Automático</option>
+                      </select>
+                    </td>
                     {/* Modalidad */}
                     <td className="px-3 py-1.5">
                       <select value={colF.modality} onChange={e => setCol('modality', e.target.value)}
@@ -801,6 +820,7 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
+                      <td className="text-sm text-slate-500">{item.transmission || '–'}</td>
                       {/* Modalidad — columna separada */}
                       <td>
                         <div className="flex gap-1 flex-wrap">
