@@ -126,7 +126,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     const [rows, total] = await Promise.all([
       query(
         `SELECT o.id, o.title, o.brand, o.model, o.year, o.price, o.sale_price, o.mileage, o.fuel,
-                o.color, o.displacement, o.power, o.location, o.seller, o.seller_type, o.image_url,
+                o.color, o.displacement, o.power, o.location, o.internal_location, o.seller, o.seller_type, o.image_url,
                 CASE WHEN o.image_urls IS NOT NULL AND o.image_urls <> '' THEN o.image_urls::json ELSE '[]'::json END AS image_urls,
                 o.source_url, o.description, o.portal_score, o.warranty_months, o.has_guarantee_seal, o.is_active,
                 o.available_for_purchase, o.renting_available, o.renting_km_year,
@@ -328,6 +328,7 @@ const voUpdateSchema = z.object({
   }),
   image_urls:            z.array(z.string()).max(10).optional(),
   sale_price:            z.number().min(0).nullable().optional(),
+  internal_location:     z.string().nullable().optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
@@ -367,7 +368,7 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
 
   try {
     const result = await query(
-      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, year, price, sale_price, mileage, fuel, color, displacement, power, location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
+      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, year, price, sale_price, mileage, fuel, color, displacement, power, location, internal_location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
       values
     );
     if (!result.rows.length) {

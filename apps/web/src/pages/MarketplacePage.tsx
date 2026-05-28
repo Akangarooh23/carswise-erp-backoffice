@@ -34,7 +34,7 @@ const EXCEL_HEADERS = ['title','brand','model','year','price','fuel','power','lo
 const EMPTY_FORM: Partial<VoOffer> = {
   title: '', brand: '', model: '', year: new Date().getFullYear(),
   price: 0, sale_price: null, mileage: 0, fuel: '', power: '', displacement: 0,
-  color: '', location: '', seller: '', seller_type: null, description: '',
+  color: '', location: '', internal_location: '', seller: '', seller_type: null, description: '',
   image_url: '', image_urls: [], source_url: '',
   warranty_months: 0, has_guarantee_seal: false, portal_score: 80, is_active: true,
   available_for_purchase: true, renting_available: false,
@@ -198,14 +198,18 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
           <input type="number" className={INPUT_CLS} value={form.displacement ?? ''} onChange={onNum('displacement')} />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={LABEL_CLS}>Color</label>
           <input className={INPUT_CLS} value={form.color ?? ''} onChange={onText('color')} placeholder="Blanco" />
         </div>
         <div>
-          <label className={LABEL_CLS}>Ubicación</label>
+          <label className={LABEL_CLS}>Ubicación (display)</label>
           <input className={INPUT_CLS} value={form.location ?? ''} onChange={onText('location')} placeholder="Madrid" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Campa / Código interno</label>
+          <input className={INPUT_CLS} value={form.internal_location ?? ''} onChange={onText('internal_location')} placeholder="CARPIO" />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -476,7 +480,7 @@ export default function MarketplacePage() {
     setSaving(true);
     setSaveError('');
     const ALLOWED = new Set(['title','brand','model','year','price','sale_price','mileage','fuel','power',
-      'displacement','color','location','seller','description','image_url','source_url',
+      'displacement','color','location','internal_location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
       'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
@@ -747,6 +751,9 @@ export default function MarketplacePage() {
                           <div>
                             <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
                             <p className="text-xs text-slate-400">{item.brand} · {item.location || '–'}</p>
+                            {item.internal_location && (
+                              <p className="text-[10px] font-mono text-slate-300 leading-tight">{item.internal_location}</p>
+                            )}
                           </div>
                         </div>
                       </td>
