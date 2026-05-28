@@ -364,7 +364,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ brand: '', model: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
 
   function toggleSort(col: string) {
     setSortCol((prev) => {
@@ -378,6 +378,7 @@ export default function MarketplacePage() {
     let r = [...items];
     if (colF.brand)     r = r.filter(i => (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
     if (colF.model)     r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
+    if (colF.version)   r = r.filter(i => (i.version || '').toLowerCase().includes(colF.version.toLowerCase()));
     if (colF.fuel)         r = r.filter(i => (i.fuel || '') === colF.fuel);
     if (colF.transmission) r = r.filter(i => (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
     if (colF.year)      r = r.filter(i => String(i.year) === colF.year);
@@ -655,7 +656,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ brand:'', model:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
+                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -668,6 +669,7 @@ export default function MarketplacePage() {
                       { key: 'title',   label: 'Vehículo'    },
                       { key: 'brand',   label: 'Marca'       },
                       { key: 'model',   label: 'Modelo'      },
+                      { key: 'version', label: 'Versión'     },
                       { key: 'price',   label: 'P. Compra'   },
                       { key: 'sale_price', label: 'P. Venta' },
                       { key: 'mileage', label: 'Km'          },
@@ -714,6 +716,12 @@ export default function MarketplacePage() {
                       <input value={colF.model} onChange={e => setCol('model', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
                         placeholder="Modelo…" />
+                    </td>
+                    {/* Versión */}
+                    <td className="px-3 py-1.5">
+                      <input value={colF.version} onChange={e => setCol('version', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                        placeholder="Versión…" />
                     </td>
                     {/* P. Compra */}
                     <td className="px-3 py-1.5">
@@ -811,10 +819,8 @@ export default function MarketplacePage() {
                         </div>
                       </td>
                       <td className="text-sm font-medium text-slate-700 whitespace-nowrap">{item.brand}</td>
-                      <td>
-                        <p className="text-sm text-slate-500">{item.model}</p>
-                        {item.version && <p className="text-[11px] text-slate-400 leading-tight">{item.version}</p>}
-                      </td>
+                      <td className="text-sm text-slate-500">{item.model}</td>
+                      <td className="text-sm text-slate-400">{item.version || '–'}</td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
                       <td className="font-semibold text-emerald-700 text-sm">{item.sale_price != null ? fmtPrice(item.sale_price) : '—'}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
