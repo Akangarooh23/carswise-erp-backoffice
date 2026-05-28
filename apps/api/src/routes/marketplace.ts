@@ -326,7 +326,7 @@ const voUpdateSchema = z.object({
     if (v === 'professional' || v === 'particular') return v;
     return null; // coerce "dealer" and any other invalid value to null
   }),
-  image_urls:            z.array(z.string()).max(10).optional(),
+  image_urls:            z.array(z.string()).max(20).optional(),
   sale_price:            z.number().min(0).nullable().optional(),
   internal_location:     z.string().nullable().optional(),
 });
