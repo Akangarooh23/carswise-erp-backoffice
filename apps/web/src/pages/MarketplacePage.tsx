@@ -352,7 +352,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+  const [colF, setColF] = useState({ brand: '', model: '', fuel: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
 
   function toggleSort(col: string) {
     setSortCol((prev) => {
@@ -364,6 +364,8 @@ export default function MarketplacePage() {
 
   const displayItems = useMemo(() => {
     let r = [...items];
+    if (colF.brand)     r = r.filter(i => (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
+    if (colF.model)     r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
     if (colF.fuel)      r = r.filter(i => (i.fuel || '') === colF.fuel);
     if (colF.year)      r = r.filter(i => String(i.year) === colF.year);
     if (colF.priceMax)  r = r.filter(i => i.price <= Number(colF.priceMax));
@@ -387,6 +389,7 @@ export default function MarketplacePage() {
     return r;
   }, [items, colF, sortCol, sortDir]);
 
+  const brandOptions  = useMemo(() => [...new Set(items.map(i => i.brand).filter(Boolean))].sort(), [items]);
   const fuelOptions   = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
   const yearOptions   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
   const colorOptions  = useMemo(() => [...new Set(items.flatMap(i => i.available_colors ?? []).filter(Boolean))].sort(), [items]);
@@ -639,7 +642,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
+                  <button onClick={() => setColF({ brand:'', model:'', fuel:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -675,11 +678,23 @@ export default function MarketplacePage() {
                   {/* ── Row 2: column filters ── */}
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
-                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
-                        <input type="checkbox" checked={!!colF.noImage}
-                          onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
-                        Sin imagen
-                      </label>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex gap-1">
+                          <select value={colF.brand} onChange={e => setCol('brand', e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white w-28">
+                            <option value="">Marca</option>
+                            {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                          <input value={colF.model} onChange={e => setCol('model', e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-1.5 py-1 w-24"
+                            placeholder="Modelo…" />
+                        </div>
+                        <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                          <input type="checkbox" checked={!!colF.noImage}
+                            onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
+                          Sin imagen
+                        </label>
+                      </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
