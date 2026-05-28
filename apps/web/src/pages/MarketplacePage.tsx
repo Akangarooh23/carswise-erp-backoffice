@@ -653,6 +653,8 @@ export default function MarketplacePage() {
                   <tr>
                     {([
                       { key: 'title',   label: 'Vehículo'    },
+                      { key: 'brand',   label: 'Marca'       },
+                      { key: 'model',   label: 'Modelo'      },
                       { key: 'price',   label: 'P. Compra'   },
                       { key: 'sale_price', label: 'P. Venta' },
                       { key: 'mileage', label: 'Km'          },
@@ -677,25 +679,29 @@ export default function MarketplacePage() {
                   </tr>
                   {/* ── Row 2: column filters ── */}
                   <tr className="bg-slate-50 border-b border-slate-100">
+                    {/* Vehículo */}
                     <td className="px-3 py-1.5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex gap-1">
-                          <select value={colF.brand} onChange={e => setCol('brand', e.target.value)}
-                            className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white w-28">
-                            <option value="">Marca</option>
-                            {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
-                          </select>
-                          <input value={colF.model} onChange={e => setCol('model', e.target.value)}
-                            className="text-xs border border-slate-200 rounded px-1.5 py-1 w-24"
-                            placeholder="Modelo…" />
-                        </div>
-                        <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
-                          <input type="checkbox" checked={!!colF.noImage}
-                            onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
-                          Sin imagen
-                        </label>
-                      </div>
+                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                        <input type="checkbox" checked={!!colF.noImage}
+                          onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
+                        Sin imagen
+                      </label>
                     </td>
+                    {/* Marca */}
+                    <td className="px-3 py-1.5">
+                      <select value={colF.brand} onChange={e => setCol('brand', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option>
+                        {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </td>
+                    {/* Modelo */}
+                    <td className="px-3 py-1.5">
+                      <input value={colF.model} onChange={e => setCol('model', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                        placeholder="Modelo…" />
+                    </td>
+                    {/* P. Compra */}
                     <td className="px-3 py-1.5">
                       <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -704,7 +710,11 @@ export default function MarketplacePage() {
                           <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
+                    {/* P. Venta */}
                     <td className="px-3 py-1.5"></td>
+                    {/* Km */}
+                    <td className="px-3 py-1.5"></td>
+                    {/* Año */}
                     <td className="px-3 py-1.5">
                       <select value={colF.year} onChange={e => setCol('year', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -712,6 +722,7 @@ export default function MarketplacePage() {
                         {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
+                    {/* Combustible */}
                     <td className="px-3 py-1.5">
                       <select value={colF.fuel} onChange={e => setCol('fuel', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -719,6 +730,7 @@ export default function MarketplacePage() {
                         {fuelOptions.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
+                    {/* Modalidad */}
                     <td className="px-3 py-1.5">
                       <select value={colF.modality} onChange={e => setCol('modality', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -728,6 +740,7 @@ export default function MarketplacePage() {
                         <option value="both">Compra + Renting</option>
                       </select>
                     </td>
+                    {/* Unidades */}
                     <td className="px-3 py-1.5">
                       <div className="flex items-center gap-1.5">
                         <select value={colF.color} onChange={e => setCol('color', e.target.value)}
@@ -742,6 +755,7 @@ export default function MarketplacePage() {
                         </label>
                       </div>
                     </td>
+                    {/* Vendedor */}
                     <td className="px-3 py-1.5">
                       <select value={colF.seller} onChange={e => setCol('seller', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
@@ -749,6 +763,7 @@ export default function MarketplacePage() {
                         {sellerOptions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
+                    {/* Estado */}
                     <td className="px-3 py-1.5"></td>
                     <td></td>
                   </tr>
@@ -765,13 +780,15 @@ export default function MarketplacePage() {
                           )}
                           <div>
                             <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
-                            <p className="text-xs text-slate-400">{item.brand} · {item.location || '–'}</p>
+                            <p className="text-xs text-slate-400">{item.location || '–'}</p>
                             {item.internal_location && (
                               <p className="text-[10px] font-mono text-slate-300 leading-tight">{item.internal_location}</p>
                             )}
                           </div>
                         </div>
                       </td>
+                      <td className="text-sm font-medium text-slate-700 whitespace-nowrap">{item.brand}</td>
+                      <td className="text-sm text-slate-500">{item.model}</td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
                       <td className="font-semibold text-emerald-700 text-sm">{item.sale_price != null ? fmtPrice(item.sale_price) : '—'}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
