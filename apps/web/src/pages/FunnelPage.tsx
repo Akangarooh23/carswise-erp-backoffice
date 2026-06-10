@@ -54,6 +54,7 @@ interface UtmCampaign {
 interface TopOffer {
   offer_id: string;
   offer_title: string;
+  offer_url: string | null;
   views: number;
   leads: number;
 }
@@ -513,7 +514,14 @@ export default function FunnelPage() {
                     {stats.topOffers.map((row) => (
                       <tr key={row.offer_id}>
                         <td className="text-sm font-medium">
-                          <span className="block truncate max-w-xs">{row.offer_title || row.offer_id}</span>
+                          {row.offer_url ? (
+                            <a href={row.offer_url} target="_blank" rel="noopener noreferrer"
+                               className="block truncate max-w-xs text-blue-600 hover:text-blue-800 hover:underline">
+                              {row.offer_title || row.offer_id}
+                            </a>
+                          ) : (
+                            <span className="block truncate max-w-xs">{row.offer_title || row.offer_id}</span>
+                          )}
                         </td>
                         <td className="text-right text-sm text-slate-600">{row.views}</td>
                         <td className="text-right text-sm text-slate-600">{row.leads}</td>

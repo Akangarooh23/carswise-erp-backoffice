@@ -69,6 +69,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
 
       query(
         `SELECT offer_id, offer_title,
+           MAX(landing_url) FILTER (WHERE event_type = 'offer_view') AS offer_url,
            COUNT(*)::int AS views,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
