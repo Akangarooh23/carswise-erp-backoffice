@@ -390,8 +390,8 @@ export default function FunnelPage() {
                 <p className="text-slate-400 text-sm text-center py-8">Sin datos UTM aún</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="erp-table">
-                    <thead><tr><th>Fuente</th><th className="text-right">Sesiones</th><th className="text-right">Registros</th><th className="text-right">Leads</th><th className="text-right">Conv.</th></tr></thead>
+                  <table className="erp-table w-full">
+                    <thead><tr><th className="w-full">Fuente</th><th className="text-right w-20">Sesiones</th><th className="text-right w-24">Registros</th><th className="text-right w-16">Leads</th><th className="text-right w-16">Conv.</th></tr></thead>
                     <tbody>
                       {stats.utmSources.map((row) => (
                         <tr key={row.source}>
@@ -417,8 +417,8 @@ export default function FunnelPage() {
                 <p className="text-slate-400 text-sm text-center py-8">Sin campañas UTM aún</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="erp-table">
-                    <thead><tr><th>Campaña</th><th>Medio</th><th>Fuente</th><th className="text-right">Sesiones</th><th className="text-right">Leads</th></tr></thead>
+                  <table className="erp-table w-full">
+                    <thead><tr><th className="w-full">Campaña</th><th className="w-20">Medio</th><th className="w-20">Fuente</th><th className="text-right w-20">Sesiones</th><th className="text-right w-16">Leads</th></tr></thead>
                     <tbody>
                       {stats.utmCampaigns.map((row, i) => (
                         <tr key={i}>
