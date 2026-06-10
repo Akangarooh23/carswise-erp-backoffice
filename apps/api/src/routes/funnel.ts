@@ -97,10 +97,34 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
 });
 
 funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
-  const page   = Math.max(1, Number(req.query.page) || 1);
-  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
-  const offset = (page - 1) * limit;
-  const days   = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+  const page      = Math.max(1, Number(req.query.page) || 1);
+  const limit     = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset    = (page - 1) * limit;
+  const days      = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+  const source    = String(req.query.source    || '').trim();
+  const converted = String(req.query.converted || '').trim(); // 'register' | 'lead' | 'none' | ''
+  const q         = String(req.query.q         || '').trim();
+
+  const whereConditions = [`created_at >= NOW() - ($1 || ' days')::interval`];
+  const values: unknown[] = [days];
+
+  if (source) {
+    values.push(source);
+    whereConditions.push(`utm_source = $${values.length}`);
+  }
+
+  const where = `WHERE ${whereConditions.join(' AND ')}`;
+
+  const havingClauses: string[] = [];
+  if (converted === 'register') havingClauses.push(`BOOL_OR(event_type = 'register') = true`);
+  if (converted === 'lead')     havingClauses.push(`BOOL_OR(event_type = 'lead_request') = true`);
+  if (converted === 'none')     havingClauses.push(`BOOL_OR(event_type = 'register') = false AND BOOL_OR(event_type = 'lead_request') = false`);
+  if (q) {
+    values.push(`%${q.toLowerCase()}%`);
+    havingClauses.push(`LOWER(MAX(COALESCE(user_email, ''))) LIKE $${values.length}`);
+  }
+
+  const having = havingClauses.length ? `HAVING ${havingClauses.join(' AND ')}` : '';
 
   try {
     const [rows, countResult] = await Promise.all([
@@ -118,24 +142,29 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
            BOOL_OR(event_type = 'register')     AS did_register,
            BOOL_OR(event_type = 'lead_request') AS did_lead
          FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         ${where}
          GROUP BY anon_id
+         ${having}
          ORDER BY first_seen DESC
-         LIMIT $2 OFFSET $3`,
-        [days, limit, offset]
+         LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset]
       ),
       query(
-        `SELECT COUNT(DISTINCT anon_id)::int AS total
-         FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval`,
-        [days]
+        `SELECT COUNT(*) AS total FROM (
+           SELECT anon_id
+           FROM moveadvisor_funnel_events
+           ${where}
+           GROUP BY anon_id
+           ${having}
+         ) sub`,
+        values
       ),
     ]);
 
     res.json({
       ok: true,
       data: rows.rows,
-      meta: { total: countResult.rows[0].total, page, limit },
+      meta: { total: Number(countResult.rows[0].total), page, limit },
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'funnel_sessions_failed', detail: (err as Error).message });
@@ -148,6 +177,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
   const offset = (page - 1) * limit;
   const eventType = String(req.query.event_type || '').trim();
   const source    = String(req.query.source    || '').trim();
+  const q         = String(req.query.q         || '').trim();
 
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -159,6 +189,10 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
   if (source) {
     values.push(source);
     conditions.push(`utm_source = $${values.length}`);
+  }
+  if (q) {
+    values.push(`%${q.toLowerCase()}%`);
+    conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

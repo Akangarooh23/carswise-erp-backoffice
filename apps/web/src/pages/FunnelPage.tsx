@@ -96,14 +96,20 @@ export default function FunnelPage() {
   const [events, setEvents]   = useState<FunnelEvent[]>([]);
   const [evtTotal, setEvtTotal] = useState(0);
   const [evtPage, setEvtPage] = useState(1);
-  const [filterType, setFilterType] = useState('');
+  // Events filters
+  const [filterType, setFilterType]     = useState('');
   const [filterSource, setFilterSource] = useState('');
-  const [sessions, setSessions]       = useState<FunnelSession[]>([]);
-  const [sessTotal, setSessTotal]     = useState(0);
-  const [sessPage, setSessPage]       = useState(1);
-  const [sessLoading, setSessLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [evtLoading, setEvtLoading] = useState(false);
+  const [filterEvtQ, setFilterEvtQ]     = useState('');
+  // Sessions filters
+  const [sessSrc, setSessSrc]           = useState('');
+  const [sessConv, setSessConv]         = useState('');
+  const [sessQ, setSessQ]               = useState('');
+  const [sessions, setSessions]         = useState<FunnelSession[]>([]);
+  const [sessTotal, setSessTotal]       = useState(0);
+  const [sessPage, setSessPage]         = useState(1);
+  const [sessLoading, setSessLoading]   = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [evtLoading, setEvtLoading]     = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -117,6 +123,7 @@ export default function FunnelPage() {
     const params = new URLSearchParams({ page: String(evtPage), limit: '50' });
     if (filterType)   params.set('event_type', filterType);
     if (filterSource) params.set('source', filterSource);
+    if (filterEvtQ)   params.set('q', filterEvtQ);
     api.get<FunnelEvent[]>(`/funnel/events?${params}`)
       .then((r) => {
         if (r.ok) {
@@ -125,11 +132,15 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setEvtLoading(false));
-  }, [evtPage, filterType, filterSource]);
+  }, [evtPage, filterType, filterSource, filterEvtQ]);
 
   useEffect(() => {
     setSessLoading(true);
-    api.get<FunnelSession[]>(`/funnel/sessions?days=${days}&page=${sessPage}&limit=50`)
+    const params = new URLSearchParams({ days: String(days), page: String(sessPage), limit: '50' });
+    if (sessSrc)  params.set('source', sessSrc);
+    if (sessConv) params.set('converted', sessConv);
+    if (sessQ)    params.set('q', sessQ);
+    api.get<FunnelSession[]>(`/funnel/sessions?${params}`)
       .then((r) => {
         if (r.ok) {
           setSessions(r.data);
@@ -137,7 +148,7 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setSessLoading(false));
-  }, [days, sessPage]);
+  }, [days, sessPage, sessSrc, sessConv, sessQ]);
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
@@ -283,10 +294,47 @@ export default function FunnelPage() {
 
       {/* Sessions per user/anon */}
       <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100">
+        <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-slate-800 text-sm">
             Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
           </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Buscar email…"
+              value={sessQ}
+              onChange={(e) => { setSessQ(e.target.value); setSessPage(1); }}
+              className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-44 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              value={sessSrc}
+              onChange={(e) => { setSessSrc(e.target.value); setSessPage(1); }}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">Todas las fuentes</option>
+              <option value="google">Google</option>
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="direct">Directo</option>
+            </select>
+            <select
+              value={sessConv}
+              onChange={(e) => { setSessConv(e.target.value); setSessPage(1); }}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">Toda conversión</option>
+              <option value="register">Registrados</option>
+              <option value="lead">Con solicitud</option>
+              <option value="none">Sin convertir</option>
+            </select>
+            {(sessQ || sessSrc || sessConv) && (
+              <button
+                onClick={() => { setSessQ(''); setSessSrc(''); setSessConv(''); setSessPage(1); }}
+                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                × Limpiar
+              </button>
+            )}
+          </div>
         </div>
         {sessLoading ? (
           <div className="text-slate-400 text-sm text-center py-8">Cargando…</div>
@@ -362,7 +410,14 @@ export default function FunnelPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Buscar email…"
+              value={filterEvtQ}
+              onChange={(e) => { setFilterEvtQ(e.target.value); setEvtPage(1); }}
+              className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-40 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
             <select
               value={filterType}
               onChange={(e) => { setFilterType(e.target.value); setEvtPage(1); }}
@@ -372,6 +427,25 @@ export default function FunnelPage() {
                 <option key={k} value={k}>{v}</option>
               ))}
             </select>
+            <select
+              value={filterSource}
+              onChange={(e) => { setFilterSource(e.target.value); setEvtPage(1); }}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">Todas las fuentes</option>
+              <option value="google">Google</option>
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="direct">Directo</option>
+            </select>
+            {(filterEvtQ || filterType || filterSource) && (
+              <button
+                onClick={() => { setFilterEvtQ(''); setFilterType(''); setFilterSource(''); setEvtPage(1); }}
+                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                × Limpiar
+              </button>
+            )}
           </div>
         </div>
         {evtLoading ? (
