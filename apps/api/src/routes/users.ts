@@ -32,8 +32,11 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
   try {
     const [rows, countResult] = await Promise.all([
       query(
-        `SELECT mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
-                eu.phone, eu.status, eu.last_seen_at,
+        `SELECT mu.id, mu.email, mu.name,
+                COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
+                COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
+                mu.created_at, mu.last_login_at,
+                eu.status, eu.last_seen_at,
                 COUNT(DISTINCT a.id)::int AS appointment_count,
                 COUNT(DISTINCT t.id)::int AS ticket_count
          FROM moveadvisor_users mu
@@ -70,8 +73,11 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
   try {
     const [user, appointments, tickets, leads] = await Promise.all([
       query(
-        `SELECT mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
-                eu.phone, eu.status, eu.last_seen_at
+        `SELECT mu.id, mu.email, mu.name,
+                COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
+                COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
+                mu.created_at, mu.last_login_at,
+                eu.status, eu.last_seen_at
          FROM moveadvisor_users mu
          LEFT JOIN erp_users eu ON eu.email = mu.email
          WHERE mu.id = $1`,

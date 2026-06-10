@@ -15,6 +15,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  apellidos?: string;
   phone?: string;
   status: UserStatus;
   plan_type: PlanType;

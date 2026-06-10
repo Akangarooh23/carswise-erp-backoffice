@@ -67,7 +67,7 @@ export default function UserDetailPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={user.name || user.email}
+        title={[user.name, user.apellidos].filter(Boolean).join(' ') || user.email}
         subtitle={user.email}
         actions={
           <Link to="/users" className="text-sm text-slate-500 hover:text-slate-700">← Volver</Link>
@@ -77,16 +77,27 @@ export default function UserDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Profile card */}
         <Card>
-          <h3 className="font-semibold text-slate-800 text-sm mb-4">Perfil</h3>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between"><dt className="text-slate-500">Estado</dt><dd><StatusBadge status={user.status} /></dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Plan</dt><dd><StatusBadge status={user.plan_type} /></dd></div>
+          <h3 className="font-semibold text-slate-800 text-sm mb-3">Perfil</h3>
+
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Datos personales</p>
+          <dl className="space-y-2.5 text-sm mb-4">
+            <div className="flex justify-between"><dt className="text-slate-500">Nombre</dt><dd className="text-slate-700 font-medium">{user.name || '–'}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-500">Apellidos</dt><dd className="text-slate-700">{user.apellidos || '–'}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd className="text-slate-700 text-xs">{user.email}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Teléfono</dt><dd className="text-slate-700">{user.phone || '–'}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Registro</dt><dd className="text-slate-700">{fmtDate(user.created_at)}</dd></div>
-            {user.trial_end && (
-              <div className="flex justify-between"><dt className="text-slate-500">Trial hasta</dt><dd className="text-slate-700">{fmtDate(user.trial_end)}</dd></div>
-            )}
           </dl>
+
+          <div className="border-t border-slate-100 pt-3 mb-1">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Cuenta</p>
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between"><dt className="text-slate-500">Estado</dt><dd><StatusBadge status={user.status} /></dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Plan</dt><dd><StatusBadge status={user.plan_type} /></dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Registro</dt><dd className="text-slate-700">{fmtDate(user.created_at)}</dd></div>
+              {user.trial_end && (
+                <div className="flex justify-between"><dt className="text-slate-500">Trial hasta</dt><dd className="text-slate-700">{fmtDate(user.trial_end)}</dd></div>
+              )}
+            </dl>
+          </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
             <div>
