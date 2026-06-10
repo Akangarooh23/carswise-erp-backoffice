@@ -417,7 +417,7 @@ export default function FunnelPage() {
                     {daily.map((row) => (
                       <tr key={row.day}>
                         <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
-                          {new Date(row.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+                          {new Date(String(row.day).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
                         </td>
                         <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
                         <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
