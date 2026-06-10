@@ -242,3 +242,93 @@ funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']),
     res.status(500).json({ ok: false, error: 'funnel_daily_failed', detail: (err as Error).message });
   }
 });
+
+const ENSURE_OUTREACH_TABLE = `
+  CREATE TABLE IF NOT EXISTS funnel_outreach (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    anon_id     TEXT NOT NULL UNIQUE,
+    user_email  TEXT,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    notes       TEXT,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
+funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
+  const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+
+  try {
+    await query(ENSURE_OUTREACH_TABLE, []).catch(() => {});
+
+    const result = await query(
+      `SELECT
+         fe.anon_id,
+         MAX(fe.user_email)   AS user_email,
+         MAX(fe.utm_source)   AS utm_source,
+         MAX(fe.utm_campaign) AS utm_campaign,
+         MIN(fe.created_at)   AS first_seen,
+         MAX(fe.created_at)   AS last_seen,
+         array_agg(DISTINCT fe.offer_title)
+           FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
+           AS offers_viewed,
+         COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,
+         COALESCE(fo.status, 'pending') AS outreach_status,
+         fo.notes                       AS outreach_notes,
+         fo.updated_at                  AS outreach_updated_at
+       FROM moveadvisor_funnel_events fe
+       LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
+       WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
+       GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
+       HAVING BOOL_OR(fe.event_type = 'offer_view')    = true
+          AND BOOL_OR(fe.event_type = 'lead_request')  = false
+       ORDER BY
+         CASE COALESCE(fo.status, 'pending')
+           WHEN 'pending'      THEN 0
+           WHEN 'no_answer'    THEN 1
+           WHEN 'called'       THEN 2
+           WHEN 'not_interested' THEN 3
+           ELSE 4
+         END,
+         MAX(fe.created_at) DESC
+       LIMIT 500`,
+      [days]
+    );
+
+    const rows = result.rows as { outreach_status: string }[];
+    const stats = {
+      pending:        rows.filter((r) => r.outreach_status === 'pending').length,
+      no_answer:      rows.filter((r) => r.outreach_status === 'no_answer').length,
+      resolved:       rows.filter((r) => ['called', 'not_interested'].includes(r.outreach_status)).length,
+    };
+
+    res.json({ ok: true, data: rows, stats });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'callqueue_failed', detail: (err as Error).message });
+  }
+});
+
+funnelRouter.post('/funnel/outreach', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
+  const { anon_id, user_email, status, notes } = req.body ?? {};
+  const allowed = ['pending', 'called', 'no_answer', 'not_interested'];
+  if (!anon_id || !allowed.includes(status)) {
+    res.status(400).json({ ok: false, error: 'invalid_params' });
+    return;
+  }
+
+  try {
+    await query(ENSURE_OUTREACH_TABLE, []).catch(() => {});
+    await query(
+      `INSERT INTO funnel_outreach (anon_id, user_email, status, notes, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (anon_id) DO UPDATE
+         SET status     = EXCLUDED.status,
+             notes      = COALESCE(EXCLUDED.notes, funnel_outreach.notes),
+             user_email = COALESCE(EXCLUDED.user_email, funnel_outreach.user_email),
+             updated_at = NOW()`,
+      [anon_id, user_email ?? null, status, notes ?? null]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'outreach_save_failed', detail: (err as Error).message });
+  }
+});
