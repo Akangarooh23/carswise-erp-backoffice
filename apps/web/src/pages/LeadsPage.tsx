@@ -78,7 +78,7 @@ interface FunnelEventDetail {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_LABELS: Record<string, string> = {
-  landing:          'Visita',
+  landing:          'Acceso',
   marketplace_view: 'Marketplace',
   offer_view:       'Oferta vista',
   register:         'Registro',

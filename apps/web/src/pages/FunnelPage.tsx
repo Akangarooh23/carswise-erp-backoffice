@@ -93,7 +93,7 @@ interface FunnelSession {
 }
 
 const EVENT_LABELS: Record<string, string> = {
-  landing:          'Visita',
+  landing:          'Acceso',
   marketplace_view: 'Marketplace',
   offer_view:       'Oferta vista',
   register:         'Registro',
@@ -410,7 +410,7 @@ export default function FunnelPage() {
                   <thead>
                     <tr>
                       <th className="w-28">Día</th>
-                      <th className="text-right w-20">Visitas</th>
+                      <th className="text-right w-20">Accesos</th>
                       <th className="text-right w-24">Marketplace</th>
                       <th className="text-right w-24">Ofertas</th>
                       <th className="text-right w-24">Registros</th>
