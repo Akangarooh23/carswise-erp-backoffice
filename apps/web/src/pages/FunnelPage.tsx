@@ -1,7 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
+
+function escapeCsv(val: unknown): string {
+  const s = val === null || val === undefined ? '' : String(val);
+  if (s.includes(';') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: string[][]) {
+  const bom = '﻿'; // UTF-8 BOM so Excel reads accents correctly
+  const lines = [
+    headers.join(';'),
+    ...rows.map((r) => r.join(';')),
+  ].join('\r\n');
+  const blob = new Blob([bom + lines], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 interface FunnelStep {
   step: string;
@@ -110,6 +133,7 @@ export default function FunnelPage() {
   const [sessLoading, setSessLoading]   = useState(false);
   const [loading, setLoading]           = useState(true);
   const [evtLoading, setEvtLoading]     = useState(false);
+  const [exporting, setExporting]       = useState<'sessions' | 'events' | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -149,6 +173,59 @@ export default function FunnelPage() {
       })
       .finally(() => setSessLoading(false));
   }, [days, sessPage, sessSrc, sessConv, sessQ]);
+
+  const exportSessions = useCallback(async () => {
+    setExporting('sessions');
+    try {
+      const params = new URLSearchParams({ days: String(days), page: '1', limit: '5000' });
+      if (sessSrc)  params.set('source', sessSrc);
+      if (sessConv) params.set('converted', sessConv);
+      if (sessQ)    params.set('q', sessQ);
+      const r = await api.get<FunnelSession[]>(`/funnel/sessions?${params}`);
+      if (!r.ok) return;
+      const headers = ['Email / Sesión', 'Recorrido', 'Fuente', 'Medio', 'Campaña', 'Registrado', 'Lead', 'Primera visita', 'Última visita'];
+      const rows = (r.data as FunnelSession[]).map((s) => [
+        escapeCsv(s.user_email || s.anon_id),
+        escapeCsv((s.events as string[]).map((e) => EVENT_LABELS[e] ?? e).join(' → ')),
+        escapeCsv(s.utm_source),
+        escapeCsv(s.utm_medium),
+        escapeCsv(s.utm_campaign),
+        s.did_register ? 'Sí' : 'No',
+        s.did_lead     ? 'Sí' : 'No',
+        escapeCsv(s.first_seen ? new Date(s.first_seen).toLocaleString('es-ES') : ''),
+        escapeCsv(s.last_seen  ? new Date(s.last_seen).toLocaleString('es-ES')  : ''),
+      ]);
+      downloadCsv(`funnel-sesiones-${days}d.csv`, headers, rows);
+    } finally {
+      setExporting(null);
+    }
+  }, [days, sessSrc, sessConv, sessQ]);
+
+  const exportEvents = useCallback(async () => {
+    setExporting('events');
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '5000' });
+      if (filterType)   params.set('event_type', filterType);
+      if (filterSource) params.set('source', filterSource);
+      if (filterEvtQ)   params.set('q', filterEvtQ);
+      const r = await api.get<FunnelEvent[]>(`/funnel/events?${params}`);
+      if (!r.ok) return;
+      const headers = ['Evento', 'Email', 'Fuente', 'Medio', 'Campaña', 'Oferta', 'URL landing', 'Fecha'];
+      const rows = (r.data as FunnelEvent[]).map((e) => [
+        escapeCsv(EVENT_LABELS[e.event_type] ?? e.event_type),
+        escapeCsv(e.user_email || ''),
+        escapeCsv(e.utm_source),
+        escapeCsv(e.utm_medium),
+        escapeCsv(e.utm_campaign),
+        escapeCsv(e.offer_title || ''),
+        escapeCsv(e.landing_url),
+        escapeCsv(e.created_at ? new Date(e.created_at).toLocaleString('es-ES') : ''),
+      ]);
+      downloadCsv(`funnel-eventos.csv`, headers, rows);
+    } finally {
+      setExporting(null);
+    }
+  }, [filterType, filterSource, filterEvtQ]);
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
@@ -298,6 +375,12 @@ export default function FunnelPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
           </h3>
+          <button
+            onClick={exportSessions}
+            disabled={exporting === 'sessions'}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+            {exporting === 'sessions' ? '…' : '↓'} Exportar Excel
+          </button>
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="text"
@@ -410,6 +493,12 @@ export default function FunnelPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
           </h3>
+          <button
+            onClick={exportEvents}
+            disabled={exporting === 'events'}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+            {exporting === 'events' ? '…' : '↓'} Exportar Excel
+          </button>
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="text"
