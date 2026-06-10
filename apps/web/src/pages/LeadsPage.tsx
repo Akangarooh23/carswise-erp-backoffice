@@ -67,7 +67,30 @@ interface CallQueueStats {
   resolved: number;
 }
 
+interface FunnelEventDetail {
+  id: string;
+  event_type: string;
+  offer_title: string | null;
+  utm_source: string;
+  created_at: string;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const EVENT_LABELS: Record<string, string> = {
+  landing:          'Visita',
+  marketplace_view: 'Marketplace',
+  offer_view:       'Oferta vista',
+  register:         'Registro',
+  lead_request:     'Solicitud',
+};
+const EVENT_COLORS: Record<string, string> = {
+  landing:          'bg-slate-100 text-slate-600',
+  marketplace_view: 'bg-blue-50 text-blue-700',
+  offer_view:       'bg-violet-50 text-violet-700',
+  register:         'bg-emerald-50 text-emerald-700',
+  lead_request:     'bg-amber-50 text-amber-700',
+};
 
 const TYPE_LABELS: Record<string, string> = {
   info:     'Solicitar info',
@@ -153,9 +176,12 @@ export default function LeadsPage() {
   const [callLoading, setCallLoading]     = useState(false);
   const [callDays, setCallDays]           = useState(30);
   const [showResolved, setShowResolved]   = useState(false);
-  const [expandedAnon, setExpandedAnon]   = useState<string | null>(null);
-  const [noteText, setNoteText]           = useState('');
-  const [actionSaving, setActionSaving]   = useState(false);
+  const [expandedAnon, setExpandedAnon]     = useState<string | null>(null);
+  const [noteText, setNoteText]             = useState('');
+  const [actionSaving, setActionSaving]     = useState(false);
+  const [expandedInfoAnon, setExpandedInfoAnon] = useState<string | null>(null);
+  const [anonEvents, setAnonEvents]             = useState<Record<string, FunnelEventDetail[]>>({});
+  const [eventsLoading, setEventsLoading]       = useState<string | null>(null);
 
   const limit = 50;
 
@@ -255,6 +281,19 @@ export default function LeadsPage() {
       setNoteText('');
     }
     setActionSaving(false);
+  }
+
+  async function toggleInfoExpand(item: CallQueueItem) {
+    const anonId = item.anon_id;
+    if (expandedInfoAnon === anonId) { setExpandedInfoAnon(null); return; }
+    setExpandedInfoAnon(anonId);
+    if (anonEvents[anonId]) return;
+    setEventsLoading(anonId);
+    const r = await api.get<FunnelEventDetail[]>(
+      `/funnel/events?anon_id=${encodeURIComponent(anonId)}&limit=30&days=90`
+    );
+    if (r.ok) setAnonEvents((prev) => ({ ...prev, [anonId]: r.data as unknown as FunnelEventDetail[] }));
+    setEventsLoading(null);
   }
 
   function startCallAction(anonId: string, existingNotes: string | null) {
@@ -475,11 +514,14 @@ export default function LeadsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {visibleQueue.map((item) => {
-                    const isExpanded = expandedAnon === item.anon_id;
-                    const isResolved = item.outreach_status === 'called' || item.outreach_status === 'not_interested';
+                    const isExpanded     = expandedAnon === item.anon_id;
+                    const isInfoExpanded = expandedInfoAnon === item.anon_id;
+                    const isResolved     = item.outreach_status === 'called' || item.outreach_status === 'not_interested';
                     return (
                       <>
-                        <tr key={item.anon_id} className={`${isResolved ? 'opacity-50' : ''} hover:bg-slate-50 transition-colors`}>
+                        <tr key={item.anon_id}
+                          onClick={() => toggleInfoExpand(item)}
+                          className={`${isResolved ? 'opacity-50' : ''} hover:bg-slate-50 transition-colors cursor-pointer`}>
                           {/* Contacto */}
                           <td className="px-4 py-3">
                             {item.user_email ? (
@@ -520,7 +562,7 @@ export default function LeadsPage() {
                             </span>
                           </td>
                           {/* Acciones */}
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             {isResolved ? (
                               <button
                                 onClick={() => doOutreach(item.anon_id, item.user_email, 'pending')}
@@ -556,6 +598,80 @@ export default function LeadsPage() {
                             )}
                           </td>
                         </tr>
+                        {/* Expanded info row — contact details + event timeline */}
+                        {isInfoExpanded && (
+                          <tr key={`${item.anon_id}-info`}>
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50 border-b border-slate-200">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Left: contact + offers */}
+                                <div>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Datos del contacto</p>
+                                  <dl className="space-y-1.5">
+                                    <div className="flex gap-2 text-xs">
+                                      <dt className="text-slate-400 w-24 shrink-0">Email</dt>
+                                      <dd className="text-slate-700 font-medium break-all">{item.user_email ?? <span className="font-mono text-slate-400">{item.anon_id}</span>}</dd>
+                                    </div>
+                                    <div className="flex gap-2 text-xs">
+                                      <dt className="text-slate-400 w-24 shrink-0">Primera visita</dt>
+                                      <dd className="text-slate-600">{fmtDateTime(item.first_seen)}</dd>
+                                    </div>
+                                    <div className="flex gap-2 text-xs">
+                                      <dt className="text-slate-400 w-24 shrink-0">Última visita</dt>
+                                      <dd className="text-slate-600">{fmtDateTime(item.last_seen)}</dd>
+                                    </div>
+                                    <div className="flex gap-2 text-xs">
+                                      <dt className="text-slate-400 w-24 shrink-0">Fuente</dt>
+                                      <dd className="text-slate-600">{item.utm_source || '–'}</dd>
+                                    </div>
+                                    {item.utm_campaign && (
+                                      <div className="flex gap-2 text-xs">
+                                        <dt className="text-slate-400 w-24 shrink-0">Campaña</dt>
+                                        <dd className="text-slate-600">{item.utm_campaign}</dd>
+                                      </div>
+                                    )}
+                                  </dl>
+                                  {item.offers_viewed?.length > 0 && (
+                                    <div className="mt-3">
+                                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Oferta(s) de interés</p>
+                                      <div className="space-y-1">
+                                        {item.offers_viewed.map((o, i) => (
+                                          <div key={i} className="flex items-center gap-2 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5">
+                                            🚗 {o}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Right: event timeline */}
+                                <div>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Actividad en la visita</p>
+                                  {eventsLoading === item.anon_id ? (
+                                    <p className="text-slate-400 text-xs">Cargando…</p>
+                                  ) : (anonEvents[item.anon_id] ?? []).length === 0 ? (
+                                    <p className="text-slate-400 text-xs italic">Sin eventos detallados registrados</p>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      {(anonEvents[item.anon_id] ?? []).map((ev) => (
+                                        <div key={ev.id} className="flex items-start gap-2">
+                                          <span className="text-[10px] text-slate-400 whitespace-nowrap mt-0.5 w-10 shrink-0">
+                                            {ev.created_at ? new Date(ev.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                          </span>
+                                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${EVENT_COLORS[ev.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                                            {EVENT_LABELS[ev.event_type] ?? ev.event_type}
+                                          </span>
+                                          {ev.offer_title && (
+                                            <span className="text-xs text-slate-500 truncate max-w-[180px]">{ev.offer_title}</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         {/* Expanded notes row */}
                         {isExpanded && (
                           <tr key={`${item.anon_id}-expand`} className="bg-emerald-50">
