@@ -131,6 +131,12 @@ const OUTREACH_LABELS: Record<string, string> = {
   not_interested: 'Descartado',
 };
 
+function getModalidad(portal: string | undefined): { label: string; color: string } | null {
+  if (!portal || !portal.startsWith('marketplace-vo')) return null;
+  if (portal === 'marketplace-vo-renting') return { label: 'Renting', color: 'bg-emerald-100 text-emerald-700' };
+  return { label: 'Compra', color: 'bg-blue-100 text-blue-700' };
+}
+
 function formatOrigen(portal: string | undefined): { label: string; color: string } {
   if (!portal) return { label: '–', color: 'bg-slate-100 text-slate-500' };
   if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-blue-100 text-blue-700' };
@@ -395,7 +401,7 @@ export default function LeadsPage() {
                 <table className="erp-table">
                   <thead>
                     <tr>
-                      <th>Fecha</th><th>Origen</th><th>Tipo</th><th>Contacto</th><th>Vehículo</th><th>Cuándo</th><th>Estado</th>
+                      <th>Fecha</th><th>Origen</th><th>Modalidad</th><th>Tipo</th><th>Contacto</th><th>Vehículo</th><th>Cuándo</th><th>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -408,6 +414,12 @@ export default function LeadsPage() {
                           {(() => { const o = formatOrigen(lead.meta?.portal); return (
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${o.color}`}>{o.label}</span>
                           ); })()}
+                        </td>
+                        <td>
+                          {(() => { const m = getModalidad(lead.meta?.portal); return m
+                            ? <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>{m.label}</span>
+                            : <span className="text-slate-300 text-xs">–</span>;
+                          })()}
                         </td>
                         <td>
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>
