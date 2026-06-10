@@ -761,7 +761,13 @@ export default function FunnelPage() {
                     </td>
                     <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
                     <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
-                    <td className="text-xs text-slate-500 max-w-[160px] truncate">{e.offer_title || <span className="text-slate-300">–</span>}</td>
+                    <td className="text-xs text-slate-500 max-w-[160px] truncate">
+                      {e.offer_title
+                        ? e.landing_url
+                          ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
+                          : e.offer_title
+                        : <span className="text-slate-300">–</span>}
+                    </td>
                     <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
                   </tr>
                 ))}
