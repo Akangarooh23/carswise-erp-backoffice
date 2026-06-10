@@ -38,9 +38,9 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
       query(
         `SELECT
            NULLIF(utm_source, '') AS source,
-           COUNT(*)::int AS sessions,
-           COUNT(*) FILTER (WHERE event_type = 'register')::int AS registers,
-           COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
+           COUNT(DISTINCT anon_id)::int AS sessions,
+           COUNT(DISTINCT anon_id) FILTER (WHERE event_type = 'register')::int AS registers,
+           COUNT(DISTINCT anon_id) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
          WHERE ${tf.condition}
            AND utm_source <> ''
@@ -55,9 +55,9 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
            NULLIF(utm_campaign, '') AS campaign,
            NULLIF(utm_medium, '')   AS medium,
            NULLIF(utm_source, '')   AS source,
-           COUNT(*)::int AS sessions,
-           COUNT(*) FILTER (WHERE event_type = 'register')::int AS registers,
-           COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
+           COUNT(DISTINCT anon_id)::int AS sessions,
+           COUNT(DISTINCT anon_id) FILTER (WHERE event_type = 'register')::int AS registers,
+           COUNT(DISTINCT anon_id) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
          WHERE ${tf.condition}
            AND utm_campaign <> ''
