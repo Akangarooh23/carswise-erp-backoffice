@@ -4,21 +4,37 @@ import { requireRole } from '../middleware/auth.js';
 
 export const funnelRouter = Router();
 
+// Returns { condition, value } for time filtering.
+// If `date` (YYYY-MM-DD) is given, filter that exact calendar day.
+// Otherwise filter the last `days` days.
+function timeFilter(date: string, days: number): { condition: string; value: unknown } {
+  if (date) {
+    return {
+      condition: `DATE(created_at AT TIME ZONE 'Europe/Madrid') = $1`,
+      value: date,
+    };
+  }
+  return {
+    condition: `created_at >= NOW() - ($1 || ' days')::interval`,
+    value: days,
+  };
+}
+
 funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
   const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const date = String(req.query.date || '').trim();
+  const tf   = timeFilter(date, days);
 
   try {
     const [funnelCounts, utmSources, utmCampaigns, topOffers] = await Promise.all([
-      // Events per type in the selected period
       query(
         `SELECT event_type, COUNT(*)::int AS total
          FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         WHERE ${tf.condition}
          GROUP BY event_type`,
-        [days]
+        [tf.value]
       ).catch(() => ({ rows: [] })),
 
-      // UTM source breakdown
       query(
         `SELECT
            NULLIF(utm_source, '') AS source,
@@ -26,15 +42,14 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
            COUNT(*) FILTER (WHERE event_type = 'register')::int AS registers,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         WHERE ${tf.condition}
            AND utm_source <> ''
          GROUP BY utm_source
          ORDER BY sessions DESC
          LIMIT 20`,
-        [days]
+        [tf.value]
       ).catch(() => ({ rows: [] })),
 
-      // Campaign breakdown
       query(
         `SELECT
            NULLIF(utm_campaign, '') AS campaign,
@@ -44,27 +59,26 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
            COUNT(*) FILTER (WHERE event_type = 'register')::int AS registers,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         WHERE ${tf.condition}
            AND utm_campaign <> ''
          GROUP BY utm_campaign, utm_medium, utm_source
          ORDER BY sessions DESC
          LIMIT 20`,
-        [days]
+        [tf.value]
       ).catch(() => ({ rows: [] })),
 
-      // Top viewed offers
       query(
         `SELECT offer_id, offer_title,
            COUNT(*)::int AS views,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         WHERE ${tf.condition}
            AND offer_id IS NOT NULL
            AND event_type IN ('offer_view', 'lead_request')
          GROUP BY offer_id, offer_title
          ORDER BY views DESC
          LIMIT 10`,
-        [days]
+        [tf.value]
       ).catch(() => ({ rows: [] })),
     ]);
 
@@ -81,16 +95,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
       { step: 'lead_request',     label: 'Solicitudes',        count: countMap['lead_request']     ?? 0 },
     ];
 
-    res.json({
-      ok: true,
-      data: {
-        days,
-        funnel,
-        utmSources:   utmSources.rows,
-        utmCampaigns: utmCampaigns.rows,
-        topOffers:    topOffers.rows,
-      },
-    });
+    res.json({ ok: true, data: { days, date, funnel, utmSources: utmSources.rows, utmCampaigns: utmCampaigns.rows, topOffers: topOffers.rows } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'funnel_stats_failed', detail: (err as Error).message });
   }
@@ -100,13 +105,15 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   const page      = Math.max(1, Number(req.query.page) || 1);
   const limit     = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset    = (page - 1) * limit;
-  const days      = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+  const days      = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const date      = String(req.query.date      || '').trim();
   const source    = String(req.query.source    || '').trim();
-  const converted = String(req.query.converted || '').trim(); // 'register' | 'lead' | 'none' | ''
+  const converted = String(req.query.converted || '').trim();
   const q         = String(req.query.q         || '').trim();
+  const tf        = timeFilter(date, days);
 
-  const whereConditions = [`created_at >= NOW() - ($1 || ' days')::interval`];
-  const values: unknown[] = [days];
+  const whereConditions = [tf.condition];
+  const values: unknown[] = [tf.value];
 
   if (source) {
     values.push(source);
@@ -129,73 +136,52 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   try {
     const [rows, countResult] = await Promise.all([
       query(
-        `SELECT
-           anon_id,
-           MAX(user_email) AS user_email,
-           MIN(created_at) AS first_seen,
-           MAX(created_at) AS last_seen,
-           MAX(utm_source)   AS utm_source,
-           MAX(utm_medium)   AS utm_medium,
-           MAX(utm_campaign) AS utm_campaign,
+        `SELECT anon_id, MAX(user_email) AS user_email,
+           MIN(created_at) AS first_seen, MAX(created_at) AS last_seen,
+           MAX(utm_source) AS utm_source, MAX(utm_medium) AS utm_medium, MAX(utm_campaign) AS utm_campaign,
            COUNT(*)::int AS event_count,
            array_agg(event_type ORDER BY created_at) AS events,
-           BOOL_OR(event_type = 'register')     AS did_register,
+           BOOL_OR(event_type = 'register') AS did_register,
            BOOL_OR(event_type = 'lead_request') AS did_lead
          FROM moveadvisor_funnel_events
-         ${where}
-         GROUP BY anon_id
-         ${having}
+         ${where} GROUP BY anon_id ${having}
          ORDER BY first_seen DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),
       query(
         `SELECT COUNT(*) AS total FROM (
-           SELECT anon_id
-           FROM moveadvisor_funnel_events
-           ${where}
-           GROUP BY anon_id
-           ${having}
+           SELECT anon_id FROM moveadvisor_funnel_events ${where} GROUP BY anon_id ${having}
          ) sub`,
         values
       ),
     ]);
 
-    res.json({
-      ok: true,
-      data: rows.rows,
-      meta: { total: Number(countResult.rows[0].total), page, limit },
-    });
+    res.json({ ok: true, data: rows.rows, meta: { total: Number(countResult.rows[0].total), page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'funnel_sessions_failed', detail: (err as Error).message });
   }
 });
 
 funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
-  const page  = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
-  const offset = (page - 1) * limit;
+  const page      = Math.max(1, Number(req.query.page) || 1);
+  const limit     = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset    = (page - 1) * limit;
+  const days      = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const date      = String(req.query.date      || '').trim();
   const eventType = String(req.query.event_type || '').trim();
   const source    = String(req.query.source    || '').trim();
   const q         = String(req.query.q         || '').trim();
+  const tf        = timeFilter(date, days);
 
-  const conditions: string[] = [];
-  const values: unknown[] = [];
+  const conditions: string[] = [tf.condition];
+  const values: unknown[]    = [tf.value];
 
-  if (eventType) {
-    values.push(eventType);
-    conditions.push(`event_type = $${values.length}`);
-  }
-  if (source) {
-    values.push(source);
-    conditions.push(`utm_source = $${values.length}`);
-  }
-  if (q) {
-    values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`);
-  }
+  if (eventType) { values.push(eventType); conditions.push(`event_type = $${values.length}`); }
+  if (source)    { values.push(source);    conditions.push(`utm_source = $${values.length}`); }
+  if (q)         { values.push(`%${q.toLowerCase()}%`); conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`); }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const where = `WHERE ${conditions.join(' AND ')}`;
 
   try {
     const [rows, countResult] = await Promise.all([
@@ -203,23 +189,15 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
         `SELECT id, anon_id, user_email, event_type,
                 utm_source, utm_medium, utm_campaign,
                 offer_title, landing_url, created_at
-         FROM moveadvisor_funnel_events
-         ${where}
+         FROM moveadvisor_funnel_events ${where}
          ORDER BY created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),
-      query(
-        `SELECT COUNT(*)::int AS total FROM moveadvisor_funnel_events ${where}`,
-        values
-      ),
+      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_funnel_events ${where}`, values),
     ]);
 
-    res.json({
-      ok: true,
-      data: rows.rows,
-      meta: { total: countResult.rows[0].total, page, limit },
-    });
+    res.json({ ok: true, data: rows.rows, meta: { total: countResult.rows[0].total, page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'funnel_events_failed', detail: (err as Error).message });
   }
@@ -227,10 +205,12 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
 
 funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
   const days      = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const date      = String(req.query.date || '').trim();
   const userEmail = String(req.query.user || '').trim().toLowerCase();
+  const tf        = timeFilter(date, days);
 
-  const conditions = [`created_at >= NOW() - ($1 || ' days')::interval`];
-  const values: unknown[] = [days];
+  const conditions = [tf.condition];
+  const values: unknown[] = [tf.value];
 
   if (userEmail) {
     values.push(`%${userEmail}%`);

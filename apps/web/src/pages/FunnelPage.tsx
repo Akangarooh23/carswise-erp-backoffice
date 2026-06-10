@@ -26,6 +26,12 @@ function downloadCsv(filename: string, headers: string[], rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
+function getLocalDate(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
+
 interface FunnelStep {
   step: string;
   label: string;
@@ -121,11 +127,37 @@ function fmtDate(s: string) {
   return s ? new Date(s).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
 }
 
-const DAYS_OPTIONS = [1, 7, 14, 30, 60, 90];
-const DAYS_LABELS: Record<number, string> = { 1: 'Hoy', 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
+const DATE_SHORTCUTS = [
+  { label: 'Hoy',       daysAgo: 0 },
+  { label: 'Ayer',      daysAgo: 1 },
+  { label: 'Anteayer',  daysAgo: 2 },
+];
+const DAYS_OPTIONS = [7, 14, 30, 60, 90];
+const DAYS_LABELS: Record<number, string> = { 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
+
+function buildTimeParams(selectedDate: string, days: number): URLSearchParams {
+  const p = new URLSearchParams();
+  if (selectedDate) p.set('date', selectedDate);
+  else              p.set('days', String(days));
+  return p;
+}
+
+function periodLabel(selectedDate: string, days: number): string {
+  if (selectedDate) {
+    const today     = getLocalDate(0);
+    const yesterday = getLocalDate(1);
+    const dayBefore = getLocalDate(2);
+    if (selectedDate === today)     return 'hoy';
+    if (selectedDate === yesterday) return 'ayer';
+    if (selectedDate === dayBefore) return 'anteayer';
+    return selectedDate;
+  }
+  return `últimos ${DAYS_LABELS[days] ?? `${days}d`}`;
+}
 
 export default function FunnelPage() {
-  const [days, setDays]       = useState(30);
+  const [days, setDays]             = useState(30);
+  const [selectedDate, setSelectedDate] = useState('');
   // Global user filter (applies to sessions, events and daily)
   const [globalUser, setGlobalUser] = useState('');
   const [stats, setStats]     = useState<FunnelStats | null>(null);
@@ -153,14 +185,17 @@ export default function FunnelPage() {
 
   useEffect(() => {
     setLoading(true);
-    api.get<FunnelStats>(`/funnel/stats?days=${days}`)
+    const params = buildTimeParams(selectedDate, days);
+    api.get<FunnelStats>(`/funnel/stats?${params}`)
       .then((r) => { if (r.ok) setStats(r.data); })
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, selectedDate]);
 
   useEffect(() => {
     setEvtLoading(true);
-    const params = new URLSearchParams({ page: String(evtPage), limit: '50' });
+    const params = buildTimeParams(selectedDate, days);
+    params.set('page', String(evtPage));
+    params.set('limit', '50');
     if (filterType)   params.set('event_type', filterType);
     if (filterSource) params.set('source', filterSource);
     const evtQ = filterEvtQ || globalUser;
@@ -173,11 +208,13 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setEvtLoading(false));
-  }, [evtPage, filterType, filterSource, filterEvtQ, globalUser]);
+  }, [evtPage, filterType, filterSource, filterEvtQ, globalUser, days, selectedDate]);
 
   useEffect(() => {
     setSessLoading(true);
-    const params = new URLSearchParams({ days: String(days), page: String(sessPage), limit: '50' });
+    const params = buildTimeParams(selectedDate, days);
+    params.set('page', String(sessPage));
+    params.set('limit', '50');
     if (sessSrc)  params.set('source', sessSrc);
     if (sessConv) params.set('converted', sessConv);
     const sQ = sessQ || globalUser;
@@ -190,21 +227,23 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setSessLoading(false));
-  }, [days, sessPage, sessSrc, sessConv, sessQ, globalUser]);
+  }, [days, selectedDate, sessPage, sessSrc, sessConv, sessQ, globalUser]);
 
   useEffect(() => {
     setDailyLoading(true);
-    const params = new URLSearchParams({ days: String(days) });
+    const params = buildTimeParams(selectedDate, days);
     if (globalUser) params.set('user', globalUser);
     api.get<DailyRow[]>(`/funnel/daily?${params}`)
       .then((r) => { if (r.ok) setDaily(r.data); })
       .finally(() => setDailyLoading(false));
-  }, [days, globalUser]);
+  }, [days, selectedDate, globalUser]);
 
   const exportSessions = useCallback(async () => {
     setExporting('sessions');
     try {
-      const params = new URLSearchParams({ days: String(days), page: '1', limit: '5000' });
+      const params = buildTimeParams(selectedDate, days);
+      params.set('page', '1');
+      params.set('limit', '5000');
       if (sessSrc)  params.set('source', sessSrc);
       if (sessConv) params.set('converted', sessConv);
       if (sessQ)    params.set('q', sessQ);
@@ -222,16 +261,19 @@ export default function FunnelPage() {
         escapeCsv(s.first_seen ? new Date(s.first_seen).toLocaleString('es-ES') : ''),
         escapeCsv(s.last_seen  ? new Date(s.last_seen).toLocaleString('es-ES')  : ''),
       ]);
-      downloadCsv(`funnel-sesiones-${days}d.csv`, headers, rows);
+      const suffix = selectedDate || `${days}d`;
+      downloadCsv(`funnel-sesiones-${suffix}.csv`, headers, rows);
     } finally {
       setExporting(null);
     }
-  }, [days, sessSrc, sessConv, sessQ]);
+  }, [days, selectedDate, sessSrc, sessConv, sessQ]);
 
   const exportEvents = useCallback(async () => {
     setExporting('events');
     try {
-      const params = new URLSearchParams({ page: '1', limit: '5000' });
+      const params = buildTimeParams(selectedDate, days);
+      params.set('page', '1');
+      params.set('limit', '5000');
       if (filterType)   params.set('event_type', filterType);
       if (filterSource) params.set('source', filterSource);
       if (filterEvtQ)   params.set('q', filterEvtQ);
@@ -252,7 +294,7 @@ export default function FunnelPage() {
     } finally {
       setExporting(null);
     }
-  }, [filterType, filterSource, filterEvtQ]);
+  }, [days, selectedDate, filterType, filterSource, filterEvtQ]);
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
@@ -277,11 +319,29 @@ export default function FunnelPage() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {/* Specific day shortcuts */}
+              {DATE_SHORTCUTS.map(({ label, daysAgo }) => {
+                const date = getLocalDate(daysAgo);
+                const active = selectedDate === date;
+                return (
+                  <button key={label}
+                    onClick={() => { setSelectedDate(date); setSessPage(1); setEvtPage(1); }}
+                    className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                      active
+                        ? 'bg-brand-600 border-brand-600 text-white font-medium'
+                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}>
+                    {label}
+                  </button>
+                );
+              })}
+              <span className="text-slate-200 text-xs px-0.5">|</span>
+              {/* Interval buttons */}
               {DAYS_OPTIONS.map((d) => (
                 <button key={d}
-                  onClick={() => setDays(d)}
+                  onClick={() => { setSelectedDate(''); setDays(d); setSessPage(1); setEvtPage(1); }}
                   className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                    days === d
+                    !selectedDate && days === d
                       ? 'bg-brand-600 border-brand-600 text-white font-medium'
                       : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                   }`}>
@@ -302,7 +362,7 @@ export default function FunnelPage() {
           {/* Funnel visual */}
           <Card>
             <h3 className="font-semibold text-slate-800 text-sm mb-4">
-              Embudo de conversión <span className="text-slate-400 font-normal text-xs">· últimos {days} días</span>
+              Embudo de conversión <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
             </h3>
             <div className="space-y-2.5">
               {stats.funnel.map((step, i) => {
@@ -333,7 +393,7 @@ export default function FunnelPage() {
           <Card padding={false}>
             <div className="px-5 py-3 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800 text-sm">
-                Desglose diario <span className="text-slate-400 font-normal text-xs">· {DAYS_LABELS[days] ?? `${days} días`}</span>
+                Desglose diario <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
               </h3>
             </div>
             {dailyLoading ? (
