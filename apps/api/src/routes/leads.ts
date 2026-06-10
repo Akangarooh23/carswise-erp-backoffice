@@ -78,6 +78,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
   const type    = String(req.query.type   || '').trim();
+  const origin  = String(req.query.origin || '').trim(); // 'marketplace-vo-compra', 'marketplace-vo-renting', 'portales'
   const page    = Math.max(1, Number(req.query.page) || 1);
   const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
@@ -87,6 +88,11 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
 
   if (status) { values.push(status); conditions.push(`status = $${values.length}`); }
   if (type)   { values.push(type);   conditions.push(`lead_type = $${values.length}`); }
+  if (origin === 'portales') {
+    conditions.push(`portal NOT LIKE 'marketplace-vo%' AND portal <> ''`);
+  } else if (origin) {
+    values.push(origin); conditions.push(`portal = $${values.length}`);
+  }
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
     conditions.push(`(lower(user_email) LIKE $${values.length} OR lower(vehicle_title) LIKE $${values.length} OR lower(contact_name) LIKE $${values.length})`);

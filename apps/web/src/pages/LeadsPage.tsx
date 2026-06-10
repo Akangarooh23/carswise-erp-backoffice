@@ -108,6 +108,15 @@ const OUTREACH_LABELS: Record<string, string> = {
   not_interested: 'Descartado',
 };
 
+function formatOrigen(portal: string | undefined): { label: string; color: string } {
+  if (!portal) return { label: '–', color: 'bg-slate-100 text-slate-500' };
+  if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-blue-100 text-blue-700' };
+  if (portal === 'marketplace-vo-renting') return { label: 'Marketplace · Renting', color: 'bg-emerald-100 text-emerald-700' };
+  if (portal.startsWith('marketplace-vo')) return { label: 'Marketplace VO',        color: 'bg-blue-50 text-blue-600' };
+  const name = portal.charAt(0).toUpperCase() + portal.slice(1);
+  return { label: `Portal: ${name}`, color: 'bg-violet-100 text-violet-700' };
+}
+
 function fmtDateTime(s: string) {
   return s ? new Date(s).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
 }
@@ -126,6 +135,7 @@ export default function LeadsPage() {
   const [q, setQ]                       = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType]     = useState('');
+  const [filterOrigin, setFilterOrigin] = useState('');
   const [selected, setSelected]         = useState<Lead | null>(null);
   const [editStatus, setEditStatus]     = useState('');
   const [editNotes, setEditNotes]       = useState('');
@@ -156,6 +166,7 @@ export default function LeadsPage() {
     if (q)            params.set('q', q);
     if (filterStatus) params.set('status', filterStatus);
     if (filterType)   params.set('type', filterType);
+    if (filterOrigin) params.set('origin', filterOrigin);
     const [res, statsRes] = await Promise.all([
       api.get<{ data: Lead[]; meta: { total: number } }>(`/leads?${params}`),
       api.get<{ data: LeadStats }>('/leads/stats'),
@@ -166,7 +177,7 @@ export default function LeadsPage() {
     }
     if (statsRes.ok && statsRes.data) setLeadStats(statsRes.data as unknown as LeadStats);
     setLoading(false);
-  }, [page, q, filterStatus, filterType]);
+  }, [page, q, filterStatus, filterType, filterOrigin]);
 
   useEffect(() => { loadLeads(); }, [loadLeads]);
 
@@ -326,6 +337,13 @@ export default function LeadsPage() {
               <option value="visit">Agendar visita</option>
               <option value="question">Preguntar</option>
             </select>
+            <select value={filterOrigin} onChange={(e) => { setFilterOrigin(e.target.value); setPage(1); }}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">Todos los orígenes</option>
+              <option value="marketplace-vo-compra">Marketplace · Compra</option>
+              <option value="marketplace-vo-renting">Marketplace · Renting</option>
+              <option value="portales">Portales externos</option>
+            </select>
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -338,7 +356,7 @@ export default function LeadsPage() {
                 <table className="erp-table">
                   <thead>
                     <tr>
-                      <th>Fecha</th><th>Tipo</th><th>Contacto</th><th>Vehículo</th><th>Cuándo</th><th>Estado</th>
+                      <th>Fecha</th><th>Origen</th><th>Tipo</th><th>Contacto</th><th>Vehículo</th><th>Cuándo</th><th>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -346,6 +364,11 @@ export default function LeadsPage() {
                       <tr key={lead.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openLead(lead)}>
                         <td className="text-slate-500 text-xs whitespace-nowrap">
                           {new Date(lead.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td>
+                          {(() => { const o = formatOrigen(lead.meta?.portal); return (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${o.color}`}>{o.label}</span>
+                          ); })()}
                         </td>
                         <td>
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>
