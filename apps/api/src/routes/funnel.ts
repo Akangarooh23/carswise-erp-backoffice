@@ -5,7 +5,7 @@ import { requireRole } from '../middleware/auth.js';
 export const funnelRouter = Router();
 
 funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
-  const days = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+  const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
 
   try {
     const [funnelCounts, utmSources, utmCampaigns, topOffers] = await Promise.all([
@@ -222,5 +222,41 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'funnel_events_failed', detail: (err as Error).message });
+  }
+});
+
+funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
+  const days      = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const userEmail = String(req.query.user || '').trim().toLowerCase();
+
+  const conditions = [`created_at >= NOW() - ($1 || ' days')::interval`];
+  const values: unknown[] = [days];
+
+  if (userEmail) {
+    values.push(`%${userEmail}%`);
+    conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`);
+  }
+
+  const where = `WHERE ${conditions.join(' AND ')}`;
+
+  try {
+    const result = await query(
+      `SELECT
+         DATE(created_at AT TIME ZONE 'Europe/Madrid') AS day,
+         COUNT(*) FILTER (WHERE event_type = 'landing')::int          AS landings,
+         COUNT(*) FILTER (WHERE event_type = 'marketplace_view')::int AS marketplace_views,
+         COUNT(*) FILTER (WHERE event_type = 'offer_view')::int       AS offer_views,
+         COUNT(*) FILTER (WHERE event_type = 'register')::int         AS registers,
+         COUNT(*) FILTER (WHERE event_type = 'lead_request')::int     AS leads,
+         COUNT(*)::int                                                 AS total
+       FROM moveadvisor_funnel_events
+       ${where}
+       GROUP BY day
+       ORDER BY day DESC`,
+      values
+    );
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'funnel_daily_failed', detail: (err as Error).message });
   }
 });

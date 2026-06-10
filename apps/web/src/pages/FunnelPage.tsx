@@ -103,6 +103,16 @@ const EVENT_COLORS: Record<string, string> = {
 
 const FUNNEL_COLORS = ['bg-slate-400', 'bg-blue-400', 'bg-violet-400', 'bg-emerald-400', 'bg-amber-400'];
 
+interface DailyRow {
+  day: string;
+  landings: number;
+  marketplace_views: number;
+  offer_views: number;
+  registers: number;
+  leads: number;
+  total: number;
+}
+
 function pct(a: number, b: number) {
   if (!b) return '–';
   return `${Math.round((a / b) * 100)}%`;
@@ -111,10 +121,13 @@ function fmtDate(s: string) {
   return s ? new Date(s).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
 }
 
-const DAYS_OPTIONS = [7, 14, 30, 60, 90];
+const DAYS_OPTIONS = [1, 7, 14, 30, 60, 90];
+const DAYS_LABELS: Record<number, string> = { 1: 'Hoy', 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
 
 export default function FunnelPage() {
   const [days, setDays]       = useState(30);
+  // Global user filter (applies to sessions, events and daily)
+  const [globalUser, setGlobalUser] = useState('');
   const [stats, setStats]     = useState<FunnelStats | null>(null);
   const [events, setEvents]   = useState<FunnelEvent[]>([]);
   const [evtTotal, setEvtTotal] = useState(0);
@@ -131,6 +144,9 @@ export default function FunnelPage() {
   const [sessTotal, setSessTotal]       = useState(0);
   const [sessPage, setSessPage]         = useState(1);
   const [sessLoading, setSessLoading]   = useState(false);
+  // Daily breakdown
+  const [daily, setDaily]               = useState<DailyRow[]>([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
   const [loading, setLoading]           = useState(true);
   const [evtLoading, setEvtLoading]     = useState(false);
   const [exporting, setExporting]       = useState<'sessions' | 'events' | null>(null);
@@ -147,7 +163,8 @@ export default function FunnelPage() {
     const params = new URLSearchParams({ page: String(evtPage), limit: '50' });
     if (filterType)   params.set('event_type', filterType);
     if (filterSource) params.set('source', filterSource);
-    if (filterEvtQ)   params.set('q', filterEvtQ);
+    const evtQ = filterEvtQ || globalUser;
+    if (evtQ) params.set('q', evtQ);
     api.get<FunnelEvent[]>(`/funnel/events?${params}`)
       .then((r) => {
         if (r.ok) {
@@ -156,14 +173,15 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setEvtLoading(false));
-  }, [evtPage, filterType, filterSource, filterEvtQ]);
+  }, [evtPage, filterType, filterSource, filterEvtQ, globalUser]);
 
   useEffect(() => {
     setSessLoading(true);
     const params = new URLSearchParams({ days: String(days), page: String(sessPage), limit: '50' });
     if (sessSrc)  params.set('source', sessSrc);
     if (sessConv) params.set('converted', sessConv);
-    if (sessQ)    params.set('q', sessQ);
+    const sQ = sessQ || globalUser;
+    if (sQ) params.set('q', sQ);
     api.get<FunnelSession[]>(`/funnel/sessions?${params}`)
       .then((r) => {
         if (r.ok) {
@@ -172,7 +190,16 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setSessLoading(false));
-  }, [days, sessPage, sessSrc, sessConv, sessQ]);
+  }, [days, sessPage, sessSrc, sessConv, sessQ, globalUser]);
+
+  useEffect(() => {
+    setDailyLoading(true);
+    const params = new URLSearchParams({ days: String(days) });
+    if (globalUser) params.set('user', globalUser);
+    api.get<DailyRow[]>(`/funnel/daily?${params}`)
+      .then((r) => { if (r.ok) setDaily(r.data); })
+      .finally(() => setDailyLoading(false));
+  }, [days, globalUser]);
 
   const exportSessions = useCallback(async () => {
     setExporting('sessions');
@@ -235,18 +262,33 @@ export default function FunnelPage() {
         title="Marketing & Funnel"
         subtitle="Seguimiento del embudo de captación y atribución UTM"
         actions={
-          <div className="flex items-center gap-1.5">
-            {DAYS_OPTIONS.map((d) => (
-              <button key={d}
-                onClick={() => setDays(d)}
-                className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                  days === d
-                    ? 'bg-brand-600 border-brand-600 text-white font-medium'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                }`}>
-                {d}d
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Filtrar por usuario (email)…"
+                value={globalUser}
+                onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+              {globalUser && (
+                <button onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">×</button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {DAYS_OPTIONS.map((d) => (
+                <button key={d}
+                  onClick={() => setDays(d)}
+                  className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                    days === d
+                      ? 'bg-brand-600 border-brand-600 text-white font-medium'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}>
+                  {DAYS_LABELS[d] ?? `${d}d`}
+                </button>
+              ))}
+            </div>
           </div>
         }
       />
@@ -285,6 +327,57 @@ export default function FunnelPage() {
                 );
               })}
             </div>
+          </Card>
+
+          {/* Daily breakdown */}
+          <Card padding={false}>
+            <div className="px-5 py-3 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 text-sm">
+                Desglose diario <span className="text-slate-400 font-normal text-xs">· {DAYS_LABELS[days] ?? `${days} días`}</span>
+              </h3>
+            </div>
+            {dailyLoading ? (
+              <div className="text-slate-400 text-sm text-center py-6">Cargando…</div>
+            ) : daily.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-6">Sin datos aún</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="erp-table w-full">
+                  <thead>
+                    <tr>
+                      <th className="w-28">Día</th>
+                      <th className="text-right w-20">Visitas</th>
+                      <th className="text-right w-24">Marketplace</th>
+                      <th className="text-right w-24">Ofertas</th>
+                      <th className="text-right w-24">Registros</th>
+                      <th className="text-right w-24">Solicitudes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {daily.map((row) => (
+                      <tr key={row.day}>
+                        <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                          {new Date(row.day + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+                        </td>
+                        <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
+                        <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
+                        <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
+                        <td className="text-right">
+                          {row.registers > 0
+                            ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span>
+                            : <span className="text-slate-300 text-sm">–</span>}
+                        </td>
+                        <td className="text-right">
+                          {row.leads > 0
+                            ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span>
+                            : <span className="text-slate-300 text-sm">–</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
