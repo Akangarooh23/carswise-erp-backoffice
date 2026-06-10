@@ -96,6 +96,52 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
   }
 });
 
+funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
+  const page   = Math.max(1, Number(req.query.page) || 1);
+  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
+  const days   = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+
+  try {
+    const [rows, countResult] = await Promise.all([
+      query(
+        `SELECT
+           anon_id,
+           MAX(user_email) AS user_email,
+           MIN(created_at) AS first_seen,
+           MAX(created_at) AS last_seen,
+           MAX(utm_source)   AS utm_source,
+           MAX(utm_medium)   AS utm_medium,
+           MAX(utm_campaign) AS utm_campaign,
+           COUNT(*)::int AS event_count,
+           array_agg(event_type ORDER BY created_at) AS events,
+           BOOL_OR(event_type = 'register')     AS did_register,
+           BOOL_OR(event_type = 'lead_request') AS did_lead
+         FROM moveadvisor_funnel_events
+         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         GROUP BY anon_id
+         ORDER BY first_seen DESC
+         LIMIT $2 OFFSET $3`,
+        [days, limit, offset]
+      ),
+      query(
+        `SELECT COUNT(DISTINCT anon_id)::int AS total
+         FROM moveadvisor_funnel_events
+         WHERE created_at >= NOW() - ($1 || ' days')::interval`,
+        [days]
+      ),
+    ]);
+
+    res.json({
+      ok: true,
+      data: rows.rows,
+      meta: { total: countResult.rows[0].total, page, limit },
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'funnel_sessions_failed', detail: (err as Error).message });
+  }
+});
+
 funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
   const page  = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));

@@ -71,7 +71,7 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
 
 usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
-    const [user, appointments, tickets, leads] = await Promise.all([
+    const [user, appointments, tickets, leads, funnelEvents] = await Promise.all([
       query(
         `SELECT mu.id, mu.email, mu.name,
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
@@ -102,6 +102,14 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
          ORDER BY created_at DESC LIMIT 20`,
         [req.params.id]
       ).catch(() => ({ rows: [] })),
+      query(
+        `SELECT id, event_type, utm_source, utm_medium, utm_campaign,
+                offer_title, landing_url, created_at
+         FROM moveadvisor_funnel_events
+         WHERE user_email = (SELECT email FROM moveadvisor_users WHERE id = $1)
+         ORDER BY created_at DESC LIMIT 30`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] })),
     ]);
 
     if (!user.rows.length) {
@@ -111,7 +119,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
 
     res.json({
       ok: true,
-      data: { ...user.rows[0], appointments: appointments.rows, tickets: tickets.rows, leads: leads.rows },
+      data: { ...user.rows[0], appointments: appointments.rows, tickets: tickets.rows, leads: leads.rows, funnelEvents: funnelEvents.rows },
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'user_get_failed', detail: (err as Error).message });

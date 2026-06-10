@@ -19,11 +19,38 @@ interface LeadRecord {
   created_at: string;
 }
 
+interface FunnelEventRecord {
+  id: string;
+  event_type: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  offer_title: string | null;
+  landing_url: string;
+  created_at: string;
+}
+
 interface UserDetail extends User {
   appointments: Appointment[];
   tickets: Ticket[];
   leads: LeadRecord[];
+  funnelEvents: FunnelEventRecord[];
 }
+
+const FUNNEL_EVENT_LABELS: Record<string, string> = {
+  landing:          'Visita',
+  marketplace_view: 'Marketplace',
+  offer_view:       'Oferta vista',
+  register:         'Registro',
+  lead_request:     'Solicitud',
+};
+const FUNNEL_EVENT_COLORS: Record<string, string> = {
+  landing:          'bg-slate-100 text-slate-500',
+  marketplace_view: 'bg-blue-50 text-blue-700',
+  offer_view:       'bg-violet-50 text-violet-700',
+  register:         'bg-emerald-50 text-emerald-700',
+  lead_request:     'bg-amber-50 text-amber-700',
+};
 
 function fmtDate(s: string) {
   return s ? new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
@@ -226,6 +253,38 @@ export default function UserDetailPage() {
                   <td className="text-sm text-slate-500 capitalize">{t.priority}</td>
                   <td><StatusBadge status={t.status} /></td>
                   <td className="text-xs text-slate-400">{fmtDate(t.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+      </Card>
+
+      {/* Actividad marketing / funnel */}
+      <Card padding={false}>
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-semibold text-slate-800 text-sm">
+            Actividad marketing <span className="text-slate-400 font-normal">({(user.funnelEvents ?? []).length})</span>
+          </h3>
+          <Link to={`/funnel`} className="text-blue-600 text-xs">Ver funnel →</Link>
+        </div>
+        {(user.funnelEvents ?? []).length === 0 ? (
+          <p className="text-slate-400 text-sm text-center py-8">Sin actividad registrada</p>
+        ) : (
+          <div className="overflow-x-auto"><table className="erp-table">
+            <thead><tr><th>Evento</th><th>Fuente</th><th>Campaña</th><th>Oferta</th><th>Fecha</th></tr></thead>
+            <tbody>
+              {(user.funnelEvents ?? []).map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${FUNNEL_EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-500'}`}>
+                      {FUNNEL_EVENT_LABELS[e.event_type] ?? e.event_type}
+                    </span>
+                  </td>
+                  <td className="text-xs text-slate-500">{e.utm_source || '–'}</td>
+                  <td className="text-xs text-slate-500 max-w-[160px] truncate">{e.utm_campaign || '–'}</td>
+                  <td className="text-xs text-slate-500 max-w-[180px] truncate">{e.offer_title || '–'}</td>
+                  <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDateTime(e.created_at)}</td>
                 </tr>
               ))}
             </tbody>

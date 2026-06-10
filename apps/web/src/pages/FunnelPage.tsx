@@ -49,6 +49,20 @@ interface FunnelEvent {
   created_at: string;
 }
 
+interface FunnelSession {
+  anon_id: string;
+  user_email: string | null;
+  first_seen: string;
+  last_seen: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  event_count: number;
+  events: string[];
+  did_register: boolean;
+  did_lead: boolean;
+}
+
 const EVENT_LABELS: Record<string, string> = {
   landing:          'Visita',
   marketplace_view: 'Marketplace',
@@ -84,6 +98,10 @@ export default function FunnelPage() {
   const [evtPage, setEvtPage] = useState(1);
   const [filterType, setFilterType] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [sessions, setSessions]       = useState<FunnelSession[]>([]);
+  const [sessTotal, setSessTotal]     = useState(0);
+  const [sessPage, setSessPage]       = useState(1);
+  const [sessLoading, setSessLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [evtLoading, setEvtLoading] = useState(false);
 
@@ -108,6 +126,18 @@ export default function FunnelPage() {
       })
       .finally(() => setEvtLoading(false));
   }, [evtPage, filterType, filterSource]);
+
+  useEffect(() => {
+    setSessLoading(true);
+    api.get<FunnelSession[]>(`/funnel/sessions?days=${days}&page=${sessPage}&limit=50`)
+      .then((r) => {
+        if (r.ok) {
+          setSessions(r.data);
+          setSessTotal(r.meta?.total ?? 0);
+        }
+      })
+      .finally(() => setSessLoading(false));
+  }, [days, sessPage]);
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
@@ -250,6 +280,81 @@ export default function FunnelPage() {
           )}
         </>
       )}
+
+      {/* Sessions per user/anon */}
+      <Card padding={false}>
+        <div className="px-5 py-3 border-b border-slate-100">
+          <h3 className="font-semibold text-slate-800 text-sm">
+            Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
+          </h3>
+        </div>
+        {sessLoading ? (
+          <div className="text-slate-400 text-sm text-center py-8">Cargando…</div>
+        ) : sessions.length === 0 ? (
+          <p className="text-slate-400 text-sm text-center py-8">Sin sesiones registradas aún</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="erp-table">
+              <thead>
+                <tr>
+                  <th>Usuario / Sesión</th>
+                  <th>Recorrido</th>
+                  <th>Fuente</th>
+                  <th>Campaña</th>
+                  <th>Registrado</th>
+                  <th>Lead</th>
+                  <th>Primera visita</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s) => (
+                  <tr key={s.anon_id}>
+                    <td className="text-xs max-w-[160px] truncate">
+                      {s.user_email
+                        ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                        : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>
+                      }
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {(s.events as string[]).map((ev, i) => (
+                          <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                            {EVENT_LABELS[ev] ?? ev}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
+                    <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                    <td className="text-center">
+                      {s.did_register
+                        ? <span className="text-emerald-600 text-xs font-semibold">✓</span>
+                        : <span className="text-slate-300 text-xs">–</span>}
+                    </td>
+                    <td className="text-center">
+                      {s.did_lead
+                        ? <span className="text-amber-600 text-xs font-semibold">✓</span>
+                        : <span className="text-slate-300 text-xs">–</span>}
+                    </td>
+                    <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {sessTotal > 50 && (
+          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs text-slate-400">Pág. {sessPage} · {Math.ceil(sessTotal / 50)} páginas</span>
+            <div className="flex gap-2">
+              <button disabled={sessPage <= 1} onClick={() => setSessPage((p) => p - 1)}
+                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">← Anterior</button>
+              <button disabled={sessPage >= Math.ceil(sessTotal / 50)} onClick={() => setSessPage((p) => p + 1)}
+                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">Siguiente →</button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Recent events */}
       <Card padding={false}>
