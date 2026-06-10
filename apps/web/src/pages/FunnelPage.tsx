@@ -350,12 +350,14 @@ export default function FunnelPage() {
                 <h3 className="font-semibold text-slate-800 text-sm">Ofertas más vistas</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="erp-table">
-                  <thead><tr><th>Vehículo</th><th className="text-right">Vistas</th><th className="text-right">Leads</th><th className="text-right">Conv.</th></tr></thead>
+                <table className="erp-table w-full">
+                  <thead><tr><th className="w-full">Vehículo</th><th className="text-right w-24">Vistas</th><th className="text-right w-24">Leads</th><th className="text-right w-20">Conv.</th></tr></thead>
                   <tbody>
                     {stats.topOffers.map((row) => (
                       <tr key={row.offer_id}>
-                        <td className="text-sm font-medium max-w-[320px] truncate">{row.offer_title || row.offer_id}</td>
+                        <td className="text-sm font-medium">
+                          <span className="block truncate max-w-xs">{row.offer_title || row.offer_id}</span>
+                        </td>
                         <td className="text-right text-sm text-slate-600">{row.views}</td>
                         <td className="text-right text-sm text-slate-600">{row.leads}</td>
                         <td className="text-right text-sm text-slate-500">{pct(row.leads, row.views)}</td>
