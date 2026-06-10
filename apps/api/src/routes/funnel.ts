@@ -171,6 +171,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
   const date      = String(req.query.date      || '').trim();
   const eventType = String(req.query.event_type || '').trim();
   const source    = String(req.query.source    || '').trim();
+  const anonId    = String(req.query.anon_id   || '').trim();
   const q         = String(req.query.q         || '').trim();
   const tf        = timeFilter(date, days);
 
@@ -179,6 +180,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
 
   if (eventType) { values.push(eventType); conditions.push(`event_type = $${values.length}`); }
   if (source)    { values.push(source);    conditions.push(`utm_source = $${values.length}`); }
+  if (anonId)    { values.push(anonId);    conditions.push(`anon_id = $${values.length}`); }
   if (q)         { values.push(`%${q.toLowerCase()}%`); conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`); }
 
   const where = `WHERE ${conditions.join(' AND ')}`;

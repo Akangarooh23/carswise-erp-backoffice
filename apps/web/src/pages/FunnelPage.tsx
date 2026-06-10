@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
@@ -179,9 +179,11 @@ export default function FunnelPage() {
   // Daily breakdown
   const [daily, setDaily]               = useState<DailyRow[]>([]);
   const [dailyLoading, setDailyLoading] = useState(false);
+  const [filterAnonId, setFilterAnonId] = useState('');
   const [loading, setLoading]           = useState(true);
   const [evtLoading, setEvtLoading]     = useState(false);
   const [exporting, setExporting]       = useState<'sessions' | 'events' | null>(null);
+  const eventsCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -198,6 +200,7 @@ export default function FunnelPage() {
     params.set('limit', '50');
     if (filterType)   params.set('event_type', filterType);
     if (filterSource) params.set('source', filterSource);
+    if (filterAnonId) params.set('anon_id', filterAnonId);
     const evtQ = filterEvtQ || globalUser;
     if (evtQ) params.set('q', evtQ);
     api.get<FunnelEvent[]>(`/funnel/events?${params}`)
@@ -208,7 +211,7 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setEvtLoading(false));
-  }, [evtPage, filterType, filterSource, filterEvtQ, globalUser, days, selectedDate]);
+  }, [evtPage, filterType, filterSource, filterEvtQ, filterAnonId, globalUser, days, selectedDate]);
 
   useEffect(() => {
     setSessLoading(true);
@@ -276,6 +279,7 @@ export default function FunnelPage() {
       params.set('limit', '5000');
       if (filterType)   params.set('event_type', filterType);
       if (filterSource) params.set('source', filterSource);
+      if (filterAnonId) params.set('anon_id', filterAnonId);
       if (filterEvtQ)   params.set('q', filterEvtQ);
       const r = await api.get<FunnelEvent[]>(`/funnel/events?${params}`);
       if (!r.ok) return;
@@ -294,7 +298,7 @@ export default function FunnelPage() {
     } finally {
       setExporting(null);
     }
-  }, [days, selectedDate, filterType, filterSource, filterEvtQ]);
+  }, [days, selectedDate, filterType, filterSource, filterAnonId, filterEvtQ]);
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
@@ -590,6 +594,7 @@ export default function FunnelPage() {
                   <th>Registrado</th>
                   <th>Lead</th>
                   <th>Primera visita</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -623,6 +628,17 @@ export default function FunnelPage() {
                         : <span className="text-slate-300 text-xs">–</span>}
                     </td>
                     <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                    <td>
+                      <button
+                        onClick={() => {
+                          setFilterAnonId(s.anon_id);
+                          setEvtPage(1);
+                          eventsCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                        className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                        Ver eventos →
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -643,11 +659,20 @@ export default function FunnelPage() {
       </Card>
 
       {/* Recent events */}
+      <div ref={eventsCardRef}>
       <Card padding={false}>
         <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-slate-800 text-sm">
+              Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
+            </h3>
+            {filterAnonId && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                Sesión: <span className="font-mono">{filterAnonId.slice(0, 14)}…</span>
+                <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-blue-900 ml-0.5">×</button>
+              </span>
+            )}
+          </div>
           <button
             onClick={exportEvents}
             disabled={exporting === 'events'}
@@ -718,7 +743,13 @@ export default function FunnelPage() {
                       </span>
                     </td>
                     <td className="text-xs text-slate-600 max-w-[160px] truncate">
-                      {e.user_email || <span className="text-slate-300">{e.anon_id.slice(0, 18)}…</span>}
+                      {e.user_email || (
+                        <button
+                          onClick={() => { setFilterAnonId(e.anon_id); setEvtPage(1); }}
+                          className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
+                          {e.anon_id.slice(0, 18)}…
+                        </button>
+                      )}
                     </td>
                     <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
                     <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
@@ -748,6 +779,7 @@ export default function FunnelPage() {
           </div>
         )}
       </Card>
+      </div>
     </div>
   );
 }
