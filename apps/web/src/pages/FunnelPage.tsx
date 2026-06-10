@@ -74,6 +74,7 @@ interface FunnelEvent {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
+  offer_id: string | null;
   offer_title: string | null;
   landing_url: string;
   created_at: string;
@@ -763,8 +764,8 @@ export default function FunnelPage() {
                     <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
                     <td className="text-xs text-slate-500 max-w-[160px] truncate">
                       {e.offer_title
-                        ? e.landing_url
-                          ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
+                        ? e.offer_id
+                          ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
                           : e.offer_title
                         : <span className="text-slate-300">–</span>}
                     </td>

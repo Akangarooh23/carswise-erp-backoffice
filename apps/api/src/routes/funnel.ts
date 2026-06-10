@@ -69,7 +69,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
 
       query(
         `SELECT offer_id, offer_title,
-           MAX(landing_url) FILTER (WHERE event_type = 'offer_view') AS offer_url,
+           'https://www.carswiseai.com/marketplace-vo/' || offer_id AS offer_url,
            COUNT(*)::int AS views,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
@@ -191,7 +191,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
       query(
         `SELECT id, anon_id, user_email, event_type,
                 utm_source, utm_medium, utm_campaign,
-                offer_title, landing_url, created_at
+                offer_id, offer_title, landing_url, created_at
          FROM moveadvisor_funnel_events ${where}
          ORDER BY created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
@@ -269,7 +269,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
          MAX(fe.utm_campaign) AS utm_campaign,
          MIN(fe.created_at)   AS first_seen,
          MAX(fe.created_at)   AS last_seen,
-         array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', fe.landing_url))
+         array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', 'https://www.carswiseai.com/marketplace-vo/' || fe.offer_id))
            FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
            AS offers_viewed,
          COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,
