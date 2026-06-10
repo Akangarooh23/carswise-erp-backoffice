@@ -12,6 +12,7 @@ import { workshopsRouter } from './routes/workshops.js';
 import { idcarsRouter } from './routes/idcars.js';
 import { billingRouter } from './routes/billing.js';
 import { leadsRouter } from './routes/leads.js';
+import { funnelRouter } from './routes/funnel.js';
 
 export function createApp() {
   const app = express();
@@ -31,6 +32,7 @@ export function createApp() {
   app.use('/api', idcarsRouter);
   app.use('/api', billingRouter);
   app.use('/api', leadsRouter);
+  app.use('/api', funnelRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ ok: false, error: 'not_found' });
