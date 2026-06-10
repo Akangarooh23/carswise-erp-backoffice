@@ -54,7 +54,7 @@ interface CallQueueItem {
   utm_campaign: string | null;
   first_seen: string;
   last_seen: string;
-  offers_viewed: string[];
+  offers_viewed: Array<{ title: string; url: string | null }> | null;
   offer_view_count: number;
   outreach_status: 'pending' | 'no_answer' | 'called' | 'not_interested';
   outreach_notes: string | null;
@@ -544,11 +544,11 @@ export default function LeadsPage() {
                           </td>
                           {/* Ofertas vistas — el guion de la llamada */}
                           <td className="px-4 py-3">
-                            {item.offers_viewed?.length > 0 ? (
+                            {(item.offers_viewed ?? []).length > 0 ? (
                               <div className="flex flex-wrap gap-1.5">
-                                {item.offers_viewed.map((o, i) => (
+                                {(item.offers_viewed ?? []).map((o, i) => (
                                   <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 border border-violet-200 text-violet-800 rounded text-xs font-medium max-w-[240px] truncate">
-                                    🚗 {o}
+                                    🚗 {o.title}
                                   </span>
                                 ))}
                               </div>
@@ -642,13 +642,20 @@ export default function LeadsPage() {
                                       </div>
                                     )}
                                   </dl>
-                                  {item.offers_viewed?.length > 0 && (
+                                  {(item.offers_viewed ?? []).length > 0 && (
                                     <div className="mt-3">
                                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Oferta(s) de interés</p>
                                       <div className="space-y-1">
-                                        {item.offers_viewed.map((o, i) => (
+                                        {(item.offers_viewed ?? []).map((o, i) => (
                                           <div key={i} className="flex items-center gap-2 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5">
-                                            🚗 {o}
+                                            🚗{' '}
+                                            {o.url ? (
+                                              <a href={o.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-violet-600 truncate">
+                                                {o.title}
+                                              </a>
+                                            ) : (
+                                              <span className="truncate">{o.title}</span>
+                                            )}
                                           </div>
                                         ))}
                                       </div>

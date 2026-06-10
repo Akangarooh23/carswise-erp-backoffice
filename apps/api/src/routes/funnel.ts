@@ -268,7 +268,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
          MAX(fe.utm_campaign) AS utm_campaign,
          MIN(fe.created_at)   AS first_seen,
          MAX(fe.created_at)   AS last_seen,
-         array_agg(DISTINCT fe.offer_title)
+         array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', fe.landing_url))
            FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
            AS offers_viewed,
          COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,
