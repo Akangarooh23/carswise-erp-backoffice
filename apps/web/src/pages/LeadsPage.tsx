@@ -31,6 +31,7 @@ interface Lead {
   status: string;
   created_at: string;
   updated_at: string;
+  notified_at: string | null;
 }
 
 interface LeadStats {
@@ -835,6 +836,11 @@ export default function LeadsPage() {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
             </div>
 
+            {selected.notified_at && (
+              <p className="text-xs text-slate-400 text-right pt-1">
+                Último email enviado: {new Date(selected.notified_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
             <div className="flex justify-end gap-2 pt-2 flex-wrap">
               <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
               <button onClick={saveLead} disabled={saving}
@@ -843,7 +849,7 @@ export default function LeadsPage() {
               </button>
               <button onClick={notifyClient} disabled={notifying || saving}
                 className="px-4 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg disabled:opacity-60 font-medium">
-                {notifying ? 'Enviando…' : '📧 Guardar y notificar cliente'}
+                {notifying ? 'Enviando…' : `📧 ${selected.notified_at ? 'Reenviar notificación' : 'Guardar y notificar cliente'}`}
               </button>
             </div>
           </div>

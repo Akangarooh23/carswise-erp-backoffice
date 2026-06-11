@@ -10,14 +10,16 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
       // User stats — base from moveadvisor_users, status from erp_users
       query(`
         SELECT
-          COUNT(mu.id)::int                                                          AS total,
-          COUNT(*) FILTER (WHERE COALESCE(eu.status,'active') = 'active')::int      AS active,
-          COUNT(*) FILTER (WHERE eu.status = 'at_risk')::int                        AS at_risk,
-          COUNT(*) FILTER (WHERE eu.status = 'blocked')::int                        AS blocked,
-          COUNT(*) FILTER (WHERE mu.created_at >= NOW() - INTERVAL '30 days')::int  AS new_30d
+          COUNT(mu.id)::int                                                                AS total,
+          COUNT(*) FILTER (WHERE COALESCE(eu.status,'active') = 'active')::int            AS active,
+          COUNT(*) FILTER (WHERE eu.status = 'at_risk')::int                              AS at_risk,
+          COUNT(*) FILTER (WHERE eu.status = 'blocked')::int                              AS blocked,
+          COUNT(*) FILTER (WHERE mu.created_at >= NOW() - INTERVAL '30 days')::int        AS new_30d,
+          COUNT(*) FILTER (WHERE mu.plan_type = 'plus')::int                              AS plus,
+          COUNT(*) FILTER (WHERE mu.plan_type = 'premium')::int                           AS premium
         FROM moveadvisor_users mu
         LEFT JOIN erp_users eu ON eu.email = mu.email
-      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0 }] })),
+      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0, plus: 0, premium: 0 }] })),
 
       // Ticket stats
       query(`

@@ -33,7 +33,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
          WHERE ${tf.condition}
          GROUP BY event_type`,
         [tf.value]
-      ).catch(() => ({ rows: [] })),
+      ).catch((e: Error) => { console.error('[funnel] funnelCounts error:', e.message); return { rows: [] }; }),
 
       query(
         `SELECT
@@ -48,7 +48,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
          ORDER BY sessions DESC
          LIMIT 20`,
         [tf.value]
-      ).catch(() => ({ rows: [] })),
+      ).catch((e: Error) => { console.error('[funnel] utmSources error:', e.message); return { rows: [] }; }),
 
       query(
         `SELECT
@@ -65,7 +65,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
          ORDER BY sessions DESC
          LIMIT 20`,
         [tf.value]
-      ).catch(() => ({ rows: [] })),
+      ).catch((e: Error) => { console.error('[funnel] utmCampaigns error:', e.message); return { rows: [] }; }),
 
       query(
         `SELECT offer_id, offer_title,
@@ -80,7 +80,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
          ORDER BY views DESC
          LIMIT 10`,
         [tf.value]
-      ).catch(() => ({ rows: [] })),
+      ).catch((e: Error) => { console.error('[funnel] topOffers error:', e.message); return { rows: [] }; }),
     ]);
 
     const countMap: Record<string, number> = {};

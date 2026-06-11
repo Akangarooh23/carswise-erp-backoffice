@@ -8,6 +8,15 @@ export const leadsRouter = Router();
 const RESEND_API = 'https://api.resend.com/emails';
 const FROM_EMAIL = config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>';
 
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
   // In dev, Resend sandbox only allows sending to the account owner's email
@@ -27,16 +36,16 @@ function visitEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
       <h2 style="color:#2563eb">📅 Tu cita está lista — acción requerida</h2>
-      <p>Hola <strong>${lead.contact_name || 'cliente'}</strong>,</p>
-      <p>El equipo de CarsWise ha gestionado tu solicitud de visita para el vehículo <strong>${lead.vehicle_title}</strong>.</p>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>El equipo de CarsWise ha gestionado tu solicitud de visita para el vehículo <strong>${esc(lead.vehicle_title)}</strong>.</p>
       ${lead.appointment_date ? `
       <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:4px 0">📅 <strong>Fecha:</strong> ${lead.appointment_date}</p>
-        ${lead.appointment_time ? `<p style="margin:4px 0">⏰ <strong>Hora:</strong> ${lead.appointment_time}</p>` : ''}
-        ${lead.appointment_address ? `<p style="margin:4px 0">📍 <strong>Dirección:</strong> ${lead.appointment_address}</p>` : ''}
-        ${lead.appointment_contact ? `<p style="margin:4px 0">👤 <strong>Pregunta por:</strong> ${lead.appointment_contact}</p>` : ''}
+        <p style="margin:4px 0">📅 <strong>Fecha:</strong> ${esc(lead.appointment_date)}</p>
+        ${lead.appointment_time ? `<p style="margin:4px 0">⏰ <strong>Hora:</strong> ${esc(lead.appointment_time)}</p>` : ''}
+        ${lead.appointment_address ? `<p style="margin:4px 0">📍 <strong>Dirección:</strong> ${esc(lead.appointment_address)}</p>` : ''}
+        ${lead.appointment_contact ? `<p style="margin:4px 0">👤 <strong>Pregunta por:</strong> ${esc(lead.appointment_contact)}</p>` : ''}
       </div>` : ''}
-      ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${lead.erp_response}</p>` : ''}
+      ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${esc(lead.erp_response)}</p>` : ''}
 
       <div style="background:#fefce8;border:2px solid #fbbf24;border-radius:12px;padding:18px 20px;margin:24px 0">
         <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#92400e">⚠️ Para reservar el vehículo, confirma tu cita</p>
@@ -62,11 +71,11 @@ function infoEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
       <h2 style="color:#2563eb">💬 Respuesta a tu consulta</h2>
-      <p>Hola <strong>${lead.contact_name || 'cliente'}</strong>,</p>
-      <p>Hemos atendido tu solicitud sobre el vehículo <strong>${lead.vehicle_title}</strong>.</p>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>Hemos atendido tu solicitud sobre el vehículo <strong>${esc(lead.vehicle_title)}</strong>.</p>
       ${lead.erp_response ? `
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0;white-space:pre-wrap">${lead.erp_response}</p>
+        <p style="margin:0;white-space:pre-wrap">${esc(lead.erp_response)}</p>
       </div>` : ''}
       ${lead.vehicle_url ? `<p><a href="${lead.vehicle_url}" style="color:#2563eb">Ver el anuncio del vehículo →</a></p>` : ''}
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
@@ -89,7 +98,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   if (status) { values.push(status); conditions.push(`status = $${values.length}`); }
   if (type)   { values.push(type);   conditions.push(`lead_type = $${values.length}`); }
   if (origin === 'portales') {
-    conditions.push(`portal NOT LIKE 'marketplace-vo%' AND portal <> ''`);
+    conditions.push(`lower(portal) NOT LIKE 'marketplace-vo%' AND portal <> ''`);
   } else if (origin) {
     values.push(origin); conditions.push(`portal = $${values.length}`);
   }
