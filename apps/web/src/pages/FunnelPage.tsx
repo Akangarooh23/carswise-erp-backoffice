@@ -85,10 +85,11 @@ function periodLabel(selectedDate: string, days: number): string {
 
 type SortState = { col: string; dir: 'asc' | 'desc' } | null;
 
-function sortRows<T extends Record<string, unknown>>(rows: T[], sort: SortState): T[] {
+function sortRows<T>(rows: T[], sort: SortState): T[] {
   if (!sort) return rows;
   return [...rows].sort((a, b) => {
-    const av = a[sort.col]; const bv = b[sort.col];
+    const av = (a as Record<string, unknown>)[sort.col];
+    const bv = (b as Record<string, unknown>)[sort.col];
     const cmp = typeof av === 'number' && typeof bv === 'number'
       ? av - bv
       : String(av ?? '').localeCompare(String(bv ?? ''), 'es');
@@ -269,7 +270,7 @@ export default function FunnelPage() {
     const rows = stats.utmSources.filter((r) =>
       !utmSrcQ || (r.source || '').toLowerCase().includes(utmSrcQ.toLowerCase())
     );
-    return sortRows(rows as Record<string, unknown>[], utmSrcSort) as UtmSource[];
+    return sortRows(rows, utmSrcSort);
   }, [stats, utmSrcQ, utmSrcSort]);
 
   const campMediumOptions = useMemo(() => {
@@ -285,7 +286,7 @@ export default function FunnelPage() {
       (!campMedium || r.medium === campMedium) &&
       (!campSrcQ   || (r.source || '').toLowerCase().includes(campSrcQ.toLowerCase()))
     );
-    return sortRows(rows as Record<string, unknown>[], campSort) as UtmCampaign[];
+    return sortRows(rows, campSort);
   }, [stats, campQ, campMedium, campSrcQ, campSort]);
 
   const filteredOffers = useMemo(() => {
@@ -295,14 +296,14 @@ export default function FunnelPage() {
       (!offerMinViews || r.views >= Number(offerMinViews)) &&
       (!offerMinLeads || r.leads >= Number(offerMinLeads))
     );
-    return sortRows(rows as Record<string, unknown>[], offerSort) as TopOffer[];
+    return sortRows(rows, offerSort);
   }, [stats, offerQ, offerMinViews, offerMinLeads, offerSort]);
 
   const filteredDaily = useMemo(() => {
     const rows = dailyOnlyActive
       ? daily.filter((r) => r.landings > 0 || r.registers > 0 || r.leads > 0 || r.offer_views > 0)
       : daily;
-    return sortRows(rows as Record<string, unknown>[], dailySort) as DailyRow[];
+    return sortRows(rows, dailySort);
   }, [daily, dailyOnlyActive, dailySort]);
 
   const filteredSessions = useMemo(() => {
