@@ -32,9 +32,10 @@ const ROLE_COLORS: Record<Role, string> = {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  pendingLeads?: number;
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -94,7 +95,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             }
           >
             <span className="text-base leading-none">{item.icon}</span>
-            <span>{item.label}</span>
+            <span className="flex-1">{item.label}</span>
+            {item.to === '/leads' && pendingLeads > 0 && (
+              <span className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
+                {pendingLeads > 99 ? '99+' : pendingLeads}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -144,7 +144,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   }
 });
 
-leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations']), async (_req, res) => {
+leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
     const result = await query(`
       SELECT

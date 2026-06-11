@@ -230,6 +230,13 @@ export default function LeadsPage() {
 
   useEffect(() => { loadLeads(); }, [loadLeads]);
 
+  // Auto-refresh when AppLayout detects a new lead
+  useEffect(() => {
+    function onNewLeads() { loadLeads(); }
+    window.addEventListener('cw:new-leads', onNewLeads);
+    return () => window.removeEventListener('cw:new-leads', onNewLeads);
+  }, [loadLeads]);
+
   // ── Load call queue ──
   const loadCallQueue = useCallback(async () => {
     setCallLoading(true);

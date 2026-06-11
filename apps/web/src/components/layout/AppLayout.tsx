@@ -1,17 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../store/auth.js';
+import { api } from '../../api/client.js';
 import Sidebar from './Sidebar.js';
+
+interface LeadStats { pending: number; }
 
 export default function AppLayout() {
   const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [pendingLeads, setPendingLeads] = useState(0);
+  const [toast, setToast]               = useState<string | null>(null);
+  const prevPendingRef = useRef<number | null>(null);
+  const toastTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function poll() {
+      const r = await api.get<LeadStats>('/leads/stats');
+      if (!r.ok) return;
+      const current = r.data.pending ?? 0;
+      setPendingLeads(current);
+      if (prevPendingRef.current !== null && current > prevPendingRef.current) {
+        const delta = current - prevPendingRef.current;
+        showToast(`📩 ${delta} nuevo${delta > 1 ? 's' : ''} lead${delta > 1 ? 's' : ''} pendiente${delta > 1 ? 's' : ''}`);
+        window.dispatchEvent(new CustomEvent('cw:new-leads', { detail: { count: delta } }));
+      }
+      prevPendingRef.current = current;
+    }
+
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, [user]);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 6000);
+  }
 
   if (!user) return <Navigate to="/login" replace />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
@@ -19,7 +52,7 @@ export default function AppLayout() {
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads} />
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Mobile top bar */}
@@ -42,6 +75,19 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-white border border-slate-200 shadow-xl rounded-xl px-4 py-3 text-sm font-medium text-slate-800">
+          <span>{toast}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="text-slate-400 hover:text-slate-600 text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
