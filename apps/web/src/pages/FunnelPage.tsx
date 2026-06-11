@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
@@ -157,45 +157,92 @@ function periodLabel(selectedDate: string, days: number): string {
   return `últimos ${DAYS_LABELS[days] ?? `${days}d`}`;
 }
 
+const FUNNEL_TABS = [
+  { key: 'resumen',  label: 'Resumen' },
+  { key: 'diario',   label: 'Desglose diario' },
+  { key: 'fuentes',  label: 'UTM Source' },
+  { key: 'campanas', label: 'UTM Campaign' },
+  { key: 'ofertas',  label: 'Ofertas más vistas' },
+  { key: 'sesiones', label: 'Por sesión / usuario' },
+  { key: 'eventos',  label: 'Eventos recientes' },
+] as const;
+type FunnelTab = typeof FUNNEL_TABS[number]['key'];
+
 export default function FunnelPage() {
-  const [days, setDays]             = useState(30);
+  const [activeTab, setActiveTab]       = useState<FunnelTab>('resumen');
+  const [days, setDays]                 = useState(30);
   const [selectedDate, setSelectedDate] = useState('');
-  // Global user filter (applies to sessions, events and daily)
-  const [globalUser, setGlobalUser] = useState('');
-  const [stats, setStats]     = useState<FunnelStats | null>(null);
-  const [events, setEvents]   = useState<FunnelEvent[]>([]);
-  const [evtTotal, setEvtTotal] = useState(0);
-  const [evtPage, setEvtPage] = useState(1);
-  // Events filters
+  const [globalUser, setGlobalUser]     = useState('');
+
+  const [stats, setStats]       = useState<FunnelStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [events, setEvents]       = useState<FunnelEvent[]>([]);
+  const [evtTotal, setEvtTotal]   = useState(0);
+  const [evtPage, setEvtPage]     = useState(1);
   const [filterType, setFilterType]     = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [filterEvtQ, setFilterEvtQ]     = useState('');
-  // Sessions filters
-  const [sessSrc, setSessSrc]           = useState('');
-  const [sessConv, setSessConv]         = useState('');
-  const [sessQ, setSessQ]               = useState('');
-  const [sessions, setSessions]         = useState<FunnelSession[]>([]);
-  const [sessTotal, setSessTotal]       = useState(0);
-  const [sessPage, setSessPage]         = useState(1);
-  const [sessLoading, setSessLoading]   = useState(false);
-  // Daily breakdown
-  const [daily, setDaily]               = useState<DailyRow[]>([]);
-  const [dailyLoading, setDailyLoading] = useState(false);
   const [filterAnonId, setFilterAnonId] = useState('');
-  const [loading, setLoading]           = useState(true);
   const [evtLoading, setEvtLoading]     = useState(false);
-  const [exporting, setExporting]       = useState<'sessions' | 'events' | null>(null);
-  const eventsCardRef = useRef<HTMLDivElement>(null);
 
+  const [sessSrc, setSessSrc]   = useState('');
+  const [sessConv, setSessConv] = useState('');
+  const [sessQ, setSessQ]       = useState('');
+  const [sessions, setSessions]   = useState<FunnelSession[]>([]);
+  const [sessTotal, setSessTotal] = useState(0);
+  const [sessPage, setSessPage]   = useState(1);
+  const [sessLoading, setSessLoading] = useState(false);
+
+  const [daily, setDaily]           = useState<DailyRow[]>([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
+
+  const [exporting, setExporting] = useState<'sessions' | 'events' | null>(null);
+
+  // Stats (Resumen, UTM, Ofertas)
   useEffect(() => {
-    setLoading(true);
+    setStatsLoading(true);
     const params = buildTimeParams(selectedDate, days);
     api.get<FunnelStats>(`/funnel/stats?${params}`)
       .then((r) => { if (r.ok) setStats(r.data); })
-      .finally(() => setLoading(false));
+      .finally(() => setStatsLoading(false));
   }, [days, selectedDate]);
 
+  // Daily
   useEffect(() => {
+    if (activeTab !== 'diario') return;
+    setDailyLoading(true);
+    const params = buildTimeParams(selectedDate, days);
+    if (globalUser) params.set('user', globalUser);
+    api.get<DailyRow[]>(`/funnel/daily?${params}`)
+      .then((r) => { if (r.ok) setDaily(r.data); })
+      .finally(() => setDailyLoading(false));
+  }, [activeTab, days, selectedDate, globalUser]);
+
+  // Sessions
+  useEffect(() => {
+    if (activeTab !== 'sesiones') return;
+    setSessLoading(true);
+    const params = buildTimeParams(selectedDate, days);
+    params.set('page', String(sessPage));
+    params.set('limit', '50');
+    if (sessSrc)  params.set('source', sessSrc);
+    if (sessConv) params.set('converted', sessConv);
+    const sQ = sessQ || globalUser;
+    if (sQ) params.set('q', sQ);
+    api.get<FunnelSession[]>(`/funnel/sessions?${params}`)
+      .then((r) => {
+        if (r.ok) {
+          setSessions(r.data);
+          setSessTotal(r.meta?.total ?? 0);
+        }
+      })
+      .finally(() => setSessLoading(false));
+  }, [activeTab, days, selectedDate, sessPage, sessSrc, sessConv, sessQ, globalUser]);
+
+  // Events
+  useEffect(() => {
+    if (activeTab !== 'eventos') return;
     setEvtLoading(true);
     const params = buildTimeParams(selectedDate, days);
     params.set('page', String(evtPage));
@@ -213,35 +260,7 @@ export default function FunnelPage() {
         }
       })
       .finally(() => setEvtLoading(false));
-  }, [evtPage, filterType, filterSource, filterEvtQ, filterAnonId, globalUser, days, selectedDate]);
-
-  useEffect(() => {
-    setSessLoading(true);
-    const params = buildTimeParams(selectedDate, days);
-    params.set('page', String(sessPage));
-    params.set('limit', '50');
-    if (sessSrc)  params.set('source', sessSrc);
-    if (sessConv) params.set('converted', sessConv);
-    const sQ = sessQ || globalUser;
-    if (sQ) params.set('q', sQ);
-    api.get<FunnelSession[]>(`/funnel/sessions?${params}`)
-      .then((r) => {
-        if (r.ok) {
-          setSessions(r.data);
-          setSessTotal(r.meta?.total ?? 0);
-        }
-      })
-      .finally(() => setSessLoading(false));
-  }, [days, selectedDate, sessPage, sessSrc, sessConv, sessQ, globalUser]);
-
-  useEffect(() => {
-    setDailyLoading(true);
-    const params = buildTimeParams(selectedDate, days);
-    if (globalUser) params.set('user', globalUser);
-    api.get<DailyRow[]>(`/funnel/daily?${params}`)
-      .then((r) => { if (r.ok) setDaily(r.data); })
-      .finally(() => setDailyLoading(false));
-  }, [days, selectedDate, globalUser]);
+  }, [activeTab, evtPage, filterType, filterSource, filterEvtQ, filterAnonId, globalUser, days, selectedDate]);
 
   const exportSessions = useCallback(async () => {
     setExporting('sessions');
@@ -304,6 +323,17 @@ export default function FunnelPage() {
 
   const maxCount = stats ? Math.max(...stats.funnel.map((s) => s.count), 1) : 1;
 
+  function goToEventsForSession(anonId: string) {
+    setFilterAnonId(anonId);
+    setEvtPage(1);
+    setActiveTab('eventos');
+  }
+
+  function resetDateFilters() {
+    setSessPage(1);
+    setEvtPage(1);
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -314,9 +344,9 @@ export default function FunnelPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Filtrar por email o anon_id…"
+                placeholder="Filtrar por usuario (email)…"
                 value={globalUser}
-                onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
+                onChange={(e) => { setGlobalUser(e.target.value); resetDateFilters(); }}
                 className="text-xs border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
@@ -325,13 +355,12 @@ export default function FunnelPage() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {/* Specific day shortcuts */}
               {DATE_SHORTCUTS.map(({ label, daysAgo }) => {
                 const date = getLocalDate(daysAgo);
                 const active = selectedDate === date;
                 return (
                   <button key={label}
-                    onClick={() => { setSelectedDate(date); setSessPage(1); setEvtPage(1); }}
+                    onClick={() => { setSelectedDate(date); resetDateFilters(); }}
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
                       active
                         ? 'bg-brand-600 border-brand-600 text-white font-medium'
@@ -342,10 +371,9 @@ export default function FunnelPage() {
                 );
               })}
               <span className="text-slate-200 text-xs px-0.5">|</span>
-              {/* Interval buttons */}
               {DAYS_OPTIONS.map((d) => (
                 <button key={d}
-                  onClick={() => { setSelectedDate(''); setDays(d); setSessPage(1); setEvtPage(1); }}
+                  onClick={() => { setSelectedDate(''); setDays(d); resetDateFilters(); }}
                   className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
                     !selectedDate && days === d
                       ? 'bg-brand-600 border-brand-600 text-white font-medium'
@@ -359,13 +387,30 @@ export default function FunnelPage() {
         }
       />
 
-      {loading ? (
-        <div className="text-slate-400 text-sm text-center py-16">Cargando estadísticas…</div>
-      ) : !stats ? (
-        <div className="text-red-500 text-sm text-center py-16">Error al cargar los datos</div>
-      ) : (
-        <>
-          {/* Funnel visual */}
+      {/* Sub-tab navigation */}
+      <div className="flex gap-0.5 border-b border-slate-200 overflow-x-auto">
+        {FUNNEL_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+              activeTab === key
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── RESUMEN ── */}
+      {activeTab === 'resumen' && (
+        statsLoading ? (
+          <div className="text-slate-400 text-sm text-center py-16">Cargando estadísticas…</div>
+        ) : !stats ? (
+          <div className="text-red-500 text-sm text-center py-16">Error al cargar los datos</div>
+        ) : (
           <Card>
             <h3 className="font-semibold text-slate-800 text-sm mb-4">
               Embudo de conversión <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
@@ -376,7 +421,7 @@ export default function FunnelPage() {
                 const barW  = step.count ? Math.round((step.count / maxCount) * 100) : 0;
                 return (
                   <div key={step.step} className="flex items-center gap-3">
-                    <div className="w-32 shrink-0 text-right text-xs text-slate-500 leading-tight">{step.label}</div>
+                    <div className="w-36 shrink-0 text-right text-xs text-slate-500 leading-tight">{step.label}</div>
                     <div className="flex-1 h-7 bg-slate-100 rounded-lg overflow-hidden relative">
                       <div
                         className={`h-full rounded-lg transition-all ${FUNNEL_COLORS[i]}`}
@@ -394,50 +439,95 @@ export default function FunnelPage() {
               })}
             </div>
           </Card>
+        )
+      )}
 
-          {/* Daily breakdown */}
+      {/* ── DESGLOSE DIARIO ── */}
+      {activeTab === 'diario' && (
+        <Card padding={false}>
+          <div className="px-5 py-3 border-b border-slate-100">
+            <h3 className="font-semibold text-slate-800 text-sm">
+              Desglose diario <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+            </h3>
+          </div>
+          {dailyLoading ? (
+            <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
+          ) : daily.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-12">Sin datos aún</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="erp-table w-full">
+                <thead>
+                  <tr>
+                    <th className="w-28">Día</th>
+                    <th className="text-right w-20">Accesos</th>
+                    <th className="text-right w-24">Marketplace</th>
+                    <th className="text-right w-24">Ofertas</th>
+                    <th className="text-right w-24">Registros</th>
+                    <th className="text-right w-24">Solicitudes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {daily.map((row) => (
+                    <tr key={row.day}>
+                      <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                        {new Date(String(row.day).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+                      </td>
+                      <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
+                      <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
+                      <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
+                      <td className="text-right">
+                        {row.registers > 0
+                          ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span>
+                          : <span className="text-slate-300 text-sm">–</span>}
+                      </td>
+                      <td className="text-right">
+                        {row.leads > 0
+                          ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span>
+                          : <span className="text-slate-300 text-sm">–</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── UTM SOURCE ── */}
+      {activeTab === 'fuentes' && (
+        statsLoading ? (
+          <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        ) : !stats ? null : (
           <Card padding={false}>
             <div className="px-5 py-3 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800 text-sm">
-                Desglose diario <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+                Por fuente (UTM Source) <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
               </h3>
             </div>
-            {dailyLoading ? (
-              <div className="text-slate-400 text-sm text-center py-6">Cargando…</div>
-            ) : daily.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-6">Sin datos aún</p>
+            {stats.utmSources.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-12">Sin datos UTM aún</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="erp-table w-full">
                   <thead>
                     <tr>
-                      <th className="w-28">Día</th>
-                      <th className="text-right w-20">Accesos</th>
-                      <th className="text-right w-24">Marketplace</th>
-                      <th className="text-right w-24">Ofertas</th>
+                      <th className="w-full">Fuente</th>
+                      <th className="text-right w-24">Sesiones</th>
                       <th className="text-right w-24">Registros</th>
-                      <th className="text-right w-24">Solicitudes</th>
+                      <th className="text-right w-20">Leads</th>
+                      <th className="text-right w-20">Conv.</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {daily.map((row) => (
-                      <tr key={row.day}>
-                        <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
-                          {new Date(String(row.day).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
-                        </td>
-                        <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
-                        <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
-                        <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
-                        <td className="text-right">
-                          {row.registers > 0
-                            ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span>
-                            : <span className="text-slate-300 text-sm">–</span>}
-                        </td>
-                        <td className="text-right">
-                          {row.leads > 0
-                            ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span>
-                            : <span className="text-slate-300 text-sm">–</span>}
-                        </td>
+                    {stats.utmSources.map((row) => (
+                      <tr key={row.source}>
+                        <td className="font-medium text-sm">{row.source || '(directo)'}</td>
+                        <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
+                        <td className="text-right text-sm text-slate-600">{row.registers}</td>
+                        <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                        <td className="text-right text-sm text-slate-500">{pct(row.leads, row.sessions)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -445,72 +535,78 @@ export default function FunnelPage() {
               </div>
             )}
           </Card>
+        )
+      )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* UTM Sources */}
-            <Card padding={false}>
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 text-sm">Por fuente (UTM Source)</h3>
-              </div>
-              {stats.utmSources.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-8">Sin datos UTM aún</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="erp-table w-full">
-                    <thead><tr><th className="w-full">Fuente</th><th className="text-right w-20">Sesiones</th><th className="text-right w-24">Registros</th><th className="text-right w-16">Leads</th><th className="text-right w-16">Conv.</th></tr></thead>
-                    <tbody>
-                      {stats.utmSources.map((row) => (
-                        <tr key={row.source}>
-                          <td className="font-medium text-sm">{row.source || '(directo)'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                          <td className="text-right text-sm text-slate-600">{row.registers}</td>
-                          <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                          <td className="text-right text-sm text-slate-500">{pct(row.leads, row.sessions)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-
-            {/* UTM Campaigns */}
-            <Card padding={false}>
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 text-sm">Por campaña (UTM Campaign)</h3>
-              </div>
-              {stats.utmCampaigns.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-8">Sin campañas UTM aún</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="erp-table w-full">
-                    <thead><tr><th className="w-full">Campaña</th><th className="w-20">Medio</th><th className="w-20">Fuente</th><th className="text-right w-20">Sesiones</th><th className="text-right w-16">Leads</th></tr></thead>
-                    <tbody>
-                      {stats.utmCampaigns.map((row, i) => (
-                        <tr key={i}>
-                          <td className="text-sm font-medium max-w-[140px] truncate">{row.campaign}</td>
-                          <td className="text-sm text-slate-500 capitalize">{row.medium || '–'}</td>
-                          <td className="text-sm text-slate-500">{row.source || '–'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                          <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Top offers */}
-          {stats.topOffers.length > 0 && (
-            <Card padding={false}>
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 text-sm">Ofertas más vistas</h3>
-              </div>
+      {/* ── UTM CAMPAIGN ── */}
+      {activeTab === 'campanas' && (
+        statsLoading ? (
+          <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        ) : !stats ? null : (
+          <Card padding={false}>
+            <div className="px-5 py-3 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 text-sm">
+                Por campaña (UTM Campaign) <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+              </h3>
+            </div>
+            {stats.utmCampaigns.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-12">Sin campañas UTM aún</p>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="erp-table w-full">
-                  <thead><tr><th className="w-full">Vehículo</th><th className="text-right w-24">Vistas</th><th className="text-right w-24">Leads</th><th className="text-right w-20">Conv.</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th className="w-full">Campaña</th>
+                      <th className="w-24">Medio</th>
+                      <th className="w-24">Fuente</th>
+                      <th className="text-right w-24">Sesiones</th>
+                      <th className="text-right w-20">Registros</th>
+                      <th className="text-right w-16">Leads</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.utmCampaigns.map((row, i) => (
+                      <tr key={i}>
+                        <td className="text-sm font-medium max-w-[200px] truncate">{row.campaign}</td>
+                        <td className="text-sm text-slate-500 capitalize">{row.medium || '–'}</td>
+                        <td className="text-sm text-slate-500">{row.source || '–'}</td>
+                        <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
+                        <td className="text-right text-sm text-slate-600">{row.registers}</td>
+                        <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )
+      )}
+
+      {/* ── OFERTAS MÁS VISTAS ── */}
+      {activeTab === 'ofertas' && (
+        statsLoading ? (
+          <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        ) : !stats ? null : (
+          <Card padding={false}>
+            <div className="px-5 py-3 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 text-sm">
+                Ofertas más vistas <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+              </h3>
+            </div>
+            {stats.topOffers.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-12">Sin datos de ofertas aún</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="erp-table w-full">
+                  <thead>
+                    <tr>
+                      <th className="w-full">Vehículo</th>
+                      <th className="text-right w-24">Vistas</th>
+                      <th className="text-right w-24">Leads</th>
+                      <th className="text-right w-20">Conv.</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {stats.topOffers.map((row) => (
                       <tr key={row.offer_id}>
@@ -532,270 +628,268 @@ export default function FunnelPage() {
                   </tbody>
                 </table>
               </div>
-            </Card>
-          )}
-        </>
+            )}
+          </Card>
+        )
       )}
 
-      {/* Sessions per user/anon */}
-      <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
-          </h3>
-          <button
-            onClick={exportSessions}
-            disabled={exporting === 'sessions'}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            {exporting === 'sessions' ? '…' : '↓'} Exportar Excel
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              placeholder="Buscar email…"
-              value={sessQ}
-              onChange={(e) => { setSessQ(e.target.value); setSessPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-44 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <select
-              value={sessSrc}
-              onChange={(e) => { setSessSrc(e.target.value); setSessPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="">Todas las fuentes</option>
-              <option value="google">Google</option>
-              <option value="facebook">Facebook</option>
-              <option value="instagram">Instagram</option>
-              <option value="tiktok">TikTok</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="direct">Directo</option>
-            </select>
-            <select
-              value={sessConv}
-              onChange={(e) => { setSessConv(e.target.value); setSessPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="">Toda conversión</option>
-              <option value="register">Registrados</option>
-              <option value="register-only">Registrado, sin solicitud</option>
-              <option value="lead">Con solicitud</option>
-              <option value="none">Sin convertir</option>
-            </select>
-            {(sessQ || sessSrc || sessConv) && (
-              <button
-                onClick={() => { setSessQ(''); setSessSrc(''); setSessConv(''); setSessPage(1); }}
-                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                × Limpiar
-              </button>
-            )}
-          </div>
-        </div>
-        {sessLoading ? (
-          <div className="text-slate-400 text-sm text-center py-8">Cargando…</div>
-        ) : sessions.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin sesiones registradas aún</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="erp-table">
-              <thead>
-                <tr>
-                  <th>Usuario / Sesión</th>
-                  <th>Recorrido</th>
-                  <th>Fuente</th>
-                  <th>Campaña</th>
-                  <th>Registrado</th>
-                  <th>Lead</th>
-                  <th>Primera visita</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((s) => (
-                  <tr key={s.anon_id}>
-                    <td className="text-xs max-w-[160px] truncate">
-                      {s.user_email
-                        ? <span className="text-blue-600 font-medium">{s.user_email}</span>
-                        : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>
-                      }
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {(s.events as string[]).map((ev, i) => (
-                          <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
-                            {EVENT_LABELS[ev] ?? ev}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
-                    <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
-                    <td className="text-center">
-                      {s.did_register
-                        ? <span className="text-emerald-600 text-xs font-semibold">✓</span>
-                        : <span className="text-slate-300 text-xs">–</span>}
-                    </td>
-                    <td className="text-center">
-                      {s.did_lead
-                        ? <span className="text-amber-600 text-xs font-semibold">✓</span>
-                        : <span className="text-slate-300 text-xs">–</span>}
-                    </td>
-                    <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
-                    <td>
-                      <button
-                        onClick={() => {
-                          setFilterAnonId(s.anon_id);
-                          setEvtPage(1);
-                          eventsCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}
-                        className="text-xs text-blue-600 hover:underline whitespace-nowrap">
-                        Ver eventos →
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {sessTotal > 50 && (
-          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Pág. {sessPage} · {Math.ceil(sessTotal / 50)} páginas</span>
-            <div className="flex gap-2">
-              <button disabled={sessPage <= 1} onClick={() => setSessPage((p) => p - 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">← Anterior</button>
-              <button disabled={sessPage >= Math.ceil(sessTotal / 50)} onClick={() => setSessPage((p) => p + 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">Siguiente →</button>
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Recent events */}
-      <div ref={eventsCardRef}>
-      <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
+      {/* ── POR SESIÓN / USUARIO ── */}
+      {activeTab === 'sesiones' && (
+        <Card padding={false}>
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-semibold text-slate-800 text-sm">
-              Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
+              Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
             </h3>
-            {filterAnonId && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
-                Sesión: <span className="font-mono">{filterAnonId.slice(0, 14)}…</span>
-                <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-blue-900 ml-0.5">×</button>
-              </span>
-            )}
-          </div>
-          <button
-            onClick={exportEvents}
-            disabled={exporting === 'events'}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            {exporting === 'events' ? '…' : '↓'} Exportar Excel
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              placeholder="Buscar email…"
-              value={filterEvtQ}
-              onChange={(e) => { setFilterEvtQ(e.target.value); setEvtPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-40 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <select
-              value={filterType}
-              onChange={(e) => { setFilterType(e.target.value); setEvtPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="">Todos los eventos</option>
-              {Object.entries(EVENT_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-            <select
-              value={filterSource}
-              onChange={(e) => { setFilterSource(e.target.value); setEvtPage(1); }}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="">Todas las fuentes</option>
-              <option value="google">Google</option>
-              <option value="facebook">Facebook</option>
-              <option value="instagram">Instagram</option>
-              <option value="tiktok">TikTok</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="direct">Directo</option>
-            </select>
-            {(filterEvtQ || filterType || filterSource) && (
-              <button
-                onClick={() => { setFilterEvtQ(''); setFilterType(''); setFilterSource(''); setEvtPage(1); }}
-                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                × Limpiar
-              </button>
-            )}
-          </div>
-        </div>
-        {evtLoading ? (
-          <div className="text-slate-400 text-sm text-center py-8">Cargando…</div>
-        ) : events.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin eventos registrados aún</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="erp-table">
-              <thead>
-                <tr>
-                  <th>Evento</th>
-                  <th>Usuario / Anon</th>
-                  <th>Fuente</th>
-                  <th>Campaña</th>
-                  <th>Oferta</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((e) => (
-                  <tr key={e.id}>
-                    <td>
-                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
-                        {EVENT_LABELS[e.event_type] ?? e.event_type}
-                      </span>
-                    </td>
-                    <td className="text-xs text-slate-600 max-w-[160px] truncate">
-                      {e.user_email || (
-                        <button
-                          onClick={() => { setFilterAnonId(e.anon_id); setEvtPage(1); }}
-                          className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
-                          {e.anon_id.slice(0, 18)}…
-                        </button>
-                      )}
-                    </td>
-                    <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
-                    <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
-                    <td className="text-xs text-slate-500 max-w-[160px] truncate">
-                      {e.offer_title
-                        ? e.offer_id
-                          ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
-                          : e.offer_title
-                        : <span className="text-slate-300">–</span>}
-                    </td>
-                    <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {evtTotal > 50 && (
-          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-400">
-              Pág. {evtPage} · {Math.ceil(evtTotal / 50)} páginas
-            </span>
-            <div className="flex gap-2">
-              <button disabled={evtPage <= 1} onClick={() => setEvtPage((p) => p - 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
-                ← Anterior
-              </button>
-              <button disabled={evtPage >= Math.ceil(evtTotal / 50)} onClick={() => setEvtPage((p) => p + 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
-                Siguiente →
-              </button>
+            <button
+              onClick={exportSessions}
+              disabled={exporting === 'sessions'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              {exporting === 'sessions' ? '…' : '↓'} Exportar Excel
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                placeholder="Buscar email…"
+                value={sessQ}
+                onChange={(e) => { setSessQ(e.target.value); setSessPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-44 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <select
+                value={sessSrc}
+                onChange={(e) => { setSessSrc(e.target.value); setSessPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Todas las fuentes</option>
+                <option value="google">Google</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="direct">Directo</option>
+              </select>
+              <select
+                value={sessConv}
+                onChange={(e) => { setSessConv(e.target.value); setSessPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Toda conversión</option>
+                <option value="register">Registrados</option>
+                <option value="register-only">Registrado, sin solicitud</option>
+                <option value="lead">Con solicitud</option>
+                <option value="none">Sin convertir</option>
+              </select>
+              {(sessQ || sessSrc || sessConv) && (
+                <button
+                  onClick={() => { setSessQ(''); setSessSrc(''); setSessConv(''); setSessPage(1); }}
+                  className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                  × Limpiar
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </Card>
-      </div>
+          {sessLoading ? (
+            <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
+          ) : sessions.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-12">Sin sesiones registradas aún</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Usuario / Sesión</th>
+                    <th>Recorrido</th>
+                    <th>Fuente</th>
+                    <th>Campaña</th>
+                    <th>Registrado</th>
+                    <th>Lead</th>
+                    <th>Primera visita</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((s) => (
+                    <tr key={s.anon_id}>
+                      <td className="text-xs max-w-[160px] truncate">
+                        {s.user_email
+                          ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                          : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>
+                        }
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {(s.events as string[]).map((ev, i) => (
+                            <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {EVENT_LABELS[ev] ?? ev}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
+                      <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                      <td className="text-center">
+                        {s.did_register
+                          ? <span className="text-emerald-600 text-xs font-semibold">✓</span>
+                          : <span className="text-slate-300 text-xs">–</span>}
+                      </td>
+                      <td className="text-center">
+                        {s.did_lead
+                          ? <span className="text-amber-600 text-xs font-semibold">✓</span>
+                          : <span className="text-slate-300 text-xs">–</span>}
+                      </td>
+                      <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                      <td>
+                        <button
+                          onClick={() => goToEventsForSession(s.anon_id)}
+                          className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                          Ver eventos →
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {sessTotal > 50 && (
+            <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-400">Pág. {sessPage} · {Math.ceil(sessTotal / 50)} páginas</span>
+              <div className="flex gap-2">
+                <button disabled={sessPage <= 1} onClick={() => setSessPage((p) => p - 1)}
+                  className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">← Anterior</button>
+                <button disabled={sessPage >= Math.ceil(sessTotal / 50)} onClick={() => setSessPage((p) => p + 1)}
+                  className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">Siguiente →</button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── EVENTOS RECIENTES ── */}
+      {activeTab === 'eventos' && (
+        <Card padding={false}>
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-slate-800 text-sm">
+                Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
+              </h3>
+              {filterAnonId && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                  Sesión: <span className="font-mono">{filterAnonId.slice(0, 14)}…</span>
+                  <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-blue-900 ml-0.5">×</button>
+                </span>
+              )}
+            </div>
+            <button
+              onClick={exportEvents}
+              disabled={exporting === 'events'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              {exporting === 'events' ? '…' : '↓'} Exportar Excel
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                placeholder="Buscar email…"
+                value={filterEvtQ}
+                onChange={(e) => { setFilterEvtQ(e.target.value); setEvtPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-40 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <select
+                value={filterType}
+                onChange={(e) => { setFilterType(e.target.value); setEvtPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Todos los eventos</option>
+                {Object.entries(EVENT_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+              <select
+                value={filterSource}
+                onChange={(e) => { setFilterSource(e.target.value); setEvtPage(1); }}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Todas las fuentes</option>
+                <option value="google">Google</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="direct">Directo</option>
+              </select>
+              {(filterEvtQ || filterType || filterSource) && (
+                <button
+                  onClick={() => { setFilterEvtQ(''); setFilterType(''); setFilterSource(''); setEvtPage(1); }}
+                  className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                  × Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+          {evtLoading ? (
+            <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
+          ) : events.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-12">Sin eventos registrados aún</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Evento</th>
+                    <th>Usuario / Anon</th>
+                    <th>Fuente</th>
+                    <th>Campaña</th>
+                    <th>Oferta</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((e) => (
+                    <tr key={e.id}>
+                      <td>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                          {EVENT_LABELS[e.event_type] ?? e.event_type}
+                        </span>
+                      </td>
+                      <td className="text-xs text-slate-600 max-w-[160px] truncate">
+                        {e.user_email || (
+                          <button
+                            onClick={() => { setFilterAnonId(e.anon_id); setEvtPage(1); }}
+                            className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
+                            {e.anon_id.slice(0, 18)}…
+                          </button>
+                        )}
+                      </td>
+                      <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-xs text-slate-500 max-w-[160px] truncate">
+                        {e.offer_title
+                          ? e.offer_id
+                            ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
+                            : e.offer_title
+                          : <span className="text-slate-300">–</span>}
+                      </td>
+                      <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {evtTotal > 50 && (
+            <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                Pág. {evtPage} · {Math.ceil(evtTotal / 50)} páginas
+              </span>
+              <div className="flex gap-2">
+                <button disabled={evtPage <= 1} onClick={() => setEvtPage((p) => p - 1)}
+                  className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
+                  ← Anterior
+                </button>
+                <button disabled={evtPage >= Math.ceil(evtTotal / 50)} onClick={() => setEvtPage((p) => p + 1)}
+                  className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
