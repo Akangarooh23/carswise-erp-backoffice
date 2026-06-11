@@ -167,6 +167,19 @@ function FilterSelect({ value, onChange, options, placeholder }: {
   );
 }
 
+function DetailGrid({ items }: { items: Array<{ label: string; value: React.ReactNode }> }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+      {items.map(({ label, value }) => (
+        <div key={label}>
+          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{label}</div>
+          <div className="text-xs text-slate-700 break-all">{value ?? <span className="text-slate-300">–</span>}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FunnelPage() {
@@ -223,6 +236,18 @@ export default function FunnelPage() {
   const [offerSort, setOfferSort]         = useState<SortState>(null);
 
   const [exporting, setExporting] = useState<'sessions' | 'events' | null>(null);
+
+  // Expanded row per table
+  const [expandDaily, setExpandDaily]   = useState<string | null>(null);
+  const [expandSrc, setExpandSrc]       = useState<string | null>(null);
+  const [expandCamp, setExpandCamp]     = useState<string | null>(null);
+  const [expandOffer, setExpandOffer]   = useState<string | null>(null);
+  const [expandSess, setExpandSess]     = useState<string | null>(null);
+  const [expandEvt, setExpandEvt]       = useState<string | null>(null);
+
+  function xpand(cur: string | null, set: React.Dispatch<React.SetStateAction<string | null>>, key: string) {
+    set(cur === key ? null : key);
+  }
 
   // ── Data loading ─────────────────────────────────────────────────────────
 
@@ -500,18 +525,42 @@ export default function FunnelPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDaily.map((row) => (
-                    <tr key={row.day}>
-                      <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
-                        {new Date(String(row.day).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
-                      </td>
-                      <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
-                      <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
-                      <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
-                      <td className="text-right">{row.registers > 0 ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
-                      <td className="text-right">{row.leads > 0 ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
-                    </tr>
-                  ))}
+                  {filteredDaily.map((row) => {
+                    const dayKey = String(row.day).slice(0, 10);
+                    const open = expandDaily === dayKey;
+                    const label = new Date(dayKey + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
+                    return (
+                      <>
+                        <tr key={dayKey} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandDaily, setExpandDaily, dayKey)}>
+                          <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                            <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{label}
+                          </td>
+                          <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
+                          <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
+                          <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
+                          <td className="text-right">{row.registers > 0 ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
+                          <td className="text-right">{row.leads > 0 ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
+                        </tr>
+                        {open && (
+                          <tr key={`${dayKey}-d`}>
+                            <td colSpan={6} className="p-0">
+                              <DetailGrid items={[
+                                { label: 'Fecha',        value: label },
+                                { label: 'Accesos',      value: row.landings },
+                                { label: 'Marketplace',  value: row.marketplace_views },
+                                { label: 'Ofertas vistas', value: row.offer_views },
+                                { label: 'Registros',    value: row.registers },
+                                { label: 'Solicitudes',  value: row.leads },
+                                { label: 'Total eventos',value: row.total },
+                                { label: 'Conv. leads',  value: pct(row.leads, row.landings) },
+                                { label: 'Conv. reg.',   value: pct(row.registers, row.landings) },
+                              ]} />
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -548,15 +597,37 @@ export default function FunnelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSources.map((row) => (
-                        <tr key={row.source}>
-                          <td className="font-medium text-sm">{row.source || '(directo)'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                          <td className="text-right text-sm text-slate-600">{row.registers}</td>
-                          <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                          <td className="text-right text-sm text-slate-500">{pct(row.leads, row.sessions)}</td>
-                        </tr>
-                      ))}
+                      {filteredSources.map((row) => {
+                        const key = row.source || '(directo)';
+                        const open = expandSrc === key;
+                        return (
+                          <>
+                            <tr key={key} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandSrc, setExpandSrc, key)}>
+                              <td className="font-medium text-sm">
+                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{key}
+                              </td>
+                              <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
+                              <td className="text-right text-sm text-slate-600">{row.registers}</td>
+                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                              <td className="text-right text-sm text-slate-500">{pct(row.leads, row.sessions)}</td>
+                            </tr>
+                            {open && (
+                              <tr key={`${key}-d`}>
+                                <td colSpan={5} className="p-0">
+                                  <DetailGrid items={[
+                                    { label: 'Fuente',       value: key },
+                                    { label: 'Sesiones',     value: row.sessions.toLocaleString('es-ES') },
+                                    { label: 'Registros',    value: row.registers },
+                                    { label: 'Leads',        value: row.leads },
+                                    { label: 'Conv. leads',  value: pct(row.leads, row.sessions) },
+                                    { label: 'Conv. reg.',   value: pct(row.registers, row.sessions) },
+                                  ]} />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -600,16 +671,40 @@ export default function FunnelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCampaigns.map((row, i) => (
-                        <tr key={i}>
-                          <td className="text-sm font-medium max-w-[200px] truncate">{row.campaign}</td>
-                          <td className="text-sm text-slate-500 capitalize">{row.medium || '–'}</td>
-                          <td className="text-sm text-slate-500">{row.source || '–'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                          <td className="text-right text-sm text-slate-600">{row.registers}</td>
-                          <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                        </tr>
-                      ))}
+                      {filteredCampaigns.map((row, i) => {
+                        const key = `${row.campaign}|${row.medium}|${row.source}|${i}`;
+                        const open = expandCamp === key;
+                        return (
+                          <>
+                            <tr key={key} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandCamp, setExpandCamp, key)}>
+                              <td className="text-sm font-medium max-w-[200px] truncate">
+                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{row.campaign}
+                              </td>
+                              <td className="text-sm text-slate-500 capitalize">{row.medium || '–'}</td>
+                              <td className="text-sm text-slate-500">{row.source || '–'}</td>
+                              <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
+                              <td className="text-right text-sm text-slate-600">{row.registers}</td>
+                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                            </tr>
+                            {open && (
+                              <tr key={`${key}-d`}>
+                                <td colSpan={6} className="p-0">
+                                  <DetailGrid items={[
+                                    { label: 'Campaña',     value: row.campaign },
+                                    { label: 'Medio',       value: row.medium || '–' },
+                                    { label: 'Fuente',      value: row.source || '–' },
+                                    { label: 'Sesiones',    value: row.sessions.toLocaleString('es-ES') },
+                                    { label: 'Registros',   value: row.registers },
+                                    { label: 'Leads',       value: row.leads },
+                                    { label: 'Conv. leads', value: pct(row.leads, row.sessions) },
+                                    { label: 'Conv. reg.',  value: pct(row.registers, row.sessions) },
+                                  ]} />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -656,18 +751,38 @@ export default function FunnelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOffers.map((row) => (
-                        <tr key={row.offer_id}>
-                          <td className="text-sm font-medium">
-                            {row.offer_url
-                              ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" className="block truncate max-w-xs text-blue-600 hover:text-blue-800 hover:underline">{row.offer_title || row.offer_id}</a>
-                              : <span className="block truncate max-w-xs">{row.offer_title || row.offer_id}</span>}
-                          </td>
-                          <td className="text-right text-sm text-slate-600">{row.views}</td>
-                          <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                          <td className="text-right text-sm text-slate-500">{pct(row.leads, row.views)}</td>
-                        </tr>
-                      ))}
+                      {filteredOffers.map((row) => {
+                        const open = expandOffer === row.offer_id;
+                        return (
+                          <>
+                            <tr key={row.offer_id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandOffer, setExpandOffer, row.offer_id)}>
+                              <td className="text-sm font-medium">
+                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>
+                                {row.offer_url
+                                  ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="truncate max-w-xs text-blue-600 hover:text-blue-800 hover:underline">{row.offer_title || row.offer_id}</a>
+                                  : <span className="truncate max-w-xs">{row.offer_title || row.offer_id}</span>}
+                              </td>
+                              <td className="text-right text-sm text-slate-600">{row.views}</td>
+                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                              <td className="text-right text-sm text-slate-500">{pct(row.leads, row.views)}</td>
+                            </tr>
+                            {open && (
+                              <tr key={`${row.offer_id}-d`}>
+                                <td colSpan={4} className="p-0">
+                                  <DetailGrid items={[
+                                    { label: 'ID oferta',   value: <span className="font-mono">{row.offer_id}</span> },
+                                    { label: 'Título',      value: row.offer_title },
+                                    { label: 'URL',         value: row.offer_url ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{row.offer_url}</a> : '–' },
+                                    { label: 'Vistas',      value: row.views },
+                                    { label: 'Leads',       value: row.leads },
+                                    { label: 'Conv. leads', value: pct(row.leads, row.views) },
+                                  ]} />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -717,30 +832,63 @@ export default function FunnelPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSessions.map((s) => (
-                    <tr key={s.anon_id}>
-                      <td className="text-xs max-w-[160px] truncate">
-                        {s.user_email
-                          ? <span className="text-blue-600 font-medium">{s.user_email}</span>
-                          : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {(s.events as string[]).map((ev, i) => (
-                            <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
-                              {EVENT_LABELS[ev] ?? ev}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
-                      <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
-                      <td className="text-center">{s.did_register ? <span className="text-emerald-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
-                      <td className="text-center">{s.did_lead ? <span className="text-amber-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
-                      <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
-                      <td><button onClick={() => goToEventsForSession(s.anon_id)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Ver eventos →</button></td>
-                    </tr>
-                  ))}
+                  {filteredSessions.map((s) => {
+                    const open = expandSess === s.anon_id;
+                    return (
+                      <>
+                        <tr key={s.anon_id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandSess, setExpandSess, s.anon_id)}>
+                          <td className="text-xs max-w-[160px] truncate">
+                            <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
+                            {s.user_email
+                              ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                              : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {(s.events as string[]).map((ev, i) => (
+                                <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                                  {EVENT_LABELS[ev] ?? ev}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
+                          <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                          <td className="text-center">{s.did_register ? <span className="text-emerald-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
+                          <td className="text-center">{s.did_lead ? <span className="text-amber-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
+                          <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                          <td><button onClick={(e) => { e.stopPropagation(); goToEventsForSession(s.anon_id); }} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Ver eventos →</button></td>
+                        </tr>
+                        {open && (
+                          <tr key={`${s.anon_id}-d`}>
+                            <td colSpan={8} className="p-0">
+                              <DetailGrid items={[
+                                { label: 'Email',         value: s.user_email || '–' },
+                                { label: 'ID sesión',     value: <span className="font-mono text-[10px]">{s.anon_id}</span> },
+                                { label: 'Primera visita',value: fmtDate(s.first_seen) },
+                                { label: 'Última visita', value: fmtDate(s.last_seen) },
+                                { label: 'Fuente',        value: s.utm_source || '–' },
+                                { label: 'Medio',         value: s.utm_medium || '–' },
+                                { label: 'Campaña',       value: s.utm_campaign || '–' },
+                                { label: 'Nº eventos',    value: s.event_count },
+                                { label: 'Registrado',    value: s.did_register ? 'Sí' : 'No' },
+                                { label: 'Lead',          value: s.did_lead ? 'Sí' : 'No' },
+                                { label: 'Recorrido',     value: (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {(s.events as string[]).map((ev, i) => (
+                                      <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                                        {EVENT_LABELS[ev] ?? ev}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )},
+                              ]} />
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -798,28 +946,54 @@ export default function FunnelPage() {
                   <tr><th>Evento</th><th>Usuario / Anon</th><th>Fuente</th><th>Campaña</th><th>Oferta</th><th>Fecha</th></tr>
                 </thead>
                 <tbody>
-                  {filteredEvents.map((e) => (
-                    <tr key={e.id}>
-                      <td><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span></td>
-                      <td className="text-xs text-slate-600 max-w-[160px] truncate">
-                        {e.user_email || (
-                          <button onClick={() => { setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
-                            {e.anon_id.slice(0, 18)}…
-                          </button>
+                  {filteredEvents.map((e) => {
+                    const open = expandEvt === e.id;
+                    return (
+                      <>
+                        <tr key={e.id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandEvt, setExpandEvt, e.id)}>
+                          <td>
+                            <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
+                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span>
+                          </td>
+                          <td className="text-xs text-slate-600 max-w-[160px] truncate">
+                            {e.user_email || (
+                              <button onClick={(ev) => { ev.stopPropagation(); setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
+                                {e.anon_id.slice(0, 18)}…
+                              </button>
+                            )}
+                          </td>
+                          <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
+                          <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
+                          <td className="text-xs text-slate-500 max-w-[160px] truncate">
+                            {e.offer_title
+                              ? e.offer_id
+                                ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
+                                : e.offer_title
+                              : <span className="text-slate-300">–</span>}
+                          </td>
+                          <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
+                        </tr>
+                        {open && (
+                          <tr key={`${e.id}-d`}>
+                            <td colSpan={6} className="p-0">
+                              <DetailGrid items={[
+                                { label: 'Tipo evento',   value: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span> },
+                                { label: 'Email',         value: e.user_email || '–' },
+                                { label: 'ID sesión',     value: <span className="font-mono text-[10px]">{e.anon_id}</span> },
+                                { label: 'Fuente',        value: e.utm_source || '–' },
+                                { label: 'Medio',         value: e.utm_medium || '–' },
+                                { label: 'Campaña',       value: e.utm_campaign || '–' },
+                                { label: 'Oferta',        value: e.offer_title || '–' },
+                                { label: 'ID oferta',     value: e.offer_id ? <span className="font-mono text-[10px]">{e.offer_id}</span> : '–' },
+                                { label: 'Landing URL',   value: e.landing_url ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-blue-600 hover:underline break-all">{e.landing_url}</a> : '–' },
+                                { label: 'Fecha',         value: fmtDate(e.created_at) },
+                              ]} />
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-xs text-slate-500 max-w-[160px] truncate">
-                        {e.offer_title
-                          ? e.offer_id
-                            ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
-                            : e.offer_title
-                          : <span className="text-slate-300">–</span>}
-                      </td>
-                      <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
-                    </tr>
-                  ))}
+                      </>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
