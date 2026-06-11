@@ -165,6 +165,31 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations']),
   }
 });
 
+const ENSURE_HISTORY_TABLE = `
+  CREATE TABLE IF NOT EXISTS erp_lead_history (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id     TEXT NOT NULL,
+    operator    TEXT NOT NULL,
+    field       TEXT NOT NULL,
+    old_value   TEXT,
+    new_value   TEXT,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
+leadsRouter.get('/leads/:id/history', requireRole(['admin', 'support', 'operations']), async (req, res) => {
+  try {
+    await query(ENSURE_HISTORY_TABLE, []).catch(() => {});
+    const result = await query(
+      `SELECT id, operator, field, old_value, new_value, created_at
+       FROM erp_lead_history WHERE lead_id = $1 ORDER BY created_at DESC`,
+      [req.params.id]
+    );
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'history_fetch_failed', detail: (err as Error).message });
+  }
+});
+
 leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']), async (req, res) => {
   const {
     status, notes,
@@ -194,11 +219,34 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 
   values.push(req.params.id);
   try {
+    // Fetch current values for history diff
+    const before = await query(`SELECT status, erp_notes, erp_response, appointment_date FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    if (!before.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+    const prev = before.rows[0] as Record<string, unknown>;
+
     const result = await query(
       `UPDATE moveadvisor_market_leads SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`,
       values
     );
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    // Write history entries for changed fields
+    const operator = req.actor?.name ?? req.actor?.sub ?? 'unknown';
+    const tracked: Array<[string, unknown, unknown]> = [
+      ['status',           prev.status,           status],
+      ['erp_response',     prev.erp_response,      erp_response],
+      ['appointment_date', prev.appointment_date,  appointment_date],
+    ];
+    await query(ENSURE_HISTORY_TABLE, []).catch(() => {});
+    for (const [field, oldVal, newVal] of tracked) {
+      if (newVal !== undefined && String(newVal ?? '') !== String(oldVal ?? '')) {
+        await query(
+          `INSERT INTO erp_lead_history (lead_id, operator, field, old_value, new_value) VALUES ($1,$2,$3,$4,$5)`,
+          [req.params.id, operator, field, String(oldVal ?? ''), String(newVal ?? '')]
+        ).catch(() => {});
+      }
+    }
+
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'lead_update_failed', detail: (err as Error).message });

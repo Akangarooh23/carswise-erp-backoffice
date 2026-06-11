@@ -362,6 +362,9 @@ export default function MarketplacePage() {
   const [statusFilter, setStatus] = useState('');
   const [loading, setLoading]     = useState(true);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulking, setBulking]         = useState(false);
+
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
@@ -458,8 +461,16 @@ export default function MarketplacePage() {
     setLoading(false);
   }, [tab, q, brand, statusFilter]);
 
-  useEffect(() => { setPage(1); load(1); }, [tab, q, brand, statusFilter, load]);
+  useEffect(() => { setPage(1); load(1); setSelectedIds(new Set()); }, [tab, q, brand, statusFilter, load]);
   useEffect(() => { load(page); }, [page, load]);
+
+  async function bulkAction(action: 'activate' | 'deactivate') {
+    if (selectedIds.size === 0) return;
+    setBulking(true);
+    const r = await api.post('/marketplace/vo/bulk', { action, ids: [...selectedIds] });
+    if (r.ok) { setSelectedIds(new Set()); load(page); }
+    setBulking(false);
+  }
 
   async function openEdit(offer: VoOffer) {
     setEditOffer(offer);
@@ -665,6 +676,13 @@ export default function MarketplacePage() {
                 <thead>
                   {/* ── Row 1: sortable labels ── */}
                   <tr>
+                    <th className="w-10 px-3">
+                      <input type="checkbox"
+                        checked={displayItems.length > 0 && displayItems.every(i => selectedIds.has(i.id))}
+                        onChange={(e) => setSelectedIds(e.target.checked ? new Set(displayItems.map(i => i.id)) : new Set())}
+                        className="rounded"
+                      />
+                    </th>
                     {([
                       { key: 'title',   label: 'Vehículo'    },
                       { key: 'brand',   label: 'Marca'       },
@@ -801,7 +819,18 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayItems.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} className={selectedIds.has(item.id) ? 'bg-blue-50' : ''}>
+                      <td className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={(e) => setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            e.target.checked ? next.add(item.id) : next.delete(item.id);
+                            return next;
+                          })}
+                          className="rounded"
+                        />
+                      </td>
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
@@ -1205,6 +1234,24 @@ export default function MarketplacePage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Bulk action bar ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white rounded-xl px-5 py-3 flex items-center gap-4 shadow-2xl">
+          <span className="text-sm font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}</span>
+          <button onClick={() => bulkAction('activate')} disabled={bulking}
+            className="px-3 py-1.5 text-xs bg-green-500 hover:bg-green-400 rounded-lg font-medium disabled:opacity-60">
+            ✓ Activar
+          </button>
+          <button onClick={() => bulkAction('deactivate')} disabled={bulking}
+            className="px-3 py-1.5 text-xs bg-slate-600 hover:bg-slate-500 rounded-lg font-medium disabled:opacity-60">
+            Desactivar
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-slate-400 hover:text-white text-xs ml-1">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

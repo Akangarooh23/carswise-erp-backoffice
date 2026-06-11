@@ -314,7 +314,7 @@ export default function FunnelPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Filtrar por usuario (email)…"
+                placeholder="Filtrar por email o anon_id…"
                 value={globalUser}
                 onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
                 className="text-xs border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"

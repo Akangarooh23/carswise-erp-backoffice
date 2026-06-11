@@ -46,6 +46,15 @@ interface LeadStats {
   new_7d: number;
 }
 
+interface LeadHistoryEntry {
+  id: string;
+  operator: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+}
+
 // ─── Call queue types ─────────────────────────────────────────────────────────
 
 interface CallQueueItem {
@@ -176,6 +185,8 @@ export default function LeadsPage() {
   const [editApptContact, setEditApptContact]   = useState('');
   const [saving, setSaving]             = useState(false);
   const [notifying, setNotifying]       = useState(false);
+  const [history, setHistory]           = useState<LeadHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // ── Call queue state ──
   const [callQueue, setCallQueue]         = useState<CallQueueItem[]>([]);
@@ -272,7 +283,7 @@ export default function LeadsPage() {
   }
 
   // ── Solicitudes handlers ──
-  function openLead(lead: Lead) {
+  async function openLead(lead: Lead) {
     setSelected(lead);
     setEditStatus(lead.status);
     setEditNotes(lead.meta?.erp_notes ?? '');
@@ -281,6 +292,11 @@ export default function LeadsPage() {
     setEditApptTime(lead.meta?.appointment_time ?? '');
     setEditApptAddress(lead.meta?.appointment_address ?? '');
     setEditApptContact(lead.meta?.appointment_contact ?? '');
+    setHistory([]);
+    setHistoryLoading(true);
+    const r = await api.get<{ data: LeadHistoryEntry[] }>(`/leads/${lead.id}/history`);
+    if (r.ok) setHistory((r as unknown as { data: LeadHistoryEntry[] }).data ?? []);
+    setHistoryLoading(false);
   }
 
   async function saveLead() {
@@ -886,6 +902,33 @@ export default function LeadsPage() {
                 placeholder="Notas privadas (no se envían al cliente)…"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
             </div>
+
+            {/* ── Historial de cambios ── */}
+            {(historyLoading || history.length > 0) && (
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Historial</p>
+                {historyLoading ? (
+                  <p className="text-xs text-slate-400">Cargando…</p>
+                ) : (
+                  <ol className="space-y-1">
+                    {history.map((h) => (
+                      <li key={h.id} className="flex gap-2 text-xs text-slate-500">
+                        <span className="text-slate-300 whitespace-nowrap">
+                          {new Date(h.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="font-medium text-slate-700">{h.operator}</span>
+                        <span>
+                          {h.field === 'status' ? <>cambió estado: <em>{h.old_value || '–'}</em> → <strong>{h.new_value}</strong></> :
+                           h.field === 'erp_response' ? <>actualizó respuesta al cliente</> :
+                           h.field === 'appointment_date' ? <>fijó cita: <strong>{h.new_value || 'borrada'}</strong></> :
+                           <>{h.field}: {h.old_value} → {h.new_value}</>}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )}
 
             {selected.notified_at && (
               <p className="text-xs text-slate-400 text-right pt-1">

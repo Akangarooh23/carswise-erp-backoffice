@@ -383,6 +383,30 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
   }
 });
 
+// ── Bulk activate / deactivate ───────────────────────────────────────────────
+
+marketplaceRouter.post('/marketplace/vo/bulk', requireRole(['admin', 'operations']), async (req, res) => {
+  const { action, ids } = req.body ?? {};
+  if (!['activate', 'deactivate'].includes(action) || !Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ ok: false, error: 'invalid_params' });
+    return;
+  }
+  const safeIds = ids.map(String);
+  const placeholders = safeIds.map((_, i) => `$${i + 2}`).join(', ');
+  try {
+    const result = await query(
+      `UPDATE moveadvisor_marketplace_vo_offers
+       SET is_active = $1, updated_at = NOW()
+       WHERE id IN (${placeholders})
+       RETURNING id`,
+      [action === 'activate', ...safeIds]
+    );
+    res.json({ ok: true, updated: result.rows.length });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'bulk_action_failed', detail: (err as Error).message });
+  }
+});
+
 // ── Hard delete vehicle ───────────────────────────────────────────────────────
 
 marketplaceRouter.delete('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {

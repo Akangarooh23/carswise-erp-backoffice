@@ -129,7 +129,7 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   if (converted === 'none')     havingClauses.push(`BOOL_OR(event_type = 'register') = false AND BOOL_OR(event_type = 'lead_request') = false`);
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    havingClauses.push(`LOWER(MAX(COALESCE(user_email, ''))) LIKE $${values.length}`);
+    havingClauses.push(`(LOWER(MAX(COALESCE(user_email, ''))) LIKE $${values.length} OR LOWER(anon_id) LIKE $${values.length})`);
   }
 
   const having = havingClauses.length ? `HAVING ${havingClauses.join(' AND ')}` : '';
@@ -217,7 +217,7 @@ funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']),
 
   if (userEmail) {
     values.push(`%${userEmail}%`);
-    conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`);
+    conditions.push(`(LOWER(COALESCE(user_email, '')) LIKE $${values.length} OR LOWER(anon_id) LIKE $${values.length})`);
   }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
