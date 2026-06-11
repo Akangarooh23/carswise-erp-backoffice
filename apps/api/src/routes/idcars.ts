@@ -109,6 +109,17 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
 
     const { price, title, brand, model, year, mileage, fuel, color, notes, cv, co2 } = v;
 
+    const missing: string[] = [];
+    if (!brand?.toString().trim())  missing.push('marca');
+    if (!model?.toString().trim())  missing.push('modelo');
+    if (!year  || Number(year) < 1900) missing.push('año');
+    if (!price || parseFloat(String(price)) <= 0) missing.push('precio');
+    if (missing.length) {
+      res.status(400).json({ ok: false, error: 'missing_required_fields', fields: missing,
+        detail: `Campos obligatorios sin rellenar: ${missing.join(', ')}` });
+      return;
+    }
+
     // Get first photo URL for the main image
     const photoResult = await query(
       `SELECT file_url, file_name FROM moveadvisor_user_vehicle_files

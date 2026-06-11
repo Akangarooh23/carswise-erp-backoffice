@@ -256,53 +256,78 @@ const ENSURE_OUTREACH_TABLE = `
   )`;
 
 funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations']), async (req, res) => {
-  const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const days   = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+  const page   = Math.max(1, Number(req.query.page) || 1);
+  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
+
+  const BASE_CTE = `
+    WITH base AS (
+      SELECT fe.anon_id, COALESCE(fo.status, 'pending') AS grp_status
+      FROM moveadvisor_funnel_events fe
+      LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
+      WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
+      GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
+      HAVING BOOL_OR(fe.event_type = 'offer_view')   = true
+         AND BOOL_OR(fe.event_type = 'lead_request') = false
+    )`;
 
   try {
     await query(ENSURE_OUTREACH_TABLE, []).catch(() => {});
 
-    const result = await query(
-      `SELECT
-         fe.anon_id,
-         MAX(fe.user_email)   AS user_email,
-         MAX(fe.utm_source)   AS utm_source,
-         MAX(fe.utm_campaign) AS utm_campaign,
-         MIN(fe.created_at)   AS first_seen,
-         MAX(fe.created_at)   AS last_seen,
-         array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', 'https://www.carswiseai.com/marketplace-vo/' || fe.offer_id))
-           FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
-           AS offers_viewed,
-         COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,
-         COALESCE(fo.status, 'pending') AS outreach_status,
-         fo.notes                       AS outreach_notes,
-         fo.updated_at                  AS outreach_updated_at
-       FROM moveadvisor_funnel_events fe
-       LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
-       WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
-       GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
-       HAVING BOOL_OR(fe.event_type = 'offer_view')    = true
-          AND BOOL_OR(fe.event_type = 'lead_request')  = false
-       ORDER BY
-         CASE COALESCE(fo.status, 'pending')
-           WHEN 'pending'      THEN 0
-           WHEN 'no_answer'    THEN 1
-           WHEN 'called'       THEN 2
-           WHEN 'not_interested' THEN 3
-           ELSE 4
-         END,
-         MAX(fe.created_at) DESC
-       LIMIT 500`,
-      [days]
-    );
+    const [statsResult, dataResult] = await Promise.all([
+      query(
+        `${BASE_CTE}
+         SELECT
+           COUNT(*)::int                                                              AS total,
+           COUNT(*) FILTER (WHERE grp_status = 'pending')::int                       AS pending,
+           COUNT(*) FILTER (WHERE grp_status = 'no_answer')::int                     AS no_answer,
+           COUNT(*) FILTER (WHERE grp_status IN ('called','not_interested'))::int    AS resolved
+         FROM base`,
+        [days]
+      ),
+      query(
+        `SELECT
+           fe.anon_id,
+           MAX(fe.user_email)   AS user_email,
+           MAX(fe.utm_source)   AS utm_source,
+           MAX(fe.utm_campaign) AS utm_campaign,
+           MIN(fe.created_at)   AS first_seen,
+           MAX(fe.created_at)   AS last_seen,
+           array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', 'https://www.carswiseai.com/marketplace-vo/' || fe.offer_id))
+             FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
+             AS offers_viewed,
+           COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,
+           COALESCE(fo.status, 'pending') AS outreach_status,
+           fo.notes                       AS outreach_notes,
+           fo.updated_at                  AS outreach_updated_at
+         FROM moveadvisor_funnel_events fe
+         LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
+         WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
+         GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
+         HAVING BOOL_OR(fe.event_type = 'offer_view')    = true
+            AND BOOL_OR(fe.event_type = 'lead_request')  = false
+         ORDER BY
+           CASE COALESCE(fo.status, 'pending')
+             WHEN 'pending'      THEN 0
+             WHEN 'no_answer'    THEN 1
+             WHEN 'called'       THEN 2
+             WHEN 'not_interested' THEN 3
+             ELSE 4
+           END,
+           MAX(fe.created_at) DESC
+         LIMIT $2 OFFSET $3`,
+        [days, limit, offset]
+      ),
+    ]);
 
-    const rows = result.rows as { outreach_status: string }[];
-    const stats = {
-      pending:        rows.filter((r) => r.outreach_status === 'pending').length,
-      no_answer:      rows.filter((r) => r.outreach_status === 'no_answer').length,
-      resolved:       rows.filter((r) => ['called', 'not_interested'].includes(r.outreach_status)).length,
-    };
-
-    res.json({ ok: true, data: rows, stats });
+    const s = statsResult.rows[0] as { total: number; pending: number; no_answer: number; resolved: number };
+    res.json({
+      ok: true,
+      data: dataResult.rows,
+      stats: { pending: s.pending, no_answer: s.no_answer, resolved: s.resolved },
+      meta: { total: s.total, page, limit },
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'callqueue_failed', detail: (err as Error).message });
   }

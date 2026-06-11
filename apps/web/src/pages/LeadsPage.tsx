@@ -182,6 +182,10 @@ export default function LeadsPage() {
   const [callStats, setCallStats]         = useState<CallQueueStats | null>(null);
   const [callLoading, setCallLoading]     = useState(false);
   const [callDays, setCallDays]           = useState(30);
+  const [callPage, setCallPage]           = useState(1);
+  const [callTotal, setCallTotal]         = useState(0);
+  const callLimit = 50;
+  const [exporting, setExporting]         = useState(false);
   const [showResolved, setShowResolved]   = useState(false);
   const [expandedAnon, setExpandedAnon]     = useState<string | null>(null);
   const [noteText, setNoteText]             = useState('');
@@ -217,17 +221,55 @@ export default function LeadsPage() {
   // ── Load call queue ──
   const loadCallQueue = useCallback(async () => {
     setCallLoading(true);
-    const r = await api.get<CallQueueItem[]>(`/funnel/callqueue?days=${callDays}`);
+    const r = await api.get<CallQueueItem[]>(`/funnel/callqueue?days=${callDays}&page=${callPage}&limit=${callLimit}`);
     if (r.ok) {
       setCallQueue(r.data as unknown as CallQueueItem[]);
       setCallStats((r as unknown as { stats: CallQueueStats }).stats ?? null);
+      setCallTotal((r as unknown as { meta: { total: number } }).meta?.total ?? 0);
     }
     setCallLoading(false);
-  }, [callDays]);
+  }, [callDays, callPage, callLimit]);
 
   useEffect(() => {
     if (activeTab === 'llamadas') loadCallQueue();
   }, [activeTab, loadCallQueue]);
+
+  // ── Export leads CSV ──
+  async function exportLeadsCsv() {
+    setExporting(true);
+    const params = new URLSearchParams({ page: '1', limit: '1000' });
+    if (q)            params.set('q', q);
+    if (filterStatus) params.set('status', filterStatus);
+    if (filterType)   params.set('type', filterType);
+    if (filterOrigin) params.set('origin', filterOrigin);
+    const res = await api.get<{ data: Lead[] }>(`/leads?${params}`);
+    if (res.ok) {
+      const rows = res.data as unknown as Lead[];
+      const e = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const header = ['Fecha', 'Email', 'Vehículo', 'Tipo', 'Origen', 'Estado', 'Contacto', 'Teléfono', 'Cuándo', 'Respuesta CarsWise'].join(',');
+      const lines = rows.map((r) => [
+        e(r.created_at ? new Date(r.created_at).toLocaleDateString('es-ES') : ''),
+        e(r.user_email),
+        e(r.title),
+        e(r.appointment_type),
+        e(r.meta?.portal || ''),
+        e(r.status),
+        e(r.meta?.name || ''),
+        e(r.meta?.phone || ''),
+        e(r.meta?.when || ''),
+        e(r.meta?.erp_response || ''),
+      ].join(','));
+      const csv = [header, ...lines].join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    setExporting(false);
+  }
 
   // ── Solicitudes handlers ──
   function openLead(lead: Lead) {
@@ -363,7 +405,7 @@ export default function LeadsPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex flex-wrap gap-3 mb-4 items-center">
             <input
               type="text"
               placeholder="Buscar por email, vehículo…"
@@ -390,6 +432,10 @@ export default function LeadsPage() {
               <option value="marketplace-vo-renting">Marketplace · Renting</option>
               <option value="portales">Portales externos</option>
             </select>
+            <button onClick={exportLeadsCsv} disabled={exporting}
+              className="ml-auto px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-60 whitespace-nowrap">
+              {exporting ? 'Exportando…' : '↓ Exportar Excel'}
+            </button>
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -484,7 +530,7 @@ export default function LeadsPage() {
               <span className="text-xs text-slate-500">Período:</span>
               {[7, 14, 30, 60].map((d) => (
                 <button key={d}
-                  onClick={() => setCallDays(d)}
+                  onClick={() => { setCallDays(d); setCallPage(1); }}
                   className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                     callDays === d
                       ? 'bg-brand-600 border-brand-600 text-white font-medium'
@@ -730,9 +776,14 @@ export default function LeadsPage() {
               </table>
             )}
           </div>
-          {visibleQueue.length > 0 && (
+          {callTotal > callLimit && (
+            <div className="mt-3">
+              <Pagination page={callPage} limit={callLimit} total={callTotal} onChange={setCallPage} />
+            </div>
+          )}
+          {callTotal > 0 && (
             <p className="text-xs text-slate-400 mt-2 text-right">
-              {visibleQueue.length} contacto{visibleQueue.length !== 1 ? 's' : ''} · últimos {callDays} días
+              {callTotal} contacto{callTotal !== 1 ? 's' : ''} en total · últimos {callDays} días
             </p>
           )}
         </>
