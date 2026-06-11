@@ -107,12 +107,21 @@ function SortTh({ col, label, sort, onSort, right = false }: {
       className="cursor-pointer select-none hover:bg-slate-100 transition-colors"
       style={right ? { textAlign: 'right' } : undefined}
     >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-slate-300'}`}>
-          {active ? (sort!.dir === 'asc' ? '↑' : '↓') : '↕'}
+      {right ? (
+        <span className="inline-flex items-center gap-1">
+          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-slate-300'}`}>
+            {active ? (sort!.dir === 'asc' ? '↑' : '↓') : '↕'}
+          </span>
+          {label}
         </span>
-      </span>
+      ) : (
+        <span className="inline-flex items-center gap-1">
+          {label}
+          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-slate-300'}`}>
+            {active ? (sort!.dir === 'asc' ? '↑' : '↓') : '↕'}
+          </span>
+        </span>
+      )}
     </th>
   );
 }
