@@ -575,6 +575,7 @@ export default function FunnelPage() {
               className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Toda conversión</option>
               <option value="register">Registrados</option>
+              <option value="register-only">Registrado, sin solicitud</option>
               <option value="lead">Con solicitud</option>
               <option value="none">Sin convertir</option>
             </select>

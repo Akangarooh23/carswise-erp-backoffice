@@ -89,7 +89,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
     }
 
     const funnel = [
-      { step: 'landing',          label: 'Visitas',            count: countMap['landing']          ?? 0 },
+      { step: 'landing',          label: 'Accesos',            count: countMap['landing']          ?? 0 },
       { step: 'marketplace_view', label: 'Vieron Marketplace', count: countMap['marketplace_view'] ?? 0 },
       { step: 'offer_view',       label: 'Vieron Oferta',      count: countMap['offer_view']       ?? 0 },
       { step: 'register',         label: 'Registros',          count: countMap['register']         ?? 0 },
@@ -124,9 +124,10 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   const where = `WHERE ${whereConditions.join(' AND ')}`;
 
   const havingClauses: string[] = [];
-  if (converted === 'register') havingClauses.push(`BOOL_OR(event_type = 'register') = true`);
-  if (converted === 'lead')     havingClauses.push(`BOOL_OR(event_type = 'lead_request') = true`);
-  if (converted === 'none')     havingClauses.push(`BOOL_OR(event_type = 'register') = false AND BOOL_OR(event_type = 'lead_request') = false`);
+  if (converted === 'register')      havingClauses.push(`BOOL_OR(event_type = 'register') = true`);
+  if (converted === 'register-only') havingClauses.push(`BOOL_OR(event_type = 'register') = true AND BOOL_OR(event_type = 'lead_request') = false`);
+  if (converted === 'lead')          havingClauses.push(`BOOL_OR(event_type = 'lead_request') = true`);
+  if (converted === 'none')          havingClauses.push(`BOOL_OR(event_type = 'register') = false AND BOOL_OR(event_type = 'lead_request') = false`);
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
     havingClauses.push(`(LOWER(MAX(COALESCE(user_email, ''))) LIKE $${values.length} OR LOWER(anon_id) LIKE $${values.length})`);
@@ -260,6 +261,13 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
   const page   = Math.max(1, Number(req.query.page) || 1);
   const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
+  const type   = req.query.type === 'registered_no_lead' ? 'registered_no_lead' : 'offer_no_lead';
+
+  const havingClause = type === 'registered_no_lead'
+    ? `BOOL_OR(fe.event_type = 'register')    = true
+         AND BOOL_OR(fe.event_type = 'lead_request') = false`
+    : `BOOL_OR(fe.event_type = 'offer_view')    = true
+         AND BOOL_OR(fe.event_type = 'lead_request') = false`;
 
   const BASE_CTE = `
     WITH base AS (
@@ -268,8 +276,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
       LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
       WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
       GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
-      HAVING BOOL_OR(fe.event_type = 'offer_view')   = true
-         AND BOOL_OR(fe.event_type = 'lead_request') = false
+      HAVING ${havingClause}
     )`;
 
   try {
@@ -305,8 +312,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
          LEFT JOIN funnel_outreach fo ON fo.anon_id = fe.anon_id
          WHERE fe.created_at >= NOW() - ($1 || ' days')::interval
          GROUP BY fe.anon_id, fo.status, fo.notes, fo.updated_at
-         HAVING BOOL_OR(fe.event_type = 'offer_view')    = true
-            AND BOOL_OR(fe.event_type = 'lead_request')  = false
+         HAVING ${havingClause}
          ORDER BY
            CASE COALESCE(fo.status, 'pending')
              WHEN 'pending'      THEN 0

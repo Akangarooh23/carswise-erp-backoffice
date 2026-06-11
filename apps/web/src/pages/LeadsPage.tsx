@@ -198,6 +198,7 @@ export default function LeadsPage() {
   const callLimit = 50;
   const [exporting, setExporting]         = useState(false);
   const [showResolved, setShowResolved]   = useState(false);
+  const [callType, setCallType]           = useState<'offer_no_lead' | 'registered_no_lead'>('offer_no_lead');
   const [expandedAnon, setExpandedAnon]     = useState<string | null>(null);
   const [noteText, setNoteText]             = useState('');
   const [actionSaving, setActionSaving]     = useState(false);
@@ -232,14 +233,14 @@ export default function LeadsPage() {
   // ── Load call queue ──
   const loadCallQueue = useCallback(async () => {
     setCallLoading(true);
-    const r = await api.get<CallQueueItem[]>(`/funnel/callqueue?days=${callDays}&page=${callPage}&limit=${callLimit}`);
+    const r = await api.get<CallQueueItem[]>(`/funnel/callqueue?days=${callDays}&page=${callPage}&limit=${callLimit}&type=${callType}`);
     if (r.ok) {
       setCallQueue(r.data as unknown as CallQueueItem[]);
       setCallStats((r as unknown as { stats: CallQueueStats }).stats ?? null);
       setCallTotal((r as unknown as { meta: { total: number } }).meta?.total ?? 0);
     }
     setCallLoading(false);
-  }, [callDays, callPage, callLimit]);
+  }, [callDays, callPage, callLimit, callType]);
 
   useEffect(() => {
     if (activeTab === 'llamadas') loadCallQueue();
@@ -522,10 +523,36 @@ export default function LeadsPage() {
       {/* ════════════════════════════════════════════════════════ COLA LLAMADAS */}
       {activeTab === 'llamadas' && (
         <>
+          {/* Segment selector */}
+          <div className="flex gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+            <button
+              onClick={() => { setCallType('offer_no_lead'); setCallPage(1); }}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                callType === 'offer_no_lead' ? 'bg-white shadow text-slate-700' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Vieron oferta
+            </button>
+            <button
+              onClick={() => { setCallType('registered_no_lead'); setCallPage(1); }}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                callType === 'registered_no_lead' ? 'bg-white shadow text-slate-700' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Registrados inactivos
+            </button>
+          </div>
+
           {/* Explanation banner */}
           <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
-            <strong>¿Qué es esto?</strong> Usuarios que vieron una o más ofertas pero no solicitaron visita ni información.
-            Puedes llamarles proactivamente: <em>"Hemos visto que viste el [vehículo], ¿te puedo ayudar a resolver alguna duda?"</em>
+            {callType === 'registered_no_lead' ? (
+              <><strong>¿Qué es esto?</strong> Usuarios que crearon una cuenta pero nunca hicieron ninguna solicitud.
+              Son leads cálidos: ya confiaron lo suficiente para registrarse.
+              Puedes llamarles: <em>"Hemos visto que creaste una cuenta, ¿te puedo ayudar a encontrar el vehículo que buscas?"</em></>
+            ) : (
+              <><strong>¿Qué es esto?</strong> Usuarios que vieron una o más ofertas pero no solicitaron visita ni información.
+              Puedes llamarles proactivamente: <em>"Hemos visto que viste el [vehículo], ¿te puedo ayudar a resolver alguna duda?"</em></>
+            )}
           </div>
 
           {/* Stats + controls */}
@@ -573,14 +600,20 @@ export default function LeadsPage() {
               <div className="p-12 text-center text-slate-400 text-sm">Cargando cola…</div>
             ) : visibleQueue.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">
-                {showResolved ? 'No hay visitas sin conversión en este período.' : '¡Cola vacía! Todos los contactos han sido gestionados.'}
+                {showResolved
+                  ? callType === 'registered_no_lead'
+                    ? 'No hay registrados inactivos en este período.'
+                    : 'No hay visitas sin conversión en este período.'
+                  : '¡Cola vacía! Todos los contactos han sido gestionados.'}
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Contacto</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Oferta(s) vistas · contexto de llamada</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      {callType === 'registered_no_lead' ? 'Actividad · contexto de llamada' : 'Oferta(s) vistas · contexto de llamada'}
+                    </th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Última visita</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-24">Fuente</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-28">Estado</th>
@@ -616,7 +649,9 @@ export default function LeadsPage() {
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 text-xs italic">Sin oferta registrada</span>
+                              <span className="text-slate-400 text-xs italic">
+                                {callType === 'registered_no_lead' ? 'Registrado · sin consultas de oferta' : 'Sin oferta registrada'}
+                              </span>
                             )}
                             {item.outreach_notes && (
                               <p className="text-xs text-slate-400 mt-1 italic">"{item.outreach_notes}"</p>
