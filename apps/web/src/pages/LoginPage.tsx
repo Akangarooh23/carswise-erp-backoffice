@@ -26,7 +26,7 @@ export default function LoginPage() {
         setError(res.error === 'invalid_credentials' ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión');
         return;
       }
-      login(res.token, res.user);
+      login(res.token, res.user, res.refresh_token);
       navigate('/dashboard', { replace: true });
     } catch {
       setError('No se pudo conectar con el servidor');

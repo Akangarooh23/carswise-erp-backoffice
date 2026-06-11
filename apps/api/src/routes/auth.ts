@@ -72,6 +72,15 @@ async function sendResetEmail(to: string, name: string, resetUrl: string): Promi
   }
 }
 
+const ENSURE_REFRESH_TABLE = `
+  CREATE TABLE IF NOT EXISTS erp_refresh_tokens (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token      TEXT NOT NULL UNIQUE,
+    email      TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -143,11 +152,84 @@ authRouter.post('/auth/login', loginLimiter, async (req, res) => {
     { expiresIn: '8h' }
   );
 
+  const refreshToken = randomBytes(40).toString('hex');
+  const refreshExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  try {
+    await query(ENSURE_REFRESH_TABLE, []).catch(() => {});
+    await query(
+      `INSERT INTO erp_refresh_tokens (token, email, expires_at) VALUES ($1, $2, $3)`,
+      [refreshToken, staffUser.email, refreshExpiry]
+    );
+  } catch (err) {
+    console.error('[auth] refresh token insert failed:', (err as Error).message);
+  }
+
   res.json({
     ok: true,
     token,
+    refresh_token: refreshToken,
     user: { email: staffUser.email, role: staffUser.role, name: staffUser.name },
   });
+});
+
+authRouter.post('/auth/refresh', async (req, res) => {
+  const refreshToken = String(req.body?.refresh_token || '').trim();
+  if (!refreshToken) {
+    res.status(401).json({ ok: false, error: 'missing_refresh_token' });
+    return;
+  }
+
+  try {
+    await query(ENSURE_REFRESH_TABLE, []).catch(() => {});
+    const result = await query(
+      `SELECT * FROM erp_refresh_tokens WHERE token = $1 AND expires_at > NOW()`,
+      [refreshToken]
+    );
+    if (!result.rows.length) {
+      res.status(401).json({ ok: false, error: 'invalid_or_expired_refresh_token' });
+      return;
+    }
+
+    const row = result.rows[0] as { email: string };
+    const staffUser = getStaffUsers().find((u) => u.email === row.email);
+    if (!staffUser) {
+      res.status(401).json({ ok: false, error: 'user_not_found' });
+      return;
+    }
+
+    // Rotate: delete old, issue new refresh token
+    await query(`DELETE FROM erp_refresh_tokens WHERE token = $1`, [refreshToken]);
+    const newRefreshToken = randomBytes(40).toString('hex');
+    const refreshExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await query(
+      `INSERT INTO erp_refresh_tokens (token, email, expires_at) VALUES ($1, $2, $3)`,
+      [newRefreshToken, staffUser.email, refreshExpiry]
+    );
+
+    const token = jwt.sign(
+      { sub: staffUser.email, role: staffUser.role, name: staffUser.name },
+      config.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({ ok: true, token, refresh_token: newRefreshToken });
+  } catch (err) {
+    console.error('[auth] refresh error:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'refresh_failed' });
+  }
+});
+
+authRouter.post('/auth/logout', async (req, res) => {
+  const refreshToken = String(req.body?.refresh_token || '').trim();
+  if (refreshToken) {
+    try {
+      await query(ENSURE_REFRESH_TABLE, []).catch(() => {});
+      await query(`DELETE FROM erp_refresh_tokens WHERE token = $1`, [refreshToken]);
+    } catch (err) {
+      console.error('[auth] logout error:', (err as Error).message);
+    }
+  }
+  res.json({ ok: true });
 });
 
 authRouter.post('/auth/forgot-password', forgotLimiter, async (req, res) => {

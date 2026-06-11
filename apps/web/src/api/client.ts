@@ -6,6 +6,51 @@ function getToken(): string {
   return localStorage.getItem('cw_erp_token') ?? '';
 }
 
+function getRefreshToken(): string {
+  return localStorage.getItem('cw_erp_refresh') ?? '';
+}
+
+let isRefreshing = false;
+let refreshQueue: Array<(token: string | null) => void> = [];
+
+async function tryRefresh(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (isRefreshing) {
+    return new Promise((resolve) => refreshQueue.push(resolve));
+  }
+
+  isRefreshing = true;
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) throw new Error('refresh_failed');
+    const body = await res.json();
+    if (!body.ok || !body.token) throw new Error('refresh_failed');
+
+    localStorage.setItem('cw_erp_token', body.token);
+    if (body.refresh_token) localStorage.setItem('cw_erp_refresh', body.refresh_token);
+    window.dispatchEvent(new CustomEvent('cw:token-refreshed', { detail: { token: body.token } }));
+
+    refreshQueue.forEach((cb) => cb(body.token));
+    refreshQueue = [];
+    return body.token;
+  } catch {
+    localStorage.removeItem('cw_erp_token');
+    localStorage.removeItem('cw_erp_refresh');
+    localStorage.removeItem('cw_erp_user');
+    refreshQueue.forEach((cb) => cb(null));
+    refreshQueue = [];
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
@@ -20,8 +65,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
   const body = await res.json().catch(() => ({ ok: false, error: 'invalid_json' }));
 
   if (res.status === 401) {
-    localStorage.removeItem('cw_erp_token');
-    localStorage.removeItem('cw_erp_user');
+    const newToken = await tryRefresh();
+    if (newToken) {
+      const retryRes = await fetch(`${BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+          ...(options.headers ?? {}),
+        },
+      });
+      return retryRes.json().catch(() => ({ ok: false, error: 'invalid_json' })) as Promise<ApiResponse<T>>;
+    }
     window.location.href = '/login';
   }
 

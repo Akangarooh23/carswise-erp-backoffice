@@ -4,7 +4,7 @@ import type { AuthUser } from '../types/index.js';
 export interface AuthState {
   user: AuthUser | null;
   token: string | null;
-  login: (token: string, user: AuthUser) => void;
+  login: (token: string, user: AuthUser, refreshToken?: string) => void;
   logout: () => void;
 }
 
