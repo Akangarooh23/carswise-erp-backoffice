@@ -167,6 +167,100 @@ function FilterSelect({ value, onChange, options, placeholder }: {
   );
 }
 
+function DrillSessions({ url }: { url: string }) {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<FunnelSession[]>([]);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    setLoading(true);
+    api.get<FunnelSession[]>(url)
+      .then((r) => { if (r.ok) { setRows(r.data); setTotal(r.meta?.total ?? 0); } })
+      .finally(() => setLoading(false));
+  }, [url]);
+  if (loading) return <div className="px-6 py-4 text-xs text-slate-400">Cargando…</div>;
+  if (!rows.length) return <div className="px-6 py-4 text-xs text-slate-400">Sin sesiones para este filtro</div>;
+  return (
+    <div className="bg-slate-50 border-t border-slate-200">
+      {total > rows.length && (
+        <div className="px-6 pt-3 text-[11px] text-slate-400">Mostrando {rows.length} de {total} sesiones</div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="erp-table w-full">
+          <thead>
+            <tr>
+              <th>Usuario / Sesión</th><th>Recorrido</th><th>Fuente</th><th>Campaña</th><th>Primera visita</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <tr key={s.anon_id}>
+                <td className="text-xs max-w-[180px] truncate">
+                  {s.user_email
+                    ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                    : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
+                </td>
+                <td>
+                  <div className="flex gap-1 flex-wrap">
+                    {(s.events as string[]).map((ev, i) => (
+                      <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                        {EVENT_LABELS[ev] ?? ev}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
+                <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function DrillEvents({ url, title }: { url: string; title?: string }) {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<FunnelEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    setLoading(true);
+    api.get<FunnelEvent[]>(url)
+      .then((r) => { if (r.ok) { setRows(r.data); setTotal(r.meta?.total ?? 0); } })
+      .finally(() => setLoading(false));
+  }, [url]);
+  if (loading) return <div className="px-6 py-4 text-xs text-slate-400">Cargando…</div>;
+  if (!rows.length) return <div className="px-6 py-4 text-xs text-slate-400">{title ? `Sin ${title}` : 'Sin eventos'}</div>;
+  return (
+    <div className="bg-slate-50 border-t border-slate-200">
+      {total > rows.length && (
+        <div className="px-6 pt-3 text-[11px] text-slate-400">Mostrando {rows.length} de {total} eventos</div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="erp-table w-full">
+          <thead>
+            <tr><th>Evento</th><th>Usuario / Sesión</th><th>Oferta</th><th>Fuente</th><th>Fecha</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((e) => (
+              <tr key={e.id}>
+                <td><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span></td>
+                <td className="text-xs text-slate-600 max-w-[160px] truncate">
+                  {e.user_email || <span className="font-mono text-slate-400">{e.anon_id.slice(0, 16)}…</span>}
+                </td>
+                <td className="text-xs text-slate-500 max-w-[160px] truncate">{e.offer_title || '–'}</td>
+                <td className="text-xs text-slate-500">{e.utm_source || '–'}</td>
+                <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function DetailGrid({ items }: { items: Array<{ label: string; value: React.ReactNode }> }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
@@ -544,17 +638,7 @@ export default function FunnelPage() {
                         {open && (
                           <tr key={`${dayKey}-d`}>
                             <td colSpan={6} className="p-0">
-                              <DetailGrid items={[
-                                { label: 'Fecha',        value: label },
-                                { label: 'Accesos',      value: row.landings },
-                                { label: 'Marketplace',  value: row.marketplace_views },
-                                { label: 'Ofertas vistas', value: row.offer_views },
-                                { label: 'Registros',    value: row.registers },
-                                { label: 'Solicitudes',  value: row.leads },
-                                { label: 'Total eventos',value: row.total },
-                                { label: 'Conv. leads',  value: pct(row.leads, row.landings) },
-                                { label: 'Conv. reg.',   value: pct(row.registers, row.landings) },
-                              ]} />
+                              <DrillSessions url={`/funnel/sessions?date=${dayKey}&limit=50`} />
                             </td>
                           </tr>
                         )}
@@ -614,14 +698,7 @@ export default function FunnelPage() {
                             {open && (
                               <tr key={`${key}-d`}>
                                 <td colSpan={5} className="p-0">
-                                  <DetailGrid items={[
-                                    { label: 'Fuente',       value: key },
-                                    { label: 'Sesiones',     value: row.sessions.toLocaleString('es-ES') },
-                                    { label: 'Registros',    value: row.registers },
-                                    { label: 'Leads',        value: row.leads },
-                                    { label: 'Conv. leads',  value: pct(row.leads, row.sessions) },
-                                    { label: 'Conv. reg.',   value: pct(row.registers, row.sessions) },
-                                  ]} />
+                                  <DrillSessions url={`/funnel/sessions?source=${encodeURIComponent(row.source)}&${buildTimeParams(selectedDate, days)}&limit=50`} />
                                 </td>
                               </tr>
                             )}
@@ -689,16 +766,7 @@ export default function FunnelPage() {
                             {open && (
                               <tr key={`${key}-d`}>
                                 <td colSpan={6} className="p-0">
-                                  <DetailGrid items={[
-                                    { label: 'Campaña',     value: row.campaign },
-                                    { label: 'Medio',       value: row.medium || '–' },
-                                    { label: 'Fuente',      value: row.source || '–' },
-                                    { label: 'Sesiones',    value: row.sessions.toLocaleString('es-ES') },
-                                    { label: 'Registros',   value: row.registers },
-                                    { label: 'Leads',       value: row.leads },
-                                    { label: 'Conv. leads', value: pct(row.leads, row.sessions) },
-                                    { label: 'Conv. reg.',  value: pct(row.registers, row.sessions) },
-                                  ]} />
+                                  <DrillSessions url={`/funnel/sessions?campaign=${encodeURIComponent(row.campaign)}&${buildTimeParams(selectedDate, days)}&limit=50`} />
                                 </td>
                               </tr>
                             )}
@@ -769,14 +837,7 @@ export default function FunnelPage() {
                             {open && (
                               <tr key={`${row.offer_id}-d`}>
                                 <td colSpan={4} className="p-0">
-                                  <DetailGrid items={[
-                                    { label: 'ID oferta',   value: <span className="font-mono">{row.offer_id}</span> },
-                                    { label: 'Título',      value: row.offer_title },
-                                    { label: 'URL',         value: row.offer_url ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{row.offer_url}</a> : '–' },
-                                    { label: 'Vistas',      value: row.views },
-                                    { label: 'Leads',       value: row.leads },
-                                    { label: 'Conv. leads', value: pct(row.leads, row.views) },
-                                  ]} />
+                                  <DrillEvents url={`/funnel/events?offer_id=${encodeURIComponent(row.offer_id)}&${buildTimeParams(selectedDate, days)}&limit=50`} />
                                 </td>
                               </tr>
                             )}
@@ -862,27 +923,7 @@ export default function FunnelPage() {
                         {open && (
                           <tr key={`${s.anon_id}-d`}>
                             <td colSpan={8} className="p-0">
-                              <DetailGrid items={[
-                                { label: 'Email',         value: s.user_email || '–' },
-                                { label: 'ID sesión',     value: <span className="font-mono text-[10px]">{s.anon_id}</span> },
-                                { label: 'Primera visita',value: fmtDate(s.first_seen) },
-                                { label: 'Última visita', value: fmtDate(s.last_seen) },
-                                { label: 'Fuente',        value: s.utm_source || '–' },
-                                { label: 'Medio',         value: s.utm_medium || '–' },
-                                { label: 'Campaña',       value: s.utm_campaign || '–' },
-                                { label: 'Nº eventos',    value: s.event_count },
-                                { label: 'Registrado',    value: s.did_register ? 'Sí' : 'No' },
-                                { label: 'Lead',          value: s.did_lead ? 'Sí' : 'No' },
-                                { label: 'Recorrido',     value: (
-                                  <div className="flex flex-wrap gap-1 mt-0.5">
-                                    {(s.events as string[]).map((ev, i) => (
-                                      <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
-                                        {EVENT_LABELS[ev] ?? ev}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )},
-                              ]} />
+                              <DrillEvents url={`/funnel/events?anon_id=${encodeURIComponent(s.anon_id)}&limit=50`} />
                             </td>
                           </tr>
                         )}

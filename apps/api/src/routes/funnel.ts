@@ -109,6 +109,7 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   const days      = Math.min(90, Math.max(1, Number(req.query.days) || 30));
   const date      = String(req.query.date      || '').trim();
   const source    = String(req.query.source    || '').trim();
+  const campaign  = String(req.query.campaign  || '').trim();
   const converted = String(req.query.converted || '').trim();
   const q         = String(req.query.q         || '').trim();
   const tf        = timeFilter(date, days);
@@ -116,10 +117,8 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   const whereConditions = [tf.condition];
   const values: unknown[] = [tf.value];
 
-  if (source) {
-    values.push(source);
-    whereConditions.push(`utm_source = $${values.length}`);
-  }
+  if (source)   { values.push(source);   whereConditions.push(`utm_source = $${values.length}`); }
+  if (campaign) { values.push(campaign); whereConditions.push(`utm_campaign = $${values.length}`); }
 
   const where = `WHERE ${whereConditions.join(' AND ')}`;
 
@@ -180,9 +179,12 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
   const conditions: string[] = [tf.condition];
   const values: unknown[]    = [tf.value];
 
+  const offerId   = String(req.query.offer_id   || '').trim();
+
   if (eventType) { values.push(eventType); conditions.push(`event_type = $${values.length}`); }
   if (source)    { values.push(source);    conditions.push(`utm_source = $${values.length}`); }
   if (anonId)    { values.push(anonId);    conditions.push(`anon_id = $${values.length}`); }
+  if (offerId)   { values.push(offerId);   conditions.push(`offer_id = $${values.length}`); }
   if (q)         { values.push(`%${q.toLowerCase()}%`); conditions.push(`LOWER(COALESCE(user_email, '')) LIKE $${values.length}`); }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
