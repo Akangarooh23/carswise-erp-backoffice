@@ -104,7 +104,8 @@ function SortTh({ col, label, sort, onSort, right = false }: {
   return (
     <th
       onClick={() => onSort(col)}
-      className={`cursor-pointer select-none hover:bg-slate-100 transition-colors ${right ? 'text-right' : ''}`}
+      className="cursor-pointer select-none hover:bg-slate-100 transition-colors"
+      style={right ? { textAlign: 'right' } : undefined}
     >
       <span className="inline-flex items-center gap-1">
         {label}
