@@ -120,52 +120,65 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
       return;
     }
 
-    // Get first photo URL for the main image
-    const photoResult = await query(
-      `SELECT file_url, file_name FROM moveadvisor_user_vehicle_files
-       WHERE vehicle_id = $1 AND file_type = 'photo' AND file_url != '' ORDER BY created_at ASC LIMIT 1`,
+    // Get all photo URLs — first one (by upload date) becomes the primary
+    const allPhotosResult = await query(
+      `SELECT file_url FROM moveadvisor_user_vehicle_files
+       WHERE vehicle_id = $1 AND file_type = 'photo' AND file_url != '' ORDER BY created_at ASC LIMIT 20`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
-    const imageUrl = photoResult.rows[0]?.file_url || '';
+    const allPhotoUrls = allPhotosResult.rows.map((r: { file_url: string }) => r.file_url);
+    const imageUrl  = allPhotoUrls[0] || '';
+    const imageUrls = JSON.stringify(allPhotoUrls);
 
     const offerId = `idcar-${req.params.id}`;
     const seller  = (req.body?.seller as string) || v.user_email || 'particular';
     const priceNum = parseFloat(String(price || req.body?.price || 0)) || 0;
 
-    const existing = await query(`SELECT id FROM moveadvisor_marketplace_vo_offers WHERE id = $1`, [offerId]);
+    const existing = await query(`SELECT id, image_url, image_urls FROM moveadvisor_marketplace_vo_offers WHERE id = $1`, [offerId]);
 
     if (existing.rows.length) {
+      // Preserve a manually chosen primary photo (set via "Hacer principal") if it's still in the photo list
+      const savedPrimary: string = existing.rows[0].image_url || '';
+      let resolvedImageUrl = imageUrl;
+      let resolvedImageUrls = imageUrls;
+      if (savedPrimary && allPhotoUrls.includes(savedPrimary)) {
+        // Keep the manually chosen primary at the front
+        const reordered = [savedPrimary, ...allPhotoUrls.filter((u: string) => u !== savedPrimary)];
+        resolvedImageUrl  = savedPrimary;
+        resolvedImageUrls = JSON.stringify(reordered);
+      }
+
       await query(
         `UPDATE moveadvisor_marketplace_vo_offers SET
           title = $1, brand = $2, model = $3, year = $4, price = $5, mileage = $6,
-          fuel = $7, color = $8, description = $9, image_url = $10,
+          fuel = $7, color = $8, description = $9, image_url = $10, image_urls = $11,
           seller_type = 'particular', is_active = TRUE, updated_at = NOW()
-         WHERE id = $11`,
+         WHERE id = $12`,
         [
           title || `${brand} ${model} ${year}`,
           brand || '', model || '',
           Number(year) || 0, priceNum, Number(mileage) || 0,
           fuel || '', color || '', notes || '',
-          imageUrl, offerId,
+          resolvedImageUrl, resolvedImageUrls, offerId,
         ]
       );
     } else {
       await query(
         `INSERT INTO moveadvisor_marketplace_vo_offers
            (id, title, brand, model, year, price, mileage, fuel, color, description,
-            image_url, seller, seller_type, location, power, displacement,
+            image_url, image_urls, seller, seller_type, location, power, displacement,
             has_guarantee_seal, portal_score, warranty_months,
             available_for_purchase, renting_available, renting_km_year,
             has_stock_management, is_active, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'particular','',
-                 $13,$14, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'particular','',
+                 $14,$15, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
         [
           offerId,
           title || `${brand} ${model} ${year}`,
           brand || '', model || '',
           Number(year) || 0, priceNum, Number(mileage) || 0,
           fuel || '', color || '', notes || '',
-          imageUrl, seller,
+          imageUrl, imageUrls, seller,
           `${cv || ''} CV`.trim(),
           parseFloat(String(co2 || 0)) || 0,
         ]
