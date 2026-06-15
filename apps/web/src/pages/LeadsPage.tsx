@@ -122,7 +122,15 @@ const STATUS_COLORS: Record<string, string> = {
   'Reagendar solicitado': 'bg-orange-100 text-orange-700',
   Cancelado:              'bg-red-100 text-red-700',
 };
-const STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
+
+const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
+
+// Statuses available per lead type — visit has all, info/question exclude appointment-specific ones
+function getAvailableStatuses(type: string): string[] {
+  if (type === 'visit') return ALL_STATUSES;
+  return ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Cancelado'];
+}
+
 const WHEN_LABELS: Record<string, string> = {
   thisweek: 'Esta semana',
   nextweek: 'La próxima semana',
@@ -140,6 +148,16 @@ const OUTREACH_LABELS: Record<string, string> = {
   called:         'Llamado',
   not_interested: 'Descartado',
 };
+
+// Quick reply templates for common situations
+const REPLY_TEMPLATES = [
+  { label: 'En contacto', text: 'Hemos recibido su solicitud y nos ponemos en contacto con usted en breve para resolver todas sus dudas.' },
+  { label: 'Cita asignada', text: 'Hemos asignado su cita con los detalles indicados. Por favor, confírmela desde su panel para que el vehículo quede reservado a su nombre.' },
+  { label: 'No disponible', text: 'Lamentablemente el vehículo que le interesaba ya no está disponible. Podemos buscarle alternativas similares, ¿le interesa que le contactemos con opciones parecidas?' },
+  { label: 'Llamada programada', text: 'Nuestro equipo le llamará en el horario que nos ha indicado para resolver sus dudas y ayudarle en el proceso.' },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getModalidad(portal: string | undefined): { label: string; color: string } | null {
   if (!portal || !portal.startsWith('marketplace-vo')) return null;
@@ -160,10 +178,44 @@ function fmtDateTime(s: string) {
   return s ? new Date(s).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
 }
 
+// Returns age label + urgency color for a Pendiente lead
+function getAge(dateStr: string): { label: string; color: string } {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins   = Math.floor(diffMs / 60_000);
+  const hours  = Math.floor(mins / 60);
+  const days   = Math.floor(hours / 24);
+  if (days > 0)   return { label: `hace ${days}d`,  color: 'text-red-600 bg-red-50 border-red-200' };
+  if (hours >= 4) return { label: `hace ${hours}h`, color: 'text-red-600 bg-red-50 border-red-200' };
+  if (hours >= 1) return { label: `hace ${hours}h`, color: 'text-amber-600 bg-amber-50 border-amber-200' };
+  return { label: `hace ${mins}m`, color: 'text-slate-500 bg-slate-50 border-slate-200' };
+}
+
+// Calendar helpers
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Mon=0
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LeadsPage() {
-  const [activeTab, setActiveTab] = useState<'solicitudes' | 'llamadas'>('solicitudes');
+  const [activeTab, setActiveTab] = useState<'solicitudes' | 'llamadas' | 'calendario'>('solicitudes');
 
   // ── Solicitudes state ──
   const [leads, setLeads]               = useState<Lead[]>([]);
@@ -187,6 +239,11 @@ export default function LeadsPage() {
   const [notifying, setNotifying]       = useState(false);
   const [history, setHistory]           = useState<LeadHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ── Calendar state ──
+  const [calendarLeads, setCalendarLeads]   = useState<Lead[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [weekStart, setWeekStart]           = useState<Date>(() => getWeekStart(new Date()));
 
   // ── Call queue state ──
   const [callQueue, setCallQueue]         = useState<CallQueueItem[]>([]);
@@ -236,6 +293,20 @@ export default function LeadsPage() {
     window.addEventListener('cw:new-leads', onNewLeads);
     return () => window.removeEventListener('cw:new-leads', onNewLeads);
   }, [loadLeads]);
+
+  // ── Load calendar ──
+  const loadCalendar = useCallback(async () => {
+    setCalendarLoading(true);
+    const res = await api.get<{ data: Lead[] }>('/leads?status=Cita+confirmada&limit=200&page=1');
+    if (res.ok && res.data) {
+      setCalendarLeads(res.data as unknown as Lead[]);
+    }
+    setCalendarLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'calendario') loadCalendar();
+  }, [activeTab, loadCalendar]);
 
   // ── Load call queue ──
   const loadCallQueue = useCallback(async () => {
@@ -345,11 +416,6 @@ export default function LeadsPage() {
             : item
         )
       );
-      setCallStats((prev) => {
-        if (!prev) return prev;
-        // Recompute from updated queue (approximate — full reload on next open)
-        return prev;
-      });
       setExpandedAnon(null);
       setNoteText('');
     }
@@ -378,17 +444,31 @@ export default function LeadsPage() {
     ? callQueue
     : callQueue.filter((i) => i.outreach_status === 'pending' || i.outreach_status === 'no_answer');
 
+  // ── Calendar computed ──
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const today = isoDate(new Date());
+
+  const calendarByDay: Record<string, Lead[]> = {};
+  for (const lead of calendarLeads) {
+    const d = lead.meta?.appointment_date?.slice(0, 10);
+    if (d) {
+      if (!calendarByDay[d]) calendarByDay[d] = [];
+      calendarByDay[d].push(lead);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="fade-in">
-      <PageHeader title="Leads" subtitle="Solicitudes recibidas y cola de llamadas proactivas" />
+      <PageHeader title="Leads" subtitle="Solicitudes recibidas, calendario de citas y cola de llamadas proactivas" />
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-6 border-b border-slate-200">
         {([
-          { key: 'solicitudes', label: 'Solicitudes', badge: leadStats?.pending ?? null },
-          { key: 'llamadas',    label: 'Cola de llamadas', badge: callStats?.pending ?? (activeTab === 'llamadas' ? 0 : null) },
+          { key: 'solicitudes',  label: 'Solicitudes',        badge: leadStats?.pending ?? null },
+          { key: 'calendario',   label: 'Calendario de citas', badge: null },
+          { key: 'llamadas',     label: 'Cola de llamadas',    badge: callStats?.pending ?? (activeTab === 'llamadas' ? 0 : null) },
         ] as const).map(({ key, label, badge }) => (
           <button
             key={key}
@@ -440,7 +520,7 @@ export default function LeadsPage() {
             <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todos los estados</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -476,43 +556,52 @@ export default function LeadsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {leads.map((lead) => (
-                      <tr key={lead.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openLead(lead)}>
-                        <td className="text-slate-500 text-xs whitespace-nowrap">
-                          {new Date(lead.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td>
-                          {(() => { const o = formatOrigen(lead.meta?.portal); return (
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${o.color}`}>{o.label}</span>
-                          ); })()}
-                        </td>
-                        <td>
-                          {(() => { const m = getModalidad(lead.meta?.portal); return m
-                            ? <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>{m.label}</span>
-                            : <span className="text-slate-300 text-xs">–</span>;
-                          })()}
-                        </td>
-                        <td>
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>
-                            {TYPE_LABELS[lead.appointment_type] ?? lead.appointment_type}
-                          </span>
-                        </td>
-                        <td>
-                          <p className="font-medium text-slate-800 text-sm">{lead.meta?.name ?? '—'}</p>
-                          <p className="text-xs text-slate-500">{lead.user_email}</p>
-                          <p className="text-xs text-slate-400">{lead.meta?.phone ?? ''}</p>
-                        </td>
-                        <td className="text-sm text-slate-700 max-w-[220px] truncate">{lead.title}</td>
-                        <td className="text-xs text-slate-500">
-                          {lead.meta?.when ? (WHEN_LABELS[lead.meta.when] ?? lead.meta.when) : '—'}
-                        </td>
-                        <td>
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                            {lead.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {leads.map((lead) => {
+                      const isPending = lead.status === 'Pendiente';
+                      const age = isPending ? getAge(lead.created_at) : null;
+                      return (
+                        <tr key={lead.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openLead(lead)}>
+                          <td className="text-slate-500 text-xs whitespace-nowrap">
+                            <div>{new Date(lead.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                            {age && (
+                              <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${age.color}`}>
+                                {age.label}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {(() => { const o = formatOrigen(lead.meta?.portal); return (
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${o.color}`}>{o.label}</span>
+                            ); })()}
+                          </td>
+                          <td>
+                            {(() => { const m = getModalidad(lead.meta?.portal); return m
+                              ? <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>{m.label}</span>
+                              : <span className="text-slate-300 text-xs">–</span>;
+                            })()}
+                          </td>
+                          <td>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {TYPE_LABELS[lead.appointment_type] ?? lead.appointment_type}
+                            </span>
+                          </td>
+                          <td>
+                            <p className="font-medium text-slate-800 text-sm">{lead.meta?.name ?? '—'}</p>
+                            <p className="text-xs text-slate-500">{lead.user_email}</p>
+                            <p className="text-xs text-slate-400">{lead.meta?.phone ?? ''}</p>
+                          </td>
+                          <td className="text-sm text-slate-700 max-w-[220px] truncate">{lead.title}</td>
+                          <td className="text-xs text-slate-500">
+                            {lead.meta?.when ? (WHEN_LABELS[lead.meta.when] ?? lead.meta.when) : '—'}
+                          </td>
+                          <td>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {lead.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -524,6 +613,117 @@ export default function LeadsPage() {
               <Pagination page={page} limit={limit} total={total} onChange={setPage} />
             </div>
           )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ CALENDARIO */}
+      {activeTab === 'calendario' && (
+        <>
+          {/* Week navigator */}
+          <div className="flex items-center justify-between mb-5">
+            <button
+              onClick={() => setWeekStart((d) => addDays(d, -7))}
+              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+            >
+              ← Semana anterior
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                {weekDays[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+                {' — '}
+                {weekDays[6].toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              {isoDate(weekStart) !== isoDate(getWeekStart(new Date())) && (
+                <button
+                  onClick={() => setWeekStart(getWeekStart(new Date()))}
+                  className="text-xs text-brand-600 hover:underline mt-0.5"
+                >
+                  Volver a esta semana
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setWeekStart((d) => addDays(d, 7))}
+              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+            >
+              Semana siguiente →
+            </button>
+          </div>
+
+          {calendarLoading ? (
+            <div className="p-12 text-center text-slate-400 text-sm">Cargando citas…</div>
+          ) : (
+            <div className="grid grid-cols-7 gap-2">
+              {weekDays.map((day, i) => {
+                const dateKey = isoDate(day);
+                const isToday = dateKey === today;
+                const dayLeads = calendarByDay[dateKey] ?? [];
+                return (
+                  <div
+                    key={dateKey}
+                    className={`rounded-xl border min-h-[160px] ${
+                      isToday
+                        ? 'border-brand-400 bg-brand-50'
+                        : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    {/* Day header */}
+                    <div className={`px-2 py-2 border-b text-center rounded-t-xl ${
+                      isToday ? 'border-brand-200 bg-brand-100' : 'border-slate-100 bg-slate-50'
+                    }`}>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isToday ? 'text-brand-700' : 'text-slate-400'}`}>
+                        {DAY_LABELS[i]}
+                      </p>
+                      <p className={`text-lg font-bold leading-tight ${isToday ? 'text-brand-700' : 'text-slate-700'}`}>
+                        {day.getDate()}
+                      </p>
+                    </div>
+
+                    {/* Appointments */}
+                    <div className="p-1.5 space-y-1.5">
+                      {dayLeads.length === 0 ? (
+                        <p className="text-[10px] text-slate-300 text-center py-3">Sin citas</p>
+                      ) : (
+                        dayLeads
+                          .sort((a, b) => (a.meta?.appointment_time ?? '').localeCompare(b.meta?.appointment_time ?? ''))
+                          .map((lead) => (
+                            <button
+                              key={lead.id}
+                              onClick={() => openLead(lead)}
+                              className="w-full text-left bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5 hover:bg-emerald-100 transition-colors group"
+                            >
+                              {lead.meta?.appointment_time && (
+                                <p className="text-[10px] font-bold text-emerald-700 mb-0.5">
+                                  ⏰ {lead.meta.appointment_time}
+                                </p>
+                              )}
+                              <p className="text-[11px] font-semibold text-slate-700 truncate leading-tight">
+                                {lead.meta?.name ?? lead.user_email}
+                              </p>
+                              <p className="text-[10px] text-slate-500 truncate leading-tight">
+                                {lead.title}
+                              </p>
+                              {lead.meta?.appointment_contact && (
+                                <p className="text-[10px] text-emerald-600 mt-0.5">
+                                  👤 {lead.meta.appointment_contact}
+                                </p>
+                              )}
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Total citas semana */}
+          <p className="text-xs text-slate-400 mt-3 text-right">
+            {weekDays.reduce((acc, d) => acc + (calendarByDay[isoDate(d)]?.length ?? 0), 0)} cita{weekDays.reduce((acc, d) => acc + (calendarByDay[isoDate(d)]?.length ?? 0), 0) !== 1 ? 's' : ''} esta semana
+            {' · '}
+            <button onClick={loadCalendar} className="text-brand-600 hover:underline">Actualizar</button>
+          </p>
         </>
       )}
 
@@ -637,7 +837,6 @@ export default function LeadsPage() {
                         <tr key={item.anon_id}
                           onClick={() => toggleInfoExpand(item)}
                           className={`${isResolved ? 'opacity-50' : ''} hover:bg-slate-50 transition-colors cursor-pointer`}>
-                          {/* Contacto */}
                           <td className="px-4 py-3">
                             {item.user_email ? (
                               <span className="text-blue-700 font-medium text-xs">{item.user_email}</span>
@@ -645,7 +844,6 @@ export default function LeadsPage() {
                               <span className="text-slate-400 font-mono text-xs">{item.anon_id.slice(0, 20)}…</span>
                             )}
                           </td>
-                          {/* Ofertas vistas — el guion de la llamada */}
                           <td className="px-4 py-3">
                             {(item.offers_viewed ?? []).length > 0 ? (
                               <div className="flex flex-wrap gap-1.5">
@@ -664,21 +862,17 @@ export default function LeadsPage() {
                               <p className="text-xs text-slate-400 mt-1 italic">"{item.outreach_notes}"</p>
                             )}
                           </td>
-                          {/* Última visita */}
                           <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                             {fmtDateTime(item.last_seen)}
                           </td>
-                          {/* Fuente */}
                           <td className="px-4 py-3 text-xs text-slate-500">
                             {item.utm_source || <span className="text-slate-300">–</span>}
                           </td>
-                          {/* Estado */}
                           <td className="px-4 py-3">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${OUTREACH_COLORS[item.outreach_status]}`}>
                               {OUTREACH_LABELS[item.outreach_status]}
                             </span>
                           </td>
-                          {/* Acciones */}
                           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             {isResolved ? (
                               <button
@@ -715,12 +909,10 @@ export default function LeadsPage() {
                             )}
                           </td>
                         </tr>
-                        {/* Expanded info row — contact details + event timeline */}
                         {isInfoExpanded && (
                           <tr key={`${item.anon_id}-info`}>
                             <td colSpan={6} className="px-5 py-4 bg-slate-50 border-b border-slate-200">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Left: contact + offers */}
                                 <div>
                                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Datos del contacto</p>
                                   <dl className="space-y-1.5">
@@ -767,7 +959,6 @@ export default function LeadsPage() {
                                     </div>
                                   )}
                                 </div>
-                                {/* Right: event timeline */}
                                 <div>
                                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Actividad en la visita</p>
                                   {eventsLoading === item.anon_id ? (
@@ -796,7 +987,6 @@ export default function LeadsPage() {
                             </td>
                           </tr>
                         )}
-                        {/* Expanded notes row */}
                         {isExpanded && (
                           <tr key={`${item.anon_id}-expand`} className="bg-emerald-50">
                             <td colSpan={6} className="px-4 py-3">
@@ -866,11 +1056,12 @@ export default function LeadsPage() {
               <div><span className="text-slate-400 text-xs block">Recibido</span><span className="font-medium">{new Date(selected.created_at).toLocaleString('es-ES')}</span></div>
             </div>
 
+            {/* Status — filtered by lead type */}
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Estado</label>
               <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {getAvailableStatuses(selected.appointment_type).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
@@ -931,8 +1122,21 @@ export default function LeadsPage() {
               </div>
             ) : null}
 
+            {/* Reply templates */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Respuesta al cliente</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Respuesta al cliente</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {REPLY_TEMPLATES.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => setEditResponse(t.text)}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors"
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               <textarea rows={3} value={editResponse} onChange={(e) => setEditResponse(e.target.value)}
                 placeholder="Mensaje que verá el cliente en su panel y recibirá por email…"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
