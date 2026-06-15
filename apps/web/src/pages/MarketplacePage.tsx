@@ -507,8 +507,14 @@ export default function MarketplacePage() {
   }
 
   async function openEdit(offer: VoOffer) {
+    // Sync image_url with image_urls on load: use image_urls[0] as authoritative primary,
+    // or if image_urls is empty but image_url exists, migrate it into the array so it's visible.
+    const urls = Array.isArray(offer.image_urls) && offer.image_urls.length > 0
+      ? offer.image_urls
+      : (offer.image_url ? [offer.image_url] : []);
+    const syncedImageUrl = urls[0] ?? '';
     setEditOffer(offer);
-    setEditForm({ ...offer });
+    setEditForm({ ...offer, image_urls: urls, image_url: syncedImageUrl });
     setPrimaryMsg('');
     setUnits([]);
     setNewUnit({ color: '', mileage: '' });
