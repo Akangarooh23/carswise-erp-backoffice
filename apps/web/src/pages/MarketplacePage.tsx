@@ -131,9 +131,10 @@ interface FormFieldsProps {
   form: Partial<VoOffer>;
   setForm: React.Dispatch<React.SetStateAction<Partial<VoOffer>>>;
   idPrefix: string;
+  onSetPrimary?: (newUrls: string[]) => void;
 }
 
-function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
+function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFieldsProps) {
   function onText(key: keyof VoOffer) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -263,6 +264,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
                     onClick={() => {
                       const newUrls = [url, ...(form.image_urls ?? []).filter(u => u !== url)];
                       setForm(f => ({ ...f, image_urls: newUrls, image_url: newUrls[0] ?? '' }));
+                      onSetPrimary?.(newUrls);
                     }}
                     className="absolute top-1 left-1 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
                   >
@@ -447,6 +449,7 @@ export default function MarketplacePage() {
   const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
   const [saving, setSaving]       = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [primaryMsg, setPrimaryMsg] = useState('');
   const [units, setUnits]           = useState<VoUnit[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [newUnit, setNewUnit]       = useState({ color: '', mileage: '' });
@@ -506,6 +509,7 @@ export default function MarketplacePage() {
   async function openEdit(offer: VoOffer) {
     setEditOffer(offer);
     setEditForm({ ...offer });
+    setPrimaryMsg('');
     setUnits([]);
     setNewUnit({ color: '', mileage: '' });
     setLoadingUnits(true);
@@ -1001,7 +1005,20 @@ export default function MarketplacePage() {
       <Modal open={!!editOffer} onClose={() => setEditOffer(null)} title="Editar vehículo" size="lg">
         {editOffer && (
           <>
-            <VehicleFormFields form={editForm} setForm={setEditForm} idPrefix="edit" />
+            <VehicleFormFields
+              form={editForm}
+              setForm={setEditForm}
+              idPrefix="edit"
+              onSetPrimary={async (newUrls) => {
+                setPrimaryMsg('');
+                const res = await api.patch(`/marketplace/vo/${editOffer.id}`, { image_urls: newUrls });
+                setPrimaryMsg(res.ok ? '✓ Foto principal guardada' : '✗ Error al guardar');
+                setTimeout(() => setPrimaryMsg(''), 3000);
+              }}
+            />
+            {primaryMsg && (
+              <p className={`text-xs mt-1 mb-2 ${primaryMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{primaryMsg}</p>
+            )}
 
             {/* Units panel */}
             <div className="mt-6 border-t border-slate-100 pt-5">
