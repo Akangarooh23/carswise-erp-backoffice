@@ -123,10 +123,10 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
   const where = `WHERE ${whereConditions.join(' AND ')}`;
 
   const havingClauses: string[] = [];
-  if (converted === 'register')      havingClauses.push(`BOOL_OR(event_type = 'register') = true`);
-  if (converted === 'register-only') havingClauses.push(`BOOL_OR(event_type = 'register') = true AND BOOL_OR(event_type = 'lead_request') = false`);
+  if (converted === 'register')      havingClauses.push(`BOOL_OR(event_type IN ('register', 'login')) = true`);
+  if (converted === 'register-only') havingClauses.push(`BOOL_OR(event_type IN ('register', 'login')) = true AND BOOL_OR(event_type = 'lead_request') = false`);
   if (converted === 'lead')          havingClauses.push(`BOOL_OR(event_type = 'lead_request') = true`);
-  if (converted === 'none')          havingClauses.push(`BOOL_OR(event_type = 'register') = false AND BOOL_OR(event_type = 'lead_request') = false`);
+  if (converted === 'none')          havingClauses.push(`BOOL_OR(event_type IN ('register', 'login')) = false AND BOOL_OR(event_type = 'lead_request') = false`);
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
     havingClauses.push(`(LOWER(MAX(COALESCE(user_email, ''))) LIKE $${values.length} OR LOWER(anon_id) LIKE $${values.length})`);
@@ -142,7 +142,7 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
            MAX(utm_source) AS utm_source, MAX(utm_medium) AS utm_medium, MAX(utm_campaign) AS utm_campaign,
            COUNT(*)::int AS event_count,
            array_agg(event_type ORDER BY created_at) AS events,
-           BOOL_OR(event_type = 'register') AS did_register,
+           BOOL_OR(event_type IN ('register', 'login')) AS did_register,
            BOOL_OR(event_type = 'lead_request') AS did_lead
          FROM moveadvisor_funnel_events
          ${where} GROUP BY anon_id ${having}
@@ -266,7 +266,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
   const type   = req.query.type === 'registered_no_lead' ? 'registered_no_lead' : 'offer_no_lead';
 
   const havingClause = type === 'registered_no_lead'
-    ? `BOOL_OR(fe.event_type = 'register')    = true
+    ? `BOOL_OR(fe.event_type IN ('register', 'login')) = true
          AND BOOL_OR(fe.event_type = 'lead_request') = false`
     : `BOOL_OR(fe.event_type = 'offer_view')    = true
          AND BOOL_OR(fe.event_type = 'lead_request') = false`;
