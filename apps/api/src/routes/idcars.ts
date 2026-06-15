@@ -178,6 +178,42 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
   }
 });
 
+idcarsRouter.patch('/idcars/:id/primary-photo', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  const photoUrl = String(req.body?.photo_url || '').trim();
+  if (!photoUrl) {
+    res.status(400).json({ ok: false, error: 'photo_url_required' });
+    return;
+  }
+  const offerId = `idcar-${req.params.id}`;
+  try {
+    const current = await query(
+      `SELECT image_url, image_urls FROM moveadvisor_marketplace_vo_offers WHERE id = $1`,
+      [offerId]
+    ).catch(() => ({ rows: [] }));
+
+    if (!current.rows.length) {
+      res.json({ ok: true, updated: false, note: 'offer_not_published_yet' });
+      return;
+    }
+
+    let urls: string[] = [];
+    try {
+      const raw = current.rows[0].image_urls;
+      urls = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+    } catch { urls = []; }
+
+    const newUrls = [photoUrl, ...urls.filter((u: string) => u !== photoUrl)];
+    await query(
+      `UPDATE moveadvisor_marketplace_vo_offers SET image_url = $1, image_urls = $2, updated_at = NOW() WHERE id = $3`,
+      [photoUrl, JSON.stringify(newUrls), offerId]
+    );
+
+    res.json({ ok: true, updated: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'primary_photo_update_failed', detail: (err as Error).message });
+  }
+});
+
 idcarsRouter.get('/idcars/stats/summary', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
     const result = await query(

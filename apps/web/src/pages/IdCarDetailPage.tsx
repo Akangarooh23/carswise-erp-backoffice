@@ -48,6 +48,9 @@ export default function IdCarDetailPage() {
   const [publishMsg, setPublishMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [publishPrice, setPublishPrice] = useState('');
+  const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState<string | null>(null);
+  const [settingPrimary, setSettingPrimary] = useState(false);
+  const [primaryMsg, setPrimaryMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -56,9 +59,28 @@ export default function IdCarDetailPage() {
       api.get<IdCarFile[]>(`/idcars/${id}/files`),
     ]).then(([vRes, fRes]) => {
       if (vRes.ok) { setVehicle(vRes.data); setPublishPrice(vRes.data.price ?? ''); }
-      if (fRes.ok) setFiles(fRes.data);
+      if (fRes.ok) {
+        setFiles(fRes.data);
+        const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo' && f.file_url);
+        if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url);
+      }
     }).finally(() => setLoading(false));
   }, [id]);
+
+  async function handleSetPrimary(url: string) {
+    if (settingPrimary || url === primaryPhotoUrl) return;
+    setSettingPrimary(true);
+    setPrimaryMsg(null);
+    const r = await api.patch(`/idcars/${id}/primary-photo`, { photo_url: url });
+    if (r.ok) {
+      setPrimaryPhotoUrl(url);
+      setPrimaryMsg({ ok: true, text: 'Foto principal actualizada' });
+    } else {
+      setPrimaryMsg({ ok: false, text: 'Error al actualizar la foto principal' });
+    }
+    setSettingPrimary(false);
+    setTimeout(() => setPrimaryMsg(null), 3000);
+  }
 
   async function handlePublish() {
     if (!id) return;
@@ -134,31 +156,58 @@ export default function IdCarDetailPage() {
 
         {/* Photos */}
         <Card className="lg:col-span-2" padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-semibold text-slate-800 text-sm">Fotos <span className="text-slate-400 font-normal">({photos.length})</span></h3>
+            {primaryMsg && (
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {primaryMsg.text}
+              </span>
+            )}
           </div>
           {photos.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-10">Sin fotos</p>
           ) : (
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {photos.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setLightbox(f.file_url)}
-                  className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50 hover:border-blue-300 transition-colors"
-                >
-                  <img
-                    src={f.file_url}
-                    alt={f.file_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                  <p className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/50 px-1.5 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                    {f.file_name}
-                  </p>
-                </button>
-              ))}
-            </div>
+            <>
+              <p className="px-4 pt-3 text-xs text-slate-400">Haz clic en una foto para ampliarla. Pulsa «Hacer principal» para que sea la foto principal del marketplace.</p>
+              <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {photos.map((f) => (
+                  <div key={f.id} className="relative group rounded-lg overflow-hidden border aspect-square bg-slate-50 transition-colors"
+                    style={{ borderColor: f.file_url === primaryPhotoUrl ? '#f59e0b' : undefined }}
+                  >
+                    <button
+                      onClick={() => setLightbox(f.file_url)}
+                      className="absolute inset-0 w-full h-full"
+                    >
+                      <img
+                        src={f.file_url}
+                        alt={f.file_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    </button>
+
+                    {f.file_url === primaryPhotoUrl ? (
+                      <div className="absolute top-1.5 left-1.5 z-10 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
+                        ⭐ Principal
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleSetPrimary(f.file_url); }}
+                        disabled={settingPrimary}
+                        className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
+                      >
+                        ⭐ Hacer principal
+                      </button>
+                    )}
+
+                    <p className="absolute bottom-0 left-0 right-0 z-10 text-[10px] text-white bg-black/50 px-1.5 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {f.file_name}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </Card>
       </div>

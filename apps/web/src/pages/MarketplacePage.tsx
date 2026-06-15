@@ -1120,9 +1120,47 @@ export default function MarketplacePage() {
         {imageEditOffer && (
           <div className="space-y-4">
             <p className="text-sm font-medium text-slate-700">{imageEditOffer.title}</p>
+
+            {/* Thumbnail grid */}
+            {imageUrls.filter(u => u.trim()).length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imageUrls.filter(u => u.trim()).map((url, idx) => (
+                  <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-slate-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-slate-300'}`}>
+                    <img
+                      src={url}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                    />
+                    {idx === 0 ? (
+                      <div className="absolute top-1 left-1 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
+                        ⭐ Principal
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setImageUrls(prev => [url, ...prev.filter(u => u !== url)])}
+                        className="absolute top-1 left-1 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
+                      >
+                        ⭐ Hacer principal
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { const next = imageUrls.filter(u => u !== url); setImageUrls(next.length ? next : ['']); }}
+                      className="absolute top-1 right-1 bg-white/90 text-red-500 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* URL inputs */}
             <div className="space-y-2">
               {imageUrls.map((url, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
+                  <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
                   <input
                     className={INPUT_CLS}
                     value={url}
@@ -1130,17 +1168,13 @@ export default function MarketplacePage() {
                     placeholder={idx === 0 ? 'https://... (foto principal)' : `https://... (foto ${idx + 1})`}
                   />
                   {imageUrls.length > 1 && (
-                    <button type="button" onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== idx))}
-                      className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0">✕</button>
-                  )}
-                  {url && (
-                    <img src={url} alt="" referrerPolicy="no-referrer"
-                      className="w-14 h-10 object-cover rounded border border-slate-200 shrink-0"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <button type="button" onClick={() => { const next = imageUrls.filter((_, i) => i !== idx); setImageUrls(next.length ? next : ['']); }}
+                      className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>
                   )}
                 </div>
               ))}
             </div>
+
             {imageUrls.length < 10 && (
               <button type="button" onClick={() => setImageUrls([...imageUrls, ''])}
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium">
