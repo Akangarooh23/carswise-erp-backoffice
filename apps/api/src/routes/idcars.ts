@@ -126,7 +126,7 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
        WHERE vehicle_id = $1 AND file_type = 'photo' AND file_url != '' ORDER BY created_at ASC LIMIT 20`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
-    const allPhotoUrls = allPhotosResult.rows.map((r: { file_url: string }) => r.file_url);
+    const allPhotoUrls = (allPhotosResult.rows as { file_url: string }[]).map(r => r.file_url);
     const imageUrl  = allPhotoUrls[0] || '';
     const imageUrls = JSON.stringify(allPhotoUrls);
 
