@@ -240,8 +240,43 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
       </div>
       <div>
         <label className={LABEL_CLS}>Fotos (hasta 10 URLs)</label>
+
+        {/* Thumbnail grid — click "Hacer principal" to move a photo to position 0 */}
+        {(form.image_urls ?? []).filter(u => u.trim()).length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {(form.image_urls ?? []).filter(u => u.trim()).map((url, idx) => (
+              <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-slate-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-slate-300'}`}>
+                <img
+                  src={url}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                />
+                {idx === 0 ? (
+                  <div className="absolute top-1 left-1 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
+                    ⭐ Principal
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newUrls = [url, ...(form.image_urls ?? []).filter(u => u !== url)];
+                      setForm(f => ({ ...f, image_urls: newUrls, image_url: newUrls[0] ?? '' }));
+                    }}
+                    className="absolute top-1 left-1 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
+                  >
+                    ⭐ Principal
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {(form.image_urls?.length ? form.image_urls : ['']).map((url, idx) => (
           <div key={idx} className="flex gap-2 mb-2 items-center">
+            <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
             <input
               className={INPUT_CLS}
               value={url}
@@ -256,11 +291,7 @@ function VehicleFormFields({ form, setForm, idPrefix }: FormFieldsProps) {
               <button type="button" onClick={() => {
                 const next = (form.image_urls ?? []).filter((_, i) => i !== idx);
                 setForm((f) => ({ ...f, image_urls: next, image_url: next[0] ?? '' }));
-              }} className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0">✕</button>
-            )}
-            {url && (
-              <img src={url} alt="" className="w-14 h-10 object-cover rounded border border-slate-200 shrink-0"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              }} className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>
             )}
           </div>
         ))}
