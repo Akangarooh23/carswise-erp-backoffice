@@ -212,6 +212,8 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_time !== undefined)  { values.push(appointment_time ?? '');  sets.push(`appointment_time = $${values.length}`); }
   if (appointment_address !== undefined) { values.push(appointment_address ?? ''); sets.push(`appointment_address = $${values.length}`); }
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
+  // When operator assigns a date without manually changing status, auto-advance Pendiente → En proceso
+  if (appointment_date && !status) { sets.push(`status = CASE WHEN status = 'Pendiente' THEN 'En proceso' ELSE status END`); }
   // When operator confirms a new appointment, clear any pending reschedule proposals
   if (appointment_date !== undefined && appointment_date) { sets.push(`reschedule_proposals = NULL`); }
 
@@ -232,8 +234,9 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 
     // Write history entries for changed fields
     const operator = req.actor?.name ?? req.actor?.sub ?? 'unknown';
+    const finalStatus = result.rows[0].status as string;
     const tracked: Array<[string, unknown, unknown]> = [
-      ['status',           prev.status,           status],
+      ['status',           prev.status,           status ?? (finalStatus !== prev.status ? finalStatus : undefined)],
       ['erp_response',     prev.erp_response,      erp_response],
       ['appointment_date', prev.appointment_date,  appointment_date],
     ];
