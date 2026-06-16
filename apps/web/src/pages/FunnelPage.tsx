@@ -51,15 +51,41 @@ const DAYS_OPTIONS = [7, 14, 30, 60, 90];
 const DAYS_LABELS: Record<number, string> = { 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
 
 const FUNNEL_TABS = [
-  { key: 'resumen',  label: 'Resumen' },
-  { key: 'diario',   label: 'Desglose diario' },
-  { key: 'fuentes',  label: 'UTM Source' },
-  { key: 'campanas', label: 'UTM Campaign' },
-  { key: 'ofertas',  label: 'Ofertas más vistas' },
-  { key: 'sesiones', label: 'Por sesión / usuario' },
-  { key: 'eventos',  label: 'Eventos recientes' },
+  { key: 'resumen',    label: 'Resumen' },
+  { key: 'diario',     label: 'Desglose diario' },
+  { key: 'fuentes',    label: 'UTM Source' },
+  { key: 'campanas',   label: 'UTM Campaign' },
+  { key: 'ofertas',    label: 'Ofertas más vistas' },
+  { key: 'sesiones',   label: 'Por sesión / usuario' },
+  { key: 'eventos',    label: 'Eventos recientes' },
+  { key: 'generador',  label: '🔗 Generador de links' },
 ] as const;
 type FunnelTab = typeof FUNNEL_TABS[number]['key'];
+
+// ─── UTM channel presets ──────────────────────────────────────────────────────
+const UTM_PRESETS = [
+  { label: 'Instagram',   source: 'instagram',  medium: 'social' },
+  { label: 'WhatsApp',    source: 'whatsapp',   medium: 'social' },
+  { label: 'TikTok',      source: 'tiktok',     medium: 'social' },
+  { label: 'Facebook',    source: 'facebook',   medium: 'social' },
+  { label: 'Email',       source: 'newsletter', medium: 'email'  },
+  { label: 'Google Ads',  source: 'google',     medium: 'cpc'    },
+];
+
+function buildUtmUrl(base: string, params: { source: string; medium: string; campaign: string; content: string; term: string }): string {
+  if (!base.trim()) return '';
+  try {
+    const url = new URL(base.trim().startsWith('http') ? base.trim() : `https://${base.trim()}`);
+    if (params.source)   url.searchParams.set('utm_source',   params.source.trim());
+    if (params.medium)   url.searchParams.set('utm_medium',   params.medium.trim());
+    if (params.campaign) url.searchParams.set('utm_campaign', params.campaign.trim());
+    if (params.content)  url.searchParams.set('utm_content',  params.content.trim());
+    if (params.term)     url.searchParams.set('utm_term',     params.term.trim());
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -330,6 +356,33 @@ export default function FunnelPage() {
   const [offerSort, setOfferSort]         = useState<SortState>(null);
 
   const [exporting, setExporting] = useState<'sessions' | 'events' | null>(null);
+
+  // UTM link builder
+  const [utmBase,     setUtmBase]     = useState('https://www.carswiseai.com/marketplace-vo');
+  const [utmSource,   setUtmSource]   = useState('');
+  const [utmMedium,   setUtmMedium]   = useState('');
+  const [utmCampaign, setUtmCampaign] = useState('');
+  const [utmContent,  setUtmContent]  = useState('');
+  const [utmTerm,     setUtmTerm]     = useState('');
+  const [utmCopied,   setUtmCopied]   = useState(false);
+
+  const generatedUrl = useMemo(
+    () => buildUtmUrl(utmBase, { source: utmSource, medium: utmMedium, campaign: utmCampaign, content: utmContent, term: utmTerm }),
+    [utmBase, utmSource, utmMedium, utmCampaign, utmContent, utmTerm]
+  );
+
+  function applyPreset(preset: typeof UTM_PRESETS[number]) {
+    setUtmSource(preset.source);
+    setUtmMedium(preset.medium);
+  }
+
+  function copyUrl() {
+    if (!generatedUrl) return;
+    navigator.clipboard.writeText(generatedUrl).then(() => {
+      setUtmCopied(true);
+      setTimeout(() => setUtmCopied(false), 2000);
+    });
+  }
 
   // Expanded row per table
   const [expandDaily, setExpandDaily]   = useState<string | null>(null);
@@ -944,6 +997,140 @@ export default function FunnelPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* ── GENERADOR DE LINKS UTM ── */}
+      {activeTab === 'generador' && (
+        <div className="space-y-5">
+          <Card>
+            <h3 className="font-semibold text-slate-800 text-sm mb-4">Generador de links con UTM</h3>
+
+            {/* Presets de canal */}
+            <div className="mb-5">
+              <p className="text-xs text-slate-500 mb-2 font-medium">Canal rápido</p>
+              <div className="flex flex-wrap gap-2">
+                {UTM_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    onClick={() => applyPreset(p)}
+                    className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-medium ${
+                      utmSource === p.source && utmMedium === p.medium
+                        ? 'bg-brand-600 border-brand-600 text-white'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Campos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-slate-600 mb-1">URL base <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={utmBase}
+                  onChange={(e) => setUtmBase(e.target.value)}
+                  placeholder="https://www.carswiseai.com/marketplace-vo/..."
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
+                />
+                <div className="flex gap-2 mt-1.5 flex-wrap">
+                  {[
+                    { label: 'Marketplace',  url: 'https://www.carswiseai.com/marketplace-vo' },
+                    { label: 'Renting',      url: 'https://www.carswiseai.com/marketplace-vo?tipo=renting' },
+                    { label: 'Inicio',       url: 'https://www.carswiseai.com' },
+                  ].map((s) => (
+                    <button key={s.label} onClick={() => setUtmBase(s.url)}
+                      className="text-[11px] text-brand-600 hover:underline border border-brand-200 rounded px-2 py-0.5 bg-brand-50 hover:bg-brand-100 transition-colors">
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">utm_source <span className="text-slate-400">(canal)</span></label>
+                <input type="text" value={utmSource} onChange={(e) => setUtmSource(e.target.value)}
+                  placeholder="instagram, google, email…"
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">utm_medium <span className="text-slate-400">(tipo)</span></label>
+                <input type="text" value={utmMedium} onChange={(e) => setUtmMedium(e.target.value)}
+                  placeholder="social, email, cpc…"
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">utm_campaign <span className="text-slate-400">(nombre campaña)</span></label>
+                <input type="text" value={utmCampaign} onChange={(e) => setUtmCampaign(e.target.value)}
+                  placeholder="junio-renting, black-friday…"
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">utm_content <span className="text-slate-400">(opcional · variante)</span></label>
+                <input type="text" value={utmContent} onChange={(e) => setUtmContent(e.target.value)}
+                  placeholder="stories, post, boton…"
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+            </div>
+
+            {/* Link generado */}
+            {generatedUrl ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Link generado</p>
+                  <button
+                    onClick={copyUrl}
+                    className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium border transition-colors ${
+                      utmCopied
+                        ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}>
+                    {utmCopied ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-700 font-mono break-all leading-relaxed">{generatedUrl}</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-400">
+                Rellena al menos la URL base y utm_source para generar el link
+              </div>
+            )}
+          </Card>
+
+          {/* Tabla de parámetros */}
+          <Card padding={false}>
+            <div className="px-5 py-3 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 text-sm">Referencia de parámetros UTM</h3>
+            </div>
+            <table className="erp-table w-full">
+              <thead>
+                <tr>
+                  <th>Parámetro</th><th>Para qué sirve</th><th>Ejemplos</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {[
+                  { param: 'utm_source', desc: 'De dónde viene el usuario', ex: 'instagram, google, newsletter, whatsapp' },
+                  { param: 'utm_medium', desc: 'Tipo de canal o formato',   ex: 'social, email, cpc, referral' },
+                  { param: 'utm_campaign', desc: 'Nombre de la campaña',     ex: 'junio-renting, verano-2026, black-friday' },
+                  { param: 'utm_content', desc: 'Variante del anuncio (A/B)', ex: 'stories, carrusel, bio-link' },
+                  { param: 'utm_term',   desc: 'Palabra clave (Google Ads)', ex: 'coche-segunda-mano-madrid' },
+                ].map((r) => (
+                  <tr key={r.param}>
+                    <td><code className="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{r.param}</code></td>
+                    <td className="text-slate-600">{r.desc}</td>
+                    <td className="text-slate-400 font-mono text-[11px]">{r.ex}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
       )}
 
       {/* ── EVENTOS RECIENTES ── */}
