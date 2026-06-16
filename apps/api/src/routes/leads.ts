@@ -97,6 +97,22 @@ function vendidoEmailHtml(lead: Record<string, string>): string {
     </div>`;
 }
 
+function rentingCerradoEmailHtml(lead: Record<string, string>): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#059669">🎉 ¡Enhorabuena por tu renting!</h2>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>Nos alegra confirmar que el contrato de renting para <strong>${esc(lead.vehicle_title)}</strong> ha sido procesado. ¡Disfruta de tu nuevo vehículo!</p>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#065f46">🔑 ¡Que lo disfrutes!</p>
+      </div>
+      <p style="font-size:13px;color:#475569">Si tienes cualquier duda sobre tu contrato o el vehículo, no dudes en contactarnos.</p>
+      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">Ver mi panel →</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+}
+
 function descartadoEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
@@ -304,10 +320,17 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 
     // Fire-and-forget emails + sale outcome processing
     if (status === 'Vendido' || status === 'Cerrado') {
-      sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
-        .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
-      processSaleOutcome(updatedLead)
-        .catch((e: Error) => console.error('[leads] sale outcome error:', e.message));
+      const isRentingLead = updatedLead.portal === 'marketplace-vo-renting';
+      if (isRentingLead) {
+        sendClientEmail(updatedLead.user_email, `🎉 ¡Enhorabuena por tu renting! — ${updatedLead.vehicle_title || 'CarsWise'}`, rentingCerradoEmailHtml(updatedLead))
+          .catch((e: Error) => console.error('[leads] renting cerrado email error:', e.message));
+        // Do NOT call processSaleOutcome — renting offers can be contracted multiple times
+      } else {
+        sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
+          .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
+        processSaleOutcome(updatedLead)
+          .catch((e: Error) => console.error('[leads] sale outcome error:', e.message));
+      }
     } else if (status === 'Descartado') {
       sendClientEmail(updatedLead.user_email, `¿Podemos ayudarte con otro vehículo? — CarsWise`, descartadoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
