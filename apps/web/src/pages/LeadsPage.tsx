@@ -25,7 +25,7 @@ interface Lead {
   id: string;
   user_email: string;
   vehicle_id: string;
-  appointment_type: 'info' | 'visit' | 'question';
+  appointment_type: 'info' | 'visit' | 'question' | 'renting';
   title: string;
   meta: LeadMeta;
   status: string;
@@ -106,11 +106,13 @@ const TYPE_LABELS: Record<string, string> = {
   info:     'Solicitar info',
   visit:    'Agendar visita',
   question: 'Preguntar',
+  renting:  '🔑 Oferta de renting',
 };
 const TYPE_COLORS: Record<string, string> = {
   info:     'bg-blue-100 text-blue-700',
   visit:    'bg-emerald-100 text-emerald-700',
   question: 'bg-violet-100 text-violet-700',
+  renting:  'bg-emerald-100 text-emerald-800',
 };
 const STATUS_COLORS: Record<string, string> = {
   Pendiente:              'bg-amber-100 text-amber-700',
@@ -128,9 +130,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
-// Statuses available per lead type — visit has all, info/question exclude appointment-specific ones
+// Statuses available per lead type — visit has all, renting/info/question exclude appointment-specific ones
 function getAvailableStatuses(type: string): string[] {
   if (type === 'visit') return ALL_STATUSES;
+  if (type === 'renting') return ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Cancelado'];
   return ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Cancelado'];
 }
 
@@ -531,6 +534,7 @@ export default function LeadsPage() {
               <option value="info">Solicitar info</option>
               <option value="visit">Agendar visita</option>
               <option value="question">Preguntar</option>
+              <option value="renting">🔑 Oferta de renting</option>
             </select>
             <select value={filterOrigin} onChange={(e) => { setFilterOrigin(e.target.value); setPage(1); }}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -1045,8 +1049,8 @@ export default function LeadsPage() {
         <Modal open={true} title={`Lead: ${selected.meta?.name ?? selected.user_email}`} onClose={() => setSelected(null)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-slate-400 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type]}`}>{TYPE_LABELS[selected.appointment_type]}</span></div>
-              <div><span className="text-slate-400 text-xs block">Cuándo</span><span className="font-medium">{WHEN_LABELS[selected.meta?.when ?? ''] ?? selected.meta?.when ?? '—'}</span></div>
+              <div><span className="text-slate-400 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>
+              <div><span className="text-slate-400 text-xs block">{selected.appointment_type === 'renting' ? 'Opción solicitada' : 'Cuándo'}</span><span className="font-medium">{selected.appointment_type === 'renting' ? (selected.meta?.when ?? '—') : (WHEN_LABELS[selected.meta?.when ?? ''] ?? selected.meta?.when ?? '—')}</span></div>
               <div><span className="text-slate-400 text-xs block">Email</span><span className="font-medium">{selected.user_email}</span></div>
               <div><span className="text-slate-400 text-xs block">Teléfono</span><span className="font-medium">{selected.meta?.phone ?? '—'}</span></div>
               <div className="col-span-2"><span className="text-slate-400 text-xs block">Vehículo</span><span className="font-medium">{selected.title}</span></div>

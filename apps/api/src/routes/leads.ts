@@ -501,8 +501,11 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
 
     const lead = leadResult.rows[0] as Record<string, string>;
     const isVisit = lead.lead_type === 'visit';
+    const isRentingNotify = lead.lead_type === 'renting' || lead.portal === 'marketplace-vo-renting';
     const subject = isVisit
       ? `Confirmación de visita — ${lead.vehicle_title || 'CarsWise'}`
+      : isRentingNotify
+      ? `Actualización de tu solicitud de renting — ${lead.vehicle_title || 'CarsWise'}`
       : `Respuesta a tu consulta — ${lead.vehicle_title || 'CarsWise'}`;
     const html = isVisit ? visitEmailHtml(lead) : infoEmailHtml(lead);
 
