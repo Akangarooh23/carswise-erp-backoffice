@@ -14,12 +14,14 @@ function fmtPrice(n: number) {
   return n ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n) : '–';
 }
 function fmtKm(n: number) { return n ? `${n.toLocaleString('es-ES')} km` : '–'; }
+function fmtCuota(n: number | null | undefined) { return n ? `${n.toLocaleString('es-ES')} €/mes` : '–'; }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'vo',     label: 'Marketplace CarsWise' },
-  { key: 'offers', label: 'Ofertas de portales'   },
+  { key: 'vo',      label: 'Marketplace CarsWise' },
+  { key: 'offers',  label: 'Ofertas de portales'   },
+  { key: 'renting', label: 'Ofertas Renting'       },
 ] as const;
 type Tab = typeof TABS[number]['key'];
 
@@ -40,6 +42,12 @@ const EMPTY_FORM: Partial<VoOffer> = {
   available_for_purchase: true, renting_available: false,
   renting_km_year: 15000,
   renting_12m: null, renting_24m: null, renting_36m: null, renting_48m: null, renting_60m: null,
+};
+
+const EMPTY_RENTING_FORM: Partial<VoOffer> = {
+  ...EMPTY_FORM,
+  available_for_purchase: false,
+  renting_available: true,
 };
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -439,6 +447,8 @@ export default function MarketplacePage() {
     return r;
   }, [items, colF, sortCol, sortDir]);
 
+  const rentingItems = useMemo(() => items.filter(i => i.renting_available), [items]);
+
   const brandOptions  = useMemo(() => [...new Set(items.map(i => i.brand).filter(Boolean))].sort(), [items]);
   const fuelOptions   = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
   const yearOptions   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
@@ -479,11 +489,12 @@ export default function MarketplacePage() {
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
-    if (tab === 'vo') {
+    if (tab === 'vo' || tab === 'renting') {
       const params = new URLSearchParams({ page: String(p), limit: '500' });
       if (q)            params.set('q', q);
       if (brand)        params.set('brand', brand);
       if (statusFilter) params.set('is_active', statusFilter);
+      if (tab === 'renting') params.set('renting_available', 'true');
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else {
@@ -642,7 +653,11 @@ export default function MarketplacePage() {
     <div>
       <PageHeader
         title="Marketplace"
-        subtitle={`${total.toLocaleString('es-ES')} vehículos`}
+        subtitle={
+          tab === 'renting'
+            ? `${rentingItems.length.toLocaleString('es-ES')} ofertas de renting`
+            : `${total.toLocaleString('es-ES')} vehículos`
+        }
         actions={tab === 'vo' ? (
           <div className="flex gap-2 flex-wrap">
             <button onClick={downloadTemplate}
@@ -662,6 +677,11 @@ export default function MarketplacePage() {
               + Añadir vehículo
             </button>
           </div>
+        ) : tab === 'renting' ? (
+          <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_RENTING_FORM); }}
+            className="px-4 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            + Añadir oferta renting
+          </button>
         ) : undefined}
       />
 
@@ -680,7 +700,7 @@ export default function MarketplacePage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar marca, modelo…" className="w-72" />
-        {tab === 'vo' && (
+        {(tab === 'vo' || tab === 'renting') && (
           <>
             <select value={brand} onChange={(e) => setBrand(e.target.value)}
               className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -972,6 +992,82 @@ export default function MarketplacePage() {
                 <div className="text-center py-8 text-slate-400 text-sm">Sin resultados con los filtros actuales</div>
               )}
             </>
+          )
+        ) : tab === 'renting' ? (
+          rentingItems.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">
+              No hay ofertas de renting. Pulsa "+ Añadir oferta renting" para crear la primera.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="erp-table w-full">
+                <thead>
+                  <tr>
+                    <th>Vehículo</th>
+                    <th>Marca / Modelo</th>
+                    <th>Año</th>
+                    <th>Km/año</th>
+                    <th>12 meses</th>
+                    <th>24 meses</th>
+                    <th>36 meses</th>
+                    <th>48 meses</th>
+                    <th>60 meses</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentingItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          {(item.image_url || item.image_urls?.[0]) ? (
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                          ) : (
+                            <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
+                          )}
+                          <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <p className="text-sm font-medium text-slate-700">{item.brand}</p>
+                        <p className="text-xs text-slate-400">{item.model}{item.version ? ` · ${item.version}` : ''}</p>
+                      </td>
+                      <td className="text-sm text-slate-500">{item.year}</td>
+                      <td className="text-sm text-slate-500">{item.renting_km_year ? `${(item.renting_km_year as number).toLocaleString('es-ES')} km` : '–'}</td>
+                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_12m as number | null)}</td>
+                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_24m as number | null)}</td>
+                      <td className="text-sm font-semibold text-purple-700">{fmtCuota(item.renting_36m as number | null)}</td>
+                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_48m as number | null)}</td>
+                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_60m as number | null)}</td>
+                      <td>
+                        <Badge variant={item.is_active ? 'green' : 'slate'}>
+                          {item.is_active ? 'Publicado' : 'Despublicado'}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="flex gap-1 items-center">
+                          <button onClick={() => openEdit(item)}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
+                            Editar
+                          </button>
+                          <button onClick={() => toggleActive(item)}
+                            className={`text-xs font-medium px-2 py-1 rounded ${item.is_active
+                              ? 'text-amber-600 hover:bg-amber-50'
+                              : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                            {item.is_active ? 'Despublicar' : 'Publicar'}
+                          </button>
+                          <button onClick={() => setDeleteTarget(item)}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50">
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         ) : (
           portalItems.length === 0 ? (
