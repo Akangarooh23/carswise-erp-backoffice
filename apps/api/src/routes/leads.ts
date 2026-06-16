@@ -302,10 +302,12 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     const updatedLead = result.rows[0] as Record<string, string>;
     res.json({ ok: true, data: updatedLead });
 
-    // Fire-and-forget client emails when operator closes the outcome
+    // Fire-and-forget emails + sale outcome processing
     if (status === 'Vendido' || status === 'Cerrado') {
       sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
+      processSaleOutcome(updatedLead)
+        .catch((e: Error) => console.error('[leads] sale outcome error:', e.message));
     } else if (status === 'Descartado') {
       sendClientEmail(updatedLead.user_email, `¿Podemos ayudarte con otro vehículo? — CarsWise`, descartadoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
@@ -314,6 +316,133 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     res.status(500).json({ ok: false, error: 'lead_update_failed', detail: (err as Error).message });
   }
 });
+
+async function sendIDCarReadyEmail(buyerEmail: string, contactName: string, vehicleTitle: string): Promise<void> {
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#2563eb">🚗 ¡Tu IDCar ya está en tu garaje!</h2>
+      <p>Hola <strong>${esc(contactName) || 'cliente'}</strong>,</p>
+      <p>Hemos creado automáticamente la ficha digital de tu nuevo vehículo <strong>${esc(vehicleTitle)}</strong> en tu garaje CarsWise.</p>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:20px 0">
+        <p style="margin:0 0 8px 0;font-size:14px;font-weight:700;color:#1e40af">Desde tu IDCar podrás:</p>
+        <ul style="margin:0;padding-left:20px;font-size:13px;color:#1e40af;line-height:1.9">
+          <li>Guardar documentos (ficha técnica, permiso de circulación, ITV)</li>
+          <li>Registrar el historial de mantenimiento y reparaciones</li>
+          <li>Gestionar el seguro del vehículo</li>
+          <li>Solicitar tasaciones en cualquier momento</li>
+        </ul>
+      </div>
+      <p><a href="https://carswiseai.com/panel/vehiculos"
+            style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
+        Ver mi IDCar →
+      </a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+  await sendClientEmail(buyerEmail, `Tu IDCar está listo — ${vehicleTitle}`, html);
+}
+
+async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
+  const vehicleId  = lead.vehicle_id  || '';
+  const buyerEmail = lead.user_email  || '';
+  const leadId     = lead.id          || '';
+  const contactName = lead.contact_name || '';
+  const vehicleTitle = lead.vehicle_title || '';
+
+  // 1. Mark marketplace offer as sold + unpublish
+  if (vehicleId) {
+    await query(
+      `UPDATE moveadvisor_marketplace_vo_offers SET is_active = FALSE, sold_at = NOW() WHERE id = $1`,
+      [vehicleId]
+    ).catch(() => {});
+  }
+
+  // Guard: don't create duplicate IDCar for the same lead
+  const existing = await query(
+    `SELECT id FROM moveadvisor_user_vehicles WHERE source_lead_id = $1 AND user_email = $2 LIMIT 1`,
+    [leadId, buyerEmail]
+  ).catch(() => ({ rows: [] }));
+  if ((existing as { rows: unknown[] }).rows.length) return;
+
+  let vehicleData: Record<string, string> = {};
+
+  if (vehicleId.startsWith('idcar-')) {
+    // 2a. IDCar vehicle — mark seller's IDCar as sold
+    const sourceVehicleId = vehicleId.replace('idcar-', '');
+
+    await query(
+      `UPDATE moveadvisor_user_vehicles SET sold_at = NOW() WHERE id = $1`,
+      [sourceVehicleId]
+    ).catch(() => {});
+
+    await query(
+      `INSERT INTO moveadvisor_user_vehicle_states (user_email, vehicle_id, state, notes, updated_at)
+       SELECT user_email, id, 'sold', 'Vendido en CarsWise Marketplace', NOW()
+       FROM moveadvisor_user_vehicles WHERE id = $1
+       ON CONFLICT (user_email, vehicle_id) DO UPDATE SET state = 'sold', notes = 'Vendido en CarsWise Marketplace', updated_at = NOW()`,
+      [sourceVehicleId]
+    ).catch(() => {});
+
+    // Copy vehicle data for buyer IDCar
+    const src = await query(
+      `SELECT * FROM moveadvisor_user_vehicles WHERE id = $1`,
+      [sourceVehicleId]
+    ).catch(() => ({ rows: [] }));
+    if ((src as { rows: unknown[] }).rows.length) {
+      vehicleData = (src as { rows: Record<string, string>[] }).rows[0];
+    }
+  } else if (vehicleId) {
+    // 2b. External portal offer — fetch available data from marketplace offer
+    const offer = await query(
+      `SELECT title, brand, model, year, mileage, fuel, color FROM moveadvisor_marketplace_vo_offers WHERE id = $1`,
+      [vehicleId]
+    ).catch(() => ({ rows: [] }));
+    if ((offer as { rows: unknown[] }).rows.length) {
+      vehicleData = (offer as { rows: Record<string, string>[] }).rows[0];
+    }
+  }
+
+  // 3. Create buyer IDCar
+  const newId = `v-cw-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  await query(
+    `INSERT INTO moveadvisor_user_vehicles
+       (id, user_email, title, brand, model, version, year, mileage, fuel, color,
+        cv, horsepower, body_type, transmission_type, environmental_label, co2,
+        notes, purchased_from, source_lead_id, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+             'Adquirido en CarsWise Marketplace','carswise-marketplace',$17,NOW(),NOW())`,
+    [
+      newId, buyerEmail,
+      vehicleData.title || vehicleTitle,
+      vehicleData.brand  || '',
+      vehicleData.model  || '',
+      vehicleData.version || '',
+      String(vehicleData.year    || ''),
+      String(vehicleData.mileage || ''),
+      vehicleData.fuel   || '',
+      vehicleData.color  || '',
+      vehicleData.cv     || '',
+      vehicleData.horsepower || '',
+      vehicleData.body_type  || '',
+      vehicleData.transmission_type || '',
+      vehicleData.environmental_label || '',
+      vehicleData.co2    || '',
+      leadId,
+    ]
+  ).catch((e: Error) => { throw new Error(`IDCar insert failed: ${e.message}`); });
+
+  // 4. Set buyer vehicle state to 'owned'
+  await query(
+    `INSERT INTO moveadvisor_user_vehicle_states (user_email, vehicle_id, state, notes, updated_at)
+     VALUES ($1, $2, 'owned', 'Adquirido en CarsWise Marketplace', NOW())
+     ON CONFLICT (user_email, vehicle_id) DO NOTHING`,
+    [buyerEmail, newId]
+  ).catch(() => {});
+
+  // 5. Email buyer
+  await sendIDCarReadyEmail(buyerEmail, contactName, vehicleData.title || vehicleTitle)
+    .catch((e: Error) => console.error('[leads] IDCar email error:', e.message));
+}
 
 leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operations']), async (req, res) => {
   try {
