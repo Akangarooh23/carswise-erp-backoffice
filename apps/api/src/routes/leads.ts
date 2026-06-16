@@ -67,6 +67,41 @@ function visitEmailHtml(lead: Record<string, string>): string {
     </div>`;
 }
 
+function vendidoEmailHtml(lead: Record<string, string>): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#059669">🎉 ¡Enhorabuena por tu compra!</h2>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>Nos alegra confirmar que la compra del vehículo <strong>${esc(lead.vehicle_title)}</strong> ha sido completada. ¡Esperamos que disfrutes mucho de tu nuevo coche!</p>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#065f46">🚗 ¡Que lo disfrutes!</p>
+      </div>
+      <p style="font-size:13px;color:#475569">Si tienes cualquier duda o necesitas ayuda con tu vehículo, no dudes en contactarnos. Estamos aquí para ayudarte.</p>
+      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">Ir a mi panel →</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+}
+
+function descartadoEmailHtml(lead: Record<string, string>): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#475569">Gracias por tu tiempo</h2>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>Entendemos que el vehículo <strong>${esc(lead.vehicle_title)}</strong> finalmente no era lo que buscabas. No pasa nada, encontrar el coche perfecto lleva su tiempo.</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
+        <p style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151">¿Podemos ayudarte a encontrar otro vehículo?</p>
+        <a href="https://carswiseai.com"
+           style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
+          Ver más vehículos →
+        </a>
+      </div>
+      <p style="font-size:13px;color:#475569">Nuestro equipo está disponible para ayudarte a encontrar el vehículo que mejor se adapte a tus necesidades y presupuesto.</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+}
+
 function infoEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
@@ -195,7 +230,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
   } = req.body ?? {};
-  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada'];
+  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido'];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
@@ -250,7 +285,17 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
       }
     }
 
-    res.json({ ok: true, data: result.rows[0] });
+    const updatedLead = result.rows[0] as Record<string, string>;
+    res.json({ ok: true, data: updatedLead });
+
+    // Fire-and-forget client emails when operator closes the outcome
+    if (status === 'Vendido') {
+      sendEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
+        .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
+    } else if (status === 'Descartado') {
+      sendEmail(updatedLead.user_email, `Gracias por tu visita — ${updatedLead.vehicle_title || 'CarsWise'}`, descartadoEmailHtml(updatedLead))
+        .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
+    }
   } catch (err) {
     res.status(500).json({ ok: false, error: 'lead_update_failed', detail: (err as Error).message });
   }
