@@ -303,7 +303,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     res.json({ ok: true, data: updatedLead });
 
     // Fire-and-forget client emails when operator closes the outcome
-    if (status === 'Vendido') {
+    if (status === 'Vendido' || status === 'Cerrado') {
       sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
     } else if (status === 'Descartado') {

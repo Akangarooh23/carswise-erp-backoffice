@@ -126,7 +126,7 @@ const STATUS_COLORS: Record<string, string> = {
   Cancelado:              'bg-red-100 text-red-700',
 };
 
-const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
+const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
 // Statuses available per lead type — visit has all, info/question exclude appointment-specific ones
 function getAvailableStatuses(type: string): string[] {
