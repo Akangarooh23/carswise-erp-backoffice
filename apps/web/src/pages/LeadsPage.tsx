@@ -43,6 +43,10 @@ interface LeadStats {
   type_info: number;
   type_visit: number;
   type_question: number;
+  type_renting: number;
+  portal_renting: number;
+  portal_compra: number;
+  portal_externo: number;
   new_7d: number;
 }
 

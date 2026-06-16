@@ -168,6 +168,24 @@ function infoEmailHtml(lead: Record<string, string>): string {
     </div>`;
 }
 
+function rentingNotifyEmailHtml(lead: Record<string, string>): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#059669">🔑 Actualización de tu solicitud de renting</h2>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>El equipo de CarsWise ha procesado tu solicitud de renting para <strong>${esc(lead.vehicle_title)}</strong>.</p>
+      ${lead.erp_response ? `
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:16px;margin:20px 0">
+        <p style="margin:0 0 6px 0;font-size:12px;font-weight:700;color:#065f46">Mensaje de CarsWise:</p>
+        <p style="margin:0;white-space:pre-wrap;color:#065f46">${esc(lead.erp_response)}</p>
+      </div>` : ''}
+      <p style="font-size:13px;color:#475569">Puedes consultar el estado de tu solicitud en tu panel:</p>
+      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#059669;font-weight:600">Ver mi panel →</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+}
+
 leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
@@ -236,11 +254,15 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations', '
         COUNT(*)::int                                                                        AS total,
         COUNT(*) FILTER (WHERE status = 'Pendiente')::int                                   AS pending,
         COUNT(*) FILTER (WHERE status = 'Contactado')::int                                  AS contacted,
-        COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado'))::int               AS resolved,
+        COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado', 'Vendido'))::int    AS resolved,
         COUNT(*) FILTER (WHERE status = 'Descartado')::int                                  AS discarded,
         COUNT(*) FILTER (WHERE lead_type = 'info')::int                                     AS type_info,
         COUNT(*) FILTER (WHERE lead_type = 'visit')::int                                    AS type_visit,
         COUNT(*) FILTER (WHERE lead_type = 'question')::int                                 AS type_question,
+        COUNT(*) FILTER (WHERE lead_type = 'renting')::int                                  AS type_renting,
+        COUNT(*) FILTER (WHERE portal = 'marketplace-vo-renting')::int                      AS portal_renting,
+        COUNT(*) FILTER (WHERE portal LIKE 'marketplace-vo%' AND portal <> 'marketplace-vo-renting')::int AS portal_compra,
+        COUNT(*) FILTER (WHERE portal <> '' AND portal NOT LIKE 'marketplace-vo%')::int     AS portal_externo,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int               AS new_7d
       FROM moveadvisor_market_leads
     `);
@@ -507,7 +529,7 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
       : isRentingNotify
       ? `Actualización de tu solicitud de renting — ${lead.vehicle_title || 'CarsWise'}`
       : `Respuesta a tu consulta — ${lead.vehicle_title || 'CarsWise'}`;
-    const html = isVisit ? visitEmailHtml(lead) : infoEmailHtml(lead);
+    const html = isVisit ? visitEmailHtml(lead) : isRentingNotify ? rentingNotifyEmailHtml(lead) : infoEmailHtml(lead);
 
     await sendEmail(lead.user_email, subject, html);
 
