@@ -32,6 +32,20 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   }
 }
 
+// Always sends to the real client email — no RESEND_TEST_EMAIL override
+async function sendClientEmail(to: string, subject: string, html: string): Promise<void> {
+  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
+  const res = await fetch(RESEND_API, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { message?: string }).message || `Resend error ${res.status}`);
+  }
+}
+
 function visitEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
@@ -290,10 +304,10 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 
     // Fire-and-forget client emails when operator closes the outcome
     if (status === 'Vendido') {
-      sendEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
+      sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
     } else if (status === 'Descartado') {
-      sendEmail(updatedLead.user_email, `Gracias por tu visita — ${updatedLead.vehicle_title || 'CarsWise'}`, descartadoEmailHtml(updatedLead))
+      sendClientEmail(updatedLead.user_email, `¿Podemos ayudarte con otro vehículo? — CarsWise`, descartadoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
     }
   } catch (err) {
