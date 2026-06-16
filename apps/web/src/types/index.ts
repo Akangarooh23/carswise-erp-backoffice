@@ -28,6 +28,15 @@ export interface User {
 }
 
 // ── Marketplace ───────────────────────────────────────────────────────────────
+export interface RentingPricesJson {
+  km_options: number[];
+  '12m'?: (number | null)[] | null;
+  '24m'?: (number | null)[] | null;
+  '36m'?: (number | null)[] | null;
+  '48m'?: (number | null)[] | null;
+  '60m'?: (number | null)[] | null;
+}
+
 export interface VoOffer {
   id: string;
   title: string;
@@ -66,6 +75,7 @@ export interface VoOffer {
   renting_36m?: number | null;
   renting_48m?: number | null;
   renting_60m?: number | null;
+  renting_prices_json?: RentingPricesJson | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

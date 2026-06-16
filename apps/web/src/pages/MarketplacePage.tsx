@@ -6,7 +6,7 @@ import { SearchInput } from '../components/ui/SearchInput.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
-import type { VoOffer, VoUnit, UnitStatus } from '../types/index.js';
+import type { VoOffer, VoUnit, UnitStatus, RentingPricesJson } from '../types/index.js';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -53,6 +53,31 @@ const EMPTY_RENTING_FORM: Partial<VoOffer> = {
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 const LABEL_CLS = 'block text-xs font-medium text-slate-600 mb-1';
 const FUELS = ['Gasolina','Diésel','Híbrido','Híbrido enchufable','Eléctrico','GLP','Gas Natural','Otros'];
+
+// ── Renting price grid helpers ────────────────────────────────────────────────
+
+const RENTING_KM_OPTIONS = [10000, 15000, 20000, 25000, 30000];
+const RENTING_DURATIONS  = ['12m', '24m', '36m', '48m', '60m'] as const;
+type RentDuration = typeof RENTING_DURATIONS[number];
+
+function getRentingPrices(form: Partial<VoOffer>): RentingPricesJson {
+  if (form.renting_prices_json) return form.renting_prices_json as RentingPricesJson;
+  // Migrate from old simple fields: place existing prices in the 15k column
+  const km15kIdx = RENTING_KM_OPTIONS.indexOf(15000);
+  function toRow(v: unknown): (number | null)[] | null {
+    if (v == null || v === '') return null;
+    const arr: (number | null)[] = new Array(RENTING_KM_OPTIONS.length).fill(null);
+    arr[km15kIdx] = Number(v);
+    return arr;
+  }
+  const r12 = toRow(form.renting_12m);
+  const r24 = toRow(form.renting_24m);
+  const r36 = toRow(form.renting_36m);
+  const r48 = toRow(form.renting_48m);
+  const r60 = toRow(form.renting_60m);
+  if (!r12 && !r24 && !r36 && !r48 && !r60) return { km_options: RENTING_KM_OPTIONS };
+  return { km_options: RENTING_KM_OPTIONS, '12m': r12, '24m': r24, '36m': r36, '48m': r48, '60m': r60 };
+}
 
 // ── Excel helpers (xlsx) ──────────────────────────────────────────────────────
 
@@ -352,22 +377,57 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
           </div>
           {form.renting_available && (
             <div className="ml-6 space-y-3">
-              <div>
-                <label className={LABEL_CLS}>Km/año incluidos</label>
-                <input type="number" className={INPUT_CLS} value={form.renting_km_year ?? 15000} onChange={onNum('renting_km_year')} min={0} />
-              </div>
-              <p className="text-xs text-slate-400">Cuota mensual por plazo (dejar en blanco los plazos no disponibles)</p>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {([12,24,36,48,60] as const).map((m) => {
-                  const key = `renting_${m}m` as keyof VoOffer;
-                  return (
-                    <div key={m}>
-                      <label className={LABEL_CLS}>{m} meses (€/mes)</label>
-                      <input type="number" className={INPUT_CLS} value={(form[key] as number | null | undefined) ?? ''}
-                        onChange={onNum(key)} placeholder="—" min={0} />
-                    </div>
-                  );
-                })}
+              <p className="text-xs text-slate-400">Cuota mensual (€/mes) por plazo y km/año. La columna 15.000 km se usa como precio de referencia en el listado.</p>
+              <div className="overflow-x-auto">
+                <table className="text-xs w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-1.5 text-slate-500 font-medium">Plazo</th>
+                      {RENTING_KM_OPTIONS.map(km => (
+                        <th key={km} className={`text-center p-1.5 font-medium whitespace-nowrap ${km === 15000 ? 'text-blue-600' : 'text-slate-500'}`}>
+                          {(km / 1000).toFixed(0)}.000 km
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RENTING_DURATIONS.map((dur) => {
+                      const prices = getRentingPrices(form);
+                      const row = (prices[dur] as (number | null)[] | null) ?? new Array(RENTING_KM_OPTIONS.length).fill(null);
+                      return (
+                        <tr key={dur} className="border-t border-slate-100">
+                          <td className="p-1.5 font-semibold text-slate-600 whitespace-nowrap">{dur.replace('m', ' meses')}</td>
+                          {RENTING_KM_OPTIONS.map((km, ki) => {
+                            const isStd = km === 15000;
+                            return (
+                              <td key={km} className={`p-1 ${isStd ? 'bg-blue-50' : ''}`}>
+                                <input
+                                  type="number"
+                                  className={`w-full px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${isStd ? 'border-blue-300 font-semibold' : 'border-slate-200'}`}
+                                  value={row[ki] ?? ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? null : Number(e.target.value);
+                                    setForm((f) => {
+                                      const current = getRentingPrices(f);
+                                      const arr = [...((current[dur] as (number | null)[] | null) ?? new Array(RENTING_KM_OPTIONS.length).fill(null))] as (number | null)[];
+                                      arr[ki] = val;
+                                      const updated: RentingPricesJson = { ...current, km_options: RENTING_KM_OPTIONS, [dur]: arr };
+                                      const sync: Partial<VoOffer> = { renting_prices_json: updated, renting_km_year: 15000 };
+                                      if (isStd) (sync as Record<string, unknown>)[`renting_${dur}`] = val;
+                                      return { ...f, ...sync };
+                                    });
+                                  }}
+                                  placeholder="—"
+                                  min={0}
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -563,7 +623,8 @@ export default function MarketplacePage() {
       'displacement','color','location','internal_location','seller','description','image_url','source_url',
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
-      'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','image_urls']);
+      'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m',
+      'renting_prices_json','image_urls']);
     const NUMERIC = new Set(['year','price','sale_price','mileage','displacement','warranty_months','portal_score',
       'renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m']);
     const payload = Object.fromEntries(
