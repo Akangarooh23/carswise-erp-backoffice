@@ -48,13 +48,13 @@ function visitEmailHtml(lead: Record<string, string>): string {
       ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${esc(lead.erp_response)}</p>` : ''}
 
       <div style="background:#fefce8;border:2px solid #fbbf24;border-radius:12px;padding:18px 20px;margin:24px 0">
-        <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#92400e">⚠️ Para reservar el vehículo, confirma tu cita</p>
+        <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#92400e">⚠️ Confirma tu cita para asegurar el hueco</p>
         <p style="margin:0 0 14px 0;font-size:13px;color:#78350f">
-          El vehículo no quedará reservado hasta que confirmes la cita desde tu panel personal. Sin confirmación, el vehículo puede ser adquirido por otro cliente.
+          Para que la visita quede registrada, confirma la cita desde tu panel. Si no la confirmas, el hueco puede ser asignado a otro cliente.
         </p>
         <a href="https://carswiseai.com/panel/solicitudes"
            style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-          ✅ Confirmar cita y reservar vehículo →
+          ✅ Confirmar cita →
         </a>
       </div>
 
