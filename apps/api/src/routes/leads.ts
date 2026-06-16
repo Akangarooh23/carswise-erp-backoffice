@@ -132,6 +132,26 @@ function descartadoEmailHtml(lead: Record<string, string>): string {
     </div>`;
 }
 
+function rentingDescartadoEmailHtml(lead: Record<string, string>): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+      <h2 style="color:#475569">Tu solicitud de renting no ha podido llevarse a cabo</h2>
+      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
+      <p>Lamentamos informarte de que tu solicitud de renting para el vehículo <strong>${esc(lead.vehicle_title)}</strong> no ha podido procesarse en esta ocasión.</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
+        <p style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151">¿Exploramos otras opciones de renting?</p>
+        <a href="https://carswiseai.com"
+           style="display:inline-block;background:#059669;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
+          Ver ofertas de renting →
+        </a>
+      </div>
+      <p style="font-size:13px;color:#475569">Nuestro equipo está disponible para ayudarte a encontrar la opción de renting que mejor se adapte a tus necesidades.</p>
+      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#059669;font-weight:600">Ver mi panel →</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
+    </div>`;
+}
+
 function infoEmailHtml(lead: Record<string, string>): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
@@ -332,7 +352,11 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
           .catch((e: Error) => console.error('[leads] sale outcome error:', e.message));
       }
     } else if (status === 'Descartado') {
-      sendClientEmail(updatedLead.user_email, `¿Podemos ayudarte con otro vehículo? — CarsWise`, descartadoEmailHtml(updatedLead))
+      const isRentingDescartado = updatedLead.portal === 'marketplace-vo-renting';
+      const descSubject = isRentingDescartado
+        ? `Tu solicitud de renting — ${updatedLead.vehicle_title || 'CarsWise'}`
+        : `¿Podemos ayudarte con otro vehículo? — CarsWise`;
+      sendClientEmail(updatedLead.user_email, descSubject, isRentingDescartado ? rentingDescartadoEmailHtml(updatedLead) : descartadoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
     }
   } catch (err) {
