@@ -554,6 +554,7 @@ export default function MarketplacePage() {
       if (q)            params.set('q', q);
       if (brand)        params.set('brand', brand);
       if (statusFilter) params.set('is_active', statusFilter);
+      if (tab === 'vo')      params.set('available_for_purchase', 'true');
       if (tab === 'renting') params.set('renting_available', 'true');
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }

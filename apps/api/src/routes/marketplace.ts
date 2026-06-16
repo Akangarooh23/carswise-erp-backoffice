@@ -97,12 +97,14 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
 // ── Carswise VO Marketplace ───────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
-  const q        = String(req.query.q        || '').trim();
-  const brand    = String(req.query.brand    || '').trim();
-  const isActive = req.query.is_active;
-  const page     = Math.max(1, Number(req.query.page) || 1);
-  const limit    = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
-  const offset   = (page - 1) * limit;
+  const q                   = String(req.query.q        || '').trim();
+  const brand               = String(req.query.brand    || '').trim();
+  const isActive            = req.query.is_active;
+  const availableForPurchase = req.query.available_for_purchase;
+  const rentingAvailable    = req.query.renting_available;
+  const page                = Math.max(1, Number(req.query.page) || 1);
+  const limit               = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
+  const offset              = (page - 1) * limit;
 
   const conditions: string[] = [];
   const values: unknown[]    = [];
@@ -118,6 +120,16 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   if (isActive === 'true' || isActive === 'false') {
     values.push(isActive === 'true');
     conditions.push(`is_active = $${values.length}`);
+  }
+  if (availableForPurchase === 'true') {
+    conditions.push(`available_for_purchase = TRUE`);
+  } else if (availableForPurchase === 'false') {
+    conditions.push(`available_for_purchase = FALSE`);
+  }
+  if (rentingAvailable === 'true') {
+    conditions.push(`renting_available = TRUE`);
+  } else if (rentingAvailable === 'false') {
+    conditions.push(`renting_available = FALSE`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
