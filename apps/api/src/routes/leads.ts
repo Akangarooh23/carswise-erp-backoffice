@@ -195,7 +195,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
   } = req.body ?? {};
-  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada'];
+  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada'];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
