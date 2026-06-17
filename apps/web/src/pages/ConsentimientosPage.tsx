@@ -59,11 +59,11 @@ export default function ConsentimientosPage() {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (q)              params.set('q', q);
     if (filter !== 'all') params.set('consent', filter);
-    api.get<{ data: ConsentRow[]; meta: { total: number } }>(`/consentimientos?${params}`)
+    api.get<ConsentRow[]>(`/consentimientos?${params}`)
       .then((r) => {
         if (r.ok) {
-          setRows(r.data.data);
-          setTotal(r.data.meta.total);
+          setRows(r.data ?? []);
+          setTotal(r.meta?.total ?? 0);
         }
       })
       .finally(() => setLoading(false));
