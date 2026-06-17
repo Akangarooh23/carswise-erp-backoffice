@@ -79,6 +79,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
                 mu.created_at, mu.last_login_at,
                 eu.status, eu.last_seen_at,
                 mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
+                mu.consents_reviewed_at,
                 mu.registration_ip, mu.registration_ua,
                 mu.utm_source, mu.utm_medium, mu.utm_campaign, mu.utm_content,
                 mu.affiliate_data, mu.referer, mu.landing_url, mu.language
@@ -156,6 +157,7 @@ usersRouter.get('/consentimientos', requireRole(['admin', 'support', 'operations
         `SELECT mu.id, mu.name, COALESCE(NULLIF(mu.apellidos,''),'') AS apellidos, mu.email,
                 mu.created_at,
                 mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
+                mu.consents_reviewed_at,
                 mu.registration_ip, mu.registration_ua, mu.language,
                 mu.utm_source, mu.utm_medium, mu.utm_campaign, mu.utm_content,
                 mu.referer, mu.landing_url, mu.affiliate_data

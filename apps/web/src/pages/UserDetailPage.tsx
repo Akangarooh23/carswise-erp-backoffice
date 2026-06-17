@@ -38,6 +38,7 @@ interface UserDetail extends User {
   consent_legal_at:     string | null;
   consent_marketing_at: string | null;
   consent_experian_at:  string | null;
+  consents_reviewed_at: string | null;
   registration_ip:  string;
   registration_ua:  string;
   utm_source:   string;
@@ -315,9 +316,9 @@ export default function UserDetailPage() {
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Aceptaciones</p>
             <dl className="space-y-3">
               {[
-                { label: 'Términos y Condiciones',        value: user.consent_legal_at },
-                { label: 'Comunicaciones comerciales',    value: user.consent_marketing_at },
-                { label: 'Consulta solvencia (Experian)', value: user.consent_experian_at },
+                { label: 'T&C y Política de Privacidad',        value: user.consent_legal_at },
+                { label: 'Marketing email + SMS',               value: user.consent_marketing_at },
+                { label: 'Terceros email + SMS (Experian)',      value: user.consent_experian_at },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-start justify-between gap-3">
                   <dt className="text-slate-500 text-xs leading-5">{label}</dt>
@@ -337,6 +338,15 @@ export default function UserDetailPage() {
                 </div>
               ))}
             </dl>
+
+            {user.consents_reviewed_at && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="text-slate-500 text-xs leading-5">Revisión de consentimientos</dt>
+                  <dd className="text-xs text-slate-600 whitespace-nowrap">{fmtDateTime(user.consents_reviewed_at)}</dd>
+                </div>
+              </div>
+            )}
 
             <div className="mt-4 pt-4 border-t border-slate-100">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Origen del registro</p>
