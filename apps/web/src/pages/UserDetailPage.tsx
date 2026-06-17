@@ -35,6 +35,16 @@ interface UserDetail extends User {
   tickets: Ticket[];
   leads: LeadRecord[];
   funnelEvents: FunnelEventRecord[];
+  consent_legal_at:     string | null;
+  consent_marketing_at: string | null;
+  consent_experian_at:  string | null;
+  registration_ip:  string;
+  registration_ua:  string;
+  utm_source:   string;
+  utm_medium:   string;
+  utm_campaign: string;
+  utm_content:  string;
+  affiliate_data: Record<string, string> | null;
 }
 
 const FUNNEL_EVENT_LABELS: Record<string, string> = {
@@ -290,6 +300,92 @@ export default function UserDetailPage() {
             </tbody>
           </table></div>
         )}
+      </Card>
+
+      {/* Consentimientos */}
+      <Card>
+        <h3 className="font-semibold text-slate-800 text-sm mb-4">Consentimientos</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Columna izquierda: consentimientos firmados */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Aceptaciones</p>
+            <dl className="space-y-3">
+              {[
+                { label: 'Términos y Condiciones',        value: user.consent_legal_at },
+                { label: 'Comunicaciones comerciales',    value: user.consent_marketing_at },
+                { label: 'Consulta solvencia (Experian)', value: user.consent_experian_at },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-start justify-between gap-3">
+                  <dt className="text-slate-500 text-xs leading-5">{label}</dt>
+                  <dd className="flex items-center gap-1.5 shrink-0">
+                    {value ? (
+                      <>
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-xs text-slate-600 whitespace-nowrap">{fmtDateTime(value)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-block w-2 h-2 rounded-full bg-slate-300" />
+                        <span className="text-xs text-slate-400">No aceptado</span>
+                      </>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Origen del registro</p>
+              <dl className="space-y-2.5">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 text-xs">IP</dt>
+                  <dd className="text-slate-700 text-xs font-mono">{user.registration_ip || '–'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 text-xs">UTM Source</dt>
+                  <dd className="text-slate-700 text-xs">{user.utm_source || '–'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 text-xs">UTM Medium</dt>
+                  <dd className="text-slate-700 text-xs">{user.utm_medium || '–'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 text-xs">UTM Campaign</dt>
+                  <dd className="text-slate-700 text-xs">{user.utm_campaign || '–'}</dd>
+                </div>
+                {user.utm_content && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500 text-xs">UTM Content</dt>
+                    <dd className="text-slate-700 text-xs">{user.utm_content}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </div>
+
+          {/* Columna derecha: user agent + affiliate data */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Dispositivo</p>
+            <p className="text-xs text-slate-500 leading-relaxed break-words bg-slate-50 rounded-lg p-3 border border-slate-100">
+              {user.registration_ua || '–'}
+            </p>
+
+            {user.affiliate_data && Object.keys(user.affiliate_data).length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Datos de afiliación</p>
+                <dl className="space-y-2 bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  {Object.entries(user.affiliate_data).map(([k, v]) => (
+                    <div key={k} className="flex justify-between gap-3">
+                      <dt className="text-slate-500 text-xs">{k}</dt>
+                      <dd className="text-slate-700 text-xs font-mono break-all">{String(v)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );

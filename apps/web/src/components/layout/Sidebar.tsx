@@ -19,7 +19,8 @@ const NAV: NavItem[] = [
   { to: '/leads',        label: 'Leads',        icon: '📩', roles: ['admin','support','operations','sales'] },
   { to: '/funnel',       label: 'Marketing',    icon: '📊', roles: ['admin','sales','operations'] },
   { to: '/workshops',    label: 'Talleres',     icon: '🔧', roles: ['admin','operations'] },
-  { to: '/billing',      label: 'Facturación',  icon: '💳', roles: ['admin','operations'] },
+  { to: '/billing',          label: 'Facturación',     icon: '💳', roles: ['admin','operations'] },
+  { to: '/consentimientos',  label: 'Consentimientos', icon: '📋', roles: ['admin','operations','support'] },
 ];
 
 const ROLE_LABELS: Record<Role, string> = {

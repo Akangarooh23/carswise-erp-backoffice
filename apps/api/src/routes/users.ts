@@ -77,7 +77,11 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
                 COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
                 mu.created_at, mu.last_login_at,
-                eu.status, eu.last_seen_at
+                eu.status, eu.last_seen_at,
+                mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
+                mu.registration_ip, mu.registration_ua,
+                mu.utm_source, mu.utm_medium, mu.utm_campaign, mu.utm_content,
+                mu.affiliate_data
          FROM moveadvisor_users mu
          LEFT JOIN erp_users eu ON eu.email = mu.email
          WHERE mu.id = $1`,
@@ -123,6 +127,51 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'user_get_failed', detail: (err as Error).message });
+  }
+});
+
+usersRouter.get('/consentimientos', requireRole(['admin', 'support', 'operations']), async (req, res) => {
+  const q       = String(req.query.q       || '').trim();
+  const consent = String(req.query.consent || '').trim(); // 'legal' | 'marketing' | 'experian'
+  const page    = Math.max(1, Number(req.query.page)  || 1);
+  const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset  = (page - 1) * limit;
+
+  const conditions: string[] = [];
+  const values: unknown[]    = [];
+
+  if (q) {
+    values.push(`%${q.toLowerCase()}%`);
+    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length})`);
+  }
+  if (consent === 'legal')     conditions.push('mu.consent_legal_at IS NOT NULL');
+  if (consent === 'marketing') conditions.push('mu.consent_marketing_at IS NOT NULL');
+  if (consent === 'experian')  conditions.push('mu.consent_experian_at IS NOT NULL');
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  try {
+    const [rows, countResult] = await Promise.all([
+      query(
+        `SELECT mu.id, mu.name, COALESCE(NULLIF(mu.apellidos,''),'') AS apellidos, mu.email,
+                mu.created_at,
+                mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
+                mu.registration_ip, mu.utm_source, mu.utm_medium, mu.utm_campaign
+         FROM moveadvisor_users mu
+         ${where}
+         ORDER BY mu.created_at DESC
+         LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset]
+      ),
+      query(
+        `SELECT COUNT(*)::int AS total FROM moveadvisor_users mu ${where}`,
+        values
+      ),
+    ]);
+
+    res.json({ ok: true, data: rows.rows, meta: { total: countResult.rows[0].total, page, limit } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'consentimientos_list_failed', detail: (err as Error).message });
   }
 });
 

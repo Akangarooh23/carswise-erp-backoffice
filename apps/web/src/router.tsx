@@ -17,7 +17,8 @@ const IdCarsPage        = lazy(() => import('./pages/IdCarsPage.js'));
 const IdCarDetailPage   = lazy(() => import('./pages/IdCarDetailPage.js'));
 const BillingPage       = lazy(() => import('./pages/BillingPage.js'));
 const LeadsPage         = lazy(() => import('./pages/LeadsPage.js'));
-const FunnelPage        = lazy(() => import('./pages/FunnelPage.js'));
+const FunnelPage            = lazy(() => import('./pages/FunnelPage.js'));
+const ConsentimientosPage   = lazy(() => import('./pages/ConsentimientosPage.js'));
 
 const Loader = () => (
   <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
@@ -46,7 +47,8 @@ export const router = createBrowserRouter([
       { path: 'idcars/:id',        element: <Suspense fallback={<Loader />}><IdCarDetailPage /></Suspense> },
       { path: 'billing',           element: <Suspense fallback={<Loader />}><BillingPage /></Suspense> },
       { path: 'leads',             element: <Suspense fallback={<Loader />}><LeadsPage /></Suspense> },
-      { path: 'funnel',            element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
+      { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
+      { path: 'consentimientos',   element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
       { path: '*',                 element: <Navigate to="/dashboard" replace /> },
     ],
   },
