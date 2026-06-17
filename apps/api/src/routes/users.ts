@@ -156,7 +156,9 @@ usersRouter.get('/consentimientos', requireRole(['admin', 'support', 'operations
         `SELECT mu.id, mu.name, COALESCE(NULLIF(mu.apellidos,''),'') AS apellidos, mu.email,
                 mu.created_at,
                 mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
-                mu.registration_ip, mu.utm_source, mu.utm_medium, mu.utm_campaign
+                mu.registration_ip, mu.registration_ua, mu.language,
+                mu.utm_source, mu.utm_medium, mu.utm_campaign, mu.utm_content,
+                mu.referer, mu.landing_url, mu.affiliate_data
          FROM moveadvisor_users mu
          ${where}
          ORDER BY mu.created_at DESC

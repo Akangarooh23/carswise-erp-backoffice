@@ -15,12 +15,18 @@ interface ConsentRow {
   consent_marketing_at: string | null;
   consent_experian_at:  string | null;
   registration_ip:  string;
+  registration_ua:  string;
+  language:         string;
   utm_source:   string;
   utm_medium:   string;
   utm_campaign: string;
+  utm_content:  string;
+  referer:      string;
+  landing_url:  string;
+  affiliate_data: Record<string, string> | null;
 }
 
-function fmtDateTime(s: string | null) {
+function fmtDate(s: string | null) {
   if (!s) return null;
   return new Date(s).toLocaleString('es-ES', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -28,30 +34,95 @@ function fmtDateTime(s: string | null) {
   });
 }
 
-function ConsentCell({ value }: { value: string | null }) {
-  if (!value) {
-    return (
-      <span className="inline-flex items-center gap-1 text-slate-400 text-xs">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />
-        No
-      </span>
-    );
-  }
+function ConsentBadge({ value, label }: { value: string | null; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 text-emerald-700 text-xs whitespace-nowrap">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-      {fmtDateTime(value)}
-    </span>
+    <div className="flex items-start gap-2">
+      <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${value ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+      <div>
+        <p className="text-xs font-medium text-slate-600">{label}</p>
+        <p className={`text-xs ${value ? 'text-emerald-700' : 'text-slate-400'}`}>
+          {value ? fmtDate(value) : 'No aceptado'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-xs text-slate-700 break-all">{value}</p>
+    </div>
+  );
+}
+
+function ExpandedRow({ row }: { row: ConsentRow }) {
+  return (
+    <tr>
+      <td colSpan={6} className="bg-slate-50 px-5 py-4 border-b border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+          {/* Consentimientos */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Consentimientos</p>
+            <ConsentBadge value={row.consent_legal_at}     label="Términos y Condiciones" />
+            <ConsentBadge value={row.consent_marketing_at} label="Comunicaciones comerciales" />
+            <ConsentBadge value={row.consent_experian_at}  label="Consulta solvencia (Experian)" />
+          </div>
+
+          {/* Origen */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Origen del registro</p>
+            <Field label="IP de registro"  value={row.registration_ip} />
+            <Field label="Idioma"          value={row.language} />
+            <Field label="UTM Source"      value={row.utm_source} />
+            <Field label="UTM Medium"      value={row.utm_medium} />
+            <Field label="UTM Campaign"    value={row.utm_campaign} />
+            <Field label="UTM Content"     value={row.utm_content} />
+          </div>
+
+          {/* Tracking */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Trazabilidad</p>
+            <Field label="Referer"     value={row.referer} />
+            <Field label="Landing URL" value={row.landing_url} />
+            {row.affiliate_data && Object.keys(row.affiliate_data).length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Affiliate data</p>
+                <div className="space-y-1">
+                  {Object.entries(row.affiliate_data).map(([k, v]) => (
+                    <div key={k} className="flex gap-2 text-xs">
+                      <span className="text-slate-400 shrink-0">{k}:</span>
+                      <span className="text-slate-700 font-mono break-all">{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {row.registration_ua && (
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">User Agent</p>
+                <p className="text-[11px] text-slate-500 leading-relaxed break-words">{row.registration_ua}</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </td>
+    </tr>
   );
 }
 
 export default function ConsentimientosPage() {
-  const [rows, setRows]       = useState<ConsentRow[]>([]);
-  const [total, setTotal]     = useState(0);
-  const [page, setPage]       = useState(1);
-  const [q, setQ]             = useState('');
-  const [filter, setFilter]   = useState<'all' | 'legal' | 'marketing' | 'experian'>('all');
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows]         = useState<ConsentRow[]>([]);
+  const [total, setTotal]       = useState(0);
+  const [page, setPage]         = useState(1);
+  const [q, setQ]               = useState('');
+  const [filter, setFilter]     = useState<'all' | 'legal' | 'marketing' | 'experian'>('all');
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [loading, setLoading]   = useState(true);
   const limit = 50;
 
   useEffect(() => {
@@ -69,8 +140,9 @@ export default function ConsentimientosPage() {
       .finally(() => setLoading(false));
   }, [page, q, filter]);
 
-  function handleSearch(v: string) { setQ(v); setPage(1); }
-  function handleFilter(f: typeof filter) { setFilter(f); setPage(1); }
+  function handleSearch(v: string) { setQ(v); setPage(1); setExpanded(null); }
+  function handleFilter(f: typeof filter) { setFilter(f); setPage(1); setExpanded(null); }
+  function toggleRow(id: string) { setExpanded((prev) => prev === id ? null : id); }
 
   const filterLabels: { key: typeof filter; label: string }[] = [
     { key: 'all',       label: 'Todos' },
@@ -122,36 +194,54 @@ export default function ConsentimientosPage() {
                 <tr>
                   <th>Usuario</th>
                   <th>Registro</th>
-                  <th>T&amp;C</th>
-                  <th>Comunicaciones</th>
-                  <th>Experian</th>
-                  <th>IP</th>
-                  <th>UTM Source</th>
-                  <th>Campaña</th>
+                  <th className="text-center">T&amp;C</th>
+                  <th className="text-center">Marketing</th>
+                  <th className="text-center">Experian</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <Link
-                        to={`/users/${r.id}`}
-                        className="text-blue-600 hover:underline font-medium text-sm"
-                      >
-                        {[r.name, r.apellidos].filter(Boolean).join(' ') || r.email}
-                      </Link>
-                      <div className="text-xs text-slate-400">{r.email}</div>
-                    </td>
-                    <td className="text-xs text-slate-500 whitespace-nowrap">
-                      {fmtDateTime(r.created_at) ?? '–'}
-                    </td>
-                    <td><ConsentCell value={r.consent_legal_at} /></td>
-                    <td><ConsentCell value={r.consent_marketing_at} /></td>
-                    <td><ConsentCell value={r.consent_experian_at} /></td>
-                    <td className="text-xs text-slate-500 font-mono">{r.registration_ip || '–'}</td>
-                    <td className="text-xs text-slate-500">{r.utm_source || '–'}</td>
-                    <td className="text-xs text-slate-500 max-w-[140px] truncate">{r.utm_campaign || '–'}</td>
-                  </tr>
+                  <>
+                    <tr
+                      key={r.id}
+                      className={`cursor-pointer hover:bg-slate-50 transition-colors ${expanded === r.id ? 'bg-slate-50' : ''}`}
+                      onClick={() => toggleRow(r.id)}
+                    >
+                      <td>
+                        <Link
+                          to={`/users/${r.id}`}
+                          className="text-blue-600 hover:underline font-medium text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {[r.name, r.apellidos].filter(Boolean).join(' ') || r.email}
+                        </Link>
+                        <div className="text-xs text-slate-400">{r.email}</div>
+                      </td>
+                      <td className="text-xs text-slate-500 whitespace-nowrap">
+                        {fmtDate(r.created_at) ?? '–'}
+                      </td>
+                      <td className="text-center">
+                        {r.consent_legal_at
+                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_legal_at) ?? ''} />
+                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
+                      </td>
+                      <td className="text-center">
+                        {r.consent_marketing_at
+                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_marketing_at) ?? ''} />
+                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
+                      </td>
+                      <td className="text-center">
+                        {r.consent_experian_at
+                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_experian_at) ?? ''} />
+                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
+                      </td>
+                      <td className="text-slate-400 text-xs pr-4">
+                        {expanded === r.id ? '▲' : '▼'}
+                      </td>
+                    </tr>
+                    {expanded === r.id && <ExpandedRow key={`${r.id}-exp`} row={r} />}
+                  </>
                 ))}
               </tbody>
             </table>
