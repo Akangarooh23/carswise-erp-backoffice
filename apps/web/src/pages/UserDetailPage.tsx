@@ -45,6 +45,9 @@ interface UserDetail extends User {
   utm_campaign: string;
   utm_content:  string;
   affiliate_data: Record<string, string> | null;
+  referer:     string;
+  landing_url: string;
+  language:    string;
 }
 
 const FUNNEL_EVENT_LABELS: Record<string, string> = {
@@ -343,6 +346,10 @@ export default function UserDetailPage() {
                   <dd className="text-slate-700 text-xs font-mono">{user.registration_ip || '–'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 text-xs">Idioma</dt>
+                  <dd className="text-slate-700 text-xs">{user.language || '–'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
                   <dt className="text-slate-500 text-xs">UTM Source</dt>
                   <dd className="text-slate-700 text-xs">{user.utm_source || '–'}</dd>
                 </div>
@@ -358,6 +365,18 @@ export default function UserDetailPage() {
                   <div className="flex justify-between gap-3">
                     <dt className="text-slate-500 text-xs">UTM Content</dt>
                     <dd className="text-slate-700 text-xs">{user.utm_content}</dd>
+                  </div>
+                )}
+                {user.referer && (
+                  <div className="flex flex-col gap-1 pt-1">
+                    <dt className="text-slate-500 text-xs">Referer</dt>
+                    <dd className="text-slate-700 text-xs break-all bg-slate-50 rounded p-2 border border-slate-100">{user.referer}</dd>
+                  </div>
+                )}
+                {user.landing_url && (
+                  <div className="flex flex-col gap-1">
+                    <dt className="text-slate-500 text-xs">Landing URL</dt>
+                    <dd className="text-slate-700 text-xs break-all bg-slate-50 rounded p-2 border border-slate-100">{user.landing_url}</dd>
                   </div>
                 )}
               </dl>
