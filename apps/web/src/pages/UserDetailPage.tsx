@@ -35,10 +35,12 @@ interface UserDetail extends User {
   tickets: Ticket[];
   leads: LeadRecord[];
   funnelEvents: FunnelEventRecord[];
-  consent_legal_at:     string | null;
-  consent_marketing_at: string | null;
-  consent_experian_at:  string | null;
-  consents_reviewed_at: string | null;
+  consent_legal_at:            string | null;
+  consent_marketing_email_at:  string | null;
+  consent_marketing_sms_at:    string | null;
+  consent_thirdparty_email_at: string | null;
+  consent_thirdparty_sms_at:   string | null;
+  consents_reviewed_at:        string | null;
   registration_ip:  string;
   registration_ua:  string;
   utm_source:   string;
@@ -316,9 +318,11 @@ export default function UserDetailPage() {
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Aceptaciones</p>
             <dl className="space-y-3">
               {[
-                { label: 'T&C y Política de Privacidad',        value: user.consent_legal_at },
-                { label: 'Marketing email + SMS',               value: user.consent_marketing_at },
-                { label: 'Terceros email + SMS (Experian)',      value: user.consent_experian_at },
+                { label: 'T&C y Política de Privacidad',  value: user.consent_legal_at },
+                { label: 'Marketing email',               value: user.consent_marketing_email_at },
+                { label: 'Marketing SMS',                 value: user.consent_marketing_sms_at },
+                { label: 'Terceros email (Experian)',     value: user.consent_thirdparty_email_at },
+                { label: 'Terceros SMS (Experian)',       value: user.consent_thirdparty_sms_at },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-start justify-between gap-3">
                   <dt className="text-slate-500 text-xs leading-5">{label}</dt>

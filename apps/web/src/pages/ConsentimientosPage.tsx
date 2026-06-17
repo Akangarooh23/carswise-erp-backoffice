@@ -11,10 +11,12 @@ interface ConsentRow {
   apellidos: string;
   email: string;
   created_at: string;
-  consent_legal_at:      string | null;
-  consent_marketing_at:  string | null;
-  consent_experian_at:   string | null;
-  consents_reviewed_at:  string | null;
+  consent_legal_at:           string | null;
+  consent_marketing_email_at: string | null;
+  consent_marketing_sms_at:   string | null;
+  consent_thirdparty_email_at: string | null;
+  consent_thirdparty_sms_at:  string | null;
+  consents_reviewed_at:       string | null;
   registration_ip:  string;
   registration_ua:  string;
   language:         string;
@@ -71,15 +73,17 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function ExpandedRow({ row }: { row: ConsentRow }) {
   return (
     <tr>
-      <td colSpan={6} className="bg-slate-50 px-5 py-4 border-b border-slate-200">
+      <td colSpan={8} className="bg-slate-50 px-5 py-4 border-b border-slate-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
           {/* Consentimientos */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Consentimientos</p>
-            <ConsentBadge value={row.consent_legal_at}     label="T&C y Política de Privacidad" />
-            <ConsentBadge value={row.consent_marketing_at} label="Marketing email + SMS" />
-            <ConsentBadge value={row.consent_experian_at}  label="Terceros email + SMS (Experian)" />
+            <ConsentBadge value={row.consent_legal_at}            label="T&C y Política de Privacidad" />
+            <ConsentBadge value={row.consent_marketing_email_at}  label="Marketing email" />
+            <ConsentBadge value={row.consent_marketing_sms_at}    label="Marketing SMS" />
+            <ConsentBadge value={row.consent_thirdparty_email_at} label="Terceros email (Experian)" />
+            <ConsentBadge value={row.consent_thirdparty_sms_at}   label="Terceros SMS (Experian)" />
 
             {row.consents_reviewed_at && (
               <div className="pt-2 border-t border-slate-200">
@@ -221,8 +225,10 @@ export default function ConsentimientosPage() {
                   <th>Usuario</th>
                   <th>Registro</th>
                   <th className="text-center">T&amp;C</th>
-                  <th className="text-center">Marketing</th>
-                  <th className="text-center">Experian</th>
+                  <th className="text-center">Mkt Email</th>
+                  <th className="text-center">Mkt SMS</th>
+                  <th className="text-center">3P Email</th>
+                  <th className="text-center">3P SMS</th>
                   <th></th>
                 </tr>
               </thead>
@@ -247,21 +253,18 @@ export default function ConsentimientosPage() {
                       <td className="text-xs text-slate-500 whitespace-nowrap">
                         {fmtDate(r.created_at) ?? '–'}
                       </td>
-                      <td className="text-center">
-                        {r.consent_legal_at
-                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_legal_at) ?? ''} />
-                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
-                      </td>
-                      <td className="text-center">
-                        {r.consent_marketing_at
-                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_marketing_at) ?? ''} />
-                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
-                      </td>
-                      <td className="text-center">
-                        {r.consent_experian_at
-                          ? <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" title={fmtDate(r.consent_experian_at) ?? ''} />
-                          : <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
-                      </td>
+                      {[
+                        r.consent_legal_at,
+                        r.consent_marketing_email_at,
+                        r.consent_marketing_sms_at,
+                        r.consent_thirdparty_email_at,
+                        r.consent_thirdparty_sms_at,
+                      ].map((val, i) => (
+                        <td key={i} className="text-center">
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${val ? 'bg-emerald-400' : 'bg-slate-200'}`}
+                            title={val ? (fmtDate(val) ?? '') : 'No aceptado'} />
+                        </td>
+                      ))}
                       <td className="text-slate-400 text-xs pr-4">
                         {expanded === r.id ? '▲' : '▼'}
                       </td>
