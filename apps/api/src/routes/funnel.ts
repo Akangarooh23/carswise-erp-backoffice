@@ -194,7 +194,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
       query(
         `SELECT id, anon_id, user_email, event_type,
                 utm_source, utm_medium, utm_campaign,
-                offer_id, offer_title, landing_url, created_at
+                offer_id, offer_title, section, landing_url, created_at
          FROM moveadvisor_funnel_events ${where}
          ORDER BY created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
@@ -230,6 +230,7 @@ funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']),
       `SELECT
          DATE(created_at AT TIME ZONE 'Europe/Madrid') AS day,
          COUNT(*) FILTER (WHERE event_type = 'landing')::int          AS landings,
+         COUNT(*) FILTER (WHERE event_type = 'page_view')::int        AS page_views,
          COUNT(*) FILTER (WHERE event_type = 'marketplace_view')::int AS marketplace_views,
          COUNT(*) FILTER (WHERE event_type = 'offer_view')::int       AS offer_views,
          COUNT(*) FILTER (WHERE event_type = 'register')::int         AS registers,

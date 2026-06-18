@@ -30,20 +30,23 @@ interface UtmSource    { source: string; sessions: number; registers: number; le
 interface UtmCampaign  { campaign: string; medium: string; source: string; sessions: number; registers: number; leads: number }
 interface TopOffer     { offer_id: string; offer_title: string; offer_url: string | null; views: number; leads: number }
 interface FunnelStats  { days: number; funnel: FunnelStep[]; utmSources: UtmSource[]; utmCampaigns: UtmCampaign[]; topOffers: TopOffer[] }
-interface FunnelEvent  { id: string; anon_id: string; user_email: string | null; event_type: string; utm_source: string; utm_medium: string; utm_campaign: string; offer_id: string | null; offer_title: string | null; landing_url: string; created_at: string }
+interface FunnelEvent  { id: string; anon_id: string; user_email: string | null; event_type: string; utm_source: string; utm_medium: string; utm_campaign: string; offer_id: string | null; offer_title: string | null; section: string | null; landing_url: string; created_at: string }
 interface FunnelSession { anon_id: string; user_email: string | null; first_seen: string; last_seen: string; utm_source: string; utm_medium: string; utm_campaign: string; event_count: number; events: string[]; did_register: boolean; did_lead: boolean }
-interface DailyRow     { day: string; landings: number; marketplace_views: number; offer_views: number; registers: number; leads: number; total: number }
+interface DailyRow     { day: string; landings: number; page_views: number; marketplace_views: number; offer_views: number; registers: number; leads: number; total: number }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_LABELS: Record<string, string> = {
-  landing: 'Acceso', marketplace_view: 'Marketplace', offer_view: 'Oferta vista',
-  register: 'Registro', lead_request: 'Solicitud',
+  landing: 'Acceso', page_view: 'Página vista', marketplace_view: 'Marketplace',
+  offer_view: 'Oferta vista', register: 'Registro', lead_request: 'Solicitud',
+  identify: 'Identificado', login: 'Login',
 };
 const EVENT_COLORS: Record<string, string> = {
-  landing: 'bg-slate-100 text-slate-600', marketplace_view: 'bg-blue-50 text-blue-700',
+  landing: 'bg-slate-100 text-slate-600', page_view: 'bg-sky-50 text-sky-700',
+  marketplace_view: 'bg-blue-50 text-blue-700',
   offer_view: 'bg-violet-50 text-violet-700', register: 'bg-emerald-50 text-emerald-700',
-  lead_request: 'bg-amber-50 text-amber-700',
+  lead_request: 'bg-amber-50 text-amber-700', identify: 'bg-slate-50 text-slate-500',
+  login: 'bg-teal-50 text-teal-700',
 };
 const FUNNEL_COLORS = ['bg-slate-400', 'bg-blue-400', 'bg-violet-400', 'bg-emerald-400', 'bg-amber-400'];
 const DATE_SHORTCUTS = [{ label: 'Hoy', daysAgo: 0 }, { label: 'Ayer', daysAgo: 1 }, { label: 'Anteayer', daysAgo: 2 }];
@@ -665,6 +668,7 @@ export default function FunnelPage() {
                   <tr>
                     <SortTh col="day"               label="Día"          sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} />
                     <SortTh col="landings"           label="Accesos"      sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} right />
+                    <SortTh col="page_views"         label="Pág. vistas"  sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} right />
                     <SortTh col="marketplace_views"  label="Marketplace"  sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} right />
                     <SortTh col="offer_views"        label="Ofertas"      sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} right />
                     <SortTh col="registers"          label="Registros"    sort={dailySort} onSort={(c) => toggleSort(dailySort, setDailySort, c)} right />
@@ -683,6 +687,7 @@ export default function FunnelPage() {
                             <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{label}
                           </td>
                           <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
+                          <td className="text-right text-sm text-slate-600">{row.page_views || '–'}</td>
                           <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
                           <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
                           <td className="text-right">{row.registers > 0 ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
@@ -1211,6 +1216,7 @@ export default function FunnelPage() {
                                 { label: 'Fuente',        value: e.utm_source || '–' },
                                 { label: 'Medio',         value: e.utm_medium || '–' },
                                 { label: 'Campaña',       value: e.utm_campaign || '–' },
+                                { label: 'Sección',       value: e.section || '–' },
                                 { label: 'Oferta',        value: e.offer_title || '–' },
                                 { label: 'ID oferta',     value: e.offer_id ? <span className="font-mono text-[10px]">{e.offer_id}</span> : '–' },
                                 { label: 'Landing URL',   value: e.landing_url ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-blue-600 hover:underline break-all">{e.landing_url}</a> : '–' },
