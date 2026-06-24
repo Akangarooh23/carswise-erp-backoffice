@@ -88,7 +88,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
           `SELECT
              l.id, l.user_email, l.contact_name, l.vehicle_title,
              COALESCE(o.sold_at, l.created_at) AS date,
-             l.status, l.portal, l.vehicle_id,
+             l.status, l.portal, l.vehicle_id, l.sale_price, l.sale_notes,
              v.id AS idcar_id,
              o.price AS offer_price, o.year AS offer_year, o.mileage AS offer_mileage, o.fuel AS offer_fuel
            FROM moveadvisor_market_leads l
@@ -98,7 +98,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
            ORDER BY l.created_at DESC`
         );
         for (const r of res2.rows as Record<string, string>[]) {
-          const price = r.offer_price ? Number(r.offer_price) : null;
+          const price = r.sale_price ? Number(r.sale_price) : (r.offer_price ? Number(r.offer_price) : null);
           const detail = [r.offer_year, r.offer_mileage ? `${Number(r.offer_mileage).toLocaleString('es-ES')} km` : null, r.offer_fuel].filter(Boolean).join(' · ') || null;
           rows.push({
             id: r.id, type: 'compra', date: r.date,

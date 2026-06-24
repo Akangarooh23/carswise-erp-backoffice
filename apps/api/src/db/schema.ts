@@ -84,6 +84,12 @@ export async function ensureSchema() {
 
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_market_leads
+      ADD COLUMN IF NOT EXISTS sale_price             NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS sale_notes             TEXT
+  `);
+
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_market_leads
       ADD COLUMN IF NOT EXISTS erp_response           TEXT         NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS appointment_date       DATE,
       ADD COLUMN IF NOT EXISTS appointment_time       VARCHAR(10)  NOT NULL DEFAULT '',

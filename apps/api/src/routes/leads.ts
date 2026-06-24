@@ -301,6 +301,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   const {
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
+    sale_price, sale_notes,
   } = req.body ?? {};
   const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido'];
 
@@ -319,6 +320,8 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_time !== undefined)  { values.push(appointment_time ?? '');  sets.push(`appointment_time = $${values.length}`); }
   if (appointment_address !== undefined) { values.push(appointment_address ?? ''); sets.push(`appointment_address = $${values.length}`); }
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
+  if (sale_price  !== undefined)         { values.push(sale_price  || null);        sets.push(`sale_price  = $${values.length}`); }
+  if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = $${values.length}`); }
   // When operator assigns a date without manually changing status, auto-advance Pendiente → En proceso
   if (appointment_date && !status) { sets.push(`status = CASE WHEN status = 'Pendiente' THEN 'En proceso' ELSE status END`); }
   // When operator confirms a new appointment, clear any pending reschedule proposals

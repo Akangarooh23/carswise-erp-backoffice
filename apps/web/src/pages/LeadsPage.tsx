@@ -273,6 +273,12 @@ export default function LeadsPage() {
   const [anonEvents, setAnonEvents]             = useState<Record<string, FunnelEventDetail[]>>({});
   const [eventsLoading, setEventsLoading]       = useState<string | null>(null);
 
+  // ── Sale price modal (shown when marking a lead as Vendido) ──
+  const [saleModal, setSaleModal]         = useState(false);
+  const [salePrice, setSalePrice]         = useState('');
+  const [saleNotes, setSaleNotes]         = useState('');
+  const [savingSale, setSavingSale]       = useState(false);
+
   // ── Renting contract creation modal ──
   const [contractModal, setContractModal]         = useState(false);
   const [contractColor, setContractColor]         = useState('');
@@ -399,16 +405,34 @@ export default function LeadsPage() {
     setHistoryLoading(false);
   }
 
-  async function saveLead() {
+  async function saveLead(overrideSalePrice?: string, overrideSaleNotes?: string) {
     if (!selected) return;
+    // If changing to Vendido and price not yet captured, open sale price modal first
+    if (editStatus === 'Vendido' && overrideSalePrice === undefined && !selected.meta?.sale_price) {
+      setSalePrice('');
+      setSaleNotes('');
+      setSaleModal(true);
+      return;
+    }
     setSaving(true);
     const res = await api.patch(`/leads/${selected.id}`, {
       status: editStatus, notes: editNotes, erp_response: editResponse,
       appointment_date: editApptDate || null, appointment_time: editApptTime,
       appointment_address: editApptAddress, appointment_contact: editApptContact,
+      ...(editStatus === 'Vendido' ? {
+        sale_price: overrideSalePrice ? Number(overrideSalePrice) : null,
+        sale_notes: overrideSaleNotes ?? null,
+      } : {}),
     });
     if (res.ok) { await loadLeads(); setSelected(null); }
     setSaving(false);
+  }
+
+  async function confirmSalePrice() {
+    setSavingSale(true);
+    await saveLead(salePrice || '0', saleNotes);
+    setSaleModal(false);
+    setSavingSale(false);
   }
 
   function openContractModal(lead: Lead) {
@@ -1335,6 +1359,57 @@ export default function LeadsPage() {
                 className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-60">
                 {creatingContract ? 'Creando…' : '✓ Formalizar contrato'}
               </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Sale price modal */}
+      <Modal open={saleModal} onClose={() => setSaleModal(false)} title="Registrar precio de venta">
+        {selected && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Vas a marcar <strong>{selected.title || selected.contact_name}</strong> como <strong>Vendido</strong>.
+              <br />
+              <span className="text-xs text-slate-400">Introduce el precio de venta para que aparezca en Contratos.</span>
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Precio de venta (€)</label>
+              <input
+                type="number" min="0" step="100"
+                value={salePrice}
+                onChange={e => setSalePrice(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="Ej: 18500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Notas de venta (opcional)</label>
+              <textarea
+                value={saleNotes}
+                onChange={e => setSaleNotes(e.target.value)}
+                rows={2}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="Ej: venta directa, financiado, sin extras…"
+              />
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <button
+                onClick={() => { setSaleModal(false); saveLead('0', ''); }}
+                className="text-xs text-slate-400 hover:text-slate-600 underline"
+              >
+                Guardar sin precio
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setSaleModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button onClick={confirmSalePrice} disabled={savingSale}
+                  className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60">
+                  {savingSale ? 'Guardando…' : 'Confirmar venta'}
+                </button>
+              </div>
             </div>
           </div>
         )}
