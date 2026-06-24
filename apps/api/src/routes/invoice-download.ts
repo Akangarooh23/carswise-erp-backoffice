@@ -145,7 +145,9 @@ invoiceDownloadRouter.get(
         professional: 'Plan Professional',
       };
       const planId  = String(inv.plan_id || inv.plan || 'plus');
-      const amount  = Number(inv.amount) || 0;
+      const ivaRate = 0.21;
+      const totalWithIva = Number(inv.amount) || 0;
+      const amount = Math.round((totalWithIva / (1 + ivaRate)) * 100) / 100;
 
       const data: InvoiceData = {
         invoiceNumber,
@@ -158,7 +160,7 @@ invoiceDownloadRouter.get(
           subtitle: `Periodo de suscripción · Ref. Stripe: ${inv.stripe_invoice_id ?? inv.id ?? ''}`,
           amount,
         }],
-        ivaRate: 0.21,
+        ivaRate,
       };
 
       const { pdf, url } = await generateAndStoreInvoicePdf(
