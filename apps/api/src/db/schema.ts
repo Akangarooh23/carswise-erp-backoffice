@@ -288,5 +288,13 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS billing_province    VARCHAR(100) NOT NULL DEFAULT ''
   `);
 
+  // ── Vehicle sale tracking columns (needed by processSaleOutcome) ──────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_user_vehicles
+      ADD COLUMN IF NOT EXISTS source_lead_id VARCHAR(80),
+      ADD COLUMN IF NOT EXISTS purchased_from VARCHAR(60),
+      ADD COLUMN IF NOT EXISTS sold_at        TIMESTAMPTZ
+  `);
+
   console.log('[schema] ERP tables verified');
 }
