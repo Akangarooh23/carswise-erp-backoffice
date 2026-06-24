@@ -212,19 +212,20 @@ export default function UserDetailPage() {
           <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mt-5 mb-3">Datos de facturación</p>
           {!editMode ? (
             <dl className="space-y-2 text-sm mb-4">
-              <div className="flex justify-between"><dt className="text-slate-500">Razón social</dt><dd className="font-medium">{user.company_name || '–'}</dd></div>
+              {user.company_name && (
+                <div className="flex justify-between"><dt className="text-slate-500">Razón social</dt><dd className="font-medium">{user.company_name}</dd></div>
+              )}
               <div className="flex justify-between"><dt className="text-slate-500">NIF / CIF</dt><dd className="font-medium">{user.tax_id || '–'}</dd></div>
               <div className="flex justify-between"><dt className="text-slate-500">Dirección fiscal</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_address || '–'}</dd></div>
             </dl>
           ) : (
             <div className="space-y-2 text-sm mb-4">
               {[
-                { label: 'Razón social',    val: editCompany, set: setEditCompany },
-                { label: 'NIF / CIF',       val: editTaxId,   set: setEditTaxId },
-                { label: 'Dirección fiscal', val: editAddress, set: setEditAddress },
+                { label: 'NIF / CIF',        val: editTaxId,   set: setEditTaxId },
+                { label: 'Dirección fiscal',  val: editAddress, set: setEditAddress },
               ].map(({ label, val, set }) => (
                 <div key={label} className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500 w-24 shrink-0">{label}</span>
+                  <span className="text-slate-500 w-28 shrink-0">{label}</span>
                   <input value={val} onChange={e => set(e.target.value)}
                     className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 </div>
