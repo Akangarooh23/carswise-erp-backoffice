@@ -245,10 +245,12 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
-          <label className={LABEL_CLS}>Color</label>
-          <input className={INPUT_CLS} value={form.color ?? ''} onChange={onText('color')} placeholder="Blanco" />
-        </div>
+        {form.available_for_purchase !== false && (
+          <div>
+            <label className={LABEL_CLS}>Color</label>
+            <input className={INPUT_CLS} value={form.color ?? ''} onChange={onText('color')} placeholder="Blanco" />
+          </div>
+        )}
         <div>
           <label className={LABEL_CLS}>Ubicación (display)</label>
           <input className={INPUT_CLS} value={form.location ?? ''} onChange={onText('location')} placeholder="Madrid" />
@@ -522,7 +524,7 @@ export default function MarketplacePage() {
   const [primaryMsg, setPrimaryMsg] = useState('');
   const [units, setUnits]           = useState<VoUnit[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
-  const [newUnit, setNewUnit]       = useState({ color: '', mileage: '' });
+  const [newUnit, setNewUnit]       = useState({ color: '', quantity: '1' });
   const [addingUnit, setAddingUnit] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -589,7 +591,7 @@ export default function MarketplacePage() {
     setEditForm({ ...offer, image_urls: urls, image_url: syncedImageUrl });
     setPrimaryMsg('');
     setUnits([]);
-    setNewUnit({ color: '', mileage: '' });
+    setNewUnit({ color: '', quantity: '1' });
     setLoadingUnits(true);
     const res = await api.get<VoUnit[]>(`/marketplace/vo/${offer.id}/units`);
     if (res.ok) setUnits(res.data);
@@ -597,12 +599,16 @@ export default function MarketplacePage() {
   }
 
   async function addUnit() {
-    if (!editOffer || !newUnit.color || !newUnit.mileage) return;
+    if (!editOffer || !newUnit.color) return;
     setAddingUnit(true);
-    const res = await api.post<VoUnit>(`/marketplace/vo/${editOffer.id}/units`, {
-      color: newUnit.color, mileage: Number(newUnit.mileage),
-    });
-    if (res.ok) { setUnits((u) => [...u, res.data]); setNewUnit({ color: '', mileage: '' }); }
+    const qty = Math.max(1, Math.min(50, Number(newUnit.quantity) || 1));
+    for (let i = 0; i < qty; i++) {
+      const res = await api.post<VoUnit>(`/marketplace/vo/${editOffer.id}/units`, {
+        color: newUnit.color, mileage: 0,
+      });
+      if (res.ok) setUnits((u) => [...u, res.data]);
+    }
+    setNewUnit({ color: '', quantity: '1' });
     setAddingUnit(false);
   }
 
@@ -1258,19 +1264,19 @@ export default function MarketplacePage() {
                   <div className="flex gap-2 items-end">
                     <div>
                       <label className={LABEL_CLS}>Color</label>
-                      <input className={INPUT_CLS} style={{ width: 120 }} value={newUnit.color}
+                      <input className={INPUT_CLS} style={{ width: 130 }} value={newUnit.color}
                         onChange={(e) => setNewUnit((n) => ({ ...n, color: e.target.value }))}
                         placeholder="Blanco" />
                     </div>
                     <div>
-                      <label className={LABEL_CLS}>Kilómetros</label>
-                      <input type="number" className={INPUT_CLS} style={{ width: 110 }} value={newUnit.mileage}
-                        onChange={(e) => setNewUnit((n) => ({ ...n, mileage: e.target.value }))}
-                        placeholder="15000" min={0} />
+                      <label className={LABEL_CLS}>Nº unidades</label>
+                      <input type="number" className={INPUT_CLS} style={{ width: 90 }} value={newUnit.quantity}
+                        onChange={(e) => setNewUnit((n) => ({ ...n, quantity: e.target.value }))}
+                        placeholder="1" min={1} max={50} />
                     </div>
-                    <button onClick={addUnit} disabled={addingUnit || !newUnit.color || !newUnit.mileage}
+                    <button onClick={addUnit} disabled={addingUnit || !newUnit.color}
                       className="px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 shrink-0">
-                      {addingUnit ? '…' : '+ Añadir unidad'}
+                      {addingUnit ? '…' : '+ Añadir'}
                     </button>
                   </div>
                 </>
