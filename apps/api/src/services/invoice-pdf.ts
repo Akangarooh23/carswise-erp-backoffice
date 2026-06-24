@@ -3,7 +3,7 @@ import { query } from '../db/pool.js';
 import { config } from '../config.js';
 
 // ── Series counter ────────────────────────────────────────────────────────────
-export async function nextInvoiceNumber(series: 'SUBS' | 'VTA' | 'PROV'): Promise<string> {
+export async function nextInvoiceNumber(series: 'SUBS' | 'VTA' | 'PROV' | 'RECT'): Promise<string> {
   const year = new Date().getFullYear();
   const r = await query(
     `INSERT INTO moveadvisor_invoice_counters (series, year, last_n)
@@ -66,7 +66,7 @@ export interface InvoiceLine {
 export interface InvoiceData {
   invoiceNumber: string;
   date: Date;
-  series: 'SUBS' | 'VTA' | 'PROV';
+  series: 'SUBS' | 'VTA' | 'PROV' | 'RECT';
   recipientName: string;
   recipientNif?: string;
   recipientEmail?: string;
@@ -118,7 +118,10 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   }
 
   // "FACTURA" top-right
-  page.drawText('FACTURA', { x: width - M - 90, y: height - 38, size: 22, font: boldFont, color: WHITE });
+  const invoiceTypeLabel = data.series === 'RECT' ? 'FACTURA RECTIFICATIVA' : 'FACTURA';
+  const labelSize = data.series === 'RECT' ? 13 : 22;
+  const labelX = data.series === 'RECT' ? width - M - 165 : width - M - 90;
+  page.drawText(invoiceTypeLabel, { x: labelX, y: height - 38, size: labelSize, font: boldFont, color: WHITE });
 
   y = height - 110;
 

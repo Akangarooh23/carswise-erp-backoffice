@@ -5,6 +5,33 @@ import { buildInvoicePdf, generateAndStoreInvoicePdf, nextInvoiceNumber, type In
 
 export const invoiceDownloadRouter = Router();
 
+// ── Helper: send invoice PDF by email via Resend ─────────────────────────────
+const RESEND_API = 'https://api.resend.com/emails';
+
+async function sendInvoiceEmail(to: string, invoiceNumber: string, pdfBytes: Uint8Array): Promise<void> {
+  const apiKey = (await import('../config.js')).config.RESEND_API_KEY;
+  if (!apiKey) return;
+  const fromEmail = (await import('../config.js')).config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>';
+  const base64Pdf = Buffer.from(pdfBytes).toString('base64');
+  await fetch(RESEND_API, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: fromEmail,
+      to,
+      subject: `Tu factura ${invoiceNumber} — CarsWiseAi`,
+      html: `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1e293b">
+        <h2 style="color:#2563eb">📄 Tu factura está lista</h2>
+        <p>Adjuntamos tu factura <strong>${invoiceNumber}</strong> de CarsWiseAi.</p>
+        <p style="font-size:13px;color:#64748b">Puedes consultar el detalle en tu panel: <a href="https://carswiseai.com/panel">carswiseai.com/panel</a></p>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+        <p style="font-size:12px;color:#94a3b8">El equipo de CarsWise — carswiseai.com</p>
+      </div>`,
+      attachments: [{ filename: `${invoiceNumber}.pdf`, content: base64Pdf }],
+    }),
+  }).catch(() => {});
+}
+
 // ── Helper: stream PDF to client ──────────────────────────────────────────────
 function sendPdf(res: import('express').Response, pdf: Uint8Array, filename: string) {
   res.setHeader('Content-Type', 'application/pdf');
@@ -80,6 +107,9 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
+      if (inv.customer_email) {
+        sendInvoiceEmail(String(inv.customer_email), invoiceNumber!, pdf).catch(() => {});
+      }
     } catch (err) {
       res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
     }
@@ -143,6 +173,9 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
+      if (inv.email) {
+        sendInvoiceEmail(String(inv.email), invoiceNumber!, pdf).catch(() => {});
+      }
     } catch (err) {
       res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
     }
@@ -223,8 +256,60 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
+      if (lead.user_email) {
+        sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf).catch(() => {});
+      }
     } catch (err) {
       res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
+    }
+  }
+);
+
+// ── Create rectificativa (credit note) for a provider emitted invoice ─────────
+invoiceDownloadRouter.post(
+  '/invoices/provider/:id/rectify',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const r = await query(
+        `SELECT * FROM moveadvisor_provider_invoices WHERE id = $1 AND direction = 'emitted'`,
+        [req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+      const orig = r.rows[0] as Record<string, string | number | null>;
+
+      // Check not already rectified
+      const existing = await query(
+        `SELECT id FROM moveadvisor_provider_invoices WHERE rectifies_id = $1 LIMIT 1`,
+        [req.params.id]
+      );
+      if (existing.rows.length) {
+        res.status(409).json({ ok: false, error: 'already_rectified', rectify_id: (existing.rows[0] as Record<string, string>).id });
+        return;
+      }
+
+      const { reason } = req.body ?? {};
+      const rectId = await nextInvoiceNumber('RECT');
+      const origAmount = Number(orig.invoice_amount) || 0;
+
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, direction, provider_name, contract_id, vehicle_title,
+            customer_name, customer_email, invoice_amount, invoice_number,
+            status, rectifies_id, notes, iva_rate)
+         VALUES ($1, $2, 'emitted', $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12)`,
+        [
+          rectId, orig.type, orig.provider_name, orig.contract_id,
+          orig.vehicle_title, orig.customer_name, orig.customer_email,
+          -origAmount, rectId, req.params.id,
+          reason ? `Rectificativa de ${orig.invoice_number ?? orig.id}. Motivo: ${reason}` : `Rectificativa de ${orig.invoice_number ?? orig.id}`,
+          orig.iva_rate ?? 0.21,
+        ]
+      );
+
+      res.status(201).json({ ok: true, data: { id: rectId, amount: -origAmount } });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'rectify_failed', detail: (err as Error).message });
     }
   }
 );

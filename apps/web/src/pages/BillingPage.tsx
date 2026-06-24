@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { api, downloadInvoicePdf } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatCard } from '../components/ui/Card.js';
 import { Pagination } from '../components/ui/Pagination.js';
@@ -21,6 +21,8 @@ interface InvoiceRow {
   precio: number | null;
   precio_facturado: number;
   status: string;
+  cw_invoice_number?: string | null;
+  iva_rate?: number;
 }
 
 function fmtDate(s: string | null) {
@@ -67,6 +69,7 @@ export default function BillingPage() {
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [loading, setLoading]   = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<BillingSummary>('/billing/summary').then((r) => { if (r.ok) setSummary(r.data); });
@@ -87,6 +90,32 @@ export default function BillingPage() {
       }).finally(() => setLoading(false));
     }
   }, [tab, page]);
+
+  function exportCsv() {
+    const BOM = '﻿';
+    const sep = ';';
+    const headers = ['Nº Factura', 'Fecha', 'Tipo', 'Cliente', 'Email', 'Descripción', 'Precio', 'Precio Facturado', 'Estado'];
+    const toSpanish = (n: number | null) => n == null ? '' : n.toFixed(2).replace('.', ',');
+    const rows = invoices.map(inv => [
+      inv.cw_invoice_number ?? '–',
+      inv.date ? new Date(inv.date).toLocaleDateString('es-ES') : '–',
+      TYPE_LABEL[inv.type] ?? inv.type,
+      inv.customer_name,
+      inv.customer_email,
+      inv.description,
+      toSpanish(inv.precio),
+      toSpanish(inv.precio_facturado),
+      inv.status,
+    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(sep));
+    const csv = BOM + [headers.map(h => `"${h}"`).join(sep), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `facturas-clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="space-y-6">
@@ -109,15 +138,23 @@ export default function BillingPage() {
 
       {/* Tabs */}
       <div>
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit mb-4 flex-wrap">
-          {TABS.map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
-              }`}>
-              {TAB_LABELS[t]}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit flex-wrap">
+            {TABS.map((t) => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                }`}>
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+          {tab !== 'free' && invoices.length > 0 && (
+            <button onClick={exportCsv}
+              className="ml-auto text-sm text-slate-600 border border-slate-200 rounded-lg px-4 py-1.5 hover:bg-slate-50">
+              ↓ Exportar CSV
             </button>
-          ))}
+          )}
         </div>
 
         {(tab === 'venta' || tab === 'renting') && (
@@ -171,6 +208,7 @@ export default function BillingPage() {
                       <th>Precio</th>
                       <th>Precio facturado</th>
                       <th>Estado</th>
+                      <th>Factura PDF</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -203,6 +241,35 @@ export default function BillingPage() {
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[inv.status] ?? 'bg-slate-100 text-slate-500'}`}>
                             {inv.status}
                           </span>
+                        </td>
+                        <td>
+                          {inv.type === 'suscripcion' ? (
+                            <button
+                              disabled={downloadingId === inv.id}
+                              onClick={async () => {
+                                setDownloadingId(inv.id);
+                                try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                catch { /* silent */ }
+                                setDownloadingId(null);
+                              }}
+                              className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                              {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
+                            </button>
+                          ) : inv.type === 'venta' ? (
+                            <button
+                              disabled={downloadingId === inv.id}
+                              onClick={async () => {
+                                setDownloadingId(inv.id);
+                                try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                catch { /* silent */ }
+                                setDownloadingId(null);
+                              }}
+                              className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                              {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400">–</span>
+                          )}
                         </td>
                       </tr>
                     ))}

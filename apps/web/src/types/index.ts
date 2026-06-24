@@ -79,6 +79,7 @@ export interface VoOffer {
   renting_48m?: number | null;
   renting_60m?: number | null;
   renting_prices_json?: RentingPricesJson | null;
+  carswise_fee?: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

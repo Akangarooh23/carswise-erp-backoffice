@@ -264,5 +264,11 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS cw_pdf_url        TEXT
   `);
 
+  // ── Rectificativas support ───────────────────────────────────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS rectifies_id VARCHAR(40)
+  `);
+
   console.log('[schema] ERP tables verified');
 }

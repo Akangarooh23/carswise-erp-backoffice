@@ -48,6 +48,7 @@ const EMPTY_RENTING_FORM: Partial<VoOffer> = {
   ...EMPTY_FORM,
   available_for_purchase: false,
   renting_available: true,
+  carswise_fee: 400,
 };
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -431,6 +432,18 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                   </tbody>
                 </table>
               </div>
+              <div className="border-t border-slate-100 pt-3">
+                <label className={LABEL_CLS}>Fee CarsWise (€) <span className="text-slate-400 font-normal">— importe que CarsWise factura al proveedor por cada contrato de renting firmado</span></label>
+                <input
+                  type="number"
+                  className={`${INPUT_CLS} max-w-[180px]`}
+                  value={form.carswise_fee ?? 400}
+                  onChange={onNum('carswise_fee')}
+                  min={0}
+                  step={10}
+                  placeholder="400"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -631,9 +644,9 @@ export default function MarketplacePage() {
       'warranty_months','has_guarantee_seal','portal_score','is_active','seller_type',
       'available_for_purchase','renting_available','renting_km_year',
       'renting_12m','renting_24m','renting_36m','renting_48m','renting_60m',
-      'renting_prices_json','image_urls']);
+      'renting_prices_json','image_urls','carswise_fee']);
     const NUMERIC = new Set(['year','price','sale_price','mileage','displacement','warranty_months','portal_score',
-      'renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m']);
+      'renting_km_year','renting_12m','renting_24m','renting_36m','renting_48m','renting_60m','carswise_fee']);
     const payload = Object.fromEntries(
       Object.entries(editForm)
         .filter(([k]) => ALLOWED.has(k))

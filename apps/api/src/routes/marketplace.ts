@@ -208,6 +208,7 @@ const voCreateSchema = z.object({
   renting_prices_json:   z.unknown().nullable().default(null),
   seller_type:           z.enum(['professional', 'particular']).nullable().default(null),
   image_urls:            z.array(z.string()).max(10).default([]),
+  carswise_fee:          z.number().min(0).nullable().default(null),
 });
 
 marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), async (req, res) => {
@@ -229,16 +230,17 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
           warranty_months, has_guarantee_seal, portal_score, is_active, portal,
           available_for_purchase, renting_available, renting_km_year,
           renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json,
-          created_at, updated_at)
+          carswise_fee, created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'manual',
-               $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,NOW(),NOW())
+               $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,NOW(),NOW())
        RETURNING *`,
       [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
        d.displacement, d.color, d.location, d.seller, d.seller_type,
        d.description, d.image_urls?.[0] ?? d.image_url, JSON.stringify(d.image_urls ?? []),
        d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
        d.available_for_purchase, d.renting_available, d.renting_km_year,
-       d.renting_12m, d.renting_24m, d.renting_36m, d.renting_48m, d.renting_60m, rentingPricesJson]
+       d.renting_12m, d.renting_24m, d.renting_36m, d.renting_48m, d.renting_60m, rentingPricesJson,
+       d.carswise_fee]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
@@ -347,6 +349,7 @@ const voUpdateSchema = z.object({
   internal_location:     z.string().nullable().optional(),
   version:               z.string().nullable().optional(),
   transmission:          z.string().nullable().optional(),
+  carswise_fee:          z.number().min(0).nullable().optional(),
 });
 
 marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations']), async (req, res) => {
@@ -389,7 +392,7 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
 
   try {
     const result = await query(
-      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, version, transmission, year, price, sale_price, mileage, fuel, color, displacement, power, location, internal_location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
+      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, version, transmission, year, price, sale_price, mileage, fuel, color, displacement, power, location, internal_location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json, carswise_fee, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
       values
     );
     if (!result.rows.length) {

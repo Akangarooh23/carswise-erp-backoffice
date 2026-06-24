@@ -115,6 +115,7 @@ export default function ProviderBillingPage() {
   const [commPct, setCommPct]       = useState('');
   const [commFixed, setCommFixed]   = useState('');
   const [creatingComm, setCreatingComm] = useState(false);
+  const [commIva, setCommIva]       = useState<number>(0.21);
 
   // Create received invoice modal
   const [recvModal, setRecvModal]   = useState(false);
@@ -125,6 +126,12 @@ export default function ProviderBillingPage() {
   const [recvNotes, setRecvNotes]       = useState('');
   const [recvPdfFile, setRecvPdfFile]   = useState<File | null>(null);
   const [savingRecv, setSavingRecv]     = useState(false);
+  const [recvIva, setRecvIva]           = useState<number>(0.21);
+
+  // Rectificativa modal
+  const [rectModal, setRectModal]     = useState<ProviderInvoice | null>(null);
+  const [rectReason, setRectReason]   = useState('');
+  const [rectifying, setRectifying]   = useState(false);
 
   // Mark status modal (emitidas)
   const [markModal, setMarkModal]     = useState<ProviderInvoice | null>(null);
@@ -172,8 +179,8 @@ export default function ProviderBillingPage() {
     if (!commModal) return;
     setCreatingComm(true);
     const body = commMode === 'percent'
-      ? { lead_id: commModal.id, invoice_mode: 'percent', percent: Number(commPct) }
-      : { lead_id: commModal.id, invoice_mode: 'fixed', fixed_amount: Number(commFixed) };
+      ? { lead_id: commModal.id, invoice_mode: 'percent', percent: Number(commPct), iva_rate: commIva }
+      : { lead_id: commModal.id, invoice_mode: 'fixed', fixed_amount: Number(commFixed), iva_rate: commIva };
     const r = await api.post('/provider-billing/commissions', body);
     if (r.ok) {
       setCommModal(null); setCommPct(''); setCommFixed('');
@@ -205,6 +212,7 @@ export default function ProviderBillingPage() {
       notes: recvNotes || undefined,
       pdf_base64,
       pdf_filename: recvPdfFile?.name,
+      iva_rate: recvIva,
     };
     const r = await api.post('/provider-billing/received', body);
     if (r.ok) {
@@ -255,6 +263,18 @@ export default function ProviderBillingPage() {
     const r = await api.patch(`/provider-billing/invoices/${recvMarkModal.id}`, { status: 'paid', notes: recvMarkNotes });
     if (r.ok) { setRecvMarkModal(null); setRecvMarkNotes(''); await load(page); }
     setRecvMarking(false);
+  }
+
+  async function handleRectify() {
+    if (!rectModal) return;
+    setRectifying(true);
+    const r = await api.post(`/invoices/provider/${rectModal.id}/rectify`, { reason: rectReason });
+    if (r.ok) {
+      setRectModal(null); setRectReason('');
+      await load(page);
+      await api.get<Summary>('/provider-billing/summary').then(res => { if (res.ok) setSummary(res.data); });
+    }
+    setRectifying(false);
   }
 
   return (
@@ -452,6 +472,12 @@ export default function ProviderBillingPage() {
                               Cancelar
                             </button>
                           )}
+                          {inv.status === 'paid' && (
+                            <button onClick={() => { setRectModal(inv); setRectReason(''); }}
+                              className="text-xs text-slate-400 hover:text-orange-600 border border-slate-200 rounded px-2 py-1 hover:bg-orange-50 whitespace-nowrap">
+                              Rectificar
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -585,6 +611,17 @@ export default function ProviderBillingPage() {
               </div>
             )}
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">IVA aplicable</label>
+              <select value={String(commIva)} onChange={e => setCommIva(Number(e.target.value))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="0.21">21% (general)</option>
+                <option value="0.10">10% (reducido)</option>
+                <option value="0.04">4% (superreducido)</option>
+                <option value="0">0% (exento)</option>
+              </select>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setCommModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
               <button onClick={createCommission} disabled={creatingComm || (commMode === 'percent' ? !commPct : !commFixed)}
@@ -629,6 +666,16 @@ export default function ProviderBillingPage() {
             <textarea rows={2} value={recvNotes} onChange={e => setRecvNotes(e.target.value)}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Número de factura del proveedor, observaciones…" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">IVA</label>
+            <select value={String(recvIva)} onChange={e => setRecvIva(Number(e.target.value))}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="0.21">21% (general)</option>
+              <option value="0.10">10% (reducido)</option>
+              <option value="0.04">4% (superreducido)</option>
+              <option value="0">0% (exento)</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">PDF de la factura</label>
@@ -730,6 +777,30 @@ export default function ProviderBillingPage() {
               <button onClick={handleRecvMark} disabled={recvMarking}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60">
                 {recvMarking ? 'Guardando…' : 'Confirmar pago'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Rectificativa modal */}
+      <Modal open={!!rectModal} onClose={() => setRectModal(null)} title="Crear factura rectificativa">
+        {rectModal && (
+          <div className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-800">
+              Se creará una factura rectificativa (serie RECT) por <strong>-{fmtEur(rectModal.invoice_amount)}</strong> que anula la factura <strong>{rectModal.id}</strong>.
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Motivo de la rectificación</label>
+              <textarea value={rectReason} onChange={e => setRectReason(e.target.value)}
+                rows={2} placeholder="Error en importe, anulación del contrato…"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setRectModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={handleRectify} disabled={rectifying}
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60">
+                {rectifying ? 'Creando…' : 'Crear rectificativa'}
               </button>
             </div>
           </div>
