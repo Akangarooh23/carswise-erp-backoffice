@@ -203,12 +203,22 @@ invoiceDownloadRouter.get(
             `UPDATE moveadvisor_user_invoices
              SET cw_pdf_url        = $1,
                  cw_invoice_number = $2,
-                 cw_generated_at   = COALESCE(cw_generated_at, NOW()),
-                 cw_paid_at        = CASE WHEN $4 AND cw_paid_at IS NULL THEN NOW() ELSE cw_paid_at END
-                 ${shouldSendEmail ? ', cw_sent_at = NOW()' : ''}
+                 cw_generated_at   = COALESCE(cw_generated_at, NOW())
              WHERE id = $3`,
-            [pdfUrl, invoiceNumber, req.params.id, isPaid]
+            [pdfUrl, invoiceNumber, req.params.id]
           );
+          if (shouldSendEmail) {
+            await query(
+              `UPDATE moveadvisor_user_invoices SET cw_sent_at = COALESCE(cw_sent_at, NOW()) WHERE id = $1`,
+              [req.params.id]
+            );
+          }
+          if (isPaid) {
+            await query(
+              `UPDATE moveadvisor_user_invoices SET cw_paid_at = COALESCE(cw_paid_at, NOW()) WHERE id = $1`,
+              [req.params.id]
+            );
+          }
         }
       );
 

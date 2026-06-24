@@ -304,6 +304,6 @@ export async function generateAndStoreInvoicePdf(
 ): Promise<{ pdf: Uint8Array; url: string | null }> {
   const pdf = await buildInvoicePdf(data);
   const url = await uploadPdf(pdf, storagePath);
-  if (url) await updateFn(url).catch(() => {});
+  if (url) await updateFn(url).catch((e) => console.error('[invoice-pdf] updateFn error:', e));
   return { pdf, url };
 }
