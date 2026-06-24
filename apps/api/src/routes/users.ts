@@ -225,7 +225,7 @@ usersRouter.patch(
     }
     try {
       await query(
-        `UPDATE moveadvisor_users SET plan_type = $1, updated_at = NOW() WHERE id = $2`,
+        `UPDATE moveadvisor_users SET plan_type = $1, plan_updated_at = NOW() WHERE id = $2`,
         [plan, req.params.id]
       );
       res.json({ ok: true });
@@ -273,7 +273,7 @@ usersRouter.patch(
 
     if (!updates.length) { res.status(400).json({ ok: false, error: 'no_fields' }); return; }
 
-    updates.push(`updated_at = NOW()`);
+    updates.push(`profile_updated_at = NOW()`);
     values.push(req.params.id);
 
     try {
