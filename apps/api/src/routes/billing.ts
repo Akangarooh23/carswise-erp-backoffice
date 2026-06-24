@@ -45,7 +45,9 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           i.status,
           u.plan_id          AS plan,
           i.cw_invoice_number,
-          i.cw_sent_at
+          i.cw_sent_at,
+          i.cw_generated_at,
+          i.cw_paid_at
         FROM moveadvisor_user_invoices i
         LEFT JOIN moveadvisor_users u ON u.email = i.email
         ORDER BY i.date DESC
@@ -62,7 +64,9 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
           status: row.status,
           cw_invoice_number: row.cw_invoice_number || null,
-          cw_sent_at: row.cw_sent_at || null,
+          cw_sent_at:      row.cw_sent_at      || null,
+          cw_generated_at: row.cw_generated_at || null,
+          cw_paid_at:      row.cw_paid_at      || null,
           iva_rate: 0.21,
         });
       }
@@ -76,7 +80,10 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           COALESCE(vo.sold_at, l.created_at) AS date,
           l.portal,
           COALESCE(l.sale_price, vo.price, mo.price)::numeric AS precio,
-          pi.invoice_number AS cw_invoice_number
+          pi.invoice_number  AS cw_invoice_number,
+          pi.issued_at       AS cw_generated_at,
+          pi.paid_at         AS cw_paid_at,
+          pi.cw_sent_at
         FROM moveadvisor_market_leads l
         LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
         LEFT JOIN moveadvisor_market_offers mo         ON mo.id = l.vehicle_id AND vo.id IS NULL
@@ -100,6 +107,9 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           precio_facturado: 0,
           status: 'Completada',
           cw_invoice_number: row.cw_invoice_number || null,
+          cw_generated_at:   row.cw_generated_at  || null,
+          cw_paid_at:        row.cw_paid_at        || null,
+          cw_sent_at:        row.cw_sent_at        || null,
           iva_rate: 0.21,
         });
       }
@@ -211,7 +221,9 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           i.status,
           u.plan_id          AS plan,
           i.cw_invoice_number,
-          i.cw_sent_at
+          i.cw_sent_at,
+          i.cw_generated_at,
+          i.cw_paid_at
         FROM moveadvisor_user_invoices i
         LEFT JOIN moveadvisor_users u ON u.email = i.email
         ORDER BY i.date DESC
@@ -228,6 +240,9 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
           status: row.status,
           cw_invoice_number: row.cw_invoice_number || null,
+          cw_sent_at:      row.cw_sent_at      || null,
+          cw_generated_at: row.cw_generated_at || null,
+          cw_paid_at:      row.cw_paid_at      || null,
         });
       }
     }
@@ -240,7 +255,10 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           COALESCE(vo.sold_at, l.created_at) AS date,
           l.portal,
           COALESCE(l.sale_price, vo.price, mo.price)::numeric AS precio,
-          pi.invoice_number AS cw_invoice_number
+          pi.invoice_number  AS cw_invoice_number,
+          pi.issued_at       AS cw_generated_at,
+          pi.paid_at         AS cw_paid_at,
+          pi.cw_sent_at
         FROM moveadvisor_market_leads l
         LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
         LEFT JOIN moveadvisor_market_offers mo         ON mo.id = l.vehicle_id AND vo.id IS NULL
@@ -262,6 +280,9 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           description: `${row.vehicle_title} · ${portalLabel}`,
           precio: row.precio ? Number(row.precio) : null,
           precio_facturado: 0,
+          cw_sent_at:      row.cw_sent_at      || null,
+          cw_generated_at: row.cw_generated_at || null,
+          cw_paid_at:      row.cw_paid_at      || null,
           status: 'Completada',
           cw_invoice_number: row.cw_invoice_number || null,
         });

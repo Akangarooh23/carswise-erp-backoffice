@@ -23,6 +23,8 @@ interface InvoiceRow {
   status: string;
   cw_invoice_number?: string | null;
   cw_sent_at?: string | null;
+  cw_generated_at?: string | null;
+  cw_paid_at?: string | null;
   iva_rate?: number;
 }
 
@@ -211,6 +213,11 @@ export default function BillingPage() {
                       <th>Precio facturado</th>
                       <th>Estado</th>
                       <th>Factura PDF</th>
+                      <th>F. Generación</th>
+                      <th>Enviado</th>
+                      <th>F. Envío</th>
+                      <th>Pagado</th>
+                      <th>F. Pago</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -316,6 +323,21 @@ export default function BillingPage() {
                           ) : (
                             <span className="text-xs text-slate-400">–</span>
                           )}
+                        </td>
+                        <td className="text-xs text-slate-500 whitespace-nowrap">{inv.cw_generated_at ? fmtDate(inv.cw_generated_at) : '–'}</td>
+                        <td className="text-xs whitespace-nowrap">
+                          {inv.cw_sent_at
+                            ? <span className="text-emerald-600 font-semibold">Sí</span>
+                            : <span className="text-slate-400">No</span>}
+                        </td>
+                        <td className="text-xs text-slate-500 whitespace-nowrap">{inv.cw_sent_at ? fmtDate(inv.cw_sent_at) : '–'}</td>
+                        <td className="text-xs whitespace-nowrap">
+                          {inv.cw_paid_at || String(inv.status || '').toLowerCase() === 'paid'
+                            ? <span className="text-emerald-600 font-semibold">Sí</span>
+                            : <span className="text-slate-400">No</span>}
+                        </td>
+                        <td className="text-xs text-slate-500 whitespace-nowrap">
+                          {inv.cw_paid_at ? fmtDate(inv.cw_paid_at) : String(inv.status || '').toLowerCase() === 'paid' ? fmtDate(inv.date) : '–'}
                         </td>
                       </tr>
                     ))}

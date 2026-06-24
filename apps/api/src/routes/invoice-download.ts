@@ -193,21 +193,22 @@ invoiceDownloadRouter.get(
 
       const shouldSendEmail = req.query.send === 'true';
 
+      const isPaid = String(inv.status || '').toLowerCase() === 'paid';
+
       const { pdf } = await generateAndStoreInvoicePdf(
         data,
         `cw-invoices/subs/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
-          if (shouldSendEmail) {
-            await query(
-              `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2, cw_sent_at = NOW() WHERE id = $3`,
-              [pdfUrl, invoiceNumber, req.params.id]
-            );
-          } else {
-            await query(
-              `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2 WHERE id = $3`,
-              [pdfUrl, invoiceNumber, req.params.id]
-            );
-          }
+          await query(
+            `UPDATE moveadvisor_user_invoices
+             SET cw_pdf_url        = $1,
+                 cw_invoice_number = $2,
+                 cw_generated_at   = COALESCE(cw_generated_at, NOW()),
+                 cw_paid_at        = CASE WHEN $4 AND cw_paid_at IS NULL THEN NOW() ELSE cw_paid_at END
+                 ${shouldSendEmail ? ', cw_sent_at = NOW()' : ''}
+             WHERE id = $3`,
+            [pdfUrl, invoiceNumber, req.params.id, isPaid]
+          );
         }
       );
 
@@ -283,19 +284,25 @@ invoiceDownloadRouter.get(
         notes: lead.sale_notes ? String(lead.sale_notes) : undefined,
       };
 
+      const shouldSendVta = req.query.send === 'true';
+
       const { pdf } = await generateAndStoreInvoicePdf(
         data,
         `cw-invoices/vta/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
           await query(
-            `UPDATE moveadvisor_provider_invoices SET pdf_url = $1 WHERE invoice_number = $2`,
+            `UPDATE moveadvisor_provider_invoices
+             SET pdf_url        = $1,
+                 cw_generated_at = COALESCE(issued_at, NOW())
+                 ${shouldSendVta ? ', cw_sent_at = NOW()' : ''}
+             WHERE invoice_number = $2`,
             [pdfUrl, invoiceNumber]
           );
         }
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
-      if (req.query.send === 'true' && lead.user_email) {
+      if (shouldSendVta && lead.user_email) {
         sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {

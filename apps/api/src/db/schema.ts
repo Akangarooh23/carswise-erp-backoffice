@@ -262,13 +262,16 @@ export async function ensureSchema() {
     ALTER TABLE IF EXISTS moveadvisor_user_invoices
       ADD COLUMN IF NOT EXISTS cw_invoice_number VARCHAR(40),
       ADD COLUMN IF NOT EXISTS cw_pdf_url        TEXT,
-      ADD COLUMN IF NOT EXISTS cw_sent_at        TIMESTAMPTZ
+      ADD COLUMN IF NOT EXISTS cw_sent_at        TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS cw_generated_at   TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS cw_paid_at        TIMESTAMPTZ
   `);
 
   // ── Rectificativas support ───────────────────────────────────────────────────
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_provider_invoices
-      ADD COLUMN IF NOT EXISTS rectifies_id VARCHAR(40)
+      ADD COLUMN IF NOT EXISTS rectifies_id VARCHAR(40),
+      ADD COLUMN IF NOT EXISTS cw_sent_at   TIMESTAMPTZ
   `);
 
   // ── Client type differentiation ──────────────────────────────────────────────
