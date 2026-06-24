@@ -4,16 +4,16 @@ import { requireRole } from '../middleware/auth.js';
 
 export const billingRouter = Router();
 
-// Columns: plan_id ('free'|'plus'|'premium'), plan_status ('activa'|'inactivo'), next_billing_date
+// ── Summary ──────────────────────────────────────────────────────────────────
 billingRouter.get('/billing/summary', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
     const result = await query(`
       SELECT
-        COUNT(*) FILTER (WHERE plan_id = 'free')::int                                    AS free_count,
-        COUNT(*) FILTER (WHERE plan_id = 'plus')::int                                    AS plus_count,
-        COUNT(*) FILTER (WHERE plan_id = 'premium')::int                                 AS premium_count,
-        0::int                                                                            AS active_trials,
-        0::int                                                                            AS expired_trials,
+        COUNT(*) FILTER (WHERE plan_id = 'free')::int    AS free_count,
+        COUNT(*) FILTER (WHERE plan_id = 'plus')::int    AS plus_count,
+        COUNT(*) FILTER (WHERE plan_id = 'premium')::int AS premium_count,
+        0::int AS active_trials,
+        0::int AS expired_trials,
         COUNT(*) FILTER (WHERE plan_id IN ('plus','premium') AND plan_updated_at >= NOW() - INTERVAL '30 days')::int AS new_paid_30d
       FROM moveadvisor_users
     `);
@@ -23,68 +23,149 @@ billingRouter.get('/billing/summary', requireRole(['admin', 'operations']), asyn
   }
 });
 
-billingRouter.get('/billing/subscribers', requireRole(['admin', 'operations']), async (req, res) => {
-  const plan   = String(req.query.plan   || '').trim();
-  const page   = Math.max(1, Number(req.query.page)  || 1);
-  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+// ── Unified invoices list ─────────────────────────────────────────────────────
+// type filter: 'all' | 'suscripcion' | 'venta' | 'renting'
+billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), async (req, res) => {
+  const type  = String(req.query.type  || 'all').trim();
+  const page  = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
-  const values: unknown[]    = [];
-  const conditions: string[] = ["plan_id IN ('plus','premium')"];
+  const rows: unknown[] = [];
 
-  if (plan === 'plus' || plan === 'premium') {
-    values.push(plan);
-    conditions.push(`plan_id = $${values.length}`);
+  try {
+    // ── 1. Subscription invoices ──
+    if (type === 'all' || type === 'suscripcion') {
+      const r = await query(`
+        SELECT
+          i.id, i.email, u.name, u.apellidos,
+          i.date, i.number,
+          i.amount::numeric  AS precio,
+          i.amount::numeric  AS precio_facturado,
+          i.status,
+          u.plan_id          AS plan
+        FROM moveadvisor_user_invoices i
+        LEFT JOIN moveadvisor_users u ON u.email = i.email
+        ORDER BY i.date DESC
+      `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+      for (const row of r.rows as Record<string, unknown>[]) {
+        rows.push({
+          id: row.id, type: 'suscripcion',
+          date: row.date,
+          customer_name: [row.name, row.apellidos].filter(Boolean).join(' ') || row.email,
+          customer_email: row.email,
+          description: `Plan ${String(row.plan || '').charAt(0).toUpperCase() + String(row.plan || '').slice(1)} · ${row.number}`,
+          precio: row.precio ? Number(row.precio) : 0,
+          precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
+          status: row.status,
+        });
+      }
+    }
+
+    // ── 2. Vehicle sale invoices ──
+    if (type === 'all' || type === 'venta') {
+      const r = await query(`
+        SELECT
+          l.id, l.contact_name, l.user_email, l.vehicle_title,
+          COALESCE(vo.sold_at, l.created_at) AS date,
+          l.portal,
+          COALESCE(l.sale_price, vo.price, mo.price)::numeric AS precio
+        FROM moveadvisor_market_leads l
+        LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
+        LEFT JOIN moveadvisor_market_offers mo         ON mo.id = l.vehicle_id AND vo.id IS NULL
+        WHERE l.status = 'Vendido'
+        ORDER BY date DESC
+      `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+      for (const row of r.rows as Record<string, unknown>[]) {
+        const portal = String(row.portal || '');
+        const portalLabel = portal.startsWith('marketplace') ? 'CarsWise Marketplace'
+          : portal ? portal.charAt(0).toUpperCase() + portal.slice(1) : 'CarsWise';
+        rows.push({
+          id: row.id, type: 'venta',
+          date: row.date,
+          customer_name: row.contact_name || '–',
+          customer_email: row.user_email,
+          description: `${row.vehicle_title} · ${portalLabel}`,
+          precio: row.precio ? Number(row.precio) : null,
+          precio_facturado: 0,
+          status: 'Completada',
+        });
+      }
+    }
+
+    // ── 3. Renting contract invoices ──
+    if (type === 'all' || type === 'renting') {
+      const r = await query(`
+        SELECT
+          id, contact_name, user_email, vehicle_title,
+          monthly_price::numeric, duration_months,
+          start_date, end_date, status, created_at
+        FROM moveadvisor_renting_contracts
+        ORDER BY created_at DESC
+      `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+      for (const row of r.rows as Record<string, unknown>[]) {
+        rows.push({
+          id: row.id, type: 'renting',
+          date: row.start_date || row.created_at,
+          customer_name: row.contact_name || '–',
+          customer_email: row.user_email,
+          description: `${row.vehicle_title} · ${row.duration_months}m · hasta ${row.end_date ? new Date(String(row.end_date)).toLocaleDateString('es-ES') : '–'}`,
+          precio: row.monthly_price ? Number(row.monthly_price) : null,
+          precio_facturado: 0,
+          status: row.status,
+        });
+      }
+    }
+
+    // Sort all by date desc when type=all
+    if (type === 'all') {
+      (rows as Array<{ date: string }>).sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    }
+
+    const total = rows.length;
+    const paginated = rows.slice(offset, offset + limit);
+
+    res.json({ ok: true, data: paginated, meta: { total, page, limit } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'billing_invoices_failed', detail: (err as Error).message });
   }
+});
 
-  const where = `WHERE ${conditions.join(' AND ')}`;
+// ── Free users list ───────────────────────────────────────────────────────────
+billingRouter.get('/billing/free-users', requireRole(['admin', 'operations']), async (req, res) => {
+  const page  = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
 
   try {
     const [rows, total] = await Promise.all([
       query(
-        `SELECT id, email, name, apellidos,
-                plan_id     AS plan_type,
-                plan_status AS status,
-                plan_updated_at, next_billing_date, stripe_subscription_id,
-                created_at
-         FROM moveadvisor_users ${where}
-         ORDER BY plan_updated_at DESC NULLS LAST
-         LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-        [...values, limit, offset]
+        `SELECT id, email, name, apellidos, plan_id AS plan_type, plan_status AS status, created_at
+         FROM moveadvisor_users WHERE plan_id = 'free'
+         ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+        [limit, offset]
       ),
-      query(
-        `SELECT COUNT(*)::int AS total FROM moveadvisor_users ${where}`,
-        values
-      ),
+      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_users WHERE plan_id = 'free'`),
     ]);
-
     res.json({
       ok: true,
       data: rows.rows,
       meta: { total: (total.rows[0] as { total: number }).total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_subscribers_failed', detail: (err as Error).message });
+    res.status(500).json({ ok: false, error: 'free_users_failed', detail: (err as Error).message });
   }
 });
 
-billingRouter.get('/billing/trials', requireRole(['admin', 'operations']), async (req, res) => {
-  const filter = req.query.filter === 'expiring' ? 'expiring' : 'all';
-  try {
-    // No trial columns — show free users who registered recently as potential trial candidates
-    const result = await query(
-      `SELECT id, email, name, apellidos,
-              plan_id     AS plan_type,
-              plan_status AS status,
-              created_at
-       FROM moveadvisor_users
-       WHERE plan_id = 'free'
-         ${filter === 'expiring' ? "AND created_at >= NOW() - INTERVAL '7 days'" : ''}
-       ORDER BY created_at DESC
-       LIMIT 100`
-    );
-    res.json({ ok: true, data: result.rows });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_trials_failed', detail: (err as Error).message });
-  }
+// Keep old endpoints for backwards compatibility
+billingRouter.get('/billing/subscribers', requireRole(['admin', 'operations']), async (_req, res) => {
+  res.redirect('/api/billing/invoices?type=suscripcion');
+});
+billingRouter.get('/billing/trials', requireRole(['admin', 'operations']), async (_req, res) => {
+  res.redirect('/api/billing/free-users');
 });
