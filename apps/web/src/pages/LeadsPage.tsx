@@ -1271,11 +1271,11 @@ export default function LeadsPage() {
       )}
 
       {/* Renting contract creation modal */}
-      <Modal isOpen={contractModal && !!selected} onClose={() => setContractModal(false)} title="Crear contrato de renting">
+      <Modal open={contractModal && !!selected} onClose={() => setContractModal(false)} title="Crear contrato de renting">
         {selected && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              <strong>{selected.meta?.vehicle_title || selected.title}</strong>
+              <strong>{selected.title}</strong>
               <span className="text-slate-400 ml-2">· {selected.meta?.name || selected.user_email}</span>
             </p>
             <div className="grid grid-cols-2 gap-3">

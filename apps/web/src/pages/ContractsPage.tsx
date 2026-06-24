@@ -82,8 +82,9 @@ export default function ContractsPage() {
     const res = await api.get<Contract[]>(`/contracts?${params}`);
     if (res.ok) {
       setContracts(res.data);
-      setTotal(res.meta?.total ?? 0);
-      if (res.meta?.stats) setStats(res.meta.stats as Stats);
+      const meta = res.meta as { total: number; stats?: Stats };
+      setTotal(meta?.total ?? 0);
+      if (meta?.stats) setStats(meta.stats);
     }
     setLoading(false);
   }, [page, typeFilter]);
@@ -222,7 +223,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Close contract modal */}
-      <Modal isOpen={!!closeModal} onClose={() => setCloseModal(null)} title="Cerrar contrato de renting">
+      <Modal open={!!closeModal} onClose={() => setCloseModal(null)} title="Cerrar contrato de renting">
         {closeModal && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
