@@ -49,14 +49,6 @@ async function fetchLogo(): Promise<Uint8Array | null> {
   } catch { return null; }
 }
 
-// ── Color palette ─────────────────────────────────────────────────────────────
-const BRAND = rgb(0.149, 0.361, 0.937); // #2563EB
-const BLACK = rgb(0, 0, 0);
-const DARK  = rgb(0.071, 0.094, 0.145); // #121823
-const MID   = rgb(0.278, 0.333, 0.408); // #475569
-const LIGHT = rgb(0.886, 0.918, 0.953); // #E2E8F2
-const WHITE = rgb(1, 1, 1);
-
 export interface InvoiceLine {
   description: string;
   subtitle?: string;
@@ -85,159 +77,214 @@ function fmtDate(d: Date): string {
 
 // ── Core PDF builder ──────────────────────────────────────────────────────────
 export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
-  const pdfDoc  = await PDFDocument.create();
-  const page    = pdfDoc.addPage([595.28, 841.89]); // A4
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]);
   const { width, height } = page.getSize();
 
-  const boldFont   = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const boldFont    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const ivaRate  = data.ivaRate ?? 0.21;
-  const base     = data.lines.reduce((s, l) => s + l.amount, 0);
-  const ivaAmt   = base * ivaRate;
-  const total    = base + ivaAmt;
+  const ivaRate = data.ivaRate ?? 0.21;
+  const base    = data.lines.reduce((s, l) => s + l.amount, 0);
+  const ivaAmt  = base * ivaRate;
+  const total   = base + ivaAmt;
 
-  const M = 48; // margin
-  let y = height - M;
+  const M = 56;
 
-  // ── Header band ──────────────────────────────────────────────────────────
-  page.drawRectangle({ x: 0, y: height - 90, width, height: 90, color: BRAND });
+  // ── Palette ───────────────────────────────────────────────────────────────────
+  const INK        = rgb(0.055, 0.090, 0.149);
+  const AMBER      = rgb(0.729, 0.459, 0.090);
+  const AMBER_DEEP = rgb(0.522, 0.310, 0.043);
+  const AMBER_TINT = rgb(0.984, 0.953, 0.894);
+  const TEXT       = rgb(0.133, 0.165, 0.220);
+  const MUTED      = rgb(0.420, 0.455, 0.518);
+  const FAINT      = rgb(0.604, 0.631, 0.682);
+  const LINE       = rgb(0.914, 0.925, 0.945);
+  const LINE_SOFT  = rgb(0.945, 0.953, 0.969);
+  const WHITE      = rgb(1, 1, 1);
+  const HDR_MUTED  = rgb(0.682, 0.714, 0.769);
+  const ROW_BG     = rgb(0.988, 0.992, 1.000);
 
-  // Logo (top-left inside band)
+  // ── HEADER ────────────────────────────────────────────────────────────────────
+  const HEADER_H = 110;
+  page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: HEADER_H, color: INK });
+  page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: 4, color: AMBER });
+
+  // Logo / brand
   const logoBytes = await fetchLogo();
   if (logoBytes) {
     try {
       const img = await pdfDoc.embedPng(logoBytes);
       const { width: iw, height: ih } = img.scale(1);
-      const scale = Math.min(120 / iw, 50 / ih);
-      page.drawImage(img, { x: M, y: height - 72, width: iw * scale, height: ih * scale });
-    } catch { /* logo embed failed, skip */ }
+      const scale = Math.min(130 / iw, 52 / ih);
+      page.drawImage(img, { x: M, y: height - HEADER_H + 28, width: iw * scale, height: ih * scale });
+      const cwW = boldFont.widthOfTextAtSize('CarsWise ', 16);
+      page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 12, size: 16, font: boldFont, color: WHITE });
+      page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 12, size: 16, font: boldFont, color: AMBER });
+    } catch {
+      const cwW = boldFont.widthOfTextAtSize('CarsWise ', 18);
+      page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 58, size: 18, font: boldFont, color: WHITE });
+      page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 58, size: 18, font: boldFont, color: AMBER });
+      page.drawText('MOVILIDAD INTELIGENTE', { x: M, y: height - HEADER_H + 40, size: 8, font: regularFont, color: HDR_MUTED });
+    }
   } else {
-    // Fallback text logo
-    page.drawText('CarsWiseAi', { x: M, y: height - 56, size: 18, font: boldFont, color: WHITE });
+    const cwW = boldFont.widthOfTextAtSize('CarsWise ', 18);
+    page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 58, size: 18, font: boldFont, color: WHITE });
+    page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 58, size: 18, font: boldFont, color: AMBER });
+    page.drawText('MOVILIDAD INTELIGENTE', { x: M, y: height - HEADER_H + 40, size: 8, font: regularFont, color: HDR_MUTED });
   }
 
-  // "FACTURA" top-right
-  const invoiceTypeLabel = data.series === 'RECT' ? 'FACTURA RECTIFICATIVA' : 'FACTURA';
-  const labelSize = data.series === 'RECT' ? 13 : 22;
-  const labelX = data.series === 'RECT' ? width - M - 165 : width - M - 90;
-  page.drawText(invoiceTypeLabel, { x: labelX, y: height - 38, size: labelSize, font: boldFont, color: WHITE });
+  // Doc title right
+  const docTitle  = data.series === 'RECT' ? 'FACTURA RECTIFICATIVA' : 'FACTURA';
+  const titleSize = data.series === 'RECT' ? 17 : 28;
+  const titleW    = regularFont.widthOfTextAtSize(docTitle, titleSize);
+  page.drawText(docTitle, { x: width - M - titleW, y: height - HEADER_H + 65, size: titleSize, font: regularFont, color: WHITE });
 
-  y = height - 110;
+  // Invoice number
+  const numLabel  = 'N°  ';
+  const numLabelW = regularFont.widthOfTextAtSize(numLabel, 10);
+  page.drawText(numLabel,        { x: width - M - 160, y: height - HEADER_H + 42, size: 10, font: regularFont, color: HDR_MUTED });
+  page.drawText(data.invoiceNumber, { x: width - M - 160 + numLabelW, y: height - HEADER_H + 42, size: 10, font: boldFont, color: WHITE });
 
-  // ── Invoice meta block (two columns) ─────────────────────────────────────
-  const colL = M;
+  let y = height - HEADER_H - 30;
+
+  // ── PARTIES ───────────────────────────────────────────────────────────────────
   const colR = width / 2 + 10;
+  const partyTopY = y;
 
-  // Left: emisor
-  page.drawText('EMISOR', { x: colL, y, size: 8, font: boldFont, color: MID });
-  y -= 14;
-  page.drawText('CarsWiseAi', { x: colL, y, size: 11, font: boldFont, color: DARK });
-  y -= 13;
-  page.drawText('NIF: Pendiente de asignación', { x: colL, y, size: 9, font: regularFont, color: MID });
-  y -= 12;
-  page.drawText('Dirección: Pendiente de asignación', { x: colL, y, size: 9, font: regularFont, color: MID });
-  y -= 12;
-  page.drawText('carswiseai.com', { x: colL, y, size: 9, font: regularFont, color: BRAND });
+  // Left: EMISOR
+  page.drawText('EMISOR', { x: M, y: partyTopY, size: 9, font: boldFont, color: AMBER });
+  page.drawText('CarsWise AI',                        { x: M, y: partyTopY - 16, size: 13, font: boldFont,    color: TEXT  });
+  page.drawText('NIF: Pendiente de asignación',  { x: M, y: partyTopY - 31, size: 10, font: regularFont, color: MUTED });
+  page.drawText('Dirección: Pendiente de asignación', { x: M, y: partyTopY - 44, size: 10, font: regularFont, color: MUTED });
+  page.drawText('carswiseai.com',                     { x: M, y: partyTopY - 57, size: 10, font: regularFont, color: AMBER_DEEP });
 
-  // Right: invoice number + date
-  const metaY = height - 110;
-  page.drawText('Nº Factura:', { x: colR, y: metaY, size: 8, font: boldFont, color: MID });
-  page.drawText(data.invoiceNumber, { x: colR + 72, y: metaY, size: 10, font: boldFont, color: DARK });
-  page.drawText('Fecha:', { x: colR, y: metaY - 14, size: 8, font: boldFont, color: MID });
-  page.drawText(fmtDate(data.date), { x: colR + 72, y: metaY - 14, size: 10, font: regularFont, color: DARK });
-  page.drawText('Serie:', { x: colR, y: metaY - 28, size: 8, font: boldFont, color: MID });
-  page.drawText(data.series, { x: colR + 72, y: metaY - 28, size: 10, font: regularFont, color: MID });
-
-  y -= 30;
-
-  // ── Separator ─────────────────────────────────────────────────────────────
-  page.drawLine({ start: { x: M, y }, end: { x: width - M, y }, thickness: 0.5, color: LIGHT });
-  y -= 20;
-
-  // ── Recipient block ───────────────────────────────────────────────────────
-  page.drawText('RECEPTOR', { x: M, y, size: 8, font: boldFont, color: MID });
-  y -= 14;
-  page.drawText(data.recipientName, { x: M, y, size: 11, font: boldFont, color: DARK });
-  y -= 13;
-  if (data.recipientNif) {
-    page.drawText(`NIF/CIF: ${data.recipientNif}`, { x: M, y, size: 9, font: regularFont, color: MID });
-    y -= 12;
-  }
+  // Right: FACTURAR A
+  page.drawText('FACTURAR A', { x: colR, y: partyTopY, size: 9, font: boldFont, color: AMBER });
+  page.drawText(data.recipientName, { x: colR, y: partyTopY - 16, size: 13, font: boldFont, color: TEXT });
+  let recvY = partyTopY - 31;
   if (data.recipientEmail) {
-    page.drawText(data.recipientEmail, { x: M, y, size: 9, font: regularFont, color: MID });
-    y -= 12;
+    page.drawText(data.recipientEmail, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
+    recvY -= 13;
   }
-  if (data.recipientAddress) {
-    page.drawText(data.recipientAddress, { x: M, y, size: 9, font: regularFont, color: MID });
-    y -= 12;
+  if (data.recipientNif) {
+    page.drawText(`NIF/CIF: ${data.recipientNif}`, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
+    recvY -= 13;
   }
-  y -= 18;
+  page.drawText(data.recipientAddress ?? 'Cliente particular', { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
 
-  // ── Lines table header ────────────────────────────────────────────────────
-  page.drawRectangle({ x: M, y: y - 4, width: width - 2 * M, height: 22, color: DARK });
-  page.drawText('CONCEPTO', { x: M + 8, y: y + 4, size: 9, font: boldFont, color: WHITE });
-  page.drawText('IMPORTE (base)', { x: width - M - 100, y: y + 4, size: 9, font: boldFont, color: WHITE });
+  y = partyTopY - 80;
+
+  // ── META GRID ─────────────────────────────────────────────────────────────────
+  const metaH  = 50;
+  const cellW  = (width - 2 * M) / 4;
+  const metaCells = [
+    { label: 'Nº FACTURA',    value: data.invoiceNumber },
+    { label: 'FECHA DE EMISIÓN', value: fmtDate(data.date) },
+    { label: 'SERIE',              value: data.series },
+    { label: 'VENCIMIENTO',        value: 'Al contado' },
+  ];
+
+  page.drawRectangle({ x: M, y: y - metaH, width: width - 2 * M, height: metaH, borderColor: LINE, borderWidth: 1, color: WHITE });
+  metaCells.forEach((cell, i) => {
+    const cx = M + i * cellW;
+    if (i < 3) page.drawLine({ start: { x: cx + cellW, y }, end: { x: cx + cellW, y: y - metaH }, thickness: 1, color: LINE });
+    page.drawText(cell.label, { x: cx + 10, y: y - 16, size: 8,  font: boldFont,    color: FAINT });
+    page.drawText(cell.value, { x: cx + 10, y: y - 34, size: 12, font: boldFont,    color: INK   });
+  });
+  y -= metaH + 24;
+
+  // ── TABLE ─────────────────────────────────────────────────────────────────────
+  const tableW = width - 2 * M;
+  page.drawRectangle({ x: M, y: y - 28, width: tableW, height: 28, color: INK });
+  page.drawText('CONCEPTO',       { x: M + 16,            y: y - 18, size: 9, font: boldFont, color: WHITE });
+  page.drawText('IMPORTE (BASE)', { x: M + tableW - 110,  y: y - 18, size: 9, font: boldFont, color: WHITE });
+  y -= 28;
+
+  for (const line of data.lines) {
+    // Split subtitle: last segment that mentions Stripe becomes a badge
+    const parts    = (line.subtitle ?? '').split('·').map(s => s.trim());
+    const stripeIdx = parts.findIndex(p => /stripe/i.test(p));
+    const mainSub  = parts.filter((_, i) => i !== stripeIdx).join(' · ').trim();
+    const refPart  = stripeIdx >= 0 ? parts[stripeIdx] : null;
+    const rowH     = refPart ? 64 : (mainSub ? 44 : 30);
+
+    page.drawRectangle({ x: M, y: y - rowH, width: tableW, height: rowH, color: ROW_BG });
+    page.drawText(line.description, { x: M + 16, y: y - 16, size: 12, font: boldFont, color: TEXT });
+    if (mainSub) page.drawText(mainSub, { x: M + 16, y: y - 30, size: 10, font: regularFont, color: MUTED });
+
+    if (refPart) {
+      const refLabel  = refPart.includes(':') ? refPart : `Ref. Stripe · ${refPart}`;
+      const badgeW    = regularFont.widthOfTextAtSize(refLabel, 9) + 18;
+      const badgeY    = y - 50;
+      page.drawRectangle({ x: M + 16, y: badgeY - 4, width: badgeW, height: 16, color: AMBER_TINT, borderColor: rgb(0.941, 0.890, 0.784), borderWidth: 1 });
+      page.drawText(refLabel, { x: M + 25, y: badgeY + 1, size: 9, font: boldFont, color: AMBER_DEEP });
+    }
+
+    const amtW = boldFont.widthOfTextAtSize(fmtEur(line.amount), 12);
+    page.drawText(fmtEur(line.amount), { x: width - M - amtW, y: y - 16, size: 12, font: boldFont, color: TEXT });
+    y -= rowH;
+    page.drawLine({ start: { x: M, y }, end: { x: M + tableW, y }, thickness: 1, color: LINE });
+  }
+
   y -= 22;
 
-  // ── Line items ────────────────────────────────────────────────────────────
-  for (const line of data.lines) {
-    const rowH = line.subtitle ? 28 : 18;
-    page.drawRectangle({ x: M, y: y - rowH + 14, width: width - 2 * M, height: rowH, color: rgb(0.98, 0.99, 1) });
-    page.drawText(line.description, { x: M + 8, y: y + 2, size: 10, font: boldFont, color: DARK });
-    if (line.subtitle) {
-      page.drawText(line.subtitle, { x: M + 8, y: y - 11, size: 8, font: regularFont, color: MID });
-    }
-    page.drawText(fmtEur(line.amount), { x: width - M - 80, y: y + 2, size: 10, font: boldFont, color: DARK });
-    y -= rowH + 2;
-    page.drawLine({ start: { x: M, y }, end: { x: width - M, y }, thickness: 0.3, color: LIGHT });
-  }
+  // ── TOTALS ────────────────────────────────────────────────────────────────────
+  const totW = 240;
+  const totX = width - M - totW;
 
-  y -= 20;
-
-  // ── Totals block (right-aligned) ──────────────────────────────────────────
-  const totX = width - M - 200;
-  const totW = 200;
-
-  const drawTotalRow = (label: string, value: string, bold = false, highlight = false) => {
-    if (highlight) {
-      page.drawRectangle({ x: totX, y: y - 4, width: totW, height: 22, color: BRAND });
-    }
-    page.drawText(label, {
-      x: totX + 8, y: y + 4, size: bold ? 11 : 9,
-      font: bold ? boldFont : regularFont,
-      color: highlight ? WHITE : (bold ? DARK : MID),
-    });
-    page.drawText(value, {
-      x: totX + totW - 8 - (value.length * (bold ? 6.5 : 5.5)),
-      y: y + 4, size: bold ? 11 : 9,
-      font: bold ? boldFont : regularFont,
-      color: highlight ? WHITE : (bold ? DARK : MID),
-    });
+  const drawTotRow = (label: string, value: string) => {
+    page.drawText(label, { x: totX, y, size: 12, font: regularFont, color: MUTED });
+    const vw = boldFont.widthOfTextAtSize(value, 12);
+    page.drawText(value, { x: width - M - vw, y, size: 12, font: boldFont, color: TEXT });
     y -= 22;
   };
 
-  drawTotalRow('Base imponible', fmtEur(base));
-  drawTotalRow(`IVA (${Math.round(ivaRate * 100)}%)`, fmtEur(ivaAmt));
-  page.drawLine({ start: { x: totX, y: y + 16 }, end: { x: width - M, y: y + 16 }, thickness: 0.5, color: LIGHT });
+  drawTotRow('Base imponible', fmtEur(base));
+  drawTotRow(`IVA (${Math.round(ivaRate * 100)} %)`, fmtEur(ivaAmt));
   y -= 4;
-  drawTotalRow('TOTAL FACTURA', fmtEur(total), true, true);
+  page.drawLine({ start: { x: totX, y }, end: { x: width - M, y }, thickness: 1, color: LINE });
+  y -= 16;
 
-  // ── Notes ─────────────────────────────────────────────────────────────────
+  // Dark total box
+  const totalBoxH = 46;
+  page.drawRectangle({ x: totX, y: y - totalBoxH, width: totW, height: totalBoxH, color: INK });
+  page.drawRectangle({ x: totX, y: y - totalBoxH, width: 4, height: totalBoxH, color: AMBER });
+  page.drawText('TOTAL FACTURA', { x: totX + 14, y: y - 16, size: 9, font: boldFont, color: HDR_MUTED });
+  const totalStr = fmtEur(total);
+  const totalStrW = boldFont.widthOfTextAtSize(totalStr, 22);
+  page.drawText(totalStr, { x: width - M - totalStrW - 4, y: y - 36, size: 22, font: boldFont, color: WHITE });
+  y -= totalBoxH + 10;
+
+  // Note
+  const noteText = 'Importe abonado · IVA incluído';
+  const noteW = regularFont.widthOfTextAtSize(noteText, 10);
+  page.drawText(noteText, { x: width - M - noteW, y, size: 10, font: regularFont, color: FAINT });
+  y -= 24;
+
+  // Notes block
   if (data.notes) {
-    y -= 20;
-    page.drawText('NOTAS', { x: M, y, size: 8, font: boldFont, color: MID });
-    y -= 13;
-    page.drawText(data.notes, { x: M, y, size: 9, font: regularFont, color: MID });
+    page.drawText('NOTAS', { x: M, y, size: 9, font: boldFont, color: FAINT });
+    y -= 14;
+    page.drawText(data.notes, { x: M, y, size: 10, font: regularFont, color: MUTED });
   }
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-  page.drawLine({ start: { x: M, y: 50 }, end: { x: width - M, y: 50 }, thickness: 0.5, color: LIGHT });
+  // ── FOOTER ────────────────────────────────────────────────────────────────────
+  const footerBaseY = 52;
+  page.drawLine({ start: { x: M, y: footerBaseY + 50 }, end: { x: width - M, y: footerBaseY + 50 }, thickness: 1, color: LINE });
   page.drawText(
-    'Factura emitida conforme a la Ley 37/1992 del Impuesto sobre el Valor Añadido y normativa de facturación española.',
-    { x: M, y: 36, size: 7, font: regularFont, color: MID }
+    'Factura emitida conforme a la Ley 37/1992 del IVA y normativa de facturación española.',
+    { x: M, y: footerBaseY + 34, size: 9, font: regularFont, color: FAINT }
   );
-  page.drawText('CarsWiseAi · carswiseai.com', { x: M, y: 24, size: 7, font: regularFont, color: MID });
+  page.drawLine({ start: { x: M, y: footerBaseY + 18 }, end: { x: width - M, y: footerBaseY + 18 }, thickness: 0.5, color: LINE_SOFT });
+
+  const thanksPrefix = 'Gracias por confiar en ';
+  const thanksPW = regularFont.widthOfTextAtSize(thanksPrefix, 11);
+  page.drawText(thanksPrefix, { x: M, y: footerBaseY, size: 11, font: regularFont, color: MUTED });
+  page.drawText('CarsWise AI', { x: M + thanksPW, y: footerBaseY, size: 11, font: boldFont, color: TEXT });
+  const siteStr = 'carswiseai.com';
+  const siteW = boldFont.widthOfTextAtSize(siteStr, 11);
+  page.drawText(siteStr, { x: width - M - siteW, y: footerBaseY, size: 11, font: boldFont, color: AMBER_DEEP });
 
   return pdfDoc.save();
 }
