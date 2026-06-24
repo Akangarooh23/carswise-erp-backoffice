@@ -270,7 +270,9 @@ invoiceDownloadRouter.get(
         recordId = inserted.rows[0]?.id ?? null;
       }
 
-      const baseAmount = Number(lead.sale_price) || 0;
+      const ivaRate = 0.21;
+      const totalWithIva = Number(lead.sale_price) || 0;
+      const baseAmount = Math.round((totalWithIva / (1 + ivaRate)) * 100) / 100;
 
       const data: InvoiceData = {
         invoiceNumber,
@@ -283,7 +285,7 @@ invoiceDownloadRouter.get(
           subtitle: `Ref. solicitud: ${req.params.leadId}`,
           amount: baseAmount,
         }],
-        ivaRate: 0.21,
+        ivaRate,
         notes: lead.sale_notes ? String(lead.sale_notes) : undefined,
       };
 
