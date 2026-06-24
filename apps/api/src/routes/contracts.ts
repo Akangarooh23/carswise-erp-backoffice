@@ -80,7 +80,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
 
     const rows: unknown[] = [];
 
-    // Purchases — leads with status Vendido
+    // Purchases — all leads with status Vendido (marketplace + external portals)
     if (type === 'all' || type === 'compra') {
       const res2 = await query(
         `SELECT
@@ -97,6 +97,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
           id: r.id, type: 'compra', date: r.date,
           user_email: r.user_email, contact_name: r.contact_name,
           vehicle_title: r.vehicle_title, status: 'completada',
+          portal: r.portal || null,
           idcar_id: r.idcar_id || null,
           amount: null, monthly_price: null, duration_months: null,
           km_year: null, color: null, quantity: null,
@@ -116,10 +117,12 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
         vals
       );
       for (const r of res2.rows as Record<string, string | number>[]) {
+        // Fetch lead portal for origin info
         rows.push({
           id: r.id, type: 'renting', date: r.created_at,
           user_email: r.user_email, contact_name: r.contact_name,
           vehicle_title: r.vehicle_title, status: r.status,
+          portal: null, // renting contracts are CarsWise-managed regardless of lead origin
           idcar_id: r.idcar_id || null,
           amount: Number(r.monthly_price) * Number(r.duration_months) || null,
           monthly_price: r.monthly_price, duration_months: r.duration_months,

@@ -12,6 +12,7 @@ interface Contract {
   contact_name: string;
   vehicle_title: string;
   status: string;
+  portal: string | null;
   idcar_id: string | null;
   amount: number | null;
   monthly_price: number | null;
@@ -29,6 +30,13 @@ interface Stats {
   rentings_activos: number;
   rentings_completados: number;
   mrr: number;
+}
+
+function fmtPortal(portal: string | null): string {
+  if (!portal) return 'CarsWise';
+  if (portal === 'marketplace-vo-compra') return 'Marketplace';
+  if (portal === 'marketplace-vo-renting') return 'Marketplace';
+  return portal.charAt(0).toUpperCase() + portal.slice(1).replace(/-/g, ' ');
 }
 
 function fmtDate(s: string | null) {
@@ -143,6 +151,7 @@ export default function ContractsPage() {
                     <th>Cliente</th>
                     <th>Vehículo</th>
                     <th>Tipo</th>
+                    <th>Origen</th>
                     <th>Detalle</th>
                     <th>Importe</th>
                     <th>Estado</th>
@@ -164,6 +173,15 @@ export default function ContractsPage() {
                           c.type === 'compra' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
                         }`}>
                           {c.type === 'compra' ? 'Compra' : 'Renting'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                          !c.portal || c.portal.startsWith('marketplace')
+                            ? 'bg-violet-50 text-violet-700'
+                            : 'bg-orange-50 text-orange-700'
+                        }`}>
+                          {fmtPortal(c.portal)}
                         </span>
                       </td>
                       <td className="text-xs text-slate-500">

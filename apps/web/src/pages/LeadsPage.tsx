@@ -1249,8 +1249,8 @@ export default function LeadsPage() {
             )}
             <div className="flex justify-end gap-2 pt-2 flex-wrap">
               <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
-              {/* Renting contract button — shown for renting leads not yet closed */}
-              {(selected.meta?.portal === 'marketplace-vo-renting' || selected.appointment_type === 'renting') &&
+              {/* Renting contract button — shown for any renting lead (marketplace or external portal) not yet closed */}
+              {(selected.appointment_type === 'renting' || selected.meta?.portal === 'marketplace-vo-renting') &&
                selected.status !== 'Cerrado' && selected.status !== 'Descartado' && selected.status !== 'Cancelado' && (
                 <button onClick={() => openContractModal(selected)}
                   className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">
