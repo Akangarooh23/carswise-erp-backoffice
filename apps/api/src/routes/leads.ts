@@ -476,6 +476,9 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
   }
 
   // 3. Create buyer IDCar
+  const fromMarketplace = lead.portal === 'marketplace-vo-compra';
+  const idcarNotes      = fromMarketplace ? 'Adquirido en CarsWise Marketplace' : 'Adquirido con CarsWise';
+  const purchasedFrom   = fromMarketplace ? 'carswise-marketplace' : 'carswise';
   const newId = `v-cw-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await query(
     `INSERT INTO moveadvisor_user_vehicles
@@ -483,7 +486,7 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
         cv, horsepower, body_type, transmission_type, environmental_label, co2,
         notes, purchased_from, source_lead_id, created_at, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-             'Adquirido en CarsWise Marketplace','carswise-marketplace',$17,NOW(),NOW())`,
+             $18,$19,$17,NOW(),NOW())`,
     [
       newId, buyerEmail,
       vehicleData.title || vehicleTitle,
@@ -501,6 +504,8 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
       vehicleData.environmental_label || '',
       vehicleData.co2    || '',
       leadId,
+      idcarNotes,
+      purchasedFrom,
     ]
   ).catch((e: Error) => { throw new Error(`IDCar insert failed: ${e.message}`); });
 
