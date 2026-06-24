@@ -86,7 +86,8 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
       try {
         const res2 = await query(
           `SELECT
-             l.id, l.user_email, l.contact_name, l.vehicle_title, l.created_at AS date,
+             l.id, l.user_email, l.contact_name, l.vehicle_title,
+             COALESCE(o.sold_at, l.created_at) AS date,
              l.status, l.portal, l.vehicle_id,
              v.id AS idcar_id,
              o.price AS offer_price, o.year AS offer_year, o.mileage AS offer_mileage, o.fuel AS offer_fuel

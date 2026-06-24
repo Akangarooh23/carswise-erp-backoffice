@@ -161,7 +161,7 @@ export default function ContractsPage() {
                 <thead>
                   <tr>
                     <th>Nº / ID</th>
-                    <th>Fecha</th>
+                    <th>Fecha venta</th>
                     <th>Cliente</th>
                     <th>Vehículo</th>
                     <th>Tipo</th>
