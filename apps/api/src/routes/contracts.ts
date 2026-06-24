@@ -87,13 +87,17 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
         const res2 = await query(
           `SELECT
              l.id, l.user_email, l.contact_name, l.vehicle_title,
-             COALESCE(o.sold_at, l.created_at) AS date,
+             COALESCE(vo.sold_at, l.created_at) AS date,
              l.status, l.portal, l.vehicle_id, l.sale_price, l.sale_notes,
              v.id AS idcar_id,
-             o.price AS offer_price, o.year AS offer_year, o.mileage AS offer_mileage, o.fuel AS offer_fuel
+             COALESCE(l.sale_price, vo.price, mo.price)          AS offer_price,
+             COALESCE(vo.year::text, mo.year::text)              AS offer_year,
+             COALESCE(vo.mileage::text, mo.mileage::text)        AS offer_mileage,
+             COALESCE(vo.fuel, mo.fuel)                          AS offer_fuel
            FROM moveadvisor_market_leads l
-           LEFT JOIN moveadvisor_user_vehicles v ON v.source_lead_id = l.id
-           LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = l.vehicle_id
+           LEFT JOIN moveadvisor_user_vehicles v              ON v.source_lead_id = l.id
+           LEFT JOIN moveadvisor_marketplace_vo_offers vo     ON vo.id = l.vehicle_id
+           LEFT JOIN moveadvisor_market_offers mo             ON mo.id = l.vehicle_id AND vo.id IS NULL
            WHERE l.status = 'Vendido'
            ORDER BY l.created_at DESC`
         );
