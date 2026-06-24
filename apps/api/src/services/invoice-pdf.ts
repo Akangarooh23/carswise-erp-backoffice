@@ -62,6 +62,7 @@ export interface InvoiceData {
   recipientName: string;
   recipientNif?: string;
   recipientEmail?: string;
+  recipientPhone?: string;
   recipientAddress?: string;
   lines: InvoiceLine[];
   ivaRate?: number; // default 0.21
@@ -167,11 +168,17 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
     page.drawText(data.recipientEmail, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
     recvY -= 13;
   }
+  if (data.recipientPhone) {
+    page.drawText(data.recipientPhone, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
+    recvY -= 13;
+  }
   if (data.recipientNif) {
     page.drawText(`NIF/CIF: ${data.recipientNif}`, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
     recvY -= 13;
   }
-  page.drawText(data.recipientAddress ?? 'Cliente particular', { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
+  if (data.recipientAddress) {
+    page.drawText(data.recipientAddress, { x: colR, y: recvY, size: 10, font: regularFont, color: MUTED });
+  }
 
   y = partyTopY - 80;
 

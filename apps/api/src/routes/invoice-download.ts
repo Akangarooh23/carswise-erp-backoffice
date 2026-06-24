@@ -140,7 +140,7 @@ invoiceDownloadRouter.get(
 
       // Fetch billing profile for full name, NIF and address
       const profileR = await query(
-        `SELECT name, apellidos, company_name, tax_id, billing_address
+        `SELECT name, apellidos, company_name, tax_id, billing_address, phone
          FROM moveadvisor_users WHERE lower(email) = lower($1) LIMIT 1`,
         [String(inv.email || '')]
       );
@@ -166,7 +166,8 @@ invoiceDownloadRouter.get(
         series: 'SUBS',
         recipientName:    fullName,
         recipientEmail:   String(inv.email || ''),
-        recipientNif:     profile.tax_id     || undefined,
+        recipientNif:     profile.tax_id        || undefined,
+        recipientPhone:   profile.phone          || undefined,
         recipientAddress: profile.billing_address || undefined,
         lines: [{
           description: planLabels[planId] ?? `Suscripción ${planId}`,
