@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { nextProviderInvoiceId } from './provider-billing.js';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
@@ -291,6 +292,26 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
 
     // Update contract with idcar_id
     await query(`UPDATE moveadvisor_renting_contracts SET idcar_id = $1 WHERE id = $2`, [newId, contractId]).catch(() => {});
+
+    // Auto-generate provider invoice (carswise_fee from offer, default 400€)
+    try {
+      const offerFee = await query(
+        `SELECT carswise_fee, seller, portal FROM moveadvisor_marketplace_vo_offers WHERE id = $1`,
+        [lead.vehicle_id]
+      ).catch(() => ({ rows: [] }));
+      const fee = (offerFee.rows[0] as Record<string, string | null> | undefined)?.carswise_fee ?? '400';
+      const providerName = (offerFee.rows[0] as Record<string, string | null> | undefined)?.seller
+        || (offerFee.rows[0] as Record<string, string | null> | undefined)?.portal
+        || 'Proveedor';
+      const provInvoiceId = await nextProviderInvoiceId();
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email, base_amount, invoice_amount)
+         VALUES ($1, 'renting_fee', $2, $3, $4, $5, $6, $7, $8)`,
+        [provInvoiceId, providerName, contractId, lead.vehicle_title, lead.contact_name, lead.user_email,
+         Number(monthly_price), Number(fee)]
+      );
+    } catch (e) { console.error('[contracts] provider invoice error:', (e as Error).message); }
 
     // Send email to client
     sendClientEmail(

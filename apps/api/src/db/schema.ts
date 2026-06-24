@@ -127,7 +127,41 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS renting_24m          NUMERIC(10,2),
       ADD COLUMN IF NOT EXISTS renting_36m          NUMERIC(10,2),
       ADD COLUMN IF NOT EXISTS renting_48m          NUMERIC(10,2),
-      ADD COLUMN IF NOT EXISTS renting_60m          NUMERIC(10,2)
+      ADD COLUMN IF NOT EXISTS renting_60m          NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS carswise_fee         NUMERIC(10,2)
+  `);
+
+  // Default 400€ fee for all existing renting offers
+  await query(`
+    UPDATE moveadvisor_marketplace_vo_offers
+    SET carswise_fee = 400
+    WHERE renting_available = true AND carswise_fee IS NULL
+  `);
+
+  // ── moveadvisor_provider_invoices ────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_provider_invoices (
+      id               VARCHAR(40)    PRIMARY KEY,
+      type             VARCHAR(40)    NOT NULL,  -- 'renting_fee' | 'portal_commission'
+      provider_name    VARCHAR(200),
+      contract_id      VARCHAR(80),
+      vehicle_title    VARCHAR(300),
+      customer_name    VARCHAR(200),
+      customer_email   VARCHAR(200),
+      base_amount      NUMERIC(10,2), -- original sale/monthly price
+      invoice_amount   NUMERIC(10,2), -- what CarsWise charges the provider
+      status           VARCHAR(20)    DEFAULT 'pending', -- pending | paid | cancelled
+      issued_at        TIMESTAMPTZ    DEFAULT NOW(),
+      paid_at          TIMESTAMPTZ,
+      notes            TEXT,
+      created_at       TIMESTAMPTZ    DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ    DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS ix_provider_invoices_status
+      ON moveadvisor_provider_invoices (status, issued_at DESC)
   `);
 
   await query(`

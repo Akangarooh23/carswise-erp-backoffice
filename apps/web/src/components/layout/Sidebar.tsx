@@ -21,7 +21,8 @@ const NAV: NavItem[] = [
   { to: '/funnel',            label: 'Funnel',          icon: '📊', roles: ['admin','sales','operations'] },
   { to: '/marketing-analytics', label: 'Analítica UTM',  icon: '📈', roles: ['admin','sales','operations'] },
   { to: '/workshops',    label: 'Talleres',     icon: '🔧', roles: ['admin','operations'] },
-  { to: '/billing',          label: 'Facturación clientes', icon: '💳', roles: ['admin','operations'] },
+  { to: '/billing',          label: 'Facturación clientes',    icon: '💳', roles: ['admin','operations'] },
+  { to: '/provider-billing', label: 'Facturación proveedores', icon: '🏢', roles: ['admin','operations'] },
   { to: '/consentimientos',  label: 'Consentimientos', icon: '📋', roles: ['admin','operations','support'] },
 ];
 
