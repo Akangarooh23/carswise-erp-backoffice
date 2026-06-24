@@ -31,6 +31,7 @@ export interface User {
   tax_id?: string | null;
   billing_address?: string | null;
   company_name?: string | null;
+  client_type?: 'individual' | 'business' | null;
 }
 
 // ── Marketplace ───────────────────────────────────────────────────────────────

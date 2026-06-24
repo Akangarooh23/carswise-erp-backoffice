@@ -165,7 +165,13 @@ export default function UserDetailPage() {
         {/* Profile card */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800 text-sm">Perfil</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-slate-800 text-sm">Perfil</h3>
+              {user.client_type === 'business'
+                ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Empresa</span>
+                : <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">Particular</span>
+              }
+            </div>
             {!editMode ? (
               <button onClick={startEdit} className="text-xs text-blue-600 hover:underline">Editar</button>
             ) : (

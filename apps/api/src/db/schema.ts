@@ -271,5 +271,11 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS rectifies_id VARCHAR(40)
   `);
 
+  // ── Client type differentiation ──────────────────────────────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_users
+      ADD COLUMN IF NOT EXISTS client_type VARCHAR(20) NOT NULL DEFAULT 'individual'
+  `);
+
   console.log('[schema] ERP tables verified');
 }
