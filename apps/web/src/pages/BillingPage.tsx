@@ -51,11 +51,11 @@ function fmtPortal(portal: string | null) {
   return portal.charAt(0).toUpperCase() + portal.slice(1).replace(/-/g, ' ');
 }
 
-const TABS = ['subscribers', 'trials', 'ventas', 'renting'] as const;
+const TABS = ['subscribers', 'free', 'ventas', 'renting'] as const;
 type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = {
   subscribers: 'Suscripciones',
-  trials:      'Trials',
+  free:        'Usuarios free',
   ventas:      'Ventas vehículos',
   renting:     'Contratos renting',
 };
@@ -88,7 +88,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     setLoading(true);
-    if (tab === 'subscribers' || tab === 'trials') {
+    if (tab === 'subscribers' || tab === 'free') {
       const endpoint = tab === 'subscribers'
         ? `/billing/subscribers?page=${page}&limit=50${planFilter ? `&plan=${planFilter}` : ''}`
         : `/billing/trials?filter=all&page=${page}`;
@@ -157,7 +157,7 @@ export default function BillingPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
             <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
-          ) : (tab === 'subscribers' || tab === 'trials') ? (
+          ) : (tab === 'subscribers' || tab === 'free') ? (
             users.length === 0 ? (
               <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
             ) : (
@@ -168,8 +168,8 @@ export default function BillingPage() {
                       <th>Usuario</th>
                       <th>Plan</th>
                       <th>Estado</th>
-                      {tab === 'trials' && <><th>Trial inicio</th><th>Trial fin</th></>}
-                      {tab === 'subscribers' && <th>Desde</th>}
+                      {tab === 'subscribers' && <><th>Suscrito desde</th><th>Próxima renovación</th></>}
+                      {tab === 'free' && <th>Registro</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -183,15 +183,13 @@ export default function BillingPage() {
                         </td>
                         <td><StatusBadge status={u.plan_type} /></td>
                         <td><StatusBadge status={u.status} /></td>
-                        {tab === 'trials' && (
+                        {tab === 'subscribers' && (
                           <>
-                            <td className="text-sm text-slate-500">{fmtDate(u.trial_start ?? '')}</td>
-                            <td className={`text-sm font-medium ${u.trial_end && new Date(u.trial_end) < new Date() ? 'text-red-500' : 'text-slate-500'}`}>
-                              {fmtDate(u.trial_end ?? '')}
-                            </td>
+                            <td className="text-sm text-slate-500">{fmtDate(u.plan_updated_at ?? u.created_at)}</td>
+                            <td className="text-sm text-slate-500">{fmtDate(u.next_billing_date ?? '')}</td>
                           </>
                         )}
-                        {tab === 'subscribers' && (
+                        {tab === 'free' && (
                           <td className="text-sm text-slate-500">{fmtDate(u.created_at)}</td>
                         )}
                       </tr>

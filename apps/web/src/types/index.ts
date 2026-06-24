@@ -19,6 +19,9 @@ export interface User {
   phone?: string;
   status: UserStatus;
   plan_type: PlanType;
+  plan_updated_at?: string;
+  next_billing_date?: string;
+  stripe_subscription_id?: string;
   trial_start?: string;
   trial_end?: string;
   created_at: string;
