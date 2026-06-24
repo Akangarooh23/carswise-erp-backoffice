@@ -277,5 +277,13 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS client_type VARCHAR(20) NOT NULL DEFAULT 'individual'
   `);
 
+  // ── Separate address fields ───────────────────────────────────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_users
+      ADD COLUMN IF NOT EXISTS billing_street      VARCHAR(300) NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS billing_postal_code VARCHAR(10)  NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS billing_province    VARCHAR(100) NOT NULL DEFAULT ''
+  `);
+
   console.log('[schema] ERP tables verified');
 }

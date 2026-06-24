@@ -30,6 +30,9 @@ export interface User {
   ticket_count?: number;
   tax_id?: string | null;
   billing_address?: string | null;
+  billing_street?: string | null;
+  billing_postal_code?: string | null;
+  billing_province?: string | null;
   company_name?: string | null;
   client_type?: 'individual' | 'business' | null;
 }

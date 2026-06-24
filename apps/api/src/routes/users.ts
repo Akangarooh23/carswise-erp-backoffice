@@ -86,6 +86,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
                 mu.utm_source, mu.utm_medium, mu.utm_campaign, mu.utm_content,
                 mu.affiliate_data, mu.referer, mu.landing_url, mu.language,
                 mu.tax_id, mu.billing_address, mu.company_name,
+                mu.billing_street, mu.billing_postal_code, mu.billing_province,
                 COALESCE(NULLIF(mu.client_type, ''), 'individual') AS client_type
          FROM moveadvisor_users mu
          LEFT JOIN erp_users eu ON eu.email = mu.email
@@ -238,7 +239,8 @@ usersRouter.patch(
   '/users/:id/profile',
   requireRole(['admin', 'operations', 'support']),
   async (req, res) => {
-    const { name, apellidos, phone, company_name, tax_id, billing_address } = req.body ?? {};
+    const { name, apellidos, phone, company_name, tax_id,
+            billing_street, billing_postal_code, billing_province } = req.body ?? {};
     const updates: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
@@ -250,12 +252,24 @@ usersRouter.patch(
       }
     };
 
-    addField('name',            name);
-    addField('apellidos',       apellidos);
-    addField('phone',           phone);
-    addField('company_name',    company_name);
-    addField('tax_id',          tax_id);
-    addField('billing_address', billing_address);
+    addField('name',                 name);
+    addField('apellidos',            apellidos);
+    addField('phone',                phone);
+    addField('company_name',         company_name);
+    addField('tax_id',               tax_id);
+    addField('billing_street',       billing_street);
+    addField('billing_postal_code',  billing_postal_code);
+    addField('billing_province',     billing_province);
+
+    // Auto-generate billing_address from the three parts
+    if (billing_street !== undefined || billing_postal_code !== undefined || billing_province !== undefined) {
+      const street  = String(billing_street  ?? '').trim();
+      const postal  = String(billing_postal_code ?? '').trim();
+      const province = String(billing_province ?? '').trim();
+      const generated = [street, postal, province].filter(Boolean).join(', ');
+      updates.push(`billing_address = $${idx++}`);
+      values.push(generated);
+    }
 
     if (!updates.length) { res.status(400).json({ ok: false, error: 'no_fields' }); return; }
 

@@ -120,10 +120,9 @@ export default function UserDetailPage() {
     setEditPhone(user?.phone ?? '');
     setEditCompany(user?.company_name ?? '');
     setEditTaxId(user?.tax_id ?? '');
-    const parts = (user?.billing_address ?? '').split(', ');
-    setEditStreet(parts[0] ?? '');
-    setEditPostal(parts[1] ?? '');
-    setEditProvince(parts[2] ?? '');
+    setEditStreet(user?.billing_street ?? '');
+    setEditPostal(user?.billing_postal_code ?? '');
+    setEditProvince(user?.billing_province ?? '');
     setEditMode(true);
   }
 
@@ -136,7 +135,9 @@ export default function UserDetailPage() {
       phone: editPhone,
       company_name: editCompany,
       tax_id: editTaxId,
-      billing_address: [editStreet, editPostal, editProvince].filter(Boolean).join(', '),
+      billing_street: editStreet,
+      billing_postal_code: editPostal,
+      billing_province: editProvince,
     });
     if (r.ok) {
       setUser(prev => prev ? {
@@ -146,6 +147,9 @@ export default function UserDetailPage() {
         phone: editPhone,
         company_name: editCompany,
         tax_id: editTaxId,
+        billing_street: editStreet,
+        billing_postal_code: editPostal,
+        billing_province: editProvince,
         billing_address: [editStreet, editPostal, editProvince].filter(Boolean).join(', '),
       } : prev);
       setEditMode(false);
@@ -227,7 +231,9 @@ export default function UserDetailPage() {
                 <div className="flex justify-between"><dt className="text-slate-500">Razón social</dt><dd className="font-medium">{user.company_name}</dd></div>
               )}
               <div className="flex justify-between"><dt className="text-slate-500">NIF / CIF</dt><dd className="font-medium">{user.tax_id || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Dirección fiscal</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_address || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Dirección</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_street || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Código postal</dt><dd className="font-medium">{user.billing_postal_code || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Provincia</dt><dd className="font-medium">{user.billing_province || '–'}</dd></div>
             </dl>
           ) : (
             <div className="space-y-2 text-sm mb-4">
