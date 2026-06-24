@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
+import { nextProviderInvoiceId } from './provider-billing.js';
 
 export const leadsRouter = Router();
 
@@ -514,6 +515,34 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
   // 5. Email buyer
   await sendIDCarReadyEmail(buyerEmail, contactName, vehicleData.title || vehicleTitle)
     .catch((e: Error) => console.error('[leads] IDCar email error:', e.message));
+
+  // 6. Auto-create pending received invoice (provider → CarsWise) for marketplace VO purchases
+  if (lead.portal === 'marketplace-vo-compra' && vehicleId) {
+    try {
+      const existing = await query(
+        `SELECT id FROM moveadvisor_provider_invoices WHERE contract_id = $1 AND direction = 'received' LIMIT 1`,
+        [leadId]
+      );
+      if (!existing.rows.length) {
+        const offerRow = await query(
+          `SELECT price, seller FROM moveadvisor_marketplace_vo_offers WHERE id = $1`,
+          [vehicleId]
+        );
+        if (offerRow.rows.length) {
+          const offer = offerRow.rows[0] as Record<string, string>;
+          const invId = await nextProviderInvoiceId();
+          await query(
+            `INSERT INTO moveadvisor_provider_invoices
+               (id, type, direction, provider_name, contract_id, vehicle_title, invoice_amount, status)
+             VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, 'pending')`,
+            [invId, offer.seller || 'Proveedor', leadId, vehicleData.title || vehicleTitle, Number(offer.price) || 0]
+          );
+        }
+      }
+    } catch (e) {
+      console.error('[leads] received invoice auto-create failed:', (e as Error).message);
+    }
+  }
 }
 
 leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operations']), async (req, res) => {
