@@ -29,7 +29,7 @@ async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null
         'Content-Type': 'application/pdf',
         'x-upsert': 'true',
       },
-      body: bytes,
+      body: Buffer.from(bytes),
     });
     if (!res.ok) return null;
     return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
