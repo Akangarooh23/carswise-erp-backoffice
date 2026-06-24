@@ -14,6 +14,7 @@ import { billingRouter } from './routes/billing.js';
 import { leadsRouter } from './routes/leads.js';
 import { funnelRouter } from './routes/funnel.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { contractsRouter } from './routes/contracts.js';
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp() {
   app.use('/api', leadsRouter);
   app.use('/api', funnelRouter);
   app.use('/api', analyticsRouter);
+  app.use('/api', contractsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ ok: false, error: 'not_found' });

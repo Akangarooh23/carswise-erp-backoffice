@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { to: '/tickets',      label: 'Tickets',      icon: '🎫', roles: ['admin','support','operations','sales'] },
   { to: '/idcars',       label: 'IDCars',       icon: '🔑', roles: ['admin','support','operations'] },
   { to: '/leads',        label: 'Leads',        icon: '📩', roles: ['admin','support','operations','sales'] },
+  { to: '/contracts',    label: 'Contratos',    icon: '📄', roles: ['admin','support','operations','sales'] },
   { to: '/funnel',            label: 'Funnel',          icon: '📊', roles: ['admin','sales','operations'] },
   { to: '/marketing-analytics', label: 'Analítica UTM',  icon: '📈', roles: ['admin','sales','operations'] },
   { to: '/workshops',    label: 'Talleres',     icon: '🔧', roles: ['admin','operations'] },

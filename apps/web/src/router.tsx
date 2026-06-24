@@ -20,6 +20,7 @@ const LeadsPage         = lazy(() => import('./pages/LeadsPage.js'));
 const FunnelPage            = lazy(() => import('./pages/FunnelPage.js'));
 const ConsentimientosPage       = lazy(() => import('./pages/ConsentimientosPage.js'));
 const MarketingAnalyticsPage    = lazy(() => import('./pages/MarketingAnalyticsPage.js'));
+const ContractsPage             = lazy(() => import('./pages/ContractsPage.js'));
 
 const Loader = () => (
   <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
       { path: 'consentimientos',      element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
       { path: 'marketing-analytics', element: <Suspense fallback={<Loader />}><MarketingAnalyticsPage /></Suspense> },
+      { path: 'contracts',          element: <Suspense fallback={<Loader />}><ContractsPage /></Suspense> },
       { path: '*',                 element: <Navigate to="/dashboard" replace /> },
     ],
   },

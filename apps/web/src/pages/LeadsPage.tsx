@@ -273,6 +273,17 @@ export default function LeadsPage() {
   const [anonEvents, setAnonEvents]             = useState<Record<string, FunnelEventDetail[]>>({});
   const [eventsLoading, setEventsLoading]       = useState<string | null>(null);
 
+  // ── Renting contract creation modal ──
+  const [contractModal, setContractModal]         = useState(false);
+  const [contractColor, setContractColor]         = useState('');
+  const [contractQty, setContractQty]             = useState('1');
+  const [contractDuration, setContractDuration]   = useState('36');
+  const [contractKm, setContractKm]               = useState('15000');
+  const [contractPrice, setContractPrice]         = useState('');
+  const [contractStart, setContractStart]         = useState(() => new Date().toISOString().slice(0, 10));
+  const [contractNotes, setContractNotes]         = useState('');
+  const [creatingContract, setCreatingContract]   = useState(false);
+
   const limit = 50;
 
   // ── Load solicitudes ──
@@ -398,6 +409,50 @@ export default function LeadsPage() {
     });
     if (res.ok) { await loadLeads(); setSelected(null); }
     setSaving(false);
+  }
+
+  function openContractModal(lead: Lead) {
+    // Pre-fill from contact_when: "Plazo: 36m · 15.000 km/año · 278 €/mes · 2x Blanco"
+    const when = (lead.meta?.when ?? '') as string;
+    const mDuration = when.match(/(\d+)m/);
+    const mKm       = when.match(/([\d.]+)\s*km\/año/);
+    const mPrice    = when.match(/([\d.,]+)\s*€\/mes/);
+    const mColor    = when.match(/·\s*(\d+x\s*)?([\w\s]+)\s*$/);
+    if (mDuration) setContractDuration(mDuration[1]);
+    if (mKm)       setContractKm(mKm[1].replace('.', ''));
+    if (mPrice)    setContractPrice(mPrice[1].replace('.', '').replace(',', '.'));
+    if (mColor)    setContractColor(mColor[2].trim());
+    setContractStart(new Date().toISOString().slice(0, 10));
+    setContractQty('1');
+    setContractNotes('');
+    setContractModal(true);
+  }
+
+  async function createContract() {
+    if (!selected) return;
+    if (!contractDuration || !contractPrice || !contractStart) {
+      alert('Rellena duración, precio mensual y fecha de inicio');
+      return;
+    }
+    setCreatingContract(true);
+    const res = await api.post('/contracts/renting', {
+      lead_id: selected.id,
+      color: contractColor || null,
+      quantity: Number(contractQty) || 1,
+      duration_months: Number(contractDuration),
+      km_year: Number(contractKm) || null,
+      monthly_price: Number(contractPrice),
+      start_date: contractStart,
+      notes: contractNotes || null,
+    });
+    if (res.ok) {
+      setContractModal(false);
+      setSelected(null);
+      await loadLeads();
+    } else {
+      alert('Error al crear el contrato: ' + ((res as { error?: string }).error ?? 'desconocido'));
+    }
+    setCreatingContract(false);
   }
 
   async function notifyClient() {
@@ -1194,6 +1249,14 @@ export default function LeadsPage() {
             )}
             <div className="flex justify-end gap-2 pt-2 flex-wrap">
               <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              {/* Renting contract button — shown for renting leads not yet closed */}
+              {(selected.meta?.portal === 'marketplace-vo-renting' || selected.appointment_type === 'renting') &&
+               selected.status !== 'Cerrado' && selected.status !== 'Descartado' && selected.status !== 'Cancelado' && (
+                <button onClick={() => openContractModal(selected)}
+                  className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">
+                  📝 Crear contrato de renting
+                </button>
+              )}
               <button onClick={saveLead} disabled={saving}
                 className="px-4 py-2 text-sm border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 rounded-lg disabled:opacity-60">
                 {saving ? 'Guardando…' : 'Guardar borrador'}
@@ -1206,6 +1269,76 @@ export default function LeadsPage() {
           </div>
         </Modal>
       )}
+
+      {/* Renting contract creation modal */}
+      <Modal isOpen={contractModal && !!selected} onClose={() => setContractModal(false)} title="Crear contrato de renting">
+        {selected && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <strong>{selected.meta?.vehicle_title || selected.title}</strong>
+              <span className="text-slate-400 ml-2">· {selected.meta?.name || selected.user_email}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Color</label>
+                <input value={contractColor} onChange={e => setContractColor(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Blanco" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Unidades</label>
+                <input type="number" min="1" max="50" value={contractQty} onChange={e => setContractQty(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Duración (meses) *</label>
+                <select value={contractDuration} onChange={e => setContractDuration(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  {[12, 24, 36, 48, 60].map(m => <option key={m} value={m}>{m} meses</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Km/año</label>
+                <select value={contractKm} onChange={e => setContractKm(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  {[10000, 15000, 20000, 25000, 30000].map(k => <option key={k} value={k}>{k.toLocaleString('es-ES')} km/año</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Precio €/mes *</label>
+                <input type="number" min="0" step="0.01" value={contractPrice} onChange={e => setContractPrice(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="278.00" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha inicio *</label>
+                <input type="date" value={contractStart} onChange={e => setContractStart(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            {contractDuration && contractPrice && (
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                Valor total contrato: <strong>{(Number(contractDuration) * Number(contractPrice)).toLocaleString('es-ES', { minimumFractionDigits: 0 })} €</strong>
+                {' · '}Fin previsto: <strong>{(() => {
+                  const d = new Date(contractStart); d.setMonth(d.getMonth() + Number(contractDuration));
+                  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                })()}</strong>
+              </p>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Notas internas</label>
+              <textarea value={contractNotes} onChange={e => setContractNotes(e.target.value)}
+                rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="Condiciones especiales, unidad asignada, etc." />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setContractModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={createContract} disabled={creatingContract}
+                className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-60">
+                {creatingContract ? 'Creando…' : '✓ Formalizar contrato'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

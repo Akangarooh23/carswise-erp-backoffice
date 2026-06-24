@@ -144,6 +144,44 @@ export async function ensureSchema() {
       ON moveadvisor_marketplace_vo_units (offer_id, status)
   `);
 
+  // ── moveadvisor_renting_contracts ────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_renting_contracts (
+      id                  VARCHAR(40)    PRIMARY KEY,
+      lead_id             VARCHAR(80),
+      offer_id            VARCHAR(80),
+      user_email          VARCHAR(200),
+      contact_name        VARCHAR(200),
+      vehicle_title       VARCHAR(300),
+      color               VARCHAR(80),
+      quantity            INT            DEFAULT 1,
+      duration_months     INT,
+      km_year             INT,
+      monthly_price       NUMERIC(10,2),
+      start_date          DATE,
+      end_date            DATE,
+      status              VARCHAR(20)    DEFAULT 'active',
+      idcar_id            VARCHAR(80),
+      notes               TEXT,
+      created_at          TIMESTAMPTZ    DEFAULT NOW(),
+      updated_at          TIMESTAMPTZ    DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS ix_renting_contracts_user
+      ON moveadvisor_renting_contracts (user_email, status)
+  `);
+
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_user_vehicles
+      ADD COLUMN IF NOT EXISTS renting_contract_id     VARCHAR(40),
+      ADD COLUMN IF NOT EXISTS renting_end_date        DATE,
+      ADD COLUMN IF NOT EXISTS renting_monthly_price   NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS renting_km_year         INT,
+      ADD COLUMN IF NOT EXISTS renting_duration_months INT
+  `);
+
   // ── moveadvisor_user_vehicle_files / documents column migrations ─────────────
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_user_vehicle_files
