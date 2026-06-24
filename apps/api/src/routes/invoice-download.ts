@@ -138,6 +138,17 @@ invoiceDownloadRouter.get(
         );
       }
 
+      // Fetch billing profile for full name, NIF and address
+      const profileR = await query(
+        `SELECT name, apellidos, company_name, tax_id, billing_address
+         FROM moveadvisor_users WHERE lower(email) = lower($1) LIMIT 1`,
+        [String(inv.email || '')]
+      );
+      const profile = (profileR.rows[0] ?? {}) as Record<string, string | null>;
+      const fullName = profile.company_name
+        || [profile.name, profile.apellidos].filter(Boolean).join(' ')
+        || String(inv.email || '');
+
       const planLabels: Record<string, string> = {
         plus:         'Plan Plus',
         pro:          'Plan Pro',
@@ -153,11 +164,13 @@ invoiceDownloadRouter.get(
         invoiceNumber,
         date: inv.created_at ? new Date(inv.created_at as string) : new Date(),
         series: 'SUBS',
-        recipientName:  String(inv.email || ''),
-        recipientEmail: String(inv.email || ''),
+        recipientName:    fullName,
+        recipientEmail:   String(inv.email || ''),
+        recipientNif:     profile.tax_id     || undefined,
+        recipientAddress: profile.billing_address || undefined,
         lines: [{
           description: planLabels[planId] ?? `Suscripción ${planId}`,
-          subtitle: `Periodo de suscripción · Ref. Stripe: ${inv.stripe_invoice_id ?? inv.id ?? ''}`,
+          subtitle: `Suscripción mensual · Periodo de facturación · Ref. Stripe: ${inv.stripe_invoice_id ?? inv.id ?? ''}`,
           amount,
         }],
         ivaRate,
