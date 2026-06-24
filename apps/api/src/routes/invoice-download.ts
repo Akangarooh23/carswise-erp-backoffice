@@ -129,6 +129,8 @@ invoiceDownloadRouter.get(
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
       const inv = r.rows[0] as Record<string, string | number | null>;
 
+      const shouldSendEmail = req.query.send === 'true';
+
       let invoiceNumber = inv.cw_invoice_number as string | null;
       if (!invoiceNumber) {
         invoiceNumber = await nextInvoiceNumber('SUBS');
@@ -201,8 +203,6 @@ invoiceDownloadRouter.get(
         }],
         ivaRate,
       };
-
-      const shouldSendEmail = req.query.send === 'true';
 
       const { pdf } = await generateAndStoreInvoicePdf(
         data,
