@@ -240,5 +240,29 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS file_url TEXT NOT NULL DEFAULT ''
   `);
 
+  // ── Invoice series counters ─────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_invoice_counters (
+      series  VARCHAR(20) NOT NULL,
+      year    INT         NOT NULL,
+      last_n  INT         NOT NULL DEFAULT 0,
+      PRIMARY KEY (series, year)
+    )
+  `);
+
+  // ── invoice_number + pdf_url on provider invoices ───────────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(40),
+      ADD COLUMN IF NOT EXISTS iva_rate       NUMERIC(5,4) DEFAULT 0.21
+  `);
+
+  // ── invoice_number + pdf_url on user invoices (Stripe) ──────────────────────
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_user_invoices
+      ADD COLUMN IF NOT EXISTS cw_invoice_number VARCHAR(40),
+      ADD COLUMN IF NOT EXISTS cw_pdf_url        TEXT
+  `);
+
   console.log('[schema] ERP tables verified');
 }

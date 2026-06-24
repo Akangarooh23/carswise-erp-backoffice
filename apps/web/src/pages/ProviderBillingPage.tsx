@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '../api/client.js';
+import { api, downloadInvoicePdf } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
@@ -131,7 +131,8 @@ export default function ProviderBillingPage() {
   const [markTarget, setMarkTarget]   = useState<'sent' | 'paid' | 'cancelled'>('paid');
   const [markNotes, setMarkNotes]     = useState('');
   const [marking, setMarking]         = useState(false);
-  const [markingId, setMarkingId]     = useState<string | null>(null); // for inline "sent" click
+  const [markingId, setMarkingId]     = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Mark received invoice paid modal
   const [recvMarkModal, setRecvMarkModal] = useState<ReceivedInvoice | null>(null);
@@ -393,7 +394,21 @@ export default function ProviderBillingPage() {
                 <tbody>
                   {invoices.map(inv => (
                     <tr key={inv.id}>
-                      <td className="font-mono text-xs text-slate-500">{inv.id}</td>
+                      <td>
+                        <p className="font-mono text-xs text-slate-500">{inv.id}</p>
+                        <button
+                          onClick={async () => {
+                            setDownloadingId(inv.id);
+                            try { await downloadInvoicePdf(`/invoices/provider/${inv.id}/pdf`, `${inv.id}.pdf`); }
+                            catch { /* silently fail */ }
+                            setDownloadingId(null);
+                            await load(page);
+                          }}
+                          disabled={downloadingId === inv.id}
+                          className="mt-0.5 text-[10px] text-blue-600 hover:underline disabled:opacity-50">
+                          {downloadingId === inv.id ? 'Generando…' : '↓ Descargar PDF'}
+                        </button>
+                      </td>
                       <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(inv.issued_at)}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_BADGE[inv.type] ?? 'bg-slate-100 text-slate-500'}`}>

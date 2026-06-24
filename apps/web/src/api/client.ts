@@ -83,6 +83,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
   return body as ApiResponse<T>;
 }
 
+export async function downloadInvoicePdf(path: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('pdf_download_failed');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 export const api = {
   get:    <T>(path: string)                    => request<T>(path, { method: 'GET' }),
   post:   <T>(path: string, body: unknown)     => request<T>(path, { method: 'POST',  body: JSON.stringify(body) }),
