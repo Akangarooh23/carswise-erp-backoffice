@@ -246,7 +246,7 @@ usersRouter.patch(
     const addField = (col: string, val: unknown) => {
       if (val !== undefined && val !== null) {
         updates.push(`${col} = $${idx++}`);
-        values.push(String(val).trim() || null);
+        values.push(String(val).trim());
       }
     };
 

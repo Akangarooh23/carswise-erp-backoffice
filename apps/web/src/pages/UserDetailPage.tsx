@@ -86,7 +86,9 @@ export default function UserDetailPage() {
   const [editPhone, setEditPhone]         = useState('');
   const [editCompany, setEditCompany]     = useState('');
   const [editTaxId, setEditTaxId]         = useState('');
-  const [editAddress, setEditAddress]     = useState('');
+  const [editStreet, setEditStreet]       = useState('');
+  const [editPostal, setEditPostal]       = useState('');
+  const [editProvince, setEditProvince]   = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -118,7 +120,10 @@ export default function UserDetailPage() {
     setEditPhone(user?.phone ?? '');
     setEditCompany(user?.company_name ?? '');
     setEditTaxId(user?.tax_id ?? '');
-    setEditAddress(user?.billing_address ?? '');
+    const parts = (user?.billing_address ?? '').split(', ');
+    setEditStreet(parts[0] ?? '');
+    setEditPostal(parts[1] ?? '');
+    setEditProvince(parts[2] ?? '');
     setEditMode(true);
   }
 
@@ -131,7 +136,7 @@ export default function UserDetailPage() {
       phone: editPhone,
       company_name: editCompany,
       tax_id: editTaxId,
-      billing_address: editAddress,
+      billing_address: [editStreet, editPostal, editProvince].filter(Boolean).join(', '),
     });
     if (r.ok) {
       setUser(prev => prev ? {
@@ -141,7 +146,7 @@ export default function UserDetailPage() {
         phone: editPhone,
         company_name: editCompany,
         tax_id: editTaxId,
-        billing_address: editAddress,
+        billing_address: [editStreet, editPostal, editProvince].filter(Boolean).join(', '),
       } : prev);
       setEditMode(false);
     }
@@ -226,16 +231,29 @@ export default function UserDetailPage() {
             </dl>
           ) : (
             <div className="space-y-2 text-sm mb-4">
-              {[
-                { label: 'NIF / CIF',        val: editTaxId,   set: setEditTaxId },
-                { label: 'Dirección fiscal',  val: editAddress, set: setEditAddress },
-              ].map(({ label, val, set }) => (
-                <div key={label} className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500 w-28 shrink-0">{label}</span>
-                  <input value={val} onChange={e => set(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                </div>
-              ))}
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500 w-28 shrink-0">NIF / CIF</span>
+                <input value={editTaxId} onChange={e => setEditTaxId(e.target.value)}
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-slate-500 w-28 shrink-0 pt-1">Dirección</span>
+                <input value={editStreet} onChange={e => setEditStreet(e.target.value)}
+                  placeholder="Calle, número, piso"
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500 w-28 shrink-0">Código postal</span>
+                <input value={editPostal} onChange={e => setEditPostal(e.target.value)}
+                  placeholder="28001"
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500 w-28 shrink-0">Provincia</span>
+                <input value={editProvince} onChange={e => setEditProvince(e.target.value)}
+                  placeholder="Madrid"
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
             </div>
           )}
 
