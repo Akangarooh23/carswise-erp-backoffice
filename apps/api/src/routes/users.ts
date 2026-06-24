@@ -210,3 +210,64 @@ usersRouter.patch('/users/:id/status', requireRole(['admin', 'support', 'operati
     res.status(500).json({ ok: false, error: 'user_status_update_failed', detail: (err as Error).message });
   }
 });
+
+usersRouter.patch(
+  '/users/:id/plan',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    const { plan } = req.body ?? {};
+    const allowed = ['free', 'plus', 'pro', 'professional'];
+    if (!plan || !allowed.includes(plan)) {
+      res.status(400).json({ ok: false, error: 'invalid_plan' }); return;
+    }
+    try {
+      await query(
+        `UPDATE moveadvisor_users SET plan_type = $1, updated_at = NOW() WHERE id = $2`,
+        [plan, req.params.id]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: (err as Error).message });
+    }
+  }
+);
+
+usersRouter.patch(
+  '/users/:id/profile',
+  requireRole(['admin', 'operations', 'support']),
+  async (req, res) => {
+    const { name, apellidos, phone, company_name, tax_id, billing_address } = req.body ?? {};
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    const addField = (col: string, val: unknown) => {
+      if (val !== undefined && val !== null) {
+        updates.push(`${col} = $${idx++}`);
+        values.push(String(val).trim() || null);
+      }
+    };
+
+    addField('name',            name);
+    addField('apellidos',       apellidos);
+    addField('phone',           phone);
+    addField('company_name',    company_name);
+    addField('tax_id',          tax_id);
+    addField('billing_address', billing_address);
+
+    if (!updates.length) { res.status(400).json({ ok: false, error: 'no_fields' }); return; }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(req.params.id);
+
+    try {
+      await query(
+        `UPDATE moveadvisor_users SET ${updates.join(', ')} WHERE id = $${idx}`,
+        values
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: (err as Error).message });
+    }
+  }
+);

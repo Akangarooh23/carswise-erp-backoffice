@@ -28,6 +28,9 @@ export interface User {
   updated_at: string;
   appointment_count?: number;
   ticket_count?: number;
+  tax_id?: string | null;
+  billing_address?: string | null;
+  company_name?: string | null;
 }
 
 // ── Marketplace ───────────────────────────────────────────────────────────────

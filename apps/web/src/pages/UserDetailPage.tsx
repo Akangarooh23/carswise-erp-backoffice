@@ -80,6 +80,14 @@ export default function UserDetailPage() {
   const [user, setUser]     = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
+  const [editMode, setEditMode]           = useState(false);
+  const [editName, setEditName]           = useState('');
+  const [editApellidos, setEditApellidos] = useState('');
+  const [editPhone, setEditPhone]         = useState('');
+  const [editCompany, setEditCompany]     = useState('');
+  const [editTaxId, setEditTaxId]         = useState('');
+  const [editAddress, setEditAddress]     = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -104,6 +112,42 @@ export default function UserDetailPage() {
     setSaving(false);
   }
 
+  function startEdit() {
+    setEditName(user?.name ?? '');
+    setEditApellidos(user?.apellidos ?? '');
+    setEditPhone(user?.phone ?? '');
+    setEditCompany(user?.company_name ?? '');
+    setEditTaxId(user?.tax_id ?? '');
+    setEditAddress(user?.billing_address ?? '');
+    setEditMode(true);
+  }
+
+  async function saveProfile() {
+    if (!user) return;
+    setSavingProfile(true);
+    const r = await api.patch(`/users/${user.id}/profile`, {
+      name: editName,
+      apellidos: editApellidos,
+      phone: editPhone,
+      company_name: editCompany,
+      tax_id: editTaxId,
+      billing_address: editAddress,
+    });
+    if (r.ok) {
+      setUser(prev => prev ? {
+        ...prev,
+        name: editName,
+        apellidos: editApellidos,
+        phone: editPhone,
+        company_name: editCompany,
+        tax_id: editTaxId,
+        billing_address: editAddress,
+      } : prev);
+      setEditMode(false);
+    }
+    setSavingProfile(false);
+  }
+
   if (loading) return <div className="text-slate-400 text-sm">Cargando…</div>;
   if (!user)   return <div className="text-red-500 text-sm">Usuario no encontrado</div>;
 
@@ -120,16 +164,75 @@ export default function UserDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Profile card */}
         <Card>
-          <h3 className="font-semibold text-slate-800 text-sm mb-3">Perfil</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800 text-sm">Perfil</h3>
+            {!editMode ? (
+              <button onClick={startEdit} className="text-xs text-blue-600 hover:underline">Editar</button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={() => setEditMode(false)} className="text-xs text-slate-500 hover:underline">Cancelar</button>
+                <button onClick={saveProfile} disabled={savingProfile}
+                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                  {savingProfile ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            )}
+          </div>
 
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Datos personales</p>
-          <dl className="space-y-2.5 text-sm mb-4">
-            <div className="flex justify-between"><dt className="text-slate-500">Nombre</dt><dd className="text-slate-700 font-medium">{user.name || '–'}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Apellidos</dt><dd className="text-slate-700">{user.apellidos || '–'}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd className="text-slate-700 text-xs">{user.email}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Teléfono</dt><dd className="text-slate-700">{user.phone || '–'}</dd></div>
-          </dl>
+          {/* DATOS PERSONALES */}
+          <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mb-3">Datos personales</p>
+          {!editMode ? (
+            <dl className="space-y-2 text-sm mb-4">
+              <div className="flex justify-between"><dt className="text-slate-500">Nombre</dt><dd className="font-medium">{user.name || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Apellidos</dt><dd className="font-medium">{user.apellidos || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd className="font-medium text-xs">{user.email}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Teléfono</dt><dd className="font-medium">{user.phone || '–'}</dd></div>
+            </dl>
+          ) : (
+            <div className="space-y-2 text-sm mb-4">
+              {[
+                { label: 'Nombre',    val: editName,      set: setEditName },
+                { label: 'Apellidos', val: editApellidos, set: setEditApellidos },
+                { label: 'Teléfono', val: editPhone,      set: setEditPhone },
+              ].map(({ label, val, set }) => (
+                <div key={label} className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500 w-24 shrink-0">{label}</span>
+                  <input value={val} onChange={e => set(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500 w-24 shrink-0">Email</span>
+                <span className="flex-1 text-slate-400 text-sm">{user.email}</span>
+              </div>
+            </div>
+          )}
 
+          {/* DATOS DE FACTURACIÓN */}
+          <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mt-5 mb-3">Datos de facturación</p>
+          {!editMode ? (
+            <dl className="space-y-2 text-sm mb-4">
+              <div className="flex justify-between"><dt className="text-slate-500">Razón social</dt><dd className="font-medium">{user.company_name || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">NIF / CIF</dt><dd className="font-medium">{user.tax_id || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Dirección fiscal</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_address || '–'}</dd></div>
+            </dl>
+          ) : (
+            <div className="space-y-2 text-sm mb-4">
+              {[
+                { label: 'Razón social',    val: editCompany, set: setEditCompany },
+                { label: 'NIF / CIF',       val: editTaxId,   set: setEditTaxId },
+                { label: 'Dirección fiscal', val: editAddress, set: setEditAddress },
+              ].map(({ label, val, set }) => (
+                <div key={label} className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500 w-24 shrink-0">{label}</span>
+                  <input value={val} onChange={e => set(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* CUENTA */}
           <div className="border-t border-slate-100 pt-3 mb-1">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Cuenta</p>
             <dl className="space-y-2.5 text-sm">
