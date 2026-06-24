@@ -29,6 +29,16 @@ interface ProviderInvoice {
   notes: string | null;
 }
 
+interface PendingCommission {
+  id: string;
+  contact_name: string;
+  user_email: string;
+  vehicle_title: string;
+  portal: string;
+  sale_price: number | null;
+  date: string;
+}
+
 interface ReceivedInvoice {
   id: string;
   title: string;
@@ -80,7 +90,14 @@ export default function ProviderBillingPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatus]   = useState('');
   const [loading, setLoading]       = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [pending, setPending]       = useState<PendingCommission[]>([]);
+
+  // Commission modal
+  const [commModal, setCommModal]   = useState<PendingCommission | null>(null);
+  const [commMode, setCommMode]     = useState<'percent' | 'fixed'>('percent');
+  const [commPct, setCommPct]       = useState('');
+  const [commFixed, setCommFixed]   = useState('');
+  const [creatingComm, setCreatingComm] = useState(false);
 
   // Mark paid modal
   const [markModal, setMarkModal]   = useState<ProviderInvoice | null>(null);
@@ -90,6 +107,7 @@ export default function ProviderBillingPage() {
 
   useEffect(() => {
     api.get<Summary>('/provider-billing/summary').then(r => { if (r.ok) setSummary(r.data); });
+    api.get<PendingCommission[]>('/provider-billing/pending-commissions').then(r => { if (r.ok) setPending(r.data); });
   }, []);
 
   useEffect(() => { setPage(1); }, [tab, typeFilter, statusFilter]);
@@ -111,11 +129,20 @@ export default function ProviderBillingPage() {
 
   useEffect(() => { load(page); }, [page, load]);
 
-  async function generateCommissions() {
-    setGenerating(true);
-    const r = await api.post('/provider-billing/generate-commissions', {});
-    if (r.ok) { await load(1); await api.get<Summary>('/provider-billing/summary').then(res => { if (res.ok) setSummary(res.data); }); }
-    setGenerating(false);
+  async function createCommission() {
+    if (!commModal) return;
+    setCreatingComm(true);
+    const body = commMode === 'percent'
+      ? { lead_id: commModal.id, invoice_mode: 'percent', percent: Number(commPct) }
+      : { lead_id: commModal.id, invoice_mode: 'fixed', fixed_amount: Number(commFixed) };
+    const r = await api.post('/provider-billing/commissions', body);
+    if (r.ok) {
+      setCommModal(null); setCommPct(''); setCommFixed('');
+      setPending(prev => prev.filter(p => p.id !== commModal.id));
+      await load(page);
+      await api.get<Summary>('/provider-billing/summary').then(res => { if (res.ok) setSummary(res.data); });
+    }
+    setCreatingComm(false);
   }
 
   async function handleMark() {
@@ -163,25 +190,71 @@ export default function ProviderBillingPage() {
 
       {/* Filters + actions */}
       {tab === 'emitidas' && (
-        <div className="flex flex-wrap gap-3 mb-4 items-center">
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
-            <option value="all">Todos los tipos</option>
-            <option value="renting_fee">Fee renting (400 €)</option>
-            <option value="portal_commission">Comisión portal (1%)</option>
-          </select>
-          <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
-            <option value="">Todos los estados</option>
-            <option value="pending">Pendientes</option>
-            <option value="paid">Cobradas</option>
-            <option value="cancelled">Canceladas</option>
-          </select>
-          <button onClick={generateCommissions} disabled={generating}
-            className="ml-auto px-4 py-2 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-600">
-            {generating ? 'Generando…' : '⟳ Generar comisiones portales pendientes'}
-          </button>
-        </div>
+        <>
+          <div className="flex flex-wrap gap-3 mb-4 items-center">
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
+              <option value="all">Todos los tipos</option>
+              <option value="renting_fee">Fee renting</option>
+              <option value="portal_commission">Comisión portal</option>
+            </select>
+            <select value={statusFilter} onChange={e => setStatus(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
+              <option value="">Todos los estados</option>
+              <option value="pending">Pendientes</option>
+              <option value="paid">Cobradas</option>
+              <option value="cancelled">Canceladas</option>
+            </select>
+          </div>
+
+          {/* Pending portal commissions */}
+          {pending.length > 0 && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-amber-200">
+                <p className="text-sm font-semibold text-amber-800">
+                  {pending.length} venta{pending.length > 1 ? 's' : ''} de portal pendiente{pending.length > 1 ? 's' : ''} de facturar comisión
+                </p>
+              </div>
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Vehículo</th>
+                    <th>Portal</th>
+                    <th>Cliente</th>
+                    <th>Precio venta</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pending.map(p => (
+                    <tr key={p.id}>
+                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(p.date)}</td>
+                      <td className="text-sm text-slate-700">{p.vehicle_title}</td>
+                      <td>
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700">
+                          {p.portal ? p.portal.charAt(0).toUpperCase() + p.portal.slice(1) : 'Externo'}
+                        </span>
+                      </td>
+                      <td>
+                        <p className="text-sm text-slate-700">{p.contact_name}</p>
+                        <p className="text-xs text-slate-400">{p.user_email}</p>
+                      </td>
+                      <td className="text-sm font-semibold text-slate-700">{fmtEur(p.sale_price)}</td>
+                      <td>
+                        <button
+                          onClick={() => { setCommModal(p); setCommMode('percent'); setCommPct(''); setCommFixed(''); }}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-1 hover:bg-blue-50 whitespace-nowrap">
+                          Crear factura
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -288,6 +361,66 @@ export default function ProviderBillingPage() {
           )
         )}
       </div>
+
+      {/* Commission modal */}
+      <Modal open={!!commModal} onClose={() => setCommModal(null)} title="Crear factura de comisión portal">
+        {commModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <strong>{commModal.vehicle_title}</strong><br />
+              <span className="text-xs text-slate-400">
+                {commModal.contact_name} · {commModal.portal} · Precio venta: {fmtEur(commModal.sale_price)}
+              </span>
+            </p>
+
+            {/* Mode selector */}
+            <div className="flex gap-2">
+              {(['percent', 'fixed'] as const).map(m => (
+                <button key={m} onClick={() => setCommMode(m)}
+                  className={`flex-1 py-2 rounded-lg text-sm border font-medium ${
+                    commMode === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}>
+                  {m === 'percent' ? '% Porcentaje' : '€ Importe fijo'}
+                </button>
+              ))}
+            </div>
+
+            {commMode === 'percent' ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Porcentaje sobre precio de venta</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" min="0" max="100" step="0.1"
+                    value={commPct} onChange={e => setCommPct(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="Ej: 1" autoFocus />
+                  <span className="text-slate-500 text-sm">%</span>
+                </div>
+                {commPct && commModal.sale_price && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    = <strong>{fmtEur(Math.round(commModal.sale_price * Number(commPct) / 100 * 100) / 100)}</strong>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Importe a facturar (€)</label>
+                <input type="number" min="0" step="10"
+                  value={commFixed} onChange={e => setCommFixed(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="Ej: 200" autoFocus />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setCommModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={createCommission} disabled={creatingComm || (commMode === 'percent' ? !commPct : !commFixed)}
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+                {creatingComm ? 'Creando…' : 'Crear factura'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Mark paid modal */}
       <Modal open={!!markModal} onClose={() => setMarkModal(null)} title="Actualizar estado de factura">
