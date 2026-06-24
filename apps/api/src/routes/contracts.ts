@@ -106,43 +106,48 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
       }
     }
 
-    // Renting contracts
+    // Renting contracts — wrapped individually; table may not exist yet in production
     if (type === 'all' || type === 'renting') {
-      const whereClauses: string[] = [];
-      const vals: unknown[] = [];
-      if (status) { vals.push(status); whereClauses.push(`status = $${vals.length}`); }
-      const whereSQL = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
-      const res2 = await query(
-        `SELECT * FROM moveadvisor_renting_contracts ${whereSQL} ORDER BY created_at DESC`,
-        vals
-      );
-      for (const r of res2.rows as Record<string, string | number>[]) {
-        // Fetch lead portal for origin info
-        rows.push({
-          id: r.id, type: 'renting', date: r.created_at,
-          user_email: r.user_email, contact_name: r.contact_name,
-          vehicle_title: r.vehicle_title, status: r.status,
-          portal: null, // renting contracts are CarsWise-managed regardless of lead origin
-          idcar_id: r.idcar_id || null,
-          amount: Number(r.monthly_price) * Number(r.duration_months) || null,
-          monthly_price: r.monthly_price, duration_months: r.duration_months,
-          km_year: r.km_year, color: r.color, quantity: r.quantity,
-          start_date: r.start_date, end_date: r.end_date,
-        });
-      }
+      try {
+        const whereClauses: string[] = [];
+        const vals: unknown[] = [];
+        if (status) { vals.push(status); whereClauses.push(`status = $${vals.length}`); }
+        const whereSQL = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+        const res2 = await query(
+          `SELECT * FROM moveadvisor_renting_contracts ${whereSQL} ORDER BY created_at DESC`,
+          vals
+        );
+        for (const r of res2.rows as Record<string, string | number>[]) {
+          rows.push({
+            id: r.id, type: 'renting', date: r.created_at,
+            user_email: r.user_email, contact_name: r.contact_name,
+            vehicle_title: r.vehicle_title, status: r.status,
+            portal: null,
+            idcar_id: r.idcar_id || null,
+            amount: Number(r.monthly_price) * Number(r.duration_months) || null,
+            monthly_price: r.monthly_price, duration_months: r.duration_months,
+            km_year: r.km_year, color: r.color, quantity: r.quantity,
+            start_date: r.start_date, end_date: r.end_date,
+          });
+        }
+      } catch { /* table not yet created in this environment */ }
     }
 
-    // Stats
-    const [statsCompra, statsRenting] = await Promise.all([
-      query(`SELECT COUNT(*) AS total FROM moveadvisor_market_leads WHERE status = 'Vendido'`),
-      query(`SELECT
-               COUNT(*) FILTER (WHERE status = 'active')     AS active,
-               COUNT(*) FILTER (WHERE status = 'completed')  AS completed,
-               COUNT(*) FILTER (WHERE status = 'cancelled')  AS cancelled,
-               COALESCE(SUM(monthly_price) FILTER (WHERE status = 'active'), 0) AS mrr
-             FROM moveadvisor_renting_contracts`),
-    ]);
-    const s = statsRenting.rows[0] as Record<string, string>;
+    // Stats — isolated catches so a missing table never blocks the response
+    const statsCompra = await query(
+      `SELECT COUNT(*) AS total FROM moveadvisor_market_leads WHERE status = 'Vendido'`
+    ).catch(() => ({ rows: [{ total: '0' }] }));
+
+    const statsRentingRow = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'active')    AS active,
+        COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+        COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+        COALESCE(SUM(monthly_price) FILTER (WHERE status = 'active'), 0) AS mrr
+      FROM moveadvisor_renting_contracts
+    `).catch(() => ({ rows: [{ active: '0', completed: '0', cancelled: '0', mrr: '0' }] }));
+
+    const s = statsRentingRow.rows[0] as Record<string, string>;
 
     // Sort combined by date desc
     rows.sort((a, b) => {
