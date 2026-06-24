@@ -43,7 +43,9 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           i.amount::numeric  AS precio,
           i.amount::numeric  AS precio_facturado,
           i.status,
-          u.plan_id          AS plan
+          u.plan_id          AS plan,
+          i.cw_invoice_number,
+          i.cw_sent_at
         FROM moveadvisor_user_invoices i
         LEFT JOIN moveadvisor_users u ON u.email = i.email
         ORDER BY i.date DESC
@@ -60,6 +62,7 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
           status: row.status,
           cw_invoice_number: row.cw_invoice_number || null,
+          cw_sent_at: row.cw_sent_at || null,
           iva_rate: 0.21,
         });
       }
@@ -207,7 +210,8 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           i.amount::numeric  AS precio_facturado,
           i.status,
           u.plan_id          AS plan,
-          i.cw_invoice_number
+          i.cw_invoice_number,
+          i.cw_sent_at
         FROM moveadvisor_user_invoices i
         LEFT JOIN moveadvisor_users u ON u.email = i.email
         ORDER BY i.date DESC

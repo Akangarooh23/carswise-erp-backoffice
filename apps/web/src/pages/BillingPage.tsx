@@ -22,6 +22,7 @@ interface InvoiceRow {
   precio_facturado: number;
   status: string;
   cw_invoice_number?: string | null;
+  cw_sent_at?: string | null;
   iva_rate?: number;
 }
 
@@ -244,17 +245,24 @@ export default function BillingPage() {
                         </td>
                         <td>
                           {inv.type === 'suscripcion' ? (
-                            <button
-                              disabled={downloadingId === inv.id}
-                              onClick={async () => {
-                                setDownloadingId(inv.id);
-                                try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
-                                catch { /* silent */ }
-                                setDownloadingId(null);
-                              }}
-                              className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
-                              {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
-                            </button>
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                disabled={downloadingId === inv.id}
+                                onClick={async () => {
+                                  setDownloadingId(inv.id);
+                                  try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                  catch { /* silent */ }
+                                  setDownloadingId(null);
+                                }}
+                                className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap text-left">
+                                {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
+                              </button>
+                              {inv.cw_sent_at && (
+                                <span className="text-[10px] text-emerald-600 font-medium">
+                                  ✓ Enviada · {new Date(inv.cw_sent_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                                </span>
+                              )}
+                            </div>
                           ) : inv.type === 'venta' ? (
                             <button
                               disabled={downloadingId === inv.id}

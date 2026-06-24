@@ -168,7 +168,7 @@ invoiceDownloadRouter.get(
         `cw-invoices/subs/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
           await query(
-            `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2 WHERE id = $3`,
+            `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2, cw_sent_at = NOW() WHERE id = $3`,
             [pdfUrl, invoiceNumber, req.params.id]
           );
         }

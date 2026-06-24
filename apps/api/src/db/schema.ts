@@ -261,7 +261,8 @@ export async function ensureSchema() {
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_user_invoices
       ADD COLUMN IF NOT EXISTS cw_invoice_number VARCHAR(40),
-      ADD COLUMN IF NOT EXISTS cw_pdf_url        TEXT
+      ADD COLUMN IF NOT EXISTS cw_pdf_url        TEXT,
+      ADD COLUMN IF NOT EXISTS cw_sent_at        TIMESTAMPTZ
   `);
 
   // ── Rectificativas support ───────────────────────────────────────────────────
