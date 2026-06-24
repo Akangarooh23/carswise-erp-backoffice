@@ -71,6 +71,7 @@ export default function BillingPage() {
   const [page, setPage]         = useState(1);
   const [loading, setLoading]   = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<{ id: string; msg: string } | null>(null);
 
   useEffect(() => {
     api.get<BillingSummary>('/billing/summary').then((r) => { if (r.ok) setSummary(r.data); });
@@ -249,14 +250,20 @@ export default function BillingPage() {
                               <button
                                 disabled={downloadingId === inv.id}
                                 onClick={async () => {
+                                  setPdfError(null);
                                   setDownloadingId(inv.id);
                                   try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
-                                  catch { /* silent */ }
+                                  catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                   setDownloadingId(null);
                                 }}
                                 className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap text-left">
                                 {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
                               </button>
+                              {pdfError?.id === inv.id && (
+                                <span className="text-[10px] text-red-600 font-medium max-w-[180px] leading-tight">
+                                  ⚠ {pdfError.msg}
+                                </span>
+                              )}
                               {inv.cw_sent_at && (
                                 <span className="text-[10px] text-emerald-600 font-medium">
                                   ✓ Enviada · {new Date(inv.cw_sent_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}

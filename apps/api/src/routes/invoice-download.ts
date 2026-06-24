@@ -147,7 +147,21 @@ invoiceDownloadRouter.get(
       const profile = (profileR.rows[0] ?? {}) as Record<string, string | null>;
       const fullName = profile.company_name
         || [profile.name, profile.apellidos].filter(Boolean).join(' ')
-        || String(inv.email || '');
+        || '';
+
+      // Validate required billing profile fields
+      const missing: string[] = [];
+      if (!fullName) missing.push('Nombre completo o razón social');
+      if (!profile.billing_address) missing.push('Dirección fiscal');
+      if (missing.length) {
+        res.status(422).json({
+          ok: false,
+          error: 'incomplete_profile',
+          missing,
+          message: `No se puede generar la factura porque faltan datos del cliente: ${missing.join(', ')}.`,
+        });
+        return;
+      }
 
       const planLabels: Record<string, string> = {
         plus:         'Plan Plus',

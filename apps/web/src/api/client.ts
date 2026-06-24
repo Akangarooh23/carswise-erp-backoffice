@@ -88,7 +88,11 @@ export async function downloadInvoicePdf(path: string, filename: string) {
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
-  if (!res.ok) throw new Error('pdf_download_failed');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const msg = (body as { message?: string }).message || 'Error al generar el PDF';
+    throw new Error(msg);
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
