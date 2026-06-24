@@ -175,7 +175,7 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
-      if (inv.email) {
+      if (inv.email && !inv.cw_sent_at) {
         sendInvoiceEmail(String(inv.email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
