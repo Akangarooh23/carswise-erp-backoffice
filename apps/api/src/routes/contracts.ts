@@ -86,7 +86,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
       try {
         const res2 = await query(
           `SELECT
-             l.id, l.user_email, l.contact_name, l.vehicle_title, l.updated_at AS date,
+             l.id, l.user_email, l.contact_name, l.vehicle_title, l.created_at AS date,
              l.status, l.portal,
              v.id AS idcar_id
            FROM moveadvisor_market_leads l
