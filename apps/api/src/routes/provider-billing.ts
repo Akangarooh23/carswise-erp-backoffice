@@ -129,7 +129,15 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/pdf', requireRole(['
   try {
     const pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, req.params.id);
     if (!pdf_url) { res.status(500).json({ ok: false, error: 'upload_failed' }); return; }
-    await query(`UPDATE moveadvisor_provider_invoices SET pdf_url = $1, updated_at = NOW() WHERE id = $2`, [pdf_url, req.params.id]);
+    // Auto-advance received invoices from pending → pending_payment when PDF is attached
+    await query(
+      `UPDATE moveadvisor_provider_invoices
+       SET pdf_url = $1,
+           status = CASE WHEN direction = 'received' AND status = 'pending' THEN 'pending_payment' ELSE status END,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [pdf_url, req.params.id]
+    );
     res.json({ ok: true, data: { pdf_url } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'pdf_update_failed', detail: (err as Error).message });
@@ -167,10 +175,10 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
   }
 });
 
-// ── Mark invoice as paid / cancelled ─────────────────────────────────────────
+// ── Update invoice status ─────────────────────────────────────────────────────
 providerBillingRouter.patch('/provider-billing/invoices/:id', requireRole(['admin', 'operations']), async (req, res) => {
   const { status, notes } = req.body ?? {};
-  const allowed = ['paid', 'cancelled', 'pending'];
+  const allowed = ['pending', 'sent', 'pending_payment', 'paid', 'cancelled'];
   if (!allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
     return;

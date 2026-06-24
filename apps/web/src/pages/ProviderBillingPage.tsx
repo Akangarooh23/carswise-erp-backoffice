@@ -13,6 +13,9 @@ interface Summary {
   commission_count: number;
 }
 
+type EmittedStatus  = 'pending' | 'sent' | 'paid' | 'cancelled';
+type ReceivedStatus = 'pending' | 'pending_payment' | 'paid' | 'cancelled';
+
 interface ProviderInvoice {
   id: string;
   type: 'renting_fee' | 'portal_commission';
@@ -23,7 +26,7 @@ interface ProviderInvoice {
   customer_email: string;
   base_amount: number;
   invoice_amount: number;
-  status: 'pending' | 'paid' | 'cancelled';
+  status: EmittedStatus;
   issued_at: string;
   paid_at: string | null;
   notes: string | null;
@@ -46,7 +49,7 @@ interface ReceivedInvoice {
   contract_id: string | null;
   invoice_amount: number;
   invoice_date: string | null;
-  status: 'pending' | 'paid' | 'cancelled';
+  status: ReceivedStatus;
   pdf_url: string | null;
   notes: string | null;
   issued_at: string;
@@ -63,12 +66,24 @@ function fmtEur(n: number | null | undefined) {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  pending:   'bg-yellow-100 text-yellow-700',
-  paid:      'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-red-100 text-red-600',
+  pending:         'bg-yellow-100 text-yellow-700',
+  sent:            'bg-blue-100 text-blue-700',
+  pending_payment: 'bg-orange-100 text-orange-700',
+  paid:            'bg-emerald-100 text-emerald-700',
+  cancelled:       'bg-red-100 text-red-600',
 };
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendiente', paid: 'Cobrada', cancelled: 'Cancelada',
+  pending:         'Pendiente',
+  sent:            'Enviada',
+  pending_payment: 'Pendiente de pago',
+  paid:            'Cobrada',
+  cancelled:       'Cancelada',
+};
+const STATUS_LABEL_RECV: Record<string, string> = {
+  pending:         'Pendiente',
+  pending_payment: 'Pendiente de pago',
+  paid:            'Pagada',
+  cancelled:       'Cancelada',
 };
 const TYPE_LABEL: Record<string, string> = {
   renting_fee:        'Fee renting',
@@ -111,11 +126,17 @@ export default function ProviderBillingPage() {
   const [recvPdfFile, setRecvPdfFile]   = useState<File | null>(null);
   const [savingRecv, setSavingRecv]     = useState(false);
 
-  // Mark paid modal
-  const [markModal, setMarkModal]   = useState<ProviderInvoice | null>(null);
-  const [markStatus, setMarkStatus] = useState<'paid' | 'cancelled'>('paid');
-  const [markNotes, setMarkNotes]   = useState('');
-  const [marking, setMarking]       = useState(false);
+  // Mark status modal (emitidas)
+  const [markModal, setMarkModal]     = useState<ProviderInvoice | null>(null);
+  const [markTarget, setMarkTarget]   = useState<'sent' | 'paid' | 'cancelled'>('paid');
+  const [markNotes, setMarkNotes]     = useState('');
+  const [marking, setMarking]         = useState(false);
+  const [markingId, setMarkingId]     = useState<string | null>(null); // for inline "sent" click
+
+  // Mark received invoice paid modal
+  const [recvMarkModal, setRecvMarkModal] = useState<ReceivedInvoice | null>(null);
+  const [recvMarkNotes, setRecvMarkNotes] = useState('');
+  const [recvMarking, setRecvMarking]     = useState(false);
 
   // Attach PDF to existing received invoice
   const [pdfModal, setPdfModal]     = useState<ReceivedInvoice | null>(null);
@@ -208,12 +229,31 @@ export default function ProviderBillingPage() {
     setUploadingPdf(false);
   }
 
+  async function markAsSent(id: string) {
+    setMarkingId(id);
+    const r = await api.patch(`/provider-billing/invoices/${id}`, { status: 'sent' });
+    if (r.ok) await load(page);
+    setMarkingId(null);
+  }
+
   async function handleMark() {
     if (!markModal) return;
     setMarking(true);
-    const r = await api.patch(`/provider-billing/invoices/${markModal.id}`, { status: markStatus, notes: markNotes });
-    if (r.ok) { setMarkModal(null); setMarkNotes(''); await load(page); await api.get<Summary>('/provider-billing/summary').then(res => { if (res.ok) setSummary(res.data); }); }
+    const r = await api.patch(`/provider-billing/invoices/${markModal.id}`, { status: markTarget, notes: markNotes });
+    if (r.ok) {
+      setMarkModal(null); setMarkNotes('');
+      await load(page);
+      await api.get<Summary>('/provider-billing/summary').then(res => { if (res.ok) setSummary(res.data); });
+    }
     setMarking(false);
+  }
+
+  async function handleRecvMark() {
+    if (!recvMarkModal) return;
+    setRecvMarking(true);
+    const r = await api.patch(`/provider-billing/invoices/${recvMarkModal.id}`, { status: 'paid', notes: recvMarkNotes });
+    if (r.ok) { setRecvMarkModal(null); setRecvMarkNotes(''); await load(page); }
+    setRecvMarking(false);
   }
 
   return (
@@ -378,12 +418,26 @@ export default function ProviderBillingPage() {
                         </span>
                       </td>
                       <td>
-                        {inv.status === 'pending' && (
-                          <button onClick={() => { setMarkModal(inv); setMarkStatus('paid'); setMarkNotes(''); }}
-                            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded px-2 py-1 hover:bg-slate-50 whitespace-nowrap">
-                            Marcar cobrada
-                          </button>
-                        )}
+                        <div className="flex gap-1">
+                          {inv.status === 'pending' && (
+                            <button onClick={() => markAsSent(inv.id)} disabled={markingId === inv.id}
+                              className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 whitespace-nowrap disabled:opacity-50">
+                              {markingId === inv.id ? '…' : 'Marcar enviada'}
+                            </button>
+                          )}
+                          {inv.status === 'sent' && (
+                            <button onClick={() => { setMarkModal(inv); setMarkTarget('paid'); setMarkNotes(''); }}
+                              className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-50 whitespace-nowrap">
+                              Marcar cobrada
+                            </button>
+                          )}
+                          {(inv.status === 'pending' || inv.status === 'sent') && (
+                            <button onClick={() => { setMarkModal(inv); setMarkTarget('cancelled'); setMarkNotes(''); }}
+                              className="text-xs text-red-400 hover:text-red-600 border border-red-200 rounded px-2 py-1 hover:bg-red-50 whitespace-nowrap">
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -413,8 +467,8 @@ export default function ProviderBillingPage() {
                     <th>Vehículo</th>
                     <th>Importe</th>
                     <th>Estado</th>
-                    <th>PDF</th>
-                    <th></th>
+                    <th>Factura PDF</th>
+                    <th>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -427,27 +481,33 @@ export default function ProviderBillingPage() {
                       <td className="text-sm font-bold text-slate-800 whitespace-nowrap">{fmtEur(r.invoice_amount)}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
-                          {STATUS_LABEL[r.status]}
+                          {STATUS_LABEL_RECV[r.status] ?? r.status}
                         </span>
                       </td>
                       <td>
                         {r.pdf_url ? (
-                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline flex items-center gap-1 whitespace-nowrap">
-                            📄 Ver PDF
-                          </a>
+                          <div className="flex items-center gap-1">
+                            <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                              📄 Ver PDF
+                            </a>
+                            <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
+                              className="text-xs text-slate-400 hover:text-slate-600 ml-1 whitespace-nowrap">
+                              (reemplazar)
+                            </button>
+                          </div>
                         ) : (
                           <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
-                            className="text-xs text-slate-400 hover:text-slate-600 border border-dashed border-slate-300 rounded px-2 py-0.5 hover:bg-slate-50 whitespace-nowrap">
-                            + Subir PDF
+                            className="text-xs text-slate-400 hover:text-slate-700 border border-dashed border-slate-300 rounded px-2 py-0.5 hover:bg-slate-50 whitespace-nowrap">
+                            + Adjuntar factura PDF
                           </button>
                         )}
                       </td>
                       <td>
-                        {r.pdf_url && (
-                          <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
-                            className="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">
-                            Reemplazar PDF
+                        {r.status === 'pending_payment' && (
+                          <button onClick={() => { setRecvMarkModal(r); setRecvMarkNotes(''); }}
+                            className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-50 whitespace-nowrap">
+                            Marcar pagada
                           </button>
                         )}
                       </td>
@@ -611,36 +671,50 @@ export default function ProviderBillingPage() {
         )}
       </Modal>
 
-      {/* Mark paid modal */}
-      <Modal open={!!markModal} onClose={() => setMarkModal(null)} title="Actualizar estado de factura">
+      {/* Mark emitted invoice modal (cobrada / cancelada) */}
+      <Modal open={!!markModal} onClose={() => setMarkModal(null)}
+        title={markTarget === 'cancelled' ? 'Cancelar factura' : 'Marcar factura cobrada'}>
         {markModal && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
               <strong>{markModal.id}</strong> — {markModal.provider_name}<br />
               <span className="text-xs text-slate-400">{markModal.vehicle_title} · {fmtEur(markModal.invoice_amount)}</span>
             </p>
-            <div className="flex gap-2">
-              {(['paid', 'cancelled'] as const).map(s => (
-                <button key={s} onClick={() => setMarkStatus(s)}
-                  className={`px-4 py-2 rounded-lg text-sm border font-medium ${
-                    markStatus === s
-                      ? s === 'paid' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-red-500 text-white border-red-500'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}>
-                  {s === 'paid' ? '✓ Cobrada' : '✗ Cancelar'}
-                </button>
-              ))}
-            </div>
             <textarea value={markNotes} onChange={e => setMarkNotes(e.target.value)}
               rows={2} placeholder="Notas (opcional)"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setMarkModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setMarkModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Volver</button>
               <button onClick={handleMark} disabled={marking}
                 className={`px-4 py-2 text-sm rounded-lg font-medium text-white disabled:opacity-60 ${
-                  markStatus === 'paid' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'
+                  markTarget === 'cancelled' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}>
-                {marking ? 'Guardando…' : 'Confirmar'}
+                {marking ? 'Guardando…' : markTarget === 'cancelled' ? 'Cancelar factura' : 'Confirmar cobro'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Mark received invoice as paid */}
+      <Modal open={!!recvMarkModal} onClose={() => setRecvMarkModal(null)} title="Marcar factura como pagada">
+        {recvMarkModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <strong>{recvMarkModal.id}</strong> — {recvMarkModal.provider_name}<br />
+              <span className="text-xs text-slate-400">{recvMarkModal.vehicle_title || ''} · {fmtEur(recvMarkModal.invoice_amount)}</span>
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+              Confirma que has realizado el pago al proveedor por este importe.
+            </div>
+            <textarea value={recvMarkNotes} onChange={e => setRecvMarkNotes(e.target.value)}
+              rows={2} placeholder="Notas (referencia pago, fecha transferencia…)"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setRecvMarkModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Volver</button>
+              <button onClick={handleRecvMark} disabled={recvMarking}
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60">
+                {recvMarking ? 'Guardando…' : 'Confirmar pago'}
               </button>
             </div>
           </div>
