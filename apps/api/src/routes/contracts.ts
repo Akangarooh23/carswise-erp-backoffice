@@ -87,23 +87,29 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
         const res2 = await query(
           `SELECT
              l.id, l.user_email, l.contact_name, l.vehicle_title, l.created_at AS date,
-             l.status, l.portal,
-             v.id AS idcar_id
+             l.status, l.portal, l.vehicle_id,
+             v.id AS idcar_id,
+             o.price AS offer_price, o.year AS offer_year, o.mileage AS offer_mileage, o.fuel AS offer_fuel
            FROM moveadvisor_market_leads l
            LEFT JOIN moveadvisor_user_vehicles v ON v.source_lead_id = l.id
+           LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = l.vehicle_id
            WHERE l.status = 'Vendido'
            ORDER BY l.created_at DESC`
         );
         for (const r of res2.rows as Record<string, string>[]) {
+          const price = r.offer_price ? Number(r.offer_price) : null;
+          const detail = [r.offer_year, r.offer_mileage ? `${Number(r.offer_mileage).toLocaleString('es-ES')} km` : null, r.offer_fuel].filter(Boolean).join(' · ') || null;
           rows.push({
             id: r.id, type: 'compra', date: r.date,
             user_email: r.user_email, contact_name: r.contact_name,
             vehicle_title: r.vehicle_title, status: 'completada',
             portal: r.portal || null,
             idcar_id: r.idcar_id || null,
-            amount: null, monthly_price: null, duration_months: null,
+            amount: price,
+            monthly_price: null, duration_months: null,
             km_year: null, color: null, quantity: null,
             start_date: null, end_date: null,
+            detail,
           });
         }
       } catch (e) {

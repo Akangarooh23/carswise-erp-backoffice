@@ -22,6 +22,7 @@ interface Contract {
   quantity: number | null;
   start_date: string | null;
   end_date: string | null;
+  detail?: string | null;
 }
 
 interface Stats {
@@ -204,12 +205,12 @@ export default function ContractsPage() {
                             {c.km_year ? ` · ${(c.km_year / 1000).toFixed(0)}k km/año` : ''}
                             {c.end_date ? <><br />hasta {fmtDate(c.end_date)}</> : ''}
                           </span>
-                        ) : '–'}
+                        ) : (c.detail || '–')}
                       </td>
                       <td className="text-sm font-semibold text-slate-700 whitespace-nowrap">
                         {c.type === 'renting' && c.monthly_price
                           ? <>{fmtEur(c.monthly_price)}<span className="text-xs font-normal text-slate-400">/mes</span></>
-                          : '–'}
+                          : c.amount ? fmtEur(c.amount) : '–'}
                       </td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[c.status] ?? 'bg-slate-100 text-slate-500'}`}>
