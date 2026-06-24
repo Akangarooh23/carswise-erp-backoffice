@@ -41,14 +41,16 @@ interface PendingCommission {
 
 interface ReceivedInvoice {
   id: string;
-  title: string;
-  seller: string;
-  cost_price: number;
-  customer_price: number;
-  margin: number;
-  sold_at: string;
-  contact_name: string | null;
-  actual_sale_price: number | null;
+  provider_name: string;
+  vehicle_title: string | null;
+  contract_id: string | null;
+  invoice_amount: number;
+  invoice_date: string | null;
+  status: 'pending' | 'paid' | 'cancelled';
+  pdf_url: string | null;
+  notes: string | null;
+  issued_at: string;
+  paid_at: string | null;
 }
 
 function fmtDate(s: string | null) {
@@ -99,11 +101,26 @@ export default function ProviderBillingPage() {
   const [commFixed, setCommFixed]   = useState('');
   const [creatingComm, setCreatingComm] = useState(false);
 
+  // Create received invoice modal
+  const [recvModal, setRecvModal]   = useState(false);
+  const [recvProvider, setRecvProvider] = useState('');
+  const [recvVehicle, setRecvVehicle]   = useState('');
+  const [recvAmount, setRecvAmount]     = useState('');
+  const [recvDate, setRecvDate]         = useState('');
+  const [recvNotes, setRecvNotes]       = useState('');
+  const [recvPdfFile, setRecvPdfFile]   = useState<File | null>(null);
+  const [savingRecv, setSavingRecv]     = useState(false);
+
   // Mark paid modal
   const [markModal, setMarkModal]   = useState<ProviderInvoice | null>(null);
   const [markStatus, setMarkStatus] = useState<'paid' | 'cancelled'>('paid');
   const [markNotes, setMarkNotes]   = useState('');
   const [marking, setMarking]       = useState(false);
+
+  // Attach PDF to existing received invoice
+  const [pdfModal, setPdfModal]     = useState<ReceivedInvoice | null>(null);
+  const [pdfFile, setPdfFile]       = useState<File | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
 
   useEffect(() => {
     api.get<Summary>('/provider-billing/summary').then(r => { if (r.ok) setSummary(r.data); });
@@ -145,6 +162,52 @@ export default function ProviderBillingPage() {
     setCreatingComm(false);
   }
 
+  function readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function createReceivedInvoice() {
+    setSavingRecv(true);
+    let pdf_base64: string | undefined;
+    if (recvPdfFile) pdf_base64 = await readFileAsBase64(recvPdfFile);
+    const body = {
+      provider_name: recvProvider,
+      vehicle_title: recvVehicle || undefined,
+      amount: Number(recvAmount),
+      invoice_date: recvDate || undefined,
+      notes: recvNotes || undefined,
+      pdf_base64,
+      pdf_filename: recvPdfFile?.name,
+    };
+    const r = await api.post('/provider-billing/received', body);
+    if (r.ok) {
+      setRecvModal(false);
+      setRecvProvider(''); setRecvVehicle(''); setRecvAmount('');
+      setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null);
+      await load(1);
+    }
+    setSavingRecv(false);
+  }
+
+  async function attachPdf() {
+    if (!pdfModal || !pdfFile) return;
+    setUploadingPdf(true);
+    const pdf_base64 = await readFileAsBase64(pdfFile);
+    const r = await api.patch(`/provider-billing/invoices/${pdfModal.id}/pdf`, {
+      pdf_base64, pdf_filename: pdfFile.name,
+    });
+    if (r.ok) {
+      setPdfModal(null); setPdfFile(null);
+      await load(page);
+    }
+    setUploadingPdf(false);
+  }
+
   async function handleMark() {
     if (!markModal) return;
     setMarking(true);
@@ -176,16 +239,24 @@ export default function ProviderBillingPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit mb-4">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
-            }`}>
-            {t === 'emitidas' ? 'Emitidas a proveedores' : 'Recibidas de proveedores'}
+      {/* Tabs + action */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+          {TABS.map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              {t === 'emitidas' ? 'Emitidas a proveedores' : 'Recibidas de proveedores'}
+            </button>
+          ))}
+        </div>
+        {tab === 'recibidas' && (
+          <button onClick={() => { setRecvModal(true); setRecvProvider(''); setRecvVehicle(''); setRecvAmount(''); setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null); }}
+            className="ml-auto px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+            + Registrar factura recibida
           </button>
-        ))}
+        )}
       </div>
 
       {/* Filters + actions */}
@@ -322,36 +393,64 @@ export default function ProviderBillingPage() {
             </>
           )
         ) : (
-          /* ── Recibidas de proveedores (marketplace VO compras) ── */
+          /* ── Recibidas de proveedores ── */
           received.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Sin facturas recibidas de proveedores</div>
+            <div className="py-16 flex flex-col items-center gap-3 text-slate-400">
+              <p className="text-sm">No hay facturas recibidas registradas</p>
+              <button onClick={() => setRecvModal(true)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50">
+                + Registrar primera factura
+              </button>
+            </div>
           ) : (
             <>
-              <p className="text-xs text-amber-600 bg-amber-50 border-b border-amber-200 px-4 py-2">
-                Estas facturas las emite el proveedor a CarsWise al precio de coste. CarsWise factura al cliente el precio publicado. El margen es el beneficio de CarsWise.
-              </p>
               <div className="overflow-x-auto"><table className="erp-table">
                 <thead>
                   <tr>
-                    <th>Fecha venta</th>
-                    <th>Vehículo</th>
+                    <th>Nº factura</th>
+                    <th>Fecha</th>
                     <th>Proveedor</th>
-                    <th>Cliente</th>
-                    <th>Precio coste (proveedor nos cobra)</th>
-                    <th>Precio publicado (CarsWise cobra)</th>
-                    <th>Margen CarsWise</th>
+                    <th>Vehículo</th>
+                    <th>Importe</th>
+                    <th>Estado</th>
+                    <th>PDF</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {received.map(r => (
                     <tr key={r.id}>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(r.sold_at)}</td>
-                      <td className="text-sm text-slate-700 max-w-[180px] truncate">{r.title}</td>
-                      <td className="text-sm text-slate-600">{r.seller || '–'}</td>
-                      <td className="text-sm text-slate-600">{r.contact_name || '–'}</td>
-                      <td className="text-sm font-semibold text-red-600 whitespace-nowrap">{fmtEur(r.cost_price)}</td>
-                      <td className="text-sm font-semibold text-slate-700 whitespace-nowrap">{fmtEur(r.actual_sale_price ?? r.customer_price)}</td>
-                      <td className="text-sm font-bold text-emerald-700 whitespace-nowrap">{fmtEur(r.margin)}</td>
+                      <td className="font-mono text-xs text-slate-500">{r.id}</td>
+                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(r.invoice_date ?? r.issued_at)}</td>
+                      <td className="text-sm font-medium text-slate-700">{r.provider_name}</td>
+                      <td className="text-sm text-slate-600 max-w-[160px] truncate">{r.vehicle_title || '–'}</td>
+                      <td className="text-sm font-bold text-slate-800 whitespace-nowrap">{fmtEur(r.invoice_amount)}</td>
+                      <td>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
+                          {STATUS_LABEL[r.status]}
+                        </span>
+                      </td>
+                      <td>
+                        {r.pdf_url ? (
+                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline flex items-center gap-1 whitespace-nowrap">
+                            📄 Ver PDF
+                          </a>
+                        ) : (
+                          <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
+                            className="text-xs text-slate-400 hover:text-slate-600 border border-dashed border-slate-300 rounded px-2 py-0.5 hover:bg-slate-50 whitespace-nowrap">
+                            + Subir PDF
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        {r.pdf_url && (
+                          <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
+                            className="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">
+                            Reemplazar PDF
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -416,6 +515,96 @@ export default function ProviderBillingPage() {
               <button onClick={createCommission} disabled={creatingComm || (commMode === 'percent' ? !commPct : !commFixed)}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
                 {creatingComm ? 'Creando…' : 'Crear factura'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Create received invoice modal */}
+      <Modal open={recvModal} onClose={() => setRecvModal(false)} title="Registrar factura recibida de proveedor">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Proveedor *</label>
+            <input type="text" value={recvProvider} onChange={e => setRecvProvider(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              placeholder="Ej: Flexicar, AutoHero…" autoFocus />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Vehículo</label>
+            <input type="text" value={recvVehicle} onChange={e => setRecvVehicle(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              placeholder="Ej: Volkswagen T-Roc 2022" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Importe (€) *</label>
+              <input type="number" min="0" step="0.01" value={recvAmount} onChange={e => setRecvAmount(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="0.00" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha factura</label>
+              <input type="date" value={recvDate} onChange={e => setRecvDate(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Notas</label>
+            <textarea rows={2} value={recvNotes} onChange={e => setRecvNotes(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              placeholder="Número de factura del proveedor, observaciones…" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">PDF de la factura</label>
+            <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
+              recvPdfFile ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+            }`}>
+              <input type="file" accept=".pdf,.PDF" className="hidden"
+                onChange={e => setRecvPdfFile(e.target.files?.[0] ?? null)} />
+              <span className="text-2xl">{recvPdfFile ? '📄' : '📁'}</span>
+              <span className="text-sm text-slate-600">
+                {recvPdfFile ? recvPdfFile.name : 'Seleccionar PDF (opcional)'}
+              </span>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button onClick={() => setRecvModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+            <button onClick={createReceivedInvoice} disabled={savingRecv || !recvProvider || !recvAmount}
+              className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+              {savingRecv ? 'Guardando…' : 'Registrar factura'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Attach PDF modal */}
+      <Modal open={!!pdfModal} onClose={() => setPdfModal(null)} title="Adjuntar PDF de factura">
+        {pdfModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <strong>{pdfModal.id}</strong> — {pdfModal.provider_name}<br />
+              <span className="text-xs text-slate-400">{pdfModal.vehicle_title || ''} · {fmtEur(pdfModal.invoice_amount)}</span>
+            </p>
+            {pdfModal.pdf_url && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                Ya existe un PDF adjunto. Al subir uno nuevo lo reemplazará.{' '}
+                <a href={pdfModal.pdf_url} target="_blank" rel="noopener noreferrer" className="underline">Ver actual</a>
+              </div>
+            )}
+            <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
+              pdfFile ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+            }`}>
+              <input type="file" accept=".pdf,.PDF" className="hidden"
+                onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
+              <span className="text-2xl">{pdfFile ? '📄' : '📁'}</span>
+              <span className="text-sm text-slate-600">{pdfFile ? pdfFile.name : 'Seleccionar PDF'}</span>
+            </label>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPdfModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={attachPdf} disabled={uploadingPdf || !pdfFile}
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+                {uploadingPdf ? 'Subiendo…' : 'Subir PDF'}
               </button>
             </div>
           </div>

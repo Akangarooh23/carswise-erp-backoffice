@@ -1,6 +1,28 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { config } from '../config.js';
+
+async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  try {
+    const ext = filename.split('.').pop()?.toLowerCase() || 'pdf';
+    const path = `provider-invoices/${invoiceId}.${ext}`;
+    const buffer = Buffer.from(base64, 'base64');
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': ext === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: buffer,
+    });
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
+  } catch { return null; }
+}
 
 export const providerBillingRouter = Router();
 
@@ -68,32 +90,72 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
   }
 });
 
-// ── Received invoices (provider → CarsWise for marketplace VO purchases) ──────
+// ── Create received invoice (provider → CarsWise) manually with optional PDF ──
+// Body: { provider_name, vehicle_title, amount, invoice_date, notes?, contract_id?,
+//         pdf_base64?, pdf_filename? }
+providerBillingRouter.post('/provider-billing/received', requireRole(['admin', 'operations']), async (req, res) => {
+  const { provider_name, vehicle_title, amount, invoice_date, notes, contract_id, pdf_base64, pdf_filename } = req.body ?? {};
+  if (!provider_name || !amount) {
+    res.status(400).json({ ok: false, error: 'missing_fields', detail: 'provider_name and amount are required' });
+    return;
+  }
+  try {
+    const id = await nextProviderInvoiceId();
+    let pdf_url: string | null = null;
+    if (pdf_base64 && pdf_filename) {
+      pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, id);
+    }
+    await query(
+      `INSERT INTO moveadvisor_provider_invoices
+         (id, type, direction, provider_name, contract_id, vehicle_title,
+          invoice_amount, invoice_date, pdf_url, notes, status)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+      [id, provider_name, contract_id || null, vehicle_title || null,
+       Number(amount), invoice_date || null, pdf_url, notes || null]
+    );
+    res.status(201).json({ ok: true, data: { id, pdf_url } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'create_failed', detail: (err as Error).message });
+  }
+});
+
+// ── Attach or replace PDF on any invoice ────────────────────────────────────
+providerBillingRouter.patch('/provider-billing/invoices/:id/pdf', requireRole(['admin', 'operations']), async (req, res) => {
+  const { pdf_base64, pdf_filename } = req.body ?? {};
+  if (!pdf_base64 || !pdf_filename) {
+    res.status(400).json({ ok: false, error: 'missing_fields' });
+    return;
+  }
+  try {
+    const pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, req.params.id);
+    if (!pdf_url) { res.status(500).json({ ok: false, error: 'upload_failed' }); return; }
+    await query(`UPDATE moveadvisor_provider_invoices SET pdf_url = $1, updated_at = NOW() WHERE id = $2`, [pdf_url, req.params.id]);
+    res.json({ ok: true, data: { pdf_url } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'pdf_update_failed', detail: (err as Error).message });
+  }
+});
+
+// ── List stored received invoices (provider → CarsWise) ──────────────────────
 providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'operations']), async (req, res) => {
   const page  = Math.max(1, Number(req.query.page)  || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
   try {
-    // Marketplace VO purchase offers that have been sold: provider invoices CarsWise at `price`
-    // CarsWise sold to customer at `sale_price` → margin = sale_price - price
+    // Return stored received invoices (manually created with optional PDF)
     const [rows, total] = await Promise.all([
       query(
-        `SELECT
-           o.id, o.title, o.seller, o.price AS cost_price, o.sale_price AS customer_price,
-           (o.sale_price - o.price) AS margin,
-           o.sold_at, l.contact_name, l.user_email, l.sale_price AS actual_sale_price
-         FROM moveadvisor_marketplace_vo_offers o
-         LEFT JOIN moveadvisor_market_leads l ON l.vehicle_id = o.id AND l.status = 'Vendido'
-         WHERE o.available_for_purchase = true AND o.sold_at IS NOT NULL
-         ORDER BY o.sold_at DESC
+        `SELECT id, provider_name, vehicle_title, contract_id,
+                invoice_amount, invoice_date, status, pdf_url, notes,
+                issued_at, paid_at, updated_at
+         FROM moveadvisor_provider_invoices
+         WHERE direction = 'received'
+         ORDER BY COALESCE(invoice_date::timestamptz, issued_at) DESC
          LIMIT $1 OFFSET $2`,
         [limit, offset]
       ),
-      query(
-        `SELECT COUNT(*)::int AS total FROM moveadvisor_marketplace_vo_offers
-         WHERE available_for_purchase = true AND sold_at IS NOT NULL`
-      ),
+      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_provider_invoices WHERE direction = 'received'`),
     ]);
     res.json({
       ok: true,

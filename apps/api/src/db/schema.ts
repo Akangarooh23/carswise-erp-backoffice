@@ -160,6 +160,13 @@ export async function ensureSchema() {
   `);
 
   await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS direction VARCHAR(10) NOT NULL DEFAULT 'emitted',
+      ADD COLUMN IF NOT EXISTS pdf_url   TEXT,
+      ADD COLUMN IF NOT EXISTS invoice_date DATE
+  `);
+
+  await query(`
     CREATE INDEX IF NOT EXISTS ix_provider_invoices_status
       ON moveadvisor_provider_invoices (status, issued_at DESC)
   `);
