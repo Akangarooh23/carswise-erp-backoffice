@@ -92,7 +92,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
            FROM moveadvisor_market_leads l
            LEFT JOIN moveadvisor_user_vehicles v ON v.source_lead_id = l.id
            WHERE l.status = 'Vendido'
-           ORDER BY l.updated_at DESC`
+           ORDER BY l.created_at DESC`
         );
         for (const r of res2.rows as Record<string, string>[]) {
           rows.push({
