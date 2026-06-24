@@ -36,7 +36,11 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
                 COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
                 mu.created_at, mu.last_login_at,
-                eu.status, eu.last_seen_at,
+                COALESCE(eu.status,
+                  CASE WHEN mu.plan_status IN ('activa','active','trialing') THEN 'active' ELSE NULL END
+                ) AS status,
+                eu.last_seen_at,
+                COALESCE(NULLIF(mu.plan_id,''), 'free') AS plan_type,
                 COUNT(DISTINCT a.id)::int AS appointment_count,
                 COUNT(DISTINCT t.id)::int AS ticket_count
          FROM moveadvisor_users mu
@@ -44,8 +48,8 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
          LEFT JOIN erp_appointments a ON a.user_id = mu.id
          LEFT JOIN erp_tickets      t ON t.user_id = mu.id
          ${where}
-         GROUP BY mu.id, mu.email, mu.name, mu.created_at, mu.last_login_at,
-                  eu.phone, eu.status, eu.last_seen_at
+         GROUP BY mu.id, mu.email, mu.name, mu.apellidos, mu.created_at, mu.last_login_at,
+                  mu.plan_id, mu.plan_status, eu.phone, eu.status, eu.last_seen_at
          ORDER BY mu.created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
@@ -77,7 +81,11 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
                 COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
                 mu.created_at, mu.last_login_at,
-                eu.status, eu.last_seen_at,
+                COALESCE(eu.status,
+                  CASE WHEN mu.plan_status IN ('activa','active','trialing') THEN 'active' ELSE NULL END
+                ) AS status,
+                eu.last_seen_at,
+                COALESCE(NULLIF(mu.plan_id,''), 'free') AS plan_type,
                 mu.consent_legal_at, mu.consent_marketing_at, mu.consent_experian_at,
                 mu.consent_marketing_email_at, mu.consent_marketing_sms_at,
                 mu.consent_thirdparty_email_at, mu.consent_thirdparty_sms_at,
