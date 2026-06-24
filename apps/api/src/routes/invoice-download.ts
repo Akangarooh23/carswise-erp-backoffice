@@ -295,7 +295,7 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
-      if (lead.user_email) {
+      if (req.query.send === 'true' && lead.user_email) {
         sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
