@@ -138,6 +138,17 @@ invoiceDownloadRouter.get(
         );
       }
 
+      // Tracking columns — set independently of Supabase upload success
+      const isPaid = String(inv.status || '').toLowerCase() === 'paid';
+      await query(
+        `UPDATE moveadvisor_user_invoices
+         SET cw_generated_at = COALESCE(cw_generated_at, NOW())
+             ${shouldSendEmail ? ', cw_sent_at = COALESCE(cw_sent_at, NOW())' : ''}
+             ${isPaid        ? ', cw_paid_at  = COALESCE(cw_paid_at,  NOW())' : ''}
+         WHERE id = $1`,
+        [req.params.id]
+      );
+
       // Fetch billing profile for full name, NIF and address
       const profileR = await query(
         `SELECT name, apellidos, company_name, tax_id, billing_address, phone
@@ -193,32 +204,14 @@ invoiceDownloadRouter.get(
 
       const shouldSendEmail = req.query.send === 'true';
 
-      const isPaid = String(inv.status || '').toLowerCase() === 'paid';
-
       const { pdf } = await generateAndStoreInvoicePdf(
         data,
         `cw-invoices/subs/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
           await query(
-            `UPDATE moveadvisor_user_invoices
-             SET cw_pdf_url        = $1,
-                 cw_invoice_number = $2,
-                 cw_generated_at   = COALESCE(cw_generated_at, NOW())
-             WHERE id = $3`,
-            [pdfUrl, invoiceNumber, req.params.id]
+            `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1 WHERE id = $2`,
+            [pdfUrl, req.params.id]
           );
-          if (shouldSendEmail) {
-            await query(
-              `UPDATE moveadvisor_user_invoices SET cw_sent_at = COALESCE(cw_sent_at, NOW()) WHERE id = $1`,
-              [req.params.id]
-            );
-          }
-          if (isPaid) {
-            await query(
-              `UPDATE moveadvisor_user_invoices SET cw_paid_at = COALESCE(cw_paid_at, NOW()) WHERE id = $1`,
-              [req.params.id]
-            );
-          }
         }
       );
 
