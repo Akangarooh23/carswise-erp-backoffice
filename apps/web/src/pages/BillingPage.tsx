@@ -68,6 +68,7 @@ export default function BillingPage() {
   const [summary, setSummary]   = useState<BillingSummary | null>(null);
   const [tab, setTab]           = useState<Tab>('all');
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [freeUsers, setFreeUsers] = useState<User[]>([]);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
@@ -93,7 +94,7 @@ export default function BillingPage() {
         if (r.ok) { setInvoices(r.data); setTotal((r.meta as { total: number })?.total ?? r.data.length); }
       }).finally(() => setLoading(false));
     }
-  }, [tab, page]);
+  }, [tab, page, refreshKey]);
 
   function exportCsv() {
     const BOM = '﻿';
@@ -261,7 +262,7 @@ export default function BillingPage() {
                                   onClick={async () => {
                                     setPdfError(null);
                                     setDownloadingId(inv.id);
-                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                     catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                     setDownloadingId(null);
                                   }}
@@ -274,7 +275,7 @@ export default function BillingPage() {
                                   onClick={async () => {
                                     setPdfError(null);
                                     setDownloadingId(`${inv.id}_send`);
-                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                     catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                     setDownloadingId(null);
                                   }}
@@ -300,7 +301,7 @@ export default function BillingPage() {
                                 onClick={async () => {
                                   setPdfError(null);
                                   setDownloadingId(inv.id);
-                                  try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                  try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                   catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                   setDownloadingId(null);
                                 }}
@@ -312,7 +313,7 @@ export default function BillingPage() {
                                 onClick={async () => {
                                   setPdfError(null);
                                   setDownloadingId(`${inv.id}_send`);
-                                  try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                  try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                   catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                   setDownloadingId(null);
                                 }}
