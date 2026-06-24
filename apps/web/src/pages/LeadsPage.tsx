@@ -408,7 +408,7 @@ export default function LeadsPage() {
   async function saveLead(overrideSalePrice?: string, overrideSaleNotes?: string) {
     if (!selected) return;
     // If changing to Vendido and price not yet captured, open sale price modal first
-    if (editStatus === 'Vendido' && overrideSalePrice === undefined && !selected.meta?.sale_price) {
+    if (editStatus === 'Vendido' && overrideSalePrice === undefined) {
       setSalePrice('');
       setSaleNotes('');
       setSaleModal(true);
@@ -1281,7 +1281,7 @@ export default function LeadsPage() {
                   📝 Crear contrato de renting
                 </button>
               )}
-              <button onClick={saveLead} disabled={saving}
+              <button onClick={() => saveLead()} disabled={saving}
                 className="px-4 py-2 text-sm border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 rounded-lg disabled:opacity-60">
                 {saving ? 'Guardando…' : 'Guardar borrador'}
               </button>
@@ -1369,7 +1369,7 @@ export default function LeadsPage() {
         {selected && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Vas a marcar <strong>{selected.title || selected.contact_name}</strong> como <strong>Vendido</strong>.
+              Vas a marcar <strong>{selected.title || selected.meta?.name}</strong> como <strong>Vendido</strong>.
               <br />
               <span className="text-xs text-slate-400">Introduce el precio de venta para que aparezca en Contratos.</span>
             </p>
