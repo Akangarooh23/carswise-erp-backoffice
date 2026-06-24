@@ -68,6 +68,7 @@ export default function ContractsPage() {
   const [page, setPage]             = useState(1);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [loading, setLoading]       = useState(true);
+  const [debugErrors, setDebugErrors] = useState<string[]>([]);
 
   // Close renting contract modal
   const [closeModal, setCloseModal]           = useState<Contract | null>(null);
@@ -82,9 +83,13 @@ export default function ContractsPage() {
     const res = await api.get<Contract[]>(`/contracts?${params}`);
     if (res.ok) {
       setContracts(res.data);
-      const meta = res.meta as { total: number; stats?: Stats };
+      const meta = res.meta as { total: number; stats?: Stats; debug?: string[] };
       setTotal(meta?.total ?? 0);
       if (meta?.stats) setStats(meta.stats);
+      if (meta?.debug?.length) setDebugErrors(meta.debug);
+      else setDebugErrors([]);
+    } else {
+      setDebugErrors([(res as { error?: string; detail?: string }).detail ?? (res as { error?: string }).error ?? 'unknown error']);
     }
     setLoading(false);
   }, [page, typeFilter]);
@@ -119,6 +124,13 @@ export default function ContractsPage() {
               <p className={`text-2xl font-bold ${color}`}>{isStr ? value : value.toLocaleString('es-ES')}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Debug errors — only visible when something goes wrong */}
+      {debugErrors.length > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-mono">
+          {debugErrors.map((e, i) => <div key={i}>{e}</div>)}
         </div>
       )}
 

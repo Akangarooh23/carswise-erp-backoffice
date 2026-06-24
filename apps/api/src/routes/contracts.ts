@@ -79,30 +79,35 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
     const offset = (page - 1) * limit;
 
     const rows: unknown[] = [];
+    const debugErrors: string[] = [];
 
     // Purchases — all leads with status Vendido (marketplace + external portals)
     if (type === 'all' || type === 'compra') {
-      const res2 = await query(
-        `SELECT
-           l.id, l.user_email, l.contact_name, l.vehicle_title, l.updated_at AS date,
-           l.status, l.portal,
-           v.id AS idcar_id
-         FROM moveadvisor_market_leads l
-         LEFT JOIN moveadvisor_user_vehicles v ON v.source_lead_id = l.id
-         WHERE l.status = 'Vendido'
-         ORDER BY l.updated_at DESC`
-      );
-      for (const r of res2.rows as Record<string, string>[]) {
-        rows.push({
-          id: r.id, type: 'compra', date: r.date,
-          user_email: r.user_email, contact_name: r.contact_name,
-          vehicle_title: r.vehicle_title, status: 'completada',
-          portal: r.portal || null,
-          idcar_id: r.idcar_id || null,
-          amount: null, monthly_price: null, duration_months: null,
-          km_year: null, color: null, quantity: null,
-          start_date: null, end_date: null,
-        });
+      try {
+        const res2 = await query(
+          `SELECT
+             l.id, l.user_email, l.contact_name, l.vehicle_title, l.updated_at AS date,
+             l.status, l.portal,
+             v.id AS idcar_id
+           FROM moveadvisor_market_leads l
+           LEFT JOIN moveadvisor_user_vehicles v ON v.source_lead_id = l.id
+           WHERE l.status = 'Vendido'
+           ORDER BY l.updated_at DESC`
+        );
+        for (const r of res2.rows as Record<string, string>[]) {
+          rows.push({
+            id: r.id, type: 'compra', date: r.date,
+            user_email: r.user_email, contact_name: r.contact_name,
+            vehicle_title: r.vehicle_title, status: 'completada',
+            portal: r.portal || null,
+            idcar_id: r.idcar_id || null,
+            amount: null, monthly_price: null, duration_months: null,
+            km_year: null, color: null, quantity: null,
+            start_date: null, end_date: null,
+          });
+        }
+      } catch (e) {
+        debugErrors.push(`compras: ${(e as Error).message}`);
       }
     }
 
@@ -130,7 +135,9 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
             start_date: r.start_date, end_date: r.end_date,
           });
         }
-      } catch { /* table not yet created in this environment */ }
+      } catch (e) {
+        debugErrors.push(`rentings: ${(e as Error).message}`);
+      }
     }
 
     // Stats — isolated catches so a missing table never blocks the response
@@ -164,6 +171,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
       meta: {
         total: rows.length,
         page, limit,
+        debug: debugErrors.length ? debugErrors : undefined,
         stats: {
           total_compras:   Number((statsCompra.rows[0] as { total: string }).total),
           total_rentings:  Number(s.active) + Number(s.completed) + Number(s.cancelled),
