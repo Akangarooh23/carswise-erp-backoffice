@@ -246,19 +246,35 @@ export default function BillingPage() {
                         </td>
                         <td>
                           {inv.type === 'suscripcion' ? (
-                            <div className="flex flex-col gap-0.5">
-                              <button
-                                disabled={downloadingId === inv.id}
-                                onClick={async () => {
-                                  setPdfError(null);
-                                  setDownloadingId(inv.id);
-                                  try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
-                                  catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
-                                  setDownloadingId(null);
-                                }}
-                                className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap text-left">
-                                {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar PDF'}
-                              </button>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex gap-2">
+                                {/* Descargar sin enviar */}
+                                <button
+                                  disabled={downloadingId === inv.id}
+                                  onClick={async () => {
+                                    setPdfError(null);
+                                    setDownloadingId(inv.id);
+                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                    catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
+                                    setDownloadingId(null);
+                                  }}
+                                  className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                                  {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Descargar'}
+                                </button>
+                                {/* Enviar y descargar */}
+                                <button
+                                  disabled={downloadingId === inv.id}
+                                  onClick={async () => {
+                                    setPdfError(null);
+                                    setDownloadingId(`${inv.id}_send`);
+                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                    catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
+                                    setDownloadingId(null);
+                                  }}
+                                  className="text-xs text-emerald-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                                  {downloadingId === `${inv.id}_send` ? 'Enviando…' : '✉ Enviar'}
+                                </button>
+                              </div>
                               {pdfError?.id === inv.id && (
                                 <span className="text-[10px] text-red-600 font-medium max-w-[180px] leading-tight">
                                   ⚠ {pdfError.msg}

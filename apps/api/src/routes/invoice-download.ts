@@ -191,19 +191,28 @@ invoiceDownloadRouter.get(
         ivaRate,
       };
 
-      const { pdf, url } = await generateAndStoreInvoicePdf(
+      const shouldSendEmail = req.query.send === 'true';
+
+      const { pdf } = await generateAndStoreInvoicePdf(
         data,
         `cw-invoices/subs/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
-          await query(
-            `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2, cw_sent_at = NOW() WHERE id = $3`,
-            [pdfUrl, invoiceNumber, req.params.id]
-          );
+          if (shouldSendEmail) {
+            await query(
+              `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2, cw_sent_at = NOW() WHERE id = $3`,
+              [pdfUrl, invoiceNumber, req.params.id]
+            );
+          } else {
+            await query(
+              `UPDATE moveadvisor_user_invoices SET cw_pdf_url = $1, cw_invoice_number = $2 WHERE id = $3`,
+              [pdfUrl, invoiceNumber, req.params.id]
+            );
+          }
         }
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
-      if (inv.email && !inv.cw_sent_at) {
+      if (shouldSendEmail && inv.email) {
         sendInvoiceEmail(String(inv.email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
