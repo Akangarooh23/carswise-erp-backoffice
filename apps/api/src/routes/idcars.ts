@@ -104,13 +104,15 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
   try {
     const [photos, docs] = await Promise.all([
       query(
-        `SELECT id, file_type, file_name, file_size, file_mime_type, file_url, created_at
+        `SELECT id, file_type, file_name, file_size, file_mime_type,
+                file_url, file_content_base64, created_at
          FROM moveadvisor_user_vehicle_files
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
       ).catch(() => ({ rows: [] })),
       query(
-        `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type, file_url, created_at
+        `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
+                file_url, file_content_base64, created_at
          FROM moveadvisor_user_vehicle_documents
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
@@ -136,28 +138,31 @@ idcarsRouter.post('/idcars/:id/files', requireRole(['admin', 'operations', 'supp
     const fileUrl = await uploadIdCarFileToSupabase(file_content_base64, vehicleId, file_type, file_name, file_mime_type || 'application/octet-stream');
     const size    = Number(file_size) || Buffer.from(file_content_base64, 'base64').byteLength;
 
+    // When Supabase upload fails, store base64 in DB as fallback
+    const storedB64   = fileUrl ? '' : file_content_base64;
+
     let inserted;
     if (DOCS_TYPES.has(file_type)) {
       inserted = await query(
-        `INSERT INTO ${DOCS_TABLE} (vehicle_id, document_type, file_name, file_size, file_mime_type, file_url, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,NOW())
-         RETURNING id, document_type AS file_type, file_name, file_size, file_mime_type, file_url, created_at`,
-        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '']
+        `INSERT INTO ${DOCS_TABLE} (vehicle_id, document_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+         RETURNING id, document_type AS file_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at`,
+        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '', storedB64]
       ).catch(() =>
         // Fallback: store in files table as 'document' if documents table has strict CHECK
         query(
-          `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, created_at)
-           VALUES ($1,'document',$2,$3,$4,$5,NOW())
-           RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, created_at`,
-          [vehicleId, file_name, size, file_mime_type, fileUrl ?? '']
+          `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at)
+           VALUES ($1,'document',$2,$3,$4,$5,$6,NOW())
+           RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at`,
+          [vehicleId, file_name, size, file_mime_type, fileUrl ?? '', storedB64]
         )
       );
     } else {
       inserted = await query(
-        `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,NOW())
-         RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, created_at`,
-        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '']
+        `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+         RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, file_content_base64, created_at`,
+        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '', storedB64]
       );
     }
     res.status(201).json({ ok: true, data: inserted.rows[0] });

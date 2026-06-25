@@ -197,6 +197,7 @@ export interface IdCarFile {
   file_size: number;
   file_mime_type: string;
   file_url: string;
+  file_content_base64?: string | null;
   created_at: string;
 }
 

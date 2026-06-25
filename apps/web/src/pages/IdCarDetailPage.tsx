@@ -25,6 +25,12 @@ const UPLOAD_SECTIONS = [
   { key: 'maintenance_invoices', label: 'Facturas mantenimiento',accept: '.pdf,image/*',   maxMB: 5,  multiple: true  },
 ] as const;
 
+function resolveFileUrl(f: { file_url?: string; file_content_base64?: string | null; file_mime_type?: string }) {
+  if (f.file_url) return f.file_url;
+  if (f.file_content_base64) return `data:${f.file_mime_type || 'application/octet-stream'};base64,${f.file_content_base64}`;
+  return '';
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -90,8 +96,8 @@ export default function IdCarDetailPage() {
     const fRes = await api.get<IdCarFile[]>(`/idcars/${id}/files`);
     if (fRes.ok) {
       setFiles(fRes.data);
-      const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo' && f.file_url);
-      if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url ?? null);
+      const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo');
+      if (firstPhoto) setPrimaryPhotoUrl(resolveFileUrl(firstPhoto) || null);
     }
   }, [id]);
 
@@ -104,8 +110,8 @@ export default function IdCarDetailPage() {
       if (vRes.ok) { setVehicle(vRes.data); setPublishPrice(vRes.data.price ?? ''); }
       if (fRes.ok) {
         setFiles(fRes.data);
-        const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo' && f.file_url);
-        if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url ?? null);
+        const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo');
+        if (firstPhoto) setPrimaryPhotoUrl(resolveFileUrl(firstPhoto) || null);
       }
     }).finally(() => setLoading(false));
   }, [id]);
@@ -152,15 +158,19 @@ export default function IdCarDetailPage() {
     setUploadingType(fileType);
     setUploadStatus((s) => ({ ...s, [fileType]: null }));
     let errors = 0;
+    let firstUploadedFileData: IdCarFile | null = null;
     for (const file of files) {
       try {
         const base64 = await fileToBase64(file);
-        const r = await api.post(`/idcars/${id}/files`, {
+        const r = await api.post<{ ok: boolean; data?: IdCarFile }>(`/idcars/${id}/files`, {
           file_type: fileType, file_name: file.name,
           file_mime_type: file.type || 'application/octet-stream',
           file_content_base64: base64, file_size: file.size,
         });
-        if (!r.ok) errors++;
+        if (!r.ok) { errors++; continue; }
+        if (fileType === 'photo' && !firstUploadedFileData && r.data?.data) {
+          firstUploadedFileData = r.data.data;
+        }
       } catch { errors++; }
     }
     const count = files.length;
@@ -173,6 +183,14 @@ export default function IdCarDetailPage() {
     setPendingFiles((p) => ({ ...p, [fileType]: [] }));
     if (inputRefs.current[fileType]) inputRefs.current[fileType]!.value = '';
     await loadFiles();
+    // Auto-set primary when uploading first photo
+    if (fileType === 'photo' && !primaryPhotoUrl && firstUploadedFileData) {
+      const url = resolveFileUrl(firstUploadedFileData);
+      if (url) {
+        await api.patch(`/idcars/${id}/primary-photo`, { photo_url: url }).catch(() => {});
+        setPrimaryPhotoUrl(url);
+      }
+    }
     setUploadingType(null);
     setTimeout(() => setUploadStatus((s) => ({ ...s, [fileType]: null })), 4000);
   }
@@ -215,7 +233,7 @@ export default function IdCarDetailPage() {
   if (loading) return <div className="text-slate-400 text-sm p-6">Cargando…</div>;
   if (!vehicle) return <div className="text-red-500 text-sm p-6">Vehículo no encontrado</div>;
 
-  const photos    = files.filter((f) => f.file_type === 'photo' && f.file_url);
+  const photos    = files.filter((f) => f.file_type === 'photo' && (f.file_url || f.file_content_base64));
   const documents = files.filter((f) => f.file_type !== 'photo');
   const vehicleTitle = [vehicle.brand, vehicle.model, vehicle.year].filter(Boolean).join(' ') || 'Vehículo';
 
@@ -349,30 +367,32 @@ export default function IdCarDetailPage() {
             <>
               <p className="px-4 pt-3 text-xs text-slate-400">Haz clic en una foto para ampliarla. Pulsa «Hacer principal» para que sea la foto principal del marketplace.</p>
               <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {photos.map((f) => (
+                {photos.map((f) => {
+                  const photoSrc = resolveFileUrl(f);
+                  return (
                   <div key={f.id} className="relative group rounded-lg overflow-hidden border aspect-square bg-slate-50 transition-colors"
-                    style={{ borderColor: f.file_url === primaryPhotoUrl ? '#f59e0b' : undefined }}
+                    style={{ borderColor: photoSrc === primaryPhotoUrl ? '#f59e0b' : undefined }}
                   >
                     <button
-                      onClick={() => setLightbox(f.file_url)}
+                      onClick={() => setLightbox(photoSrc)}
                       className="absolute inset-0 w-full h-full"
                     >
                       <img
-                        src={f.file_url}
+                        src={photoSrc}
                         alt={f.file_name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                     </button>
 
-                    {f.file_url === primaryPhotoUrl ? (
+                    {photoSrc === primaryPhotoUrl ? (
                       <div className="absolute top-1.5 left-1.5 z-10 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
                         ⭐ Principal
                       </div>
                     ) : (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleSetPrimary(f.file_url); }}
+                        onClick={(e) => { e.stopPropagation(); handleSetPrimary(photoSrc); }}
                         disabled={settingPrimary}
                         className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
                       >
@@ -391,7 +411,8 @@ export default function IdCarDetailPage() {
                       title="Eliminar foto"
                     >×</button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
