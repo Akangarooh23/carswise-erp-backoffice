@@ -398,85 +398,81 @@ export default function IdCarDetailPage() {
         </Card>
       </div>
 
-      {/* Documents */}
+      {/* Documents & file upload — one section per category */}
       <Card padding={false}>
         <div className="px-5 py-3 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800 text-sm">Documentos <span className="text-slate-400 font-normal">({documents.length})</span></h3>
+          <h3 className="font-semibold text-slate-800 text-sm">Documentos</h3>
         </div>
-        {documents.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin documentos</p>
-        ) : (
-          <div className="overflow-x-auto"><table className="erp-table">
-            <thead><tr><th>Tipo</th><th>Archivo</th><th>Tamaño</th><th>Fecha</th><th></th></tr></thead>
-            <tbody>
-              {documents.map((f) => (
-                <tr key={f.id}>
-                  <td><span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{DOC_TYPE_LABELS[f.file_type] ?? f.file_type}</span></td>
-                  <td className="text-sm text-slate-700">{fileIcon(f)} {f.file_name}</td>
-                  <td className="text-xs text-slate-400">{fmtBytes(f.file_size)}</td>
-                  <td className="text-xs text-slate-400">{fmtDate(f.created_at)}</td>
-                  <td className="flex items-center gap-3">
-                    {f.file_url ? (
-                      <a href={f.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Ver →</a>
-                    ) : (
-                      <span className="text-xs text-slate-300">Sin URL</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteFile(f)}
-                      disabled={deletingId === f.id}
-                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
-                    >Eliminar</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        )}
-      </Card>
-
-      {/* Upload files */}
-      <Card>
-        <h3 className="font-semibold text-slate-800 text-sm mb-4">Adjuntar archivos</h3>
         <div className="divide-y divide-slate-100">
-          {UPLOAD_SECTIONS.map(({ key, label, accept, maxMB, multiple }) => {
-            const pending = pendingFiles[key] ?? [];
-            const status  = uploadStatus[key];
+          {UPLOAD_SECTIONS.filter((s) => s.key !== 'photo').map(({ key, label, accept, maxMB, multiple }) => {
+            const existing   = files.filter((f) => f.file_type === key);
+            const pending    = pendingFiles[key] ?? [];
+            const status     = uploadStatus[key];
             const isUploading = uploadingType === key;
             return (
-              <div key={key} className="py-3 flex flex-wrap items-center gap-3">
-                <span className="w-44 text-sm text-slate-600 shrink-0">{label}</span>
-                <input
-                  ref={(el) => { inputRefs.current[key] = el; }}
-                  type="file"
-                  accept={accept}
-                  multiple={multiple}
-                  className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    const tooBig = files.filter((f) => f.size > maxMB * 1024 * 1024);
-                    const valid  = files.filter((f) => f.size <= maxMB * 1024 * 1024);
-                    if (tooBig.length)
-                      setUploadStatus((s) => ({ ...s, [key]: { ok: false, text: `${tooBig.map((f) => f.name).join(', ')} supera ${maxMB} MB` } }));
-                    setPendingFiles((p) => ({ ...p, [key]: valid }));
-                  }}
-                />
-                <span className="text-xs text-slate-400">máx. {maxMB} MB</span>
-                {pending.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpload(key)}
-                    disabled={!!uploadingType}
-                    className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {isUploading ? 'Subiendo…' : `↑ Subir ${pending.length} archivo${pending.length > 1 ? 's' : ''}`}
-                  </button>
+              <div key={key} className="px-5 py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                  <span className="text-xs text-slate-400">máx. {maxMB} MB</span>
+                </div>
+
+                {/* Existing files for this type */}
+                {existing.length > 0 && (
+                  <div className="mb-3 space-y-1.5">
+                    {existing.map((f) => (
+                      <div key={f.id} className="flex items-center gap-2 bg-slate-50 rounded-md px-3 py-2">
+                        <span className="text-sm">{fileIcon(f)}</span>
+                        <span className="text-xs text-slate-700 flex-1 truncate" title={f.file_name}>{f.file_name}</span>
+                        <span className="text-xs text-slate-400 shrink-0">{fmtBytes(f.file_size)}</span>
+                        <span className="text-xs text-slate-400 shrink-0">{fmtDate(f.created_at)}</span>
+                        {f.file_url ? (
+                          <a href={f.file_url} target="_blank" rel="noreferrer"
+                            className="text-xs text-blue-600 hover:underline shrink-0">Ver →</a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFile(f)}
+                          disabled={deletingId === f.id}
+                          className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 shrink-0"
+                        >{deletingId === f.id ? '…' : 'Eliminar'}</button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {status && (
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                    {status.ok ? '✓' : '✕'} {status.text}
-                  </span>
-                )}
+
+                {/* Upload row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={(el) => { inputRefs.current[key] = el; }}
+                    type="file"
+                    accept={accept}
+                    multiple={multiple}
+                    className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer"
+                    onChange={(e) => {
+                      const fs = Array.from(e.target.files ?? []);
+                      const tooBig = fs.filter((f) => f.size > maxMB * 1024 * 1024);
+                      const valid  = fs.filter((f) => f.size <= maxMB * 1024 * 1024);
+                      if (tooBig.length)
+                        setUploadStatus((s) => ({ ...s, [key]: { ok: false, text: `${tooBig.map((f) => f.name).join(', ')} supera ${maxMB} MB` } }));
+                      setPendingFiles((p) => ({ ...p, [key]: valid }));
+                    }}
+                  />
+                  {pending.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpload(key)}
+                      disabled={!!uploadingType}
+                      className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {isUploading ? 'Subiendo…' : `↑ Subir ${pending.length} archivo${pending.length > 1 ? 's' : ''}`}
+                    </button>
+                  )}
+                  {status && (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                      {status.ok ? '✓' : '✕'} {status.text}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
