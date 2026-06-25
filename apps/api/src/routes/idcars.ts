@@ -210,7 +210,7 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     );
 
     const dbFiles   = [...dbFilesQuery.rows, ...dbDocsQuery.rows];
-    const dbFileUrls = new Set(dbFiles.map((f: { file_url: string }) => f.file_url).filter(Boolean));
+    const dbFileUrls = new Set<string>(dbFiles.map((f) => String(f.file_url || '')).filter(Boolean));
 
     // Also list from Supabase Storage — fills gaps when DB records are missing
     const storageFiles = await listSupabaseStorageFiles(req.params.id);
