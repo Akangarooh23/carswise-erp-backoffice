@@ -727,7 +727,7 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
 
   try {
     const vRow = await query(`SELECT user_email, user_id FROM moveadvisor_user_vehicles WHERE id = $1 LIMIT 1`, [vehicleId]);
-    const v    = (vRow as { rows: { user_email: string; user_id: string | null }[] }).rows?.[0];
+    const v    = (vRow as unknown as { rows: { user_email: string; user_id: string | null }[] }).rows?.[0];
     if (!v) return res.status(404).json({ ok: false, error: 'vehicle_not_found' });
 
     await query(
