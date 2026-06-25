@@ -261,18 +261,35 @@ export default function IdCarDetailPage() {
 
   async function handleMigrateToStorage() {
     if (!id) return;
+    // Files stored as base64 in DB (no file_url) — migrate them one by one from the frontend
+    const base64Files = files.filter((f) => f.file_content_base64 && (!f.file_url || f.file_url === ''));
+    if (!base64Files.length) {
+      setMigrateMsg({ ok: true, text: 'No hay archivos en base64 que migrar' });
+      return;
+    }
     setMigrating(true);
     setMigrateMsg(null);
+    let migrated = 0;
     try {
-      const r = await api.post<{ total: number; migrated: number }>(`/idcars/${id}/migrate-to-storage`, {});
-      if (r.ok) {
-        setMigrateMsg({ ok: true, text: `${r.data.migrated}/${r.data.total} archivos migrados a Supabase` });
-        await loadFiles();
-      } else {
-        setMigrateMsg({ ok: false, text: 'Error al migrar' });
+      for (const f of base64Files) {
+        // Re-upload via the normal POST /files endpoint (handles Supabase upload + DB insert)
+        const upload = await api.post<{ id: number }>(`/idcars/${id}/files`, {
+          file_type: f.file_type,
+          file_name: f.file_name,
+          file_mime_type: f.file_mime_type,
+          file_size: f.file_size,
+          file_content_base64: f.file_content_base64,
+        });
+        if (upload.ok) {
+          // Delete the old base64 record
+          await api.delete(`/idcars/${id}/files/${f.id}?file_type=${f.file_type}`);
+          migrated++;
+        }
       }
+      setMigrateMsg({ ok: true, text: `${migrated}/${base64Files.length} archivos migrados a Supabase` });
+      await loadFiles();
     } catch {
-      setMigrateMsg({ ok: false, text: 'Tiempo de espera agotado' });
+      setMigrateMsg({ ok: false, text: 'Error durante la migración' });
     } finally {
       setMigrating(false);
     }
