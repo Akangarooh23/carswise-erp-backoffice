@@ -690,6 +690,11 @@ export default function MarketplacePage() {
     load(page);
   }
 
+  async function toggleParticular(item: ParticularsOffer) {
+    await api.patch(`/marketplace/particulares/${item.id}/state`, { state: 'owned' });
+    load(page);
+  }
+
   async function saveCreate() {
     setCreating(true);
     const res = await api.post('/marketplace/vo', createForm);
@@ -1180,7 +1185,7 @@ export default function MarketplacePage() {
                 <thead>
                   <tr>
                     <th>Vehículo</th><th>Usuario</th><th>Precio</th><th>Km</th>
-                    <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th>
+                    <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th><th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1197,6 +1202,14 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
                       <td className="text-sm text-slate-500">{item.vehicle_location || '–'}</td>
                       <td className="text-sm text-slate-500">{item.plate || '–'}</td>
+                      <td>
+                        <button
+                          onClick={() => toggleParticular(item)}
+                          className="px-2 py-1 rounded text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                        >
+                          Despublicar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

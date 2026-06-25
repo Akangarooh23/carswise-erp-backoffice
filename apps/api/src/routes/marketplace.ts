@@ -716,6 +716,32 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   }
 });
 
+// ── Particulares: toggle state ────────────────────────────────────────────────
+
+marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  const vehicleId = String(req.params.vehicleId || '').trim();
+  const state     = String((req.body as { state?: string })?.state || '').trim();
+
+  if (!vehicleId) return res.status(400).json({ ok: false, error: 'vehicleId required' });
+  if (!['active_sale', 'owned'].includes(state)) return res.status(400).json({ ok: false, error: 'state must be active_sale or owned' });
+
+  try {
+    const vRow = await query(`SELECT user_email, user_id FROM moveadvisor_user_vehicles WHERE id = $1 LIMIT 1`, [vehicleId]);
+    const v    = (vRow as { rows: { user_email: string; user_id: string | null }[] }).rows?.[0];
+    if (!v) return res.status(404).json({ ok: false, error: 'vehicle_not_found' });
+
+    await query(
+      `INSERT INTO moveadvisor_user_vehicle_states (user_email, user_id, vehicle_id, state, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_email, vehicle_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()`,
+      [v.user_email, v.user_id, vehicleId, state]
+    );
+    res.json({ ok: true, vehicleId, state });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'db_error', detail: (err as Error).message });
+  }
+});
+
 // ── Brands list ───────────────────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
