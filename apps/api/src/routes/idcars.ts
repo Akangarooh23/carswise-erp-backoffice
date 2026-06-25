@@ -11,12 +11,17 @@ async function uploadIdCarFileToSupabase(
   base64: string, vehicleId: string, fileType: string, fileName: string, mimeType: string
 ): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error('[supabase-upload] Missing env: SUPABASE_URL=%s KEY=%s', !!SUPABASE_URL, !!SUPABASE_SERVICE_KEY);
+    return null;
+  }
   try {
     const ext  = fileName.split('.').pop()?.toLowerCase() || 'bin';
     const path = `idcars/${vehicleId}/${fileType}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const buf  = Buffer.from(base64, 'base64');
-    const res  = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`;
+    console.log('[supabase-upload] POST', uploadUrl, 'size=%d mime=%s', buf.length, mimeType);
+    const res = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -25,9 +30,18 @@ async function uploadIdCarFileToSupabase(
       },
       body: buf,
     });
-    if (!res.ok) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
-  } catch { return null; }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error('[supabase-upload] FAILED status=%d body=%s', res.status, errText);
+      return null;
+    }
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
+    console.log('[supabase-upload] OK url=%s', publicUrl);
+    return publicUrl;
+  } catch (e) {
+    console.error('[supabase-upload] EXCEPTION', e);
+    return null;
+  }
 }
 
 export const idcarsRouter = Router();
