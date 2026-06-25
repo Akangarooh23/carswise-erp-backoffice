@@ -175,6 +175,7 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
 idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     // Query DB (fallback chain if columns don't exist yet)
+    // Try with sort_order first; if column missing fall back keeping real file_content_base64
     const dbFilesQuery = await query(
       `SELECT id, file_type, file_name, file_size, file_mime_type,
               file_url, file_content_base64, created_at,
@@ -186,7 +187,7 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     ).catch(() =>
       query(
         `SELECT id, file_type, file_name, file_size, file_mime_type,
-                file_url, NULL AS file_content_base64, created_at, 9999 AS sort_order
+                file_url, file_content_base64, created_at, 9999 AS sort_order
          FROM moveadvisor_user_vehicle_files
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
