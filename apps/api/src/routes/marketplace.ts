@@ -670,6 +670,52 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
   res.json({ ok: true, data: results });
 });
 
+// ── Particulares CarsWise (user garage vehicles published for sale) ──────────
+
+marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  const q       = String(req.query.q    || '').trim();
+  const page    = Math.max(1, Number(req.query.page)  || 1);
+  const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const offset  = (page - 1) * limit;
+
+  const conditions: string[] = ["vs.state = 'active_sale'", "v.price IS NOT NULL", "v.price > 0"];
+  const values: unknown[]    = [];
+
+  if (q) {
+    values.push(`%${q.toLowerCase()}%`);
+    conditions.push(`(lower(COALESCE(v.title,'')) LIKE $${values.length} OR lower(COALESCE(v.brand,'')) LIKE $${values.length} OR lower(COALESCE(v.model,'')) LIKE $${values.length})`);
+  }
+
+  const where = `WHERE ${conditions.join(' AND ')}`;
+
+  try {
+    const [rows, total] = await Promise.all([
+      query(
+        `SELECT v.id, v.user_email, v.title, v.brand, v.model, v.version,
+                v.year, v.mileage, v.fuel, v.color, v.price,
+                v.cv, v.transmission_type, v.vehicle_location, v.plate,
+                v.notes, vs.listing_url, v.updated_at
+         FROM moveadvisor_user_vehicles v
+         INNER JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
+         ${where}
+         ORDER BY v.updated_at DESC
+         LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset]
+      ),
+      query(
+        `SELECT COUNT(*)::int AS total
+         FROM moveadvisor_user_vehicles v
+         INNER JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
+         ${where}`,
+        values
+      ),
+    ]);
+    res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'particulares_failed', detail: (err as Error).message });
+  }
+});
+
 // ── Brands list ───────────────────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {

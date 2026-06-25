@@ -19,9 +19,12 @@ function fmtCuota(n: number | null | undefined) { return n ? `${n.toLocaleString
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'vo',      label: 'Marketplace CarsWise' },
-  { key: 'offers',  label: 'Ofertas de portales'   },
-  { key: 'renting', label: 'Ofertas Renting'       },
+  { key: 'vo',             label: 'Marketplace CarsWise'  },
+  { key: 'particulares',   label: 'Particulares CarsWise' },
+  { key: 'offers',         label: 'Ofertas de portales'   },
+  { key: 'renting',        label: 'Ofertas Renting'       },
+  { key: 'concesionarios', label: 'VO Concesionarios'     },
+  { key: 'exportacion',    label: 'Exportación'           },
 ] as const;
 type Tab = typeof TABS[number]['key'];
 
@@ -464,12 +467,21 @@ type PortalOffer = {
   year: number; price: number; mileage: number; fuel: string; image_url?: string; url?: string;
 };
 
+type ParticularsOffer = {
+  id: string; user_email: string; title: string; brand: string; model: string;
+  version: string | null; year: number; mileage: number; fuel: string; color: string;
+  price: number; cv: number | null; transmission_type: string | null;
+  vehicle_location: string | null; plate: string | null; notes: string | null;
+  listing_url: string | null; updated_at: string;
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function MarketplacePage() {
   const [tab, setTab]             = useState<Tab>('vo');
   const [items, setItems]         = useState<VoOffer[]>([]);
   const [portalItems, setPortalItems] = useState<PortalOffer[]>([]);
+  const [particularsItems, setParticularsItems] = useState<ParticularsOffer[]>([]);
   const [total, setTotal]         = useState(0);
   const [page, setPage]           = useState(1);
   const [q, setQ]                 = useState('');
@@ -573,12 +585,18 @@ export default function MarketplacePage() {
       if (tab === 'renting') params.set('renting_available', 'true');
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
-    } else {
+    } else if (tab === 'particulares') {
+      const params = new URLSearchParams({ page: String(p), limit: '50' });
+      if (q) params.set('q', q);
+      const res = await api.get<ParticularsOffer[]>(`/marketplace/particulares?${params}`);
+      if (res.ok) { setParticularsItems(res.data); setTotal(res.meta?.total ?? 0); }
+    } else if (tab === 'offers') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
       if (q) params.set('q', q);
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
     }
+    // concesionarios / exportacion: no data yet, nothing to load
     setLoading(false);
   }, [tab, q, brand, statusFilter]);
 
@@ -1150,7 +1168,43 @@ export default function MarketplacePage() {
               </table>
             </div>
           )
-        ) : (
+        ) : tab === 'particulares' ? (
+          particularsItems.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">
+              Ningún usuario ha publicado su vehículo todavía.<br />
+              <span className="text-xs">Aparecerán aquí cuando marquen su IDCar como "En venta" desde su panel.</span>
+            </div>
+          ) : (
+            <>
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Vehículo</th><th>Usuario</th><th>Precio</th><th>Km</th>
+                    <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {particularsItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <p className="font-medium text-slate-800 text-sm">{item.title}</p>
+                        <p className="text-xs text-slate-400">{item.brand} {item.model}{item.version ? ` · ${item.version}` : ''}</p>
+                      </td>
+                      <td className="text-sm text-slate-500">{item.user_email}</td>
+                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-slate-500">{item.year || '–'}</td>
+                      <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
+                      <td className="text-sm text-slate-500">{item.vehicle_location || '–'}</td>
+                      <td className="text-sm text-slate-500">{item.plate || '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination page={page} total={total} limit={50} onChange={setPage} />
+            </>
+          )
+        ) : tab === 'offers' ? (
           portalItems.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
           ) : (
@@ -1181,7 +1235,19 @@ export default function MarketplacePage() {
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )
-        )}
+        ) : (tab === 'concesionarios' || tab === 'exportacion') ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3">{tab === 'exportacion' ? '🌍' : '🏪'}</div>
+            <p className="font-semibold text-slate-700 text-sm mb-1">
+              {tab === 'exportacion' ? 'Exportación / Importación' : 'VO Concesionarios'}
+            </p>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+              {tab === 'exportacion'
+                ? 'Vehículos seleccionados de Europa. Esta sección estará disponible próximamente.'
+                : 'Vehículos de concesionarios colaboradores. Esta sección estará disponible próximamente.'}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {/* ── Edit modal ──────────────────────────────────────────────────────── */}
