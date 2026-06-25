@@ -102,23 +102,49 @@ idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', '
 
 idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
-    const [photos, docs] = await Promise.all([
+    // Try with sort_order first; fall back to created_at order if column doesn't exist yet
+    const filesQuery = await query(
+      `SELECT id, file_type, file_name, file_size, file_mime_type,
+              file_url, file_content_base64, created_at,
+              COALESCE(sort_order, 9999) AS sort_order
+       FROM moveadvisor_user_vehicle_files
+       WHERE vehicle_id = $1
+       ORDER BY COALESCE(sort_order, 9999) ASC, created_at ASC`,
+      [req.params.id]
+    ).catch(() =>
       query(
         `SELECT id, file_type, file_name, file_size, file_mime_type,
-                file_url, file_content_base64, created_at,
-                COALESCE(sort_order, 9999) AS sort_order
+                file_url, file_content_base64, created_at, 9999 AS sort_order
          FROM moveadvisor_user_vehicle_files
-         WHERE vehicle_id = $1
-         ORDER BY COALESCE(sort_order, 9999) ASC, created_at ASC`,
+         WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
-      ).catch(() => ({ rows: [] })),
-      query(
+      ).catch(() =>
+        // Last resort: query without file_content_base64 if that column also doesn't exist
+        query(
+          `SELECT id, file_type, file_name, file_size, file_mime_type,
+                  file_url, NULL AS file_content_base64, created_at, 9999 AS sort_order
+           FROM moveadvisor_user_vehicle_files
+           WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+          [req.params.id]
+        ).catch(() => ({ rows: [] }))
+      )
+    );
+
+    const [photos, docs] = [filesQuery, await query(
         `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
                 file_url, file_content_base64, created_at
          FROM moveadvisor_user_vehicle_documents
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
-      ).catch(() => ({ rows: [] })),
+      ).catch(() =>
+        query(
+          `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
+                  file_url, NULL AS file_content_base64, created_at
+           FROM moveadvisor_user_vehicle_documents
+           WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+          [req.params.id]
+        ).catch(() => ({ rows: [] }))
+      ),
     ]);
     res.json({ ok: true, data: [...photos.rows, ...docs.rows] });
   } catch (err) {
