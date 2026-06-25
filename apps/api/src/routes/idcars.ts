@@ -335,23 +335,25 @@ idcarsRouter.post('/idcars/:id/migrate-to-storage', requireRole(['admin', 'opera
     ).catch(() => ({ rows: [] }));
 
     const toMigrate = [...filesResult.rows, ...docsResult.rows];
-    let migrated = 0;
 
-    for (const f of toMigrate) {
-      const url = await uploadIdCarFileToSupabase(
-        String(f.file_content_base64), vehicleId, String(f.file_type),
-        String(f.file_name), String(f.file_mime_type || 'application/octet-stream')
-      );
-      if (!url) continue;
+    // Upload all files in parallel to stay within Vercel's 10s timeout
+    const results = await Promise.allSettled(
+      toMigrate.map(async (f) => {
+        const url = await uploadIdCarFileToSupabase(
+          String(f.file_content_base64), vehicleId, String(f.file_type),
+          String(f.file_name), String(f.file_mime_type || 'application/octet-stream')
+        );
+        if (!url) throw new Error('upload_failed');
+        const table = DOCS_TYPES.has(String(f.file_type)) ? DOCS_TABLE : FILES_TABLE;
+        await query(
+          `UPDATE ${table} SET file_url = $1, file_content_base64 = '' WHERE id = $2`,
+          [url, f.id]
+        ).catch(() => null);
+        return url;
+      })
+    );
 
-      const table = DOCS_TYPES.has(String(f.file_type)) ? DOCS_TABLE : FILES_TABLE;
-      await query(
-        `UPDATE ${table} SET file_url = $1, file_content_base64 = '' WHERE id = $2`,
-        [url, f.id]
-      ).catch(() => null);
-      migrated++;
-    }
-
+    const migrated = results.filter((r) => r.status === 'fulfilled').length;
     res.json({ ok: true, total: toMigrate.length, migrated });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'migrate_failed', detail: (err as Error).message });

@@ -263,14 +263,19 @@ export default function IdCarDetailPage() {
     if (!id) return;
     setMigrating(true);
     setMigrateMsg(null);
-    const r = await api.post<{ total: number; migrated: number }>(`/idcars/${id}/migrate-to-storage`, {});
-    if (r.ok) {
-      setMigrateMsg({ ok: true, text: `${r.data.migrated}/${r.data.total} archivos migrados a Supabase` });
-      await loadFiles();
-    } else {
-      setMigrateMsg({ ok: false, text: 'Error al migrar' });
+    try {
+      const r = await api.post<{ total: number; migrated: number }>(`/idcars/${id}/migrate-to-storage`, {});
+      if (r.ok) {
+        setMigrateMsg({ ok: true, text: `${r.data.migrated}/${r.data.total} archivos migrados a Supabase` });
+        await loadFiles();
+      } else {
+        setMigrateMsg({ ok: false, text: 'Error al migrar' });
+      }
+    } catch {
+      setMigrateMsg({ ok: false, text: 'Tiempo de espera agotado' });
+    } finally {
+      setMigrating(false);
     }
-    setMigrating(false);
   }
 
   async function handlePublish() {
