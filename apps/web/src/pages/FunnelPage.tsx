@@ -43,51 +43,55 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 const PAGE_SECTION_LABELS: Record<string, string> = {
-  // Home & general
-  home:                      'Inicio',
-  userDashboard:             'Mi Panel',
-  userProfile:               'Mi Perfil',
-  plans:                     'Planes',
-  contact:                   'Contacto',
-  aboutCarswise:             'Sobre CarsWise',
+  // Home & navegación general
+  home:                       'Inicio',
+  userDashboard:              'Mi Panel',
+  userProfile:                'Mi Perfil',
+  plans:                      'Planes',
+  contact:                    'Contacto',
+  aboutCarswise:              'Sobre CarsWise',
   // Marketplace VO
-  portalVo:                  'Marketplace VO',
-  portalVoDetail:            'Ficha de oferta VO',
-  vehicleDetail:             'Ficha de vehículo',
-  // Comprar / asesor
-  vehicleOptions:            'Quiero Comprar',
-  buyOptions:                'Opciones de compra',
-  rentingOptions:            'Opciones de renting',
-  consejo:                   'Asesor de vehículo',
-  decision:                  'Decisión de compra',
-  // Vender
-  sellOptions:               'Vender mi Coche',
-  sell:                      'Vender (proceso)',
-  // Contratar un servicio
-  serviceOptions:            'Contratar un Servicio',
-  servicesSeo:               'Servicios',
-  serviceInsurance:          'Seguro de coche',
-  serviceMaintenance:        'Mantenimiento',
-  serviceAutogestor:         'Autogestor',
-  serviceAppointment:        'Cita de servicio',
-  serviceAppointmentCalendar:'Calendario de cita',
-  serviceMonthlyPlan:        'Plan mensual',
-  // IDCar / ID Digital
-  idCarsManage:              'ID Digital de tu vehículo',
-  idCarDetail:               'Detalle IDCar',
-  idCarCreate:               'Crear IDCar',
+  portalVo:                   'Marketplace VO',
+  portalVoDetail:             'Ficha de oferta VO',
+  vehicleDetail:              'Ficha de vehículo',
+  // Quiero comprar / asesor
+  vehicleOptions:             'Quiero Comprar',
+  buyOptions:                 'Opciones de compra',
+  rentingOptions:             'Opciones de renting',
+  consejo:                    'Asesor de vehículo',
+  decision:                   'Decisión de compra',
+  advice:                     'Consejo personalizado',
+  // Vender mi coche
+  sellOptions:                'Vender mi Coche',
+  sell:                       'Proceso de venta',
+  // Contratar un Servicio
+  serviceOptions:             'Contratar un Servicio',
+  servicesSeo:                'Servicios (SEO)',
+  serviceInsurance:           'Seguro de coche',
+  serviceMaintenance:         'Mantenimiento',
+  serviceAutogestor:          'Autogestor',
+  serviceAppointment:         'Solicitar cita',
+  serviceAppointmentCalendar: 'Calendario de cita',
+  serviceMonthlyPlan:         'Plan mensual',
+  // Citas de visita
+  viewingPropose:             'Proponer cita de visita',
+  viewingConfirm:             'Confirmar cita de visita',
+  // IDCar / ID Digital de tu vehículo
+  idCarsManage:               'ID Digital de tu vehículo',
+  idCarDetail:                'Detalle IDCar',
+  idCarCreate:                'Crear IDCar',
   // Blog
-  blog:                      'Blog',
-  blogCompraUsado:           'Blog · Guía compra VO',
-  blogRentingCompra:         'Blog · Renting vs Compra',
-  // Legal
-  legalNotice:               'Aviso legal',
-  privacyPolicy:             'Política de privacidad',
-  cookiePolicy:              'Política de cookies',
-  termsConditions:           'Términos y condiciones',
-  marketingPolicy:           'Política de comunicaciones',
-  experianPolicy:            'Política Experian',
-  experianTerms:             'Condiciones Experian',
+  blog:                       'Blog',
+  blogCompraUsado:            'Blog · Guía compra VO',
+  blogRentingCompra:          'Blog · Renting vs Compra',
+  // Páginas legales
+  legalNotice:                'Aviso legal',
+  privacyPolicy:              'Política de privacidad',
+  cookiePolicy:               'Política de cookies',
+  termsConditions:            'Términos y condiciones',
+  marketingPolicy:            'Política de comunicaciones',
+  experianPolicy:             'Política Experian',
+  experianTerms:              'Condiciones Experian',
 };
 const EVENT_COLORS: Record<string, string> = {
   landing: 'bg-slate-100 text-slate-600', page_view: 'bg-sky-50 text-sky-700',
