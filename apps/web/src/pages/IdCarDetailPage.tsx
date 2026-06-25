@@ -72,6 +72,12 @@ export default function IdCarDetailPage() {
   const [settingPrimary, setSettingPrimary] = useState(false);
   const [primaryMsg, setPrimaryMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Edit vehicle data state
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   // Upload state
   const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
@@ -103,6 +109,42 @@ export default function IdCarDetailPage() {
       }
     }).finally(() => setLoading(false));
   }, [id]);
+
+  function startEditing() {
+    if (!vehicle) return;
+    setEditForm({
+      brand:              vehicle.brand               ?? '',
+      model:              vehicle.model               ?? '',
+      version:            vehicle.version             ?? '',
+      year:               String(vehicle.year         ?? ''),
+      plate:              vehicle.plate               ?? '',
+      fuel:               vehicle.fuel                ?? '',
+      mileage:            String(vehicle.km           ?? ''),
+      color:              vehicle.color               ?? '',
+      body_type:          vehicle.body_type           ?? '',
+      transmission_type:  vehicle.transmission_type   ?? '',
+      cv:                 vehicle.cv                  ?? '',
+      price:              vehicle.price               ?? '',
+      notes:              vehicle.notes               ?? '',
+    });
+    setEditing(true);
+    setSaveMsg(null);
+  }
+
+  async function saveVehicle() {
+    setSaving(true);
+    setSaveMsg(null);
+    const r = await api.patch(`/idcars/${id}`, editForm).catch(() => ({ ok: false } as { ok: false }));
+    if (r.ok) {
+      setVehicle((v) => v ? { ...v, ...editForm, km: Number(editForm.mileage) || v.km, year: Number(editForm.year) || v.year } : v);
+      setSaveMsg({ ok: true, text: 'Datos guardados correctamente' });
+      setEditing(false);
+    } else {
+      setSaveMsg({ ok: false, text: 'Error al guardar. Inténtalo de nuevo.' });
+    }
+    setSaving(false);
+    setTimeout(() => setSaveMsg(null), 4000);
+  }
 
   async function handleUpload(fileType: string) {
     const files = pendingFiles[fileType];
@@ -201,29 +243,90 @@ export default function IdCarDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Vehicle info */}
         <Card>
-          <h3 className="font-semibold text-slate-800 text-sm mb-4">Datos del Vehículo</h3>
-          <dl className="space-y-2 text-sm">
-            {[
-              ['Marca',        vehicle.brand],
-              ['Modelo',       vehicle.model],
-              ['Versión',      vehicle.version],
-              ['Año',          vehicle.year],
-              ['Matrícula',    vehicle.plate],
-              ['Combustible',  vehicle.fuel],
-              ['Kilometraje',  vehicle.km ? `${vehicle.km.toLocaleString('es-ES')} km` : undefined],
-              ['Color',        vehicle.color],
-              ['Carrocería',   vehicle.body_type],
-              ['Transmisión',  vehicle.transmission_type],
-              ['CV',           vehicle.cv],
-            ].filter(([, v]) => v).map(([label, val]) => (
-              <div key={label as string} className="flex justify-between gap-2">
-                <dt className="text-slate-500 shrink-0">{label}</dt>
-                <dd className="text-slate-700 text-right">{String(val)}</dd>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800 text-sm">Datos del Vehículo</h3>
+            {!editing ? (
+              <button type="button" onClick={startEditing}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+            ) : (
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setEditing(false); setSaveMsg(null); }}
+                  className="text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
+                <button type="button" onClick={saveVehicle} disabled={saving}
+                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  {saving ? 'Guardando…' : 'Guardar'}
+                </button>
               </div>
-            ))}
-          </dl>
-          {vehicle.notes && (
-            <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 whitespace-pre-wrap">{vehicle.notes}</p>
+            )}
+          </div>
+          {saveMsg && (
+            <div className={`mb-3 text-xs font-medium px-3 py-2 rounded-md ${saveMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {saveMsg.text}
+            </div>
+          )}
+          {!editing ? (
+            <>
+              <dl className="space-y-2 text-sm">
+                {[
+                  ['Marca',        vehicle.brand],
+                  ['Modelo',       vehicle.model],
+                  ['Versión',      vehicle.version],
+                  ['Año',          vehicle.year],
+                  ['Matrícula',    vehicle.plate],
+                  ['Combustible',  vehicle.fuel],
+                  ['Kilometraje',  vehicle.km ? `${vehicle.km.toLocaleString('es-ES')} km` : undefined],
+                  ['Color',        vehicle.color],
+                  ['Carrocería',   vehicle.body_type],
+                  ['Transmisión',  vehicle.transmission_type],
+                  ['CV',           vehicle.cv],
+                  ['Precio',       vehicle.price ? `${Number(vehicle.price).toLocaleString('es-ES')} €` : undefined],
+                ].filter(([, v]) => v).map(([label, val]) => (
+                  <div key={label as string} className="flex justify-between gap-2">
+                    <dt className="text-slate-500 shrink-0">{label}</dt>
+                    <dd className="text-slate-700 text-right">{String(val)}</dd>
+                  </div>
+                ))}
+              </dl>
+              {vehicle.notes && (
+                <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 whitespace-pre-wrap">{vehicle.notes}</p>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3 text-sm">
+              {([
+                ['Marca',        'brand',             'text'],
+                ['Modelo',       'model',             'text'],
+                ['Versión',      'version',           'text'],
+                ['Año',          'year',              'number'],
+                ['Matrícula',    'plate',             'text'],
+                ['Combustible',  'fuel',              'text'],
+                ['Kilometraje',  'mileage',           'number'],
+                ['Color',        'color',             'text'],
+                ['Carrocería',   'body_type',         'text'],
+                ['Transmisión',  'transmission_type', 'text'],
+                ['CV',           'cv',                'number'],
+                ['Precio (€)',   'price',             'number'],
+              ] as [string, string, string][]).map(([label, key, type]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-slate-500 w-28 shrink-0 text-xs">{label}</label>
+                  <input
+                    type={type}
+                    value={editForm[key] ?? ''}
+                    onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
+                    className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="text-slate-500 text-xs block mb-1">Notas</label>
+                <textarea
+                  rows={3}
+                  value={editForm['notes'] ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                />
+              </div>
+            </div>
           )}
           <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">
             Propietario: <Link to={`/users/${vehicle.user_id}`} className="text-blue-600 hover:underline">{vehicle.owner_name ?? vehicle.user_id}</Link>

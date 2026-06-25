@@ -276,6 +276,35 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
   }
 });
 
+idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (req, res) => {
+  const ALLOWED = [
+    'title', 'brand', 'model', 'version', 'year', 'plate', 'fuel', 'mileage',
+    'color', 'body_type', 'transmission_type', 'cv', 'price', 'notes',
+    'vehicle_location', 'environmental_label', 'seats', 'doors', 'co2',
+  ];
+  const fields: Record<string, unknown> = {};
+  for (const key of ALLOWED) {
+    if (req.body && key in req.body) fields[key] = req.body[key] ?? null;
+  }
+  if (!Object.keys(fields).length) {
+    res.status(400).json({ ok: false, error: 'no_fields_to_update' });
+    return;
+  }
+  const keys   = Object.keys(fields);
+  const values = keys.map((k) => fields[k]);
+  const set    = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+  try {
+    const result = await query(
+      `UPDATE moveadvisor_user_vehicles SET ${set}, updated_at = NOW() WHERE id = $${keys.length + 1} RETURNING *`,
+      [...values, req.params.id]
+    );
+    if (!result.rows.length) { res.status(404).json({ ok: false, error: 'idcar_not_found' }); return; }
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'idcar_update_failed', detail: (err as Error).message });
+  }
+});
+
 idcarsRouter.patch('/idcars/:id/primary-photo', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const photoUrl = String(req.body?.photo_url || '').trim();
   if (!photoUrl) {
