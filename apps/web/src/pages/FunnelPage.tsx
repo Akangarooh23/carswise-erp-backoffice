@@ -1244,7 +1244,9 @@ export default function FunnelPage() {
                         <tr key={e.id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandEvt, setExpandEvt, e.id)}>
                           <td>
                             <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
-                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span>
+                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)}
+                            </span>
                           </td>
                           <td className="text-xs text-slate-600 max-w-[160px] truncate">
                             {e.user_email || (
@@ -1268,7 +1270,7 @@ export default function FunnelPage() {
                           <tr key={`${e.id}-d`}>
                             <td colSpan={6} className="p-0">
                               <DetailGrid items={[
-                                { label: 'Tipo evento',   value: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span> },
+                                { label: 'Tipo evento',   value: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)}</span> },
                                 { label: 'Email',         value: e.user_email || '–' },
                                 { label: 'ID sesión',     value: <span className="font-mono text-[10px]">{e.anon_id}</span> },
                                 { label: 'Fuente',        value: e.utm_source || '–' },
