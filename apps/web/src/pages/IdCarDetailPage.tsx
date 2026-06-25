@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -12,7 +12,27 @@ const MIME_ICONS: Record<string, string> = {
 const DOC_TYPE_LABELS: Record<string, string> = {
   photo: 'Foto', document: 'Documento', technical_sheet: 'Ficha Técnica',
   circulation_permit: 'Permiso Circulación', itv: 'ITV',
+  insurance: 'Seguro', maintenance_invoices: 'Factura Mantenimiento',
 };
+
+const UPLOAD_SECTIONS = [
+  { key: 'photo',                label: 'Fotos',                 accept: 'image/*',        maxMB: 10, multiple: true  },
+  { key: 'document',             label: 'Documentación general', accept: '.pdf,image/*',   maxMB: 5,  multiple: true  },
+  { key: 'technical_sheet',      label: 'Ficha técnica',         accept: '.pdf,image/*',   maxMB: 5,  multiple: false },
+  { key: 'circulation_permit',   label: 'Permiso de circulación',accept: '.pdf,image/*',   maxMB: 5,  multiple: false },
+  { key: 'itv',                  label: 'ITV',                   accept: '.pdf,image/*',   maxMB: 5,  multiple: false },
+  { key: 'insurance',            label: 'Seguro',                accept: '.pdf,image/*',   maxMB: 5,  multiple: false },
+  { key: 'maintenance_invoices', label: 'Facturas mantenimiento',accept: '.pdf,image/*',   maxMB: 5,  multiple: true  },
+] as const;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function fileIcon(f: IdCarFile) {
   return MIME_ICONS[f.file_mime_type] ?? (f.file_mime_type.startsWith('image/') ? '🖼️' : '📎');
@@ -52,6 +72,23 @@ export default function IdCarDetailPage() {
   const [settingPrimary, setSettingPrimary] = useState(false);
   const [primaryMsg, setPrimaryMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Upload state
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<Record<string, { ok: boolean; text: string } | null>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const loadFiles = useCallback(async () => {
+    if (!id) return;
+    const fRes = await api.get<IdCarFile[]>(`/idcars/${id}/files`);
+    if (fRes.ok) {
+      setFiles(fRes.data);
+      const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo' && f.file_url);
+      if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url ?? null);
+    }
+  }, [id]);
+
   useEffect(() => {
     if (!id) return;
     Promise.all([
@@ -62,10 +99,49 @@ export default function IdCarDetailPage() {
       if (fRes.ok) {
         setFiles(fRes.data);
         const firstPhoto = fRes.data.find((f: IdCarFile) => f.file_type === 'photo' && f.file_url);
-        if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url);
+        if (firstPhoto) setPrimaryPhotoUrl(firstPhoto.file_url ?? null);
       }
     }).finally(() => setLoading(false));
   }, [id]);
+
+  async function handleUpload(fileType: string) {
+    const files = pendingFiles[fileType];
+    if (!files?.length || uploadingType) return;
+    setUploadingType(fileType);
+    setUploadStatus((s) => ({ ...s, [fileType]: null }));
+    let errors = 0;
+    for (const file of files) {
+      try {
+        const base64 = await fileToBase64(file);
+        const r = await api.post(`/idcars/${id}/files`, {
+          file_type: fileType, file_name: file.name,
+          file_mime_type: file.type || 'application/octet-stream',
+          file_content_base64: base64, file_size: file.size,
+        });
+        if (!r.ok) errors++;
+      } catch { errors++; }
+    }
+    const count = files.length;
+    setUploadStatus((s) => ({
+      ...s,
+      [fileType]: errors === 0
+        ? { ok: true,  text: `${count} archivo${count > 1 ? 's' : ''} subido${count > 1 ? 's' : ''} correctamente` }
+        : { ok: false, text: `${errors} de ${count} archivos fallaron` },
+    }));
+    setPendingFiles((p) => ({ ...p, [fileType]: [] }));
+    if (inputRefs.current[fileType]) inputRefs.current[fileType]!.value = '';
+    await loadFiles();
+    setUploadingType(null);
+    setTimeout(() => setUploadStatus((s) => ({ ...s, [fileType]: null })), 4000);
+  }
+
+  async function handleDeleteFile(file: IdCarFile) {
+    if (!window.confirm(`¿Eliminar "${file.file_name}"?`)) return;
+    setDeletingId(file.id);
+    await api.delete(`/idcars/${id}/files/${file.id}?file_type=${file.file_type}`).catch(() => {});
+    await loadFiles();
+    setDeletingId(null);
+  }
 
   async function handleSetPrimary(url: string) {
     if (settingPrimary || url === primaryPhotoUrl) return;
@@ -204,6 +280,13 @@ export default function IdCarDetailPage() {
                     <p className="absolute bottom-0 left-0 right-0 z-10 text-[10px] text-white bg-black/50 px-1.5 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                       {f.file_name}
                     </p>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFile(f); }}
+                      disabled={deletingId === f.id}
+                      className="absolute top-1.5 right-1.5 z-10 bg-red-500/80 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 disabled:opacity-40"
+                      title="Eliminar foto"
+                    >×</button>
                   </div>
                 ))}
               </div>
@@ -229,18 +312,72 @@ export default function IdCarDetailPage() {
                   <td className="text-sm text-slate-700">{fileIcon(f)} {f.file_name}</td>
                   <td className="text-xs text-slate-400">{fmtBytes(f.file_size)}</td>
                   <td className="text-xs text-slate-400">{fmtDate(f.created_at)}</td>
-                  <td>
+                  <td className="flex items-center gap-3">
                     {f.file_url ? (
                       <a href={f.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Ver →</a>
                     ) : (
                       <span className="text-xs text-slate-300">Sin URL</span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFile(f)}
+                      disabled={deletingId === f.id}
+                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
+                    >Eliminar</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table></div>
         )}
+      </Card>
+
+      {/* Upload files */}
+      <Card>
+        <h3 className="font-semibold text-slate-800 text-sm mb-4">Adjuntar archivos</h3>
+        <div className="divide-y divide-slate-100">
+          {UPLOAD_SECTIONS.map(({ key, label, accept, maxMB, multiple }) => {
+            const pending = pendingFiles[key] ?? [];
+            const status  = uploadStatus[key];
+            const isUploading = uploadingType === key;
+            return (
+              <div key={key} className="py-3 flex flex-wrap items-center gap-3">
+                <span className="w-44 text-sm text-slate-600 shrink-0">{label}</span>
+                <input
+                  ref={(el) => { inputRefs.current[key] = el; }}
+                  type="file"
+                  accept={accept}
+                  multiple={multiple}
+                  className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    const tooBig = files.filter((f) => f.size > maxMB * 1024 * 1024);
+                    const valid  = files.filter((f) => f.size <= maxMB * 1024 * 1024);
+                    if (tooBig.length)
+                      setUploadStatus((s) => ({ ...s, [key]: { ok: false, text: `${tooBig.map((f) => f.name).join(', ')} supera ${maxMB} MB` } }));
+                    setPendingFiles((p) => ({ ...p, [key]: valid }));
+                  }}
+                />
+                <span className="text-xs text-slate-400">máx. {maxMB} MB</span>
+                {pending.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleUpload(key)}
+                    disabled={!!uploadingType}
+                    className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {isUploading ? 'Subiendo…' : `↑ Subir ${pending.length} archivo${pending.length > 1 ? 's' : ''}`}
+                  </button>
+                )}
+                {status && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                    {status.ok ? '✓' : '✕'} {status.text}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </Card>
 
       {/* Publish to Marketplace */}

@@ -1,6 +1,34 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { config } from '../config.js';
+
+const FILES_TABLE = 'moveadvisor_user_vehicle_files';
+const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
+const DOCS_TYPES  = new Set(['technical_sheet', 'circulation_permit', 'itv', 'insurance', 'maintenance_invoices']);
+
+async function uploadIdCarFileToSupabase(
+  base64: string, vehicleId: string, fileType: string, fileName: string, mimeType: string
+): Promise<string | null> {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  try {
+    const ext  = fileName.split('.').pop()?.toLowerCase() || 'bin';
+    const path = `idcars/${vehicleId}/${fileType}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const buf  = Buffer.from(base64, 'base64');
+    const res  = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': mimeType || (ext === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
+        'x-upsert': 'true',
+      },
+      body: buf,
+    });
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
+  } catch { return null; }
+}
 
 export const idcarsRouter = Router();
 
@@ -91,6 +119,63 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     res.json({ ok: true, data: [...photos.rows, ...docs.rows] });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'idcar_files_failed', detail: (err as Error).message });
+  }
+});
+
+idcarsRouter.post('/idcars/:id/files', requireRole(['admin', 'operations', 'support']), async (req, res) => {
+  const vehicleId = req.params.id;
+  const { file_type, file_name, file_mime_type, file_content_base64, file_size } = req.body ?? {};
+
+  const ALL_TYPES = ['photo', 'document', 'technical_sheet', 'circulation_permit', 'itv', 'insurance', 'maintenance_invoices'];
+  if (!ALL_TYPES.includes(file_type) || !file_name || !file_content_base64) {
+    res.status(400).json({ ok: false, error: 'invalid_payload' });
+    return;
+  }
+
+  try {
+    const fileUrl = await uploadIdCarFileToSupabase(file_content_base64, vehicleId, file_type, file_name, file_mime_type || 'application/octet-stream');
+    const size    = Number(file_size) || Buffer.from(file_content_base64, 'base64').byteLength;
+
+    let inserted;
+    if (DOCS_TYPES.has(file_type)) {
+      inserted = await query(
+        `INSERT INTO ${DOCS_TABLE} (vehicle_id, document_type, file_name, file_size, file_mime_type, file_url, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,NOW())
+         RETURNING id, document_type AS file_type, file_name, file_size, file_mime_type, file_url, created_at`,
+        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '']
+      ).catch(() =>
+        // Fallback: store in files table as 'document' if documents table has strict CHECK
+        query(
+          `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, created_at)
+           VALUES ($1,'document',$2,$3,$4,$5,NOW())
+           RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, created_at`,
+          [vehicleId, file_name, size, file_mime_type, fileUrl ?? '']
+        )
+      );
+    } else {
+      inserted = await query(
+        `INSERT INTO ${FILES_TABLE} (vehicle_id, file_type, file_name, file_size, file_mime_type, file_url, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,NOW())
+         RETURNING id, file_type, file_name, file_size, file_mime_type, file_url, created_at`,
+        [vehicleId, file_type, file_name, size, file_mime_type, fileUrl ?? '']
+      );
+    }
+    res.status(201).json({ ok: true, data: inserted.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'file_upload_failed', detail: (err as Error).message });
+  }
+});
+
+idcarsRouter.delete('/idcars/:id/files/:fileId', requireRole(['admin', 'operations']), async (req, res) => {
+  const fileType = String(req.query.file_type || '');
+  const table    = DOCS_TYPES.has(fileType) ? DOCS_TABLE : FILES_TABLE;
+  const idCol    = DOCS_TYPES.has(fileType) ? 'id' : 'id';
+
+  try {
+    await query(`DELETE FROM ${table} WHERE ${idCol} = $1 AND vehicle_id = $2`, [req.params.fileId, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'file_delete_failed', detail: (err as Error).message });
   }
 });
 

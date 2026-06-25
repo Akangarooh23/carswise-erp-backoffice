@@ -192,7 +192,7 @@ export interface Workshop {
 // ── IDCars ────────────────────────────────────────────────────────────────────
 export interface IdCarFile {
   id: number;
-  file_type: 'photo' | 'document' | 'technical_sheet' | 'circulation_permit' | 'itv';
+  file_type: 'photo' | 'document' | 'technical_sheet' | 'circulation_permit' | 'itv' | 'insurance' | 'maintenance_invoices';
   file_name: string;
   file_size: number;
   file_mime_type: string;
