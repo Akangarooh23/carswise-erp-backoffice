@@ -41,6 +41,54 @@ const EVENT_LABELS: Record<string, string> = {
   offer_view: 'Oferta vista', register: 'Registro', lead_request: 'Solicitud',
   identify: 'Identificado', login: 'Login',
 };
+
+const PAGE_SECTION_LABELS: Record<string, string> = {
+  // Home & general
+  home:                      'Inicio',
+  userDashboard:             'Mi Panel',
+  userProfile:               'Mi Perfil',
+  plans:                     'Planes',
+  contact:                   'Contacto',
+  aboutCarswise:             'Sobre CarsWise',
+  // Marketplace VO
+  portalVo:                  'Marketplace VO',
+  portalVoDetail:            'Ficha de oferta VO',
+  vehicleDetail:             'Ficha de vehículo',
+  // Comprar / asesor
+  vehicleOptions:            'Quiero Comprar',
+  buyOptions:                'Opciones de compra',
+  rentingOptions:            'Opciones de renting',
+  consejo:                   'Asesor de vehículo',
+  decision:                  'Decisión de compra',
+  // Vender
+  sellOptions:               'Vender mi Coche',
+  sell:                      'Vender (proceso)',
+  // Contratar un servicio
+  serviceOptions:            'Contratar un Servicio',
+  servicesSeo:               'Servicios',
+  serviceInsurance:          'Seguro de coche',
+  serviceMaintenance:        'Mantenimiento',
+  serviceAutogestor:         'Autogestor',
+  serviceAppointment:        'Cita de servicio',
+  serviceAppointmentCalendar:'Calendario de cita',
+  serviceMonthlyPlan:        'Plan mensual',
+  // IDCar / ID Digital
+  idCarsManage:              'ID Digital de tu vehículo',
+  idCarDetail:               'Detalle IDCar',
+  idCarCreate:               'Crear IDCar',
+  // Blog
+  blog:                      'Blog',
+  blogCompraUsado:           'Blog · Guía compra VO',
+  blogRentingCompra:         'Blog · Renting vs Compra',
+  // Legal
+  legalNotice:               'Aviso legal',
+  privacyPolicy:             'Política de privacidad',
+  cookiePolicy:              'Política de cookies',
+  termsConditions:           'Términos y condiciones',
+  marketingPolicy:           'Política de comunicaciones',
+  experianPolicy:            'Política Experian',
+  experianTerms:             'Condiciones Experian',
+};
 const EVENT_COLORS: Record<string, string> = {
   landing: 'bg-slate-100 text-slate-600', page_view: 'bg-sky-50 text-sky-700',
   marketplace_view: 'bg-blue-50 text-blue-700',
@@ -274,7 +322,13 @@ function DrillEvents({ url, title }: { url: string; title?: string }) {
           <tbody>
             {rows.map((e) => (
               <tr key={e.id}>
-                <td><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{EVENT_LABELS[e.event_type] ?? e.event_type}</span></td>
+                <td>
+                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                    {e.event_type === 'page_view' && e.section
+                      ? (PAGE_SECTION_LABELS[e.section] ?? e.section)
+                      : (EVENT_LABELS[e.event_type] ?? e.event_type)}
+                  </span>
+                </td>
                 <td className="text-xs text-slate-600 max-w-[160px] truncate">
                   {e.user_email || <span className="font-mono text-slate-400">{e.anon_id.slice(0, 16)}…</span>}
                 </td>
@@ -545,7 +599,7 @@ export default function FunnelPage() {
       if (!r.ok) return;
       const headers = ['Evento', 'Email', 'Fuente', 'Medio', 'Campaña', 'Oferta', 'URL landing', 'Fecha'];
       const rows = (r.data as FunnelEvent[]).map((e) => [
-        escapeCsv(EVENT_LABELS[e.event_type] ?? e.event_type), escapeCsv(e.user_email || ''),
+        escapeCsv(e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)), escapeCsv(e.user_email || ''),
         escapeCsv(e.utm_source), escapeCsv(e.utm_medium), escapeCsv(e.utm_campaign),
         escapeCsv(e.offer_title || ''), escapeCsv(e.landing_url),
         escapeCsv(e.created_at ? new Date(e.created_at).toLocaleString('es-ES') : ''),
