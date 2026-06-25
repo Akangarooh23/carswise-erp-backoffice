@@ -123,7 +123,8 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
     maintenance_invoices: 'maintenance_invoices',
   };
 
-  const results: ReturnType<typeof listSupabaseStorageFiles> extends Promise<infer T> ? T : never = [];
+  type StorageFile = Awaited<ReturnType<typeof listSupabaseStorageFiles>>[number];
+  const results: StorageFile[] = [];
   let fakeId = -1;
 
   for (const prefix of PREFIXES) {
