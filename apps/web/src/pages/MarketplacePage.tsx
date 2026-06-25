@@ -19,7 +19,7 @@ function fmtCuota(n: number | null | undefined) { return n ? `${n.toLocaleString
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'vo',             label: 'Marketplace CarsWise'  },
+  { key: 'vo',             label: 'VO Empresas Renting'   },
   { key: 'particulares',   label: 'Particulares CarsWise' },
   { key: 'offers',         label: 'Ofertas de portales'   },
   { key: 'renting',        label: 'Ofertas Renting'       },
