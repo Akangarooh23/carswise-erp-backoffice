@@ -105,9 +105,11 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     const [photos, docs] = await Promise.all([
       query(
         `SELECT id, file_type, file_name, file_size, file_mime_type,
-                file_url, file_content_base64, created_at
+                file_url, file_content_base64, created_at,
+                COALESCE(sort_order, 9999) AS sort_order
          FROM moveadvisor_user_vehicle_files
-         WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+         WHERE vehicle_id = $1
+         ORDER BY COALESCE(sort_order, 9999) ASC, created_at ASC`,
         [req.params.id]
       ).catch(() => ({ rows: [] })),
       query(
@@ -307,6 +309,24 @@ idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (r
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'idcar_update_failed', detail: (err as Error).message });
+  }
+});
+
+idcarsRouter.patch('/idcars/:id/photos/reorder', requireRole(['admin', 'operations', 'support']), async (req, res) => {
+  const order = Array.isArray(req.body?.order) ? req.body.order as { id: number; sort_order: number }[] : [];
+  if (!order.length) { res.status(400).json({ ok: false, error: 'empty_order' }); return; }
+  try {
+    // Ensure column exists (safe to run multiple times)
+    await query(`ALTER TABLE moveadvisor_user_vehicle_files ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 9999`).catch(() => {});
+    for (const item of order) {
+      await query(
+        `UPDATE moveadvisor_user_vehicle_files SET sort_order = $1 WHERE id = $2 AND vehicle_id = $3`,
+        [item.sort_order, item.id, req.params.id]
+      ).catch(() => {});
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'reorder_failed', detail: (err as Error).message });
   }
 });
 

@@ -91,6 +91,10 @@ export default function IdCarDetailPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // Photo drag-to-reorder state
+  const draggingPhotoId = useRef<number | null>(null);
+  const [dragOverPhotoId, setDragOverPhotoId] = useState<number | null>(null);
+
   const loadFiles = useCallback(async () => {
     if (!id) return;
     const fRes = await api.get<IdCarFile[]>(`/idcars/${id}/files`);
@@ -193,6 +197,41 @@ export default function IdCarDetailPage() {
     }
     setUploadingType(null);
     setTimeout(() => setUploadStatus((s) => ({ ...s, [fileType]: null })), 4000);
+  }
+
+  async function handleMakePrimaryAndFirst(f: IdCarFile, photoSrc: string) {
+    // Move to first position in order
+    const photoList = files.filter((ff) => ff.file_type === 'photo');
+    if (photoList[0]?.id !== f.id) {
+      const reordered = [f, ...photoList.filter((ff) => ff.id !== f.id)];
+      setFiles([...reordered, ...files.filter((ff) => ff.file_type !== 'photo')]);
+      await api.patch(`/idcars/${id}/photos/reorder`, {
+        order: reordered.map((ff, i) => ({ id: ff.id, sort_order: i })),
+      }).catch(() => {});
+    }
+    // Set as primary photo URL
+    setSettingPrimary(true);
+    const r = await api.patch(`/idcars/${id}/primary-photo`, { photo_url: photoSrc }).catch(() => ({ ok: false } as { ok: false }));
+    if (r.ok) { setPrimaryPhotoUrl(photoSrc); setPrimaryMsg({ ok: true, text: 'Foto principal actualizada' }); }
+    else setPrimaryMsg({ ok: false, text: 'Error al establecer foto principal' });
+    setSettingPrimary(false);
+    setTimeout(() => setPrimaryMsg(null), 3000);
+  }
+
+  async function handleReorderPhotos(fromId: number, toId: number) {
+    const photoList = files.filter((f) => f.file_type === 'photo');
+    const fromIdx   = photoList.findIndex((f) => f.id === fromId);
+    const toIdx     = photoList.findIndex((f) => f.id === toId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+    const reordered = [...photoList];
+    const [moved]   = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    // Optimistic UI update
+    setFiles([...reordered, ...files.filter((f) => f.file_type !== 'photo')]);
+    // Persist
+    await api.patch(`/idcars/${id}/photos/reorder`, {
+      order: reordered.map((f, i) => ({ id: f.id, sort_order: i })),
+    }).catch(() => {});
   }
 
   async function handleDeleteFile(file: IdCarFile) {
@@ -366,12 +405,30 @@ export default function IdCarDetailPage() {
           ) : (
             <>
               <p className="px-4 pt-3 text-xs text-slate-400">Haz clic en una foto para ampliarla. Pulsa «Hacer principal» para que sea la foto principal del marketplace.</p>
+              <p className="px-4 pt-1 pb-0 text-xs text-slate-400">Arrastra para reordenar · La primera foto es la principal</p>
               <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {photos.map((f) => {
+                {photos.map((f, photoIdx) => {
                   const photoSrc = resolveFileUrl(f);
+                  const isDraggingOver = dragOverPhotoId === f.id;
                   return (
-                  <div key={f.id} className="relative group rounded-lg overflow-hidden border aspect-square bg-slate-50 transition-colors"
-                    style={{ borderColor: photoSrc === primaryPhotoUrl ? '#f59e0b' : undefined }}
+                  <div
+                    key={f.id}
+                    draggable
+                    onDragStart={() => { draggingPhotoId.current = f.id; }}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverPhotoId(f.id); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggingPhotoId.current !== null) handleReorderPhotos(draggingPhotoId.current, f.id);
+                      draggingPhotoId.current = null;
+                      setDragOverPhotoId(null);
+                    }}
+                    onDragEnd={() => { draggingPhotoId.current = null; setDragOverPhotoId(null); }}
+                    className="relative group rounded-lg overflow-hidden border aspect-square bg-slate-50 transition-all cursor-grab active:cursor-grabbing"
+                    style={{
+                      borderColor: photoIdx === 0 ? '#f59e0b' : isDraggingOver ? '#3b82f6' : undefined,
+                      borderWidth: (photoIdx === 0 || isDraggingOver) ? 2 : 1,
+                      opacity: draggingPhotoId.current === f.id ? 0.5 : 1,
+                    }}
                   >
                     <button
                       onClick={() => setLightbox(photoSrc)}
@@ -385,18 +442,23 @@ export default function IdCarDetailPage() {
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                     </button>
 
-                    {photoSrc === primaryPhotoUrl ? (
+                    {/* Order badge */}
+                    <div className="absolute top-1.5 right-1.5 z-10 bg-black/50 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center pointer-events-none">
+                      {photoIdx + 1}
+                    </div>
+
+                    {photoIdx === 0 ? (
                       <div className="absolute top-1.5 left-1.5 z-10 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
                         ⭐ Principal
                       </div>
                     ) : (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleSetPrimary(photoSrc); }}
+                        onClick={(e) => { e.stopPropagation(); handleMakePrimaryAndFirst(f, photoSrc); }}
                         disabled={settingPrimary}
                         className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
                       >
-                        ⭐ Hacer principal
+                        ⭐ Principal
                       </button>
                     )}
 
