@@ -17,7 +17,7 @@ async function uploadIdCarFileToSupabase(
   }
   try {
     const ext  = fileName.split('.').pop()?.toLowerCase() || 'bin';
-    const path = `idcars/${vehicleId}/${fileType}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const path = `vehicles/${vehicleId}/${fileType}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const buf  = Buffer.from(base64, 'base64');
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`;
     console.log('[supabase-upload] POST', uploadUrl, 'size=%d mime=%s', buf.length, mimeType);
@@ -124,8 +124,8 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return [];
 
   const BUCKET = 'vehicle-files';
-  // The user dashboard uploads to 'vehicles/{id}/', ERP uploads to 'idcars/{id}/'
-  const PREFIXES = [`vehicles/${vehicleId}`, `idcars/${vehicleId}`];
+  // Both ERP and user dashboard use vehicles/{id}/ as the canonical path
+  const PREFIXES = [`vehicles/${vehicleId}`];
   const BASE_URL = `${SUPABASE_URL}/storage/v1`;
   const headers = { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' };
 
