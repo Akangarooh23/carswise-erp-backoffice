@@ -678,7 +678,7 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
 
-  const conditions: string[] = ["vs.state = 'active_sale'", "v.price IS NOT NULL", "v.price > 0"];
+  const conditions: string[] = ["vs.state = 'active_sale'", "v.price IS NOT NULL", "v.price != '' AND v.price != '0'"];
   const values: unknown[]    = [];
 
   if (q) {
