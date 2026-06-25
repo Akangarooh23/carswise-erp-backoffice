@@ -400,12 +400,46 @@ export default function IdCarDetailPage() {
               </span>
             )}
           </div>
+          {/* Photo upload — always visible */}
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3">
+            <input
+              ref={(el) => { inputRefs.current['photo'] = el; }}
+              type="file"
+              accept="image/*"
+              multiple
+              className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+              onChange={(e) => {
+                const fs = Array.from(e.target.files ?? []);
+                const tooBig = fs.filter((f) => f.size > 10 * 1024 * 1024);
+                const valid  = fs.filter((f) => f.size <= 10 * 1024 * 1024);
+                if (tooBig.length)
+                  setUploadStatus((s) => ({ ...s, photo: { ok: false, text: `${tooBig.map((f) => f.name).join(', ')} supera 10 MB` } }));
+                setPendingFiles((p) => ({ ...p, photo: valid }));
+              }}
+            />
+            <span className="text-xs text-slate-400">máx. 10 MB · JPG, PNG, WEBP</span>
+            {(pendingFiles['photo'] ?? []).length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleUpload('photo')}
+                disabled={!!uploadingType}
+                className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {uploadingType === 'photo' ? 'Subiendo…' : `↑ Subir ${pendingFiles['photo']?.length} foto${(pendingFiles['photo']?.length ?? 0) > 1 ? 's' : ''}`}
+              </button>
+            )}
+            {uploadStatus['photo'] && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${uploadStatus['photo']?.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {uploadStatus['photo']?.ok ? '✓' : '✕'} {uploadStatus['photo']?.text}
+              </span>
+            )}
+          </div>
+
           {photos.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-10">Sin fotos</p>
+            <p className="text-slate-400 text-sm text-center py-10">Sin fotos · Sube imágenes arriba</p>
           ) : (
             <>
-              <p className="px-4 pt-3 text-xs text-slate-400">Haz clic en una foto para ampliarla. Pulsa «Hacer principal» para que sea la foto principal del marketplace.</p>
-              <p className="px-4 pt-1 pb-0 text-xs text-slate-400">Arrastra para reordenar · La primera foto es la principal</p>
+              <p className="px-4 pt-3 text-xs text-slate-400">Haz clic para ampliar · Arrastra para reordenar · La primera foto es la principal</p>
               <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {photos.map((f, photoIdx) => {
                   const photoSrc = resolveFileUrl(f);
