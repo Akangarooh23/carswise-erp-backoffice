@@ -100,10 +100,81 @@ idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', '
   }
 });
 
+// List files from Supabase Storage for a given vehicle path prefix
+async function listSupabaseStorageFiles(vehicleId: string): Promise<{
+  id: number; file_type: string; file_name: string; file_size: number;
+  file_mime_type: string; file_url: string; file_content_base64: null;
+  created_at: string; sort_order: number; source: 'storage';
+}[]> {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return [];
+
+  const BUCKET = 'vehicle-files';
+  // The user dashboard uploads to 'vehicles/{id}/', ERP uploads to 'idcars/{id}/'
+  const PREFIXES = [`vehicles/${vehicleId}`, `idcars/${vehicleId}`];
+  const BASE_URL = `${SUPABASE_URL}/storage/v1`;
+  const headers = { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' };
+
+  const FILE_TYPE_MAP: Record<string, string> = {
+    photos: 'photo', documents: 'document', photo: 'photo', document: 'document',
+    'technical-sheet': 'technical_sheet', technical_sheet: 'technical_sheet',
+    'circulation-permit': 'circulation_permit', circulation_permit: 'circulation_permit',
+    itv: 'itv', insurance: 'insurance', 'maintenance-invoices': 'maintenance_invoices',
+    maintenance_invoices: 'maintenance_invoices',
+  };
+
+  const results: ReturnType<typeof listSupabaseStorageFiles> extends Promise<infer T> ? T : never = [];
+  let fakeId = -1;
+
+  for (const prefix of PREFIXES) {
+    try {
+      // List subfolders
+      const foldersRes = await fetch(`${BASE_URL}/object/list/${BUCKET}`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ prefix: `${prefix}/`, delimiter: '/', limit: 50 }),
+      });
+      if (!foldersRes.ok) continue;
+      const foldersData = await foldersRes.json() as { name: string }[];
+      const folders = foldersData.filter((f) => f.name?.endsWith('/'));
+
+      for (const folder of folders) {
+        const folderName = folder.name.replace(/\/$/, '').split('/').pop() ?? '';
+        const fileType = FILE_TYPE_MAP[folderName] ?? 'document';
+
+        // List files in this folder
+        const filesRes = await fetch(`${BASE_URL}/object/list/${BUCKET}`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ prefix: `${prefix}/${folderName}/`, delimiter: '/', limit: 100 }),
+        });
+        if (!filesRes.ok) continue;
+        const filesData = await filesRes.json() as { name: string; metadata?: { size?: number; mimetype?: string; lastModified?: string } }[];
+
+        for (const file of filesData.filter((f) => f.name && !f.name.endsWith('/'))) {
+          const fileName = file.name.split('/').pop() ?? file.name;
+          const fileUrl  = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${prefix}/${folderName}/${fileName}`;
+          results.push({
+            id: fakeId--,
+            file_type: fileType,
+            file_name: fileName,
+            file_size: file.metadata?.size ?? 0,
+            file_mime_type: file.metadata?.mimetype ?? (fileType === 'photo' ? 'image/jpeg' : 'application/octet-stream'),
+            file_url: fileUrl,
+            file_content_base64: null,
+            created_at: file.metadata?.lastModified ?? new Date().toISOString(),
+            sort_order: 9999,
+            source: 'storage',
+          });
+        }
+      }
+    } catch { /* continue */ }
+  }
+  return results;
+}
+
 idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
-    // Try with sort_order first; fall back to created_at order if column doesn't exist yet
-    const filesQuery = await query(
+    // Query DB (fallback chain if columns don't exist yet)
+    const dbFilesQuery = await query(
       `SELECT id, file_type, file_name, file_size, file_mime_type,
               file_url, file_content_base64, created_at,
               COALESCE(sort_order, 9999) AS sort_order
@@ -114,39 +185,40 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     ).catch(() =>
       query(
         `SELECT id, file_type, file_name, file_size, file_mime_type,
-                file_url, file_content_base64, created_at, 9999 AS sort_order
+                file_url, NULL AS file_content_base64, created_at, 9999 AS sort_order
          FROM moveadvisor_user_vehicle_files
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
-      ).catch(() =>
-        // Last resort: query without file_content_base64 if that column also doesn't exist
-        query(
-          `SELECT id, file_type, file_name, file_size, file_mime_type,
-                  file_url, NULL AS file_content_base64, created_at, 9999 AS sort_order
-           FROM moveadvisor_user_vehicle_files
-           WHERE vehicle_id = $1 ORDER BY created_at ASC`,
-          [req.params.id]
-        ).catch(() => ({ rows: [] }))
-      )
+      ).catch(() => ({ rows: [] }))
     );
 
-    const [photos, docs] = [filesQuery, await query(
+    const dbDocsQuery = await query(
+      `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
+              file_url, file_content_base64, created_at
+       FROM moveadvisor_user_vehicle_documents
+       WHERE vehicle_id = $1 ORDER BY created_at ASC`,
+      [req.params.id]
+    ).catch(() =>
+      query(
         `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
-                file_url, file_content_base64, created_at
+                file_url, NULL AS file_content_base64, created_at
          FROM moveadvisor_user_vehicle_documents
          WHERE vehicle_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
-      ).catch(() =>
-        query(
-          `SELECT id, document_type AS file_type, file_name, file_size, file_mime_type,
-                  file_url, NULL AS file_content_base64, created_at
-           FROM moveadvisor_user_vehicle_documents
-           WHERE vehicle_id = $1 ORDER BY created_at ASC`,
-          [req.params.id]
-        ).catch(() => ({ rows: [] }))
-      ),
-    ]);
-    res.json({ ok: true, data: [...photos.rows, ...docs.rows] });
+      ).catch(() => ({ rows: [] }))
+    );
+
+    const dbFiles   = [...dbFilesQuery.rows, ...dbDocsQuery.rows];
+    const dbFileUrls = new Set(dbFiles.map((f: { file_url: string }) => f.file_url).filter(Boolean));
+
+    // Also list from Supabase Storage — fills gaps when DB records are missing
+    const storageFiles = await listSupabaseStorageFiles(req.params.id);
+
+    // Merge: deduplicate by URL so we don't show the same file twice
+    const storageOnly = storageFiles.filter((sf) => !dbFileUrls.has(sf.file_url));
+    const allFiles = [...dbFiles, ...storageOnly];
+
+    res.json({ ok: true, data: allFiles });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'idcar_files_failed', detail: (err as Error).message });
   }
