@@ -124,8 +124,8 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return [];
 
   const BUCKET = 'vehicle-files';
-  // Both ERP and user dashboard use vehicles/{id}/ as the canonical path
-  const PREFIXES = [`vehicles/${vehicleId}`];
+  // vehicles/ is the canonical path; idcars/ kept as legacy for existing uploads
+  const PREFIXES = [`vehicles/${vehicleId}`, `idcars/${vehicleId}`];
   const BASE_URL = `${SUPABASE_URL}/storage/v1`;
   const headers = { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' };
 

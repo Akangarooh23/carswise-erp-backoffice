@@ -432,27 +432,11 @@ export default function IdCarDetailPage() {
         <Card className="lg:col-span-2" padding={false}>
           <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-2 flex-wrap">
             <h3 className="font-semibold text-slate-800 text-sm">Fotos <span className="text-slate-400 font-normal">({photos.length})</span></h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              {primaryMsg && (
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                  {primaryMsg.text}
-                </span>
-              )}
-              {migrateMsg && (
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${migrateMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                  {migrateMsg.text}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleMigrateToStorage}
-                disabled={migrating}
-                className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 disabled:opacity-50 whitespace-nowrap"
-                title="Subir a Supabase Storage los archivos guardados en base64"
-              >
-                {migrating ? 'Migrando…' : '☁ Migrar a Supabase'}
-              </button>
-            </div>
+            {primaryMsg && (
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {primaryMsg.text}
+              </span>
+            )}
           </div>
           {/* Photo upload — always visible */}
           <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3">
