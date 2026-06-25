@@ -678,7 +678,7 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
 
-  const conditions: string[] = ["vs.state = 'active_sale'", "v.price IS NOT NULL", "v.price != '' AND v.price != '0'"];
+  const conditions: string[] = ["(vs.state = 'active_sale' OR vs.is_listed = true)", "v.price IS NOT NULL", "v.price != '' AND v.price != '0'"];
   const values: unknown[]    = [];
 
   if (q) {
@@ -728,18 +728,21 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
   if (!vehicleId) return res.status(400).json({ ok: false, error: 'vehicleId required' });
   if (!['active_sale', 'owned'].includes(state)) return res.status(400).json({ ok: false, error: 'state must be active_sale or owned' });
 
+  // Map old state values to the new is_listed model
+  const isListed = state === 'active_sale';
+
   try {
     const vRow = await query(`SELECT user_email, user_id FROM moveadvisor_user_vehicles WHERE id = $1 LIMIT 1`, [vehicleId]);
     const v    = (vRow as unknown as { rows: { user_email: string; user_id: string | null }[] }).rows?.[0];
     if (!v) return res.status(404).json({ ok: false, error: 'vehicle_not_found' });
 
     await query(
-      `INSERT INTO moveadvisor_user_vehicle_states (user_email, user_id, vehicle_id, state, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (user_email, vehicle_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()`,
-      [v.user_email, v.user_id, vehicleId, state]
+      `INSERT INTO moveadvisor_user_vehicle_states (user_email, user_id, vehicle_id, state, is_listed, updated_at)
+       VALUES ($1, $2, $3, 'owned', $4, NOW())
+       ON CONFLICT (user_email, vehicle_id) DO UPDATE SET is_listed = EXCLUDED.is_listed, updated_at = NOW()`,
+      [v.user_email, v.user_id, vehicleId, isListed]
     );
-    res.json({ ok: true, vehicleId, state });
+    res.json({ ok: true, vehicleId, state, isListed });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'db_error', detail: (err as Error).message });
   }
