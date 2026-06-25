@@ -473,6 +473,7 @@ type ParticularsOffer = {
   price: number; cv: number | null; transmission_type: string | null;
   vehicle_location: string | null; plate: string | null; notes: string | null;
   listing_url: string | null; updated_at: string;
+  owner_name: string | null; owner_phone: string | null;
 };
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -1184,7 +1185,7 @@ export default function MarketplacePage() {
               <table className="erp-table">
                 <thead>
                   <tr>
-                    <th>Vehículo</th><th>Usuario</th><th>Precio</th><th>Km</th>
+                    <th>Vehículo</th><th>Cliente</th><th>Precio</th><th>Km</th>
                     <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th><th>Acciones</th>
                   </tr>
                 </thead>
@@ -1192,10 +1193,14 @@ export default function MarketplacePage() {
                   {particularsItems.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                        <p className="text-xs text-slate-400">{item.brand} {item.model}{item.version ? ` · ${item.version}` : ''}</p>
+                        <p className="font-medium text-slate-800 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
+                        {item.year ? <p className="text-xs text-slate-400">{item.year}{item.fuel ? ` · ${item.fuel}` : ''}{item.cv ? ` · ${item.cv} CV` : ''}</p> : null}
                       </td>
-                      <td className="text-sm text-slate-500">{item.user_email}</td>
+                      <td>
+                        <p className="text-sm font-medium text-slate-700">{item.owner_name || item.user_email}</p>
+                        <p className="text-xs text-slate-400">{item.user_email}</p>
+                        {item.owner_phone ? <p className="text-xs text-slate-400">{item.owner_phone}</p> : null}
+                      </td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year || '–'}</td>

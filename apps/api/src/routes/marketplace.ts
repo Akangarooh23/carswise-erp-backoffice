@@ -694,9 +694,12 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
         `SELECT v.id, v.user_email, v.title, v.brand, v.model, v.version,
                 v.year, v.mileage, v.fuel, v.color, v.price,
                 v.cv, v.transmission_type, v.vehicle_location, v.plate,
-                v.notes, vs.listing_url, v.updated_at
+                v.notes, vs.listing_url, v.updated_at,
+                COALESCE(u.name || ' ' || COALESCE(u.apellidos, ''), u.name, v.user_email) AS owner_name,
+                u.phone AS owner_phone
          FROM moveadvisor_user_vehicles v
          INNER JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
+         LEFT JOIN moveadvisor_users u ON lower(u.email) = lower(v.user_email)
          ${where}
          ORDER BY v.updated_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
