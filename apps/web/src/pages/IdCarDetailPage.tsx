@@ -77,6 +77,8 @@ export default function IdCarDetailPage() {
   const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState<string | null>(null);
   const [settingPrimary, setSettingPrimary] = useState(false);
   const [primaryMsg, setPrimaryMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateMsg, setMigrateMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Edit vehicle data state
   const [editing, setEditing] = useState(false);
@@ -257,6 +259,20 @@ export default function IdCarDetailPage() {
     setTimeout(() => setPrimaryMsg(null), 3000);
   }
 
+  async function handleMigrateToStorage() {
+    if (!id) return;
+    setMigrating(true);
+    setMigrateMsg(null);
+    const r = await api.post<{ total: number; migrated: number }>(`/idcars/${id}/migrate-to-storage`, {});
+    if (r.ok) {
+      setMigrateMsg({ ok: true, text: `${r.data.migrated}/${r.data.total} archivos migrados a Supabase` });
+      await loadFiles();
+    } else {
+      setMigrateMsg({ ok: false, text: 'Error al migrar' });
+    }
+    setMigrating(false);
+  }
+
   async function handlePublish() {
     if (!id) return;
     setPublishing(true);
@@ -392,13 +408,29 @@ export default function IdCarDetailPage() {
 
         {/* Photos */}
         <Card className="lg:col-span-2" padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-2 flex-wrap">
             <h3 className="font-semibold text-slate-800 text-sm">Fotos <span className="text-slate-400 font-normal">({photos.length})</span></h3>
-            {primaryMsg && (
-              <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                {primaryMsg.text}
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {primaryMsg && (
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  {primaryMsg.text}
+                </span>
+              )}
+              {migrateMsg && (
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${migrateMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  {migrateMsg.text}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleMigrateToStorage}
+                disabled={migrating}
+                className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 disabled:opacity-50 whitespace-nowrap"
+                title="Subir a Supabase Storage los archivos guardados en base64"
+              >
+                {migrating ? 'Migrando…' : '☁ Migrar a Supabase'}
+              </button>
+            </div>
           </div>
           {/* Photo upload — always visible */}
           <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3">

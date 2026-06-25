@@ -227,8 +227,22 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
     const dbFiles   = [...dbFilesQuery.rows, ...dbDocsQuery.rows];
     const dbFileUrls = new Set<string>(dbFiles.map((f) => String(f.file_url || '')).filter(Boolean));
 
-    // Also list from Supabase Storage — fills gaps when DB records are missing
-    const storageFiles = await listSupabaseStorageFiles(req.params.id);
+    // Find all vehicle IDs with the same plate + user_id (catches duplicate records for same car)
+    const sameVehicleQuery = await query(
+      `SELECT id FROM moveadvisor_user_vehicles
+       WHERE user_id = (SELECT user_id FROM moveadvisor_user_vehicles WHERE id = $1)
+         AND plate   = (SELECT plate   FROM moveadvisor_user_vehicles WHERE id = $1)
+         AND plate IS NOT NULL AND plate != ''`,
+      [req.params.id]
+    ).catch(() => ({ rows: [] }));
+    const relatedIds = (sameVehicleQuery as { rows: { id: string }[] }).rows
+      .map((r) => String(r.id))
+      .filter((id) => id !== req.params.id);
+
+    // List from Supabase Storage for this vehicle AND any related IDs
+    const storageFiles = (await Promise.all(
+      [req.params.id, ...relatedIds].map((id) => listSupabaseStorageFiles(id))
+    )).flat();
 
     // Merge: deduplicate by URL so we don't show the same file twice
     const storageOnly = storageFiles.filter((sf) => !dbFileUrls.has(sf.file_url));
@@ -297,6 +311,50 @@ idcarsRouter.delete('/idcars/:id/files/:fileId', requireRole(['admin', 'operatio
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'file_delete_failed', detail: (err as Error).message });
+  }
+});
+
+// Migrate base64 files stored in DB to Supabase Storage
+idcarsRouter.post('/idcars/:id/migrate-to-storage', requireRole(['admin', 'operations']), async (req, res) => {
+  const vehicleId = req.params.id;
+  try {
+    const filesResult = await query(
+      `SELECT id, file_type, file_name, file_mime_type, file_content_base64
+       FROM ${FILES_TABLE}
+       WHERE vehicle_id = $1 AND (file_url = '' OR file_url IS NULL)
+         AND file_content_base64 IS NOT NULL AND file_content_base64 != ''`,
+      [vehicleId]
+    ).catch(() => ({ rows: [] }));
+
+    const docsResult = await query(
+      `SELECT id, document_type AS file_type, file_name, file_mime_type, file_content_base64
+       FROM ${DOCS_TABLE}
+       WHERE vehicle_id = $1 AND (file_url = '' OR file_url IS NULL)
+         AND file_content_base64 IS NOT NULL AND file_content_base64 != ''`,
+      [vehicleId]
+    ).catch(() => ({ rows: [] }));
+
+    const toMigrate = [...filesResult.rows, ...docsResult.rows];
+    let migrated = 0;
+
+    for (const f of toMigrate) {
+      const url = await uploadIdCarFileToSupabase(
+        String(f.file_content_base64), vehicleId, String(f.file_type),
+        String(f.file_name), String(f.file_mime_type || 'application/octet-stream')
+      );
+      if (!url) continue;
+
+      const table = DOCS_TYPES.has(String(f.file_type)) ? DOCS_TABLE : FILES_TABLE;
+      await query(
+        `UPDATE ${table} SET file_url = $1, file_content_base64 = '' WHERE id = $2`,
+        [url, f.id]
+      ).catch(() => null);
+      migrated++;
+    }
+
+    res.json({ ok: true, total: toMigrate.length, migrated });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'migrate_failed', detail: (err as Error).message });
   }
 });
 
