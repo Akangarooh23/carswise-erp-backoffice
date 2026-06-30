@@ -34,8 +34,8 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
   const rows: unknown[] = [];
 
   try {
-    // ── 1. Subscription invoices ──
-    if (type === 'all' || type === 'suscripcion') {
+    // ── 1. Subscription & tasación invoices ──
+    if (type === 'all' || type === 'suscripcion' || type === 'tasacion') {
       const r = await query(`
         SELECT
           i.id, i.email, u.name, u.apellidos,
@@ -44,6 +44,7 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
           i.amount::numeric  AS precio_facturado,
           i.status,
           u.plan_id          AS plan,
+          i.description,
           i.cw_invoice_number,
           i.cw_sent_at,
           i.cw_generated_at,
@@ -54,12 +55,21 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
       `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
 
       for (const row of r.rows as Record<string, unknown>[]) {
+        const dbDescription  = String(row.description || '').trim();
+        const isTasacion     = /informe|tasaci/i.test(dbDescription);
+        const derivedType    = isTasacion ? 'tasacion' : 'suscripcion';
+        if (type === 'suscripcion' && isTasacion)  continue;
+        if (type === 'tasacion'    && !isTasacion) continue;
+        const planLabel = String(row.plan || '');
+        const fallbackDesc = planLabel
+          ? `Plan ${planLabel.charAt(0).toUpperCase() + planLabel.slice(1)} · ${row.number}`
+          : String(row.number || row.id);
         rows.push({
-          id: row.id, type: 'suscripcion',
+          id: row.id, type: derivedType,
           date: row.date,
           customer_name: [row.name, row.apellidos].filter(Boolean).join(' ') || row.email,
           customer_email: row.email,
-          description: `Plan ${String(row.plan || '').charAt(0).toUpperCase() + String(row.plan || '').slice(1)} · ${row.number}`,
+          description: dbDescription || fallbackDesc,
           precio: row.precio ? Number(row.precio) : 0,
           precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
           status: row.status,

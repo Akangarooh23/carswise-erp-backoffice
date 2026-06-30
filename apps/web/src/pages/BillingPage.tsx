@@ -13,7 +13,7 @@ interface BillingSummary {
 
 interface InvoiceRow {
   id: string;
-  type: 'suscripcion' | 'venta' | 'renting';
+  type: 'suscripcion' | 'venta' | 'renting' | 'tasacion';
   date: string;
   customer_name: string;
   customer_email: string;
@@ -41,9 +41,10 @@ const TYPE_BADGE: Record<string, string> = {
   suscripcion: 'bg-blue-50 text-blue-700',
   venta:       'bg-emerald-50 text-emerald-700',
   renting:     'bg-violet-50 text-violet-700',
+  tasacion:    'bg-amber-50 text-amber-700',
 };
 const TYPE_LABEL: Record<string, string> = {
-  suscripcion: 'Suscripción', venta: 'Venta', renting: 'Renting',
+  suscripcion: 'Suscripción', venta: 'Venta', renting: 'Renting', tasacion: 'Tasación',
 };
 const STATUS_BADGE: Record<string, string> = {
   Pagada:     'bg-emerald-100 text-emerald-700',
@@ -54,11 +55,12 @@ const STATUS_BADGE: Record<string, string> = {
   cancelled:  'bg-red-100 text-red-600',
 };
 
-const TABS = ['all', 'suscripcion', 'venta', 'renting', 'free'] as const;
+const TABS = ['all', 'suscripcion', 'tasacion', 'venta', 'renting', 'free'] as const;
 type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = {
   all:         'Todo',
   suscripcion: 'Suscripciones',
+  tasacion:    'Tasaciones',
   venta:       'Ventas vehículos',
   renting:     'Contratos renting',
   free:        'Usuarios free',
