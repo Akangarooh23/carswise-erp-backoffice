@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
-import { requireRole } from '../middleware/auth.js';
+import { requireRole, type Role } from '../middleware/auth.js';
 
 export const visitsRouter = Router();
 
-const ROLES = ['admin', 'support', 'operations', 'sales'];
+const ROLES: Role[] = ['admin', 'support', 'operations', 'sales'];
 
 // GET /visit-slots?offerId=X  — returns available + booked slots for an offer
 visitsRouter.get('/visit-slots', requireRole(ROLES), async (req, res) => {
