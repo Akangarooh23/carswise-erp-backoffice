@@ -21,6 +21,7 @@ interface InvoiceRow {
   precio: number | null;
   precio_facturado: number;
   status: string;
+  pdf_url?: string | null;
   cw_invoice_number?: string | null;
   cw_sent_at?: string | null;
   cw_generated_at?: string | null;
@@ -309,6 +310,25 @@ export default function BillingPage() {
                               className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
                               {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar'}
                             </button>
+                          ) : inv.type === 'tasacion' ? (
+                            inv.pdf_url ? (
+                              <div className="flex flex-col gap-1">
+                                <a
+                                  href={inv.pdf_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                                  ↓ {inv.id.slice(-6).toUpperCase()}
+                                </a>
+                                {inv.cw_sent_at && (
+                                  <span className="text-[10px] text-emerald-600 font-medium">
+                                    ✓ Enviada · {new Date(inv.cw_sent_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">{inv.cw_generated_at ? 'Sin URL' : '–'}</span>
+                            )
                           ) : (
                             <span className="text-xs text-slate-400">–</span>
                           )}
