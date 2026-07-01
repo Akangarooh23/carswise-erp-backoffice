@@ -101,3 +101,31 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// GET /all-bookings — global agenda for ERP (all upcoming bookings)
+visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
+  const status = String(req.query.status || 'confirmed').trim();
+  const from   = String(req.query.from || '').trim();
+  const to     = String(req.query.to   || '').trim();
+  try {
+    let sql = `
+      SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
+             b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
+             b.status, b.source, b.created_at,
+             a.source AS slot_source
+      FROM vehicle_visit_bookings b
+      JOIN vehicle_visit_availability a ON a.id = b.availability_id
+      WHERE 1=1
+    `;
+    const params: (string | number)[] = [];
+    let pi = 1;
+    if (status) { sql += ` AND b.status = $${pi++}`; params.push(status); }
+    if (from)   { sql += ` AND b.starts_at >= $${pi++}`; params.push(from); }
+    if (to)     { sql += ` AND b.starts_at <= $${pi++}`; params.push(to); }
+    sql += ' ORDER BY b.starts_at ASC LIMIT 200';
+    const r = await query(sql, params);
+    return res.json({ ok: true, bookings: r.rows });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});

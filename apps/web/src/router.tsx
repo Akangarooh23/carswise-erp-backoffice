@@ -22,6 +22,7 @@ const ConsentimientosPage       = lazy(() => import('./pages/ConsentimientosPage
 const MarketingAnalyticsPage    = lazy(() => import('./pages/MarketingAnalyticsPage.js'));
 const ContractsPage             = lazy(() => import('./pages/ContractsPage.js'));
 const ProviderBillingPage       = lazy(() => import('./pages/ProviderBillingPage.js'));
+const BookingsPage              = lazy(() => import('./pages/BookingsPage.js'));
 
 const Loader = () => (
   <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'users/:id',         element: <Suspense fallback={<Loader />}><UserDetailPage /></Suspense> },
       { path: 'marketplace',       element: <Suspense fallback={<Loader />}><MarketplacePage /></Suspense> },
       { path: 'appointments',      element: <Suspense fallback={<Loader />}><AppointmentsPage /></Suspense> },
+      { path: 'bookings',          element: <Suspense fallback={<Loader />}><BookingsPage /></Suspense> },
       { path: 'tickets',           element: <Suspense fallback={<Loader />}><TicketsPage /></Suspense> },
       { path: 'tickets/:id',       element: <Suspense fallback={<Loader />}><TicketDetailPage /></Suspense> },
       { path: 'workshops',         element: <Suspense fallback={<Loader />}><WorkshopsPage /></Suspense> },
