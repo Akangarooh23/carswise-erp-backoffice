@@ -65,6 +65,7 @@ interface IdCarDetail extends IdCar {
   version?: string;
 }
 
+
 export default function IdCarDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [vehicle, setVehicle]   = useState<IdCarDetail | null>(null);
@@ -672,6 +673,7 @@ export default function IdCarDetailPage() {
           </div>
         )}
       </Card>
+
     </div>
   );
 }

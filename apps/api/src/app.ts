@@ -17,6 +17,7 @@ import { analyticsRouter } from './routes/analytics.js';
 import { contractsRouter } from './routes/contracts.js';
 import { providerBillingRouter } from './routes/provider-billing.js';
 import { invoiceDownloadRouter } from './routes/invoice-download.js';
+import { visitsRouter } from './routes/visits.js';
 
 export function createApp() {
   const app = express();
@@ -41,6 +42,7 @@ export function createApp() {
   app.use('/api', contractsRouter);
   app.use('/api', providerBillingRouter);
   app.use('/api', invoiceDownloadRouter);
+  app.use('/api', visitsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ ok: false, error: 'not_found' });

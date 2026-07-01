@@ -460,6 +460,118 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
   );
 }
 
+// ── Visit helpers ─────────────────────────────────────────────────────────────
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function fmtVDate(iso: string) {
+  return new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function fmtVTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+const V_TIMES: string[] = [];
+for (let h = 8; h <= 21; h++)
+  for (let m = 0; m < 60; m += 30)
+    V_TIMES.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+
+type VisitEntry = { slots: any[]; bookings: any[]; loading: boolean };
+type SlotFormState = { date: string; timeStart: string; timeEnd: string };
+
+function VisitsPanel({
+  offerId, data, slotForm, onFormChange, onAdd, adding, msg, onRemoveSlot, onCancelBooking,
+}: {
+  offerId: string; data: VisitEntry;
+  slotForm: SlotFormState; onFormChange: (f: SlotFormState) => void;
+  onAdd: () => void; adding: boolean; msg: string | null;
+  onRemoveSlot: (id: string) => void; onCancelBooking: (id: string) => void;
+}) {
+  if (data.loading) return <div className="p-4 text-xs text-slate-400">Cargando…</div>;
+  return (
+    <div className="p-4 bg-slate-50 border-t border-slate-100">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Disponibilidad y citas</span>
+        <span className="text-[10px] font-mono text-slate-400 bg-slate-200 rounded px-1.5 py-0.5">{offerId}</span>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* ── Slots ── */}
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Franjas horarias</p>
+          <div className="flex flex-wrap items-end gap-2 mb-3">
+            <div>
+              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Fecha</label>
+              <input type="date" min={todayStr()} value={slotForm.date}
+                onChange={(e) => onFormChange({ ...slotForm, date: e.target.value })}
+                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Desde</label>
+              <select value={slotForm.timeStart} onChange={(e) => onFormChange({ ...slotForm, timeStart: e.target.value })}
+                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none">
+                {V_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Hasta</label>
+              <select value={slotForm.timeEnd} onChange={(e) => onFormChange({ ...slotForm, timeEnd: e.target.value })}
+                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none">
+                {V_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <button onClick={onAdd} disabled={adding}
+              className="px-3 py-1 text-xs font-semibold bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50 whitespace-nowrap">
+              {adding ? 'Añadiendo…' : '+ Añadir'}
+            </button>
+          </div>
+          {msg && (
+            <div className={`text-xs mb-2 px-2 py-1 rounded ${msg.startsWith('✓') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{msg}</div>
+          )}
+          <div className="space-y-1">
+            {data.slots.length === 0 && <p className="text-xs text-slate-400">Sin franjas configuradas.</p>}
+            {data.slots.map((s: any) => (
+              <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-slate-100'}`}>
+                <span className="text-[10px]">{s.status === 'booked' ? '🔵' : '🟢'}</span>
+                <span className="flex-1 font-medium text-slate-700">{fmtVDate(s.starts_at)} · {fmtVTime(s.starts_at)}–{fmtVTime(s.ends_at)}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${s.status === 'booked' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  {s.status === 'booked' ? 'Reservada' : 'Libre'}
+                </span>
+                {s.status === 'available' && (
+                  <button onClick={() => onRemoveSlot(s.id)} className="text-slate-300 hover:text-red-500 font-bold text-sm leading-none">✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Bookings ── */}
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Citas confirmadas ({data.bookings.length})</p>
+          {data.bookings.length === 0 ? (
+            <p className="text-xs text-slate-400">Sin citas.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {data.bookings.map((b: any) => (
+                <div key={b.id} className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-white border border-slate-100 text-xs">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800">{fmtVDate(b.starts_at)} · {fmtVTime(b.starts_at)}</div>
+                    <div className="text-slate-600 truncate">{b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}</div>
+                    <div className="text-slate-400 text-[10px] truncate">{b.buyer_email}</div>
+                    {b.notes && <div className="text-slate-400 truncate italic">{b.notes}</div>}
+                  </div>
+                  <button onClick={() => onCancelBooking(b.id)}
+                    className="text-[10px] text-red-500 hover:text-red-700 font-medium shrink-0 px-1.5 py-0.5 rounded hover:bg-red-50">
+                    Cancelar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PortalOffer = {
@@ -497,6 +609,68 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+
+  // ── Visit availability state ──────────────────────────────────────────────
+  const [expandedVisits, setExpandedVisits] = useState<string | null>(null);
+  const [visitData, setVisitData]           = useState<Record<string, VisitEntry>>({});
+  const [visitSlotForm, setVisitSlotForm]   = useState<SlotFormState>({ date: todayStr(), timeStart: '10:00', timeEnd: '12:00' });
+  const [visitSlotAdding, setVisitSlotAdding] = useState(false);
+  const [visitSlotMsg, setVisitSlotMsg]       = useState<string | null>(null);
+
+  async function openVisitsPanel(offerId: string) {
+    if (expandedVisits === offerId) { setExpandedVisits(null); return; }
+    setExpandedVisits(offerId);
+    setVisitSlotMsg(null);
+    if (!visitData[offerId]) {
+      setVisitData((d) => ({ ...d, [offerId]: { slots: [], bookings: [], loading: true } }));
+      const [sRes, bRes] = await Promise.all([
+        api.get<any>(`/visit-slots?offerId=${encodeURIComponent(offerId)}`),
+        api.get<any>(`/visit-bookings?offerId=${encodeURIComponent(offerId)}`),
+      ]);
+      setVisitData((d) => ({
+        ...d,
+        [offerId]: { slots: sRes.slots || [], bookings: bRes.bookings || [], loading: false },
+      }));
+    }
+  }
+
+  async function doAddVisitSlot(offerId: string) {
+    const { date, timeStart, timeEnd } = visitSlotForm;
+    if (!date || timeEnd <= timeStart) { setVisitSlotMsg('Fecha y horas válidas requeridas'); return; }
+    setVisitSlotAdding(true); setVisitSlotMsg(null);
+    const startsAt = new Date(`${date}T${timeStart}:00`).toISOString();
+    const endsAt   = new Date(`${date}T${timeEnd}:00`).toISOString();
+    const r = await api.post<any>('/visit-slots', { offerId, startsAt, endsAt, source: 'erp' });
+    if (r.ok && r.slot) {
+      setVisitData((d) => ({
+        ...d,
+        [offerId]: { ...(d[offerId] || { bookings: [], loading: false }),
+          slots: [...(d[offerId]?.slots || []), r.slot].sort((a: any, b: any) => a.starts_at > b.starts_at ? 1 : -1) },
+      }));
+      setVisitSlotMsg('✓ Franja añadida');
+    } else {
+      setVisitSlotMsg(r.error || 'Error al añadir');
+    }
+    setVisitSlotAdding(false);
+  }
+
+  async function doRemoveVisitSlot(offerId: string, slotId: string) {
+    await api.delete(`/visit-slots/${slotId}?offerId=${encodeURIComponent(offerId)}`);
+    setVisitData((d) => ({
+      ...d,
+      [offerId]: { ...(d[offerId] || { bookings: [], loading: false }),
+        slots: (d[offerId]?.slots || []).filter((s: any) => s.id !== slotId) },
+    }));
+  }
+
+  async function doCancelVisitBooking(offerId: string, bookingId: string) {
+    await api.post(`/visit-bookings/${bookingId}/cancel`, {});
+    setVisitData((d) => ({
+      ...d,
+      [offerId]: { ...(d[offerId] || { slots: [], loading: false }),
+        bookings: (d[offerId]?.bookings || []).filter((b: any) => b.id !== bookingId) },
+    }));
+  }
 
   function toggleSort(col: string) {
     setSortCol((prev) => {
@@ -985,6 +1159,7 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayItems.map((item) => (
+                    <>
                     <tr key={item.id} className={selectedIds.has(item.id) ? 'bg-blue-50' : ''}>
                       <td className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox"
@@ -1086,9 +1261,31 @@ export default function MarketplacePage() {
                             className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50">
                             Eliminar
                           </button>
+                          <button onClick={() => openVisitsPanel(item.id)}
+                            className={`text-xs font-medium px-2 py-1 rounded ${expandedVisits === item.id ? 'bg-indigo-100 text-indigo-700' : 'text-indigo-500 hover:bg-indigo-50'}`}>
+                            🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
+                          </button>
                         </div>
                       </td>
                     </tr>
+                    {expandedVisits === item.id && (
+                      <tr key={`${item.id}-visits`}>
+                        <td colSpan={16} className="p-0">
+                          <VisitsPanel
+                            offerId={item.id}
+                            data={visitData[item.id] || { slots: [], bookings: [], loading: true }}
+                            slotForm={visitSlotForm}
+                            onFormChange={setVisitSlotForm}
+                            onAdd={() => doAddVisitSlot(item.id)}
+                            adding={visitSlotAdding}
+                            msg={visitSlotMsg}
+                            onRemoveSlot={(sid) => doRemoveVisitSlot(item.id, sid)}
+                            onCancelBooking={(bid) => doCancelVisitBooking(item.id, bid)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   ))}
                 </tbody>
               </table>
@@ -1191,6 +1388,7 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {particularsItems.map((item) => (
+                    <>
                     <tr key={item.id}>
                       <td>
                         <p className="font-medium text-slate-800 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
@@ -1208,14 +1406,40 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.vehicle_location || '–'}</td>
                       <td className="text-sm text-slate-500">{item.plate || '–'}</td>
                       <td>
-                        <button
-                          onClick={() => toggleParticular(item)}
-                          className="px-2 py-1 rounded text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                        >
-                          Despublicar
-                        </button>
+                        <div className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => toggleParticular(item)}
+                            className="px-2 py-1 rounded text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                          >
+                            Despublicar
+                          </button>
+                          <button
+                            onClick={() => openVisitsPanel(item.id)}
+                            className={`px-2 py-1 rounded text-xs font-semibold border ${expandedVisits === item.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                          >
+                            🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
+                    {expandedVisits === item.id && (
+                      <tr key={`${item.id}-visits`}>
+                        <td colSpan={9} className="p-0">
+                          <VisitsPanel
+                            offerId={item.id}
+                            data={visitData[item.id] || { slots: [], bookings: [], loading: true }}
+                            slotForm={visitSlotForm}
+                            onFormChange={setVisitSlotForm}
+                            onAdd={() => doAddVisitSlot(item.id)}
+                            adding={visitSlotAdding}
+                            msg={visitSlotMsg}
+                            onRemoveSlot={(sid) => doRemoveVisitSlot(item.id, sid)}
+                            onCancelBooking={(bid) => doCancelVisitBooking(item.id, bid)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   ))}
                 </tbody>
               </table>
