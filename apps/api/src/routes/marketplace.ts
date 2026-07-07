@@ -107,6 +107,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   const isActive            = req.query.is_active;
   const availableForPurchase = req.query.available_for_purchase;
   const rentingAvailable    = req.query.renting_available;
+  const sellerType          = String(req.query.seller_type || '').trim();
   const page                = Math.max(1, Number(req.query.page) || 1);
   const limit               = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
   const offset              = (page - 1) * limit;
@@ -135,6 +136,17 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     conditions.push(`renting_available = TRUE`);
   } else if (rentingAvailable === 'false') {
     conditions.push(`renting_available = FALSE`);
+  }
+  if (sellerType) {
+    const types = sellerType.split(',').map((t: string) => t.trim()).filter(Boolean);
+    if (types.length === 1) {
+      values.push(types[0]);
+      conditions.push(`seller_type = $${values.length}`);
+    } else if (types.length > 1) {
+      types.forEach((t: string) => values.push(t));
+      const placeholders = types.map((_: string, i: number) => `$${values.length - types.length + i + 1}`).join(', ');
+      conditions.push(`seller_type IN (${placeholders})`);
+    }
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -211,7 +223,7 @@ const voCreateSchema = z.object({
   renting_48m:           z.number().min(0).nullable().default(null),
   renting_60m:           z.number().min(0).nullable().default(null),
   renting_prices_json:   z.unknown().nullable().default(null),
-  seller_type:           z.enum(['professional', 'particular']).nullable().default(null),
+  seller_type:           z.enum(['professional', 'particular', 'concesionario', 'importador']).nullable().default(null),
   image_urls:            z.array(z.string()).max(10).default([]),
   carswise_fee:          z.number().min(0).nullable().default(null),
 });
@@ -346,7 +358,7 @@ const voUpdateSchema = z.object({
   renting_60m:           z.number().min(0).nullable().optional(),
   renting_prices_json:   z.unknown().nullable().optional(),
   seller_type:           z.string().nullable().optional().transform((v: string | null | undefined) => {
-    if (v === 'professional' || v === 'particular') return v;
+    if (v === 'professional' || v === 'particular' || v === 'concesionario' || v === 'importador') return v;
     return null;
   }),
   image_urls:            z.array(z.string()).max(20).optional(),

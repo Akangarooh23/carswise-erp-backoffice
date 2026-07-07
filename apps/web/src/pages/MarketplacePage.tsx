@@ -275,6 +275,8 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
             <option value="">Sin especificar</option>
             <option value="professional">Profesional</option>
             <option value="particular">Particular</option>
+            <option value="concesionario">Concesionario</option>
+            <option value="importador">Importador</option>
           </select>
         </div>
       </div>
@@ -754,13 +756,14 @@ export default function MarketplacePage() {
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
-    if (tab === 'vo' || tab === 'renting') {
+    if (tab === 'vo' || tab === 'renting' || tab === 'concesionarios') {
       const params = new URLSearchParams({ page: String(p), limit: '500' });
       if (q)            params.set('q', q);
       if (brand)        params.set('brand', brand);
       if (statusFilter) params.set('is_active', statusFilter);
-      if (tab === 'vo')      params.set('available_for_purchase', 'true');
-      if (tab === 'renting') params.set('renting_available', 'true');
+      if (tab === 'vo')             params.set('available_for_purchase', 'true');
+      if (tab === 'renting')        params.set('renting_available', 'true');
+      if (tab === 'concesionarios') params.set('seller_type', 'concesionario,importador');
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else if (tab === 'particulares') {
@@ -776,7 +779,7 @@ export default function MarketplacePage() {
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
     }
-    // concesionarios / exportacion: no data yet, nothing to load
+    // exportacion: no data yet
     setLoading(false);
   }, [tab, q, brand, statusFilter, portalFilter, sellerFilter]);
 
@@ -1247,8 +1250,8 @@ export default function MarketplacePage() {
                         <div className="flex flex-col gap-1">
                           <span className="text-xs text-slate-600">{item.seller || '–'}</span>
                           {item.seller_type && (
-                            <Badge variant={item.seller_type === 'professional' ? 'blue' : 'slate'}>
-                              {item.seller_type === 'professional' ? 'Profesional' : 'Particular'}
+                            <Badge variant={item.seller_type === 'professional' ? 'blue' : item.seller_type === 'concesionario' ? 'orange' : item.seller_type === 'importador' ? 'purple' : 'slate'}>
+                              {item.seller_type === 'professional' ? 'Profesional' : item.seller_type === 'concesionario' ? 'Concesionario' : item.seller_type === 'importador' ? 'Importador' : 'Particular'}
                             </Badge>
                           )}
                           {item.id.startsWith('idcar-') && (
@@ -1492,8 +1495,12 @@ export default function MarketplacePage() {
                       <td>
                         {item.seller_type === 'particular'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Particular</span>
-                          : item.seller_type === 'profesional'
+                          : item.seller_type === 'professional'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">Profesional</span>
+                          : item.seller_type === 'concesionario'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">Concesionario</span>
+                          : item.seller_type === 'importador'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Importador</span>
                           : <span className="text-slate-300">–</span>}
                       </td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
@@ -1507,17 +1514,65 @@ export default function MarketplacePage() {
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )
-        ) : (tab === 'concesionarios' || tab === 'exportacion') ? (
+        ) : tab === 'concesionarios' ? (
+          items.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Sin vehículos de concesionarios</div>
+          ) : (
+            <>
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Vehículo</th>
+                    <th>Tipo</th>
+                    <th>Concesionario</th>
+                    <th>Precio</th>
+                    <th>Km</th>
+                    <th>Año</th>
+                    <th>Ubicación</th>
+                    <th>Enlace</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
+                          <div>
+                            <p className="font-medium text-slate-800 text-sm">{item.title}</p>
+                            <p className="text-xs text-slate-400">{item.brand} {item.model}{item.version ? ` · ${item.version}` : ''}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {item.seller_type === 'concesionario'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">Concesionario</span>
+                          : item.seller_type === 'importador'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Importador</span>
+                          : <span className="text-slate-300">–</span>}
+                      </td>
+                      <td className="text-sm text-slate-600">{item.seller || '–'}</td>
+                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.sale_price ?? item.price)}</td>
+                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-slate-500">{item.year || '–'}</td>
+                      <td className="text-sm text-slate-500">{item.location || '–'}</td>
+                      <td>
+                        {item.source_url
+                          ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
+                          : <span className="text-slate-300">–</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination page={page} total={total} limit={500} onChange={setPage} />
+            </>
+          )
+        ) : tab === 'exportacion' ? (
           <div className="text-center py-16">
-            <div className="text-4xl mb-3">{tab === 'exportacion' ? '🌍' : '🏪'}</div>
-            <p className="font-semibold text-slate-700 text-sm mb-1">
-              {tab === 'exportacion' ? 'Exportación / Importación' : 'VO Concesionarios'}
-            </p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              {tab === 'exportacion'
-                ? 'Vehículos seleccionados de Europa. Esta sección estará disponible próximamente.'
-                : 'Vehículos de concesionarios colaboradores. Esta sección estará disponible próximamente.'}
-            </p>
+            <div className="text-4xl mb-3">🌍</div>
+            <p className="font-semibold text-slate-700 text-sm mb-1">Exportación / Importación</p>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto">Vehículos seleccionados de Europa. Esta sección estará disponible próximamente.</p>
           </div>
         ) : null}
       </div>
