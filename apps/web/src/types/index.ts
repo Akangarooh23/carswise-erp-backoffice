@@ -67,7 +67,7 @@ export interface VoOffer {
   has_guarantee_seal: boolean;
   portal_score: number;
   warranty_months: number;
-  seller_type?: 'professional' | 'particular' | null;
+  seller_type?: 'professional' | 'particular' | 'concesionario' | 'importador' | null;
   image_urls?: string[] | null;
   has_stock_management?: boolean;
   total_units?: number;
