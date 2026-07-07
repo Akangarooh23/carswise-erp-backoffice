@@ -577,6 +577,7 @@ function VisitsPanel({
 type PortalOffer = {
   id: string; portal: string; title: string; brand: string; model: string;
   year: number; price: number; mileage: number; fuel: string; image_url?: string; url?: string;
+  seller_type?: string;
 };
 
 type ParticularsOffer = {
@@ -598,6 +599,8 @@ export default function MarketplacePage() {
   const [total, setTotal]         = useState(0);
   const [page, setPage]           = useState(1);
   const [q, setQ]                 = useState('');
+  const [portalFilter, setPortalFilter] = useState('');
+  const [sellerFilter, setSellerFilter] = useState('');
   const [brands, setBrands]       = useState<string[]>([]);
   const [brand, setBrand]         = useState('');
   const [statusFilter, setStatus] = useState('');
@@ -768,14 +771,16 @@ export default function MarketplacePage() {
     } else if (tab === 'offers') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
       if (q) params.set('q', q);
+      if (portalFilter) params.set('portal', portalFilter);
+      if (sellerFilter) params.set('seller_type', sellerFilter);
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
     }
     // concesionarios / exportacion: no data yet, nothing to load
     setLoading(false);
-  }, [tab, q, brand, statusFilter]);
+  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter]);
 
-  useEffect(() => { setPage(1); load(1); setSelectedIds(new Set()); }, [tab, q, brand, statusFilter, load]);
+  useEffect(() => { setPage(1); load(1); setSelectedIds(new Set()); }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, load]);
   useEffect(() => { load(page); }, [page, load]);
 
   async function bulkAction(action: 'activate' | 'deactivate') {
@@ -989,6 +994,24 @@ export default function MarketplacePage() {
             <select value={statusFilter} onChange={(e) => setStatus(e.target.value)}
               className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               {STATUS_FILTERS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </>
+        )}
+        {tab === 'offers' && (
+          <>
+            <select value={portalFilter} onChange={(e) => setPortalFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos los portales</option>
+              <option value="autoscout24">AutoScout24</option>
+              <option value="flexicar">Flexicar</option>
+              <option value="autohero">Autohero</option>
+              <option value="wallapop">Wallapop</option>
+            </select>
+            <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Particulares y profesionales</option>
+              <option value="particular">Solo particulares</option>
+              <option value="profesional">Solo profesionales</option>
             </select>
           </>
         )}
@@ -1452,7 +1475,7 @@ export default function MarketplacePage() {
           ) : (
             <>
               <table className="erp-table">
-                <thead><tr><th>Vehículo</th><th>Portal</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr></thead>
+                <thead><tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr></thead>
                 <tbody>
                   {portalItems.map((item) => (
                     <tr key={item.id}>
@@ -1466,6 +1489,13 @@ export default function MarketplacePage() {
                         </div>
                       </td>
                       <td><Badge variant="blue">{item.portal}</Badge></td>
+                      <td>
+                        {item.seller_type === 'particular'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Particular</span>
+                          : item.seller_type === 'profesional'
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">Profesional</span>
+                          : <span className="text-slate-300">–</span>}
+                      </td>
                       <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>

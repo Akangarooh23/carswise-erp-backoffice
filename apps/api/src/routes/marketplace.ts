@@ -57,6 +57,7 @@ async function mirrorImageToSupabase(imageUrl: string, offerId: string): Promise
 marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q      = String(req.query.q      || '').trim();
   const portal = String(req.query.portal || '').trim();
+  const sellerType = String(req.query.seller_type || '').trim();
   const page   = Math.max(1, Number(req.query.page) || 1);
   const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -72,6 +73,10 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
     values.push(portal);
     conditions.push(`portal = $${values.length}`);
   }
+  if (sellerType) {
+    values.push(sellerType);
+    conditions.push(`seller_type = $${values.length}`);
+  }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -80,7 +85,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
       query(
         `SELECT id, portal, title, brand, model, version, year, mileage, price, fuel,
                 body_type, color, doors, seats, power_cv, traction, image_url, url,
-                scraped_at, updated_at
+                seller_type, scraped_at, updated_at
          FROM moveadvisor_market_offers ${where}
          ORDER BY updated_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
