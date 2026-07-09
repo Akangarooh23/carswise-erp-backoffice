@@ -1006,6 +1006,7 @@ export default function MarketplacePage() {
               className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Todos los portales</option>
               <option value="autoscout24">AutoScout24</option>
+              <option value="cochescom">coches.com</option>
               <option value="flexicar">Flexicar</option>
               <option value="autohero">Autohero</option>
               <option value="wallapop">Wallapop</option>
