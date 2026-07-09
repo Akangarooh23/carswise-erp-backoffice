@@ -691,15 +691,15 @@ export default function MarketplacePage() {
 
   const displayItems = useMemo(() => {
     let r = [...items];
-    if (colF.brand)     r = r.filter(i => (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
-    if (colF.model)     r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
-    if (colF.version)   r = r.filter(i => (i.version || '').toLowerCase().includes(colF.version.toLowerCase()));
-    if (colF.fuel)         r = r.filter(i => (i.fuel || '') === colF.fuel);
-    if (colF.transmission) r = r.filter(i => (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
-    if (colF.year)      r = r.filter(i => String(i.year) === colF.year);
-    if (colF.priceMax)  r = r.filter(i => i.price <= Number(colF.priceMax));
-    if (colF.color)     r = r.filter(i => i.available_colors?.includes(colF.color) || (i.color || '') === colF.color);
-    if (colF.seller)    r = r.filter(i => (i.seller || '') === colF.seller);
+    if (colF.brand)        r = r.filter(i => colF.brand === '__empty__' ? isEmpty(i.brand) : (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
+    if (colF.model)        r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
+    if (colF.version)      r = r.filter(i => (i.version || '').toLowerCase().includes(colF.version.toLowerCase()));
+    if (colF.fuel)         r = r.filter(i => matchEnumCI(colF.fuel, i.fuel));
+    if (colF.transmission) r = r.filter(i => colF.transmission === '__empty__' ? isEmpty(i.transmission) : (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
+    if (colF.year)         r = r.filter(i => matchEnum(colF.year, i.year));
+    if (colF.priceMax)     r = r.filter(i => matchRange(colF.priceMax, i.price));
+    if (colF.color)        r = r.filter(i => colF.color === '__empty__' ? (!i.color && !i.available_colors?.length) : (i.available_colors?.includes(colF.color) || (i.color || '') === colF.color));
+    if (colF.seller)       r = r.filter(i => colF.seller === '__empty__' ? isEmpty(i.seller) : (i.seller || '') === colF.seller);
     if (colF.units === 'stock') r = r.filter(i => (i.units_available ?? 0) > 0);
     if (colF.modality === 'compra')   r = r.filter(i => i.available_for_purchase !== false);
     if (colF.modality === 'renting')  r = r.filter(i => i.renting_available);
@@ -738,14 +738,16 @@ export default function MarketplacePage() {
     val === '__empty__' ? isEmpty(field) : String(field ?? '') === val;
   const matchEnumCI = (val: string, field: any) =>
     val === '__empty__' ? isEmpty(field) : (field||'').toLowerCase() === val.toLowerCase();
+  const matchRange = (val: string, field: any) =>
+    val === '__empty__' ? isEmpty(field) : Number(field) <= Number(val);
 
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
     if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
     if (colFOffers.portal)     r = r.filter(i => matchEnum(colFOffers.portal, i.portal));
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
-    if (colFOffers.priceMax)   r = r.filter(i => i.price <= Number(colFOffers.priceMax));
-    if (colFOffers.kmMax)      r = r.filter(i => i.mileage <= Number(colFOffers.kmMax));
+    if (colFOffers.priceMax)   r = r.filter(i => matchRange(colFOffers.priceMax, i.price));
+    if (colFOffers.kmMax)      r = r.filter(i => matchRange(colFOffers.kmMax, i.mileage));
     if (colFOffers.year)       r = r.filter(i => matchEnum(colFOffers.year, i.year));
     if (colFOffers.fuel)       r = r.filter(i => matchEnumCI(colFOffers.fuel, i.fuel));
     return r;
@@ -765,8 +767,8 @@ export default function MarketplacePage() {
     let r = [...particularsItems] as any[];
     if (colFPart.brand)    r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFPart.brand.toLowerCase()));
     if (colFPart.client)   r = r.filter(i => `${i.owner_name||''} ${i.user_email||''}`.toLowerCase().includes(colFPart.client.toLowerCase()));
-    if (colFPart.priceMax) r = r.filter(i => i.price <= Number(colFPart.priceMax));
-    if (colFPart.kmMax)    r = r.filter(i => i.mileage <= Number(colFPart.kmMax));
+    if (colFPart.priceMax) r = r.filter(i => matchRange(colFPart.priceMax, i.price));
+    if (colFPart.kmMax)    r = r.filter(i => matchRange(colFPart.kmMax, i.mileage));
     if (colFPart.year)     r = r.filter(i => matchEnum(colFPart.year, i.year));
     if (colFPart.fuel)     r = r.filter(i => matchEnumCI(colFPart.fuel, i.fuel));
     return r;
@@ -777,8 +779,8 @@ export default function MarketplacePage() {
     if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
     if (colFConc.sellerType) r = r.filter(i => matchEnum(colFConc.sellerType, i.seller_type));
     if (colFConc.seller)     r = r.filter(i => (i.seller||'').toLowerCase().includes(colFConc.seller.toLowerCase()));
-    if (colFConc.priceMax)   r = r.filter(i => (i.sale_price ?? i.price) <= Number(colFConc.priceMax));
-    if (colFConc.kmMax)      r = r.filter(i => i.mileage <= Number(colFConc.kmMax));
+    if (colFConc.priceMax)   r = r.filter(i => matchRange(colFConc.priceMax, i.sale_price ?? i.price));
+    if (colFConc.kmMax)      r = r.filter(i => matchRange(colFConc.kmMax, i.mileage));
     if (colFConc.year)       r = r.filter(i => matchEnum(colFConc.year, i.year));
     return r;
   }, [items, colFConc]);
@@ -1154,6 +1156,7 @@ export default function MarketplacePage() {
                       <select value={colF.brand} onChange={e => setCol('brand', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
+                        <option value="__empty__">(Vacío)</option>
                         {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
                       </select>
                     </td>
@@ -1174,6 +1177,7 @@ export default function MarketplacePage() {
                       <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[15000,20000,25000,30000,40000,60000].map(p =>
                           <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
@@ -1187,6 +1191,7 @@ export default function MarketplacePage() {
                       <select value={colF.year} onChange={e => setCol('year', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
@@ -1195,6 +1200,7 @@ export default function MarketplacePage() {
                       <select value={colF.fuel} onChange={e => setCol('fuel', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {fuelOptions.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
@@ -1203,6 +1209,7 @@ export default function MarketplacePage() {
                       <select value={colF.transmission} onChange={e => setCol('transmission', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         <option value="manual">Manual</option>
                         <option value="auto">Automático</option>
                       </select>
@@ -1223,6 +1230,7 @@ export default function MarketplacePage() {
                         <select value={colF.color} onChange={e => setCol('color', e.target.value)}
                           className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                           <option value="">Todos colores</option>
+                          <option value="__empty__">(Vacío)</option>
                           {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
@@ -1237,6 +1245,7 @@ export default function MarketplacePage() {
                       <select value={colF.seller} onChange={e => setCol('seller', e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {sellerOptions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
@@ -1515,6 +1524,7 @@ export default function MarketplacePage() {
                       <select value={colFPart.priceMax} onChange={e => setColFPart(f => ({...f, priceMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[5000,10000,15000,20000,30000,50000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
@@ -1522,6 +1532,7 @@ export default function MarketplacePage() {
                       <select value={colFPart.kmMax} onChange={e => setColFPart(f => ({...f, kmMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
@@ -1653,6 +1664,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.priceMax} onChange={e => setColFOffers(f => ({...f, priceMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
@@ -1660,6 +1672,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.kmMax} onChange={e => setColFOffers(f => ({...f, kmMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
@@ -1764,6 +1777,7 @@ export default function MarketplacePage() {
                       <select value={colFConc.priceMax} onChange={e => setColFConc(f => ({...f, priceMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
@@ -1771,6 +1785,7 @@ export default function MarketplacePage() {
                       <select value={colFConc.kmMax} onChange={e => setColFConc(f => ({...f, kmMax: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
