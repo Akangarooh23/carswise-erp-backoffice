@@ -733,15 +733,21 @@ export default function MarketplacePage() {
   const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
   const partYearOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [particularsItems]);
 
+  const isEmpty = (v: any) => v === null || v === undefined || v === '';
+  const matchEnum = (val: string, field: any) =>
+    val === '__empty__' ? isEmpty(field) : String(field ?? '') === val;
+  const matchEnumCI = (val: string, field: any) =>
+    val === '__empty__' ? isEmpty(field) : (field||'').toLowerCase() === val.toLowerCase();
+
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
     if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
-    if (colFOffers.portal)     r = r.filter(i => i.portal === colFOffers.portal);
-    if (colFOffers.sellerType) r = r.filter(i => i.seller_type === colFOffers.sellerType);
+    if (colFOffers.portal)     r = r.filter(i => matchEnum(colFOffers.portal, i.portal));
+    if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
     if (colFOffers.priceMax)   r = r.filter(i => i.price <= Number(colFOffers.priceMax));
     if (colFOffers.kmMax)      r = r.filter(i => i.mileage <= Number(colFOffers.kmMax));
-    if (colFOffers.year)       r = r.filter(i => String(i.year) === colFOffers.year);
-    if (colFOffers.fuel)       r = r.filter(i => (i.fuel||'').toLowerCase() === colFOffers.fuel.toLowerCase());
+    if (colFOffers.year)       r = r.filter(i => matchEnum(colFOffers.year, i.year));
+    if (colFOffers.fuel)       r = r.filter(i => matchEnumCI(colFOffers.fuel, i.fuel));
     return r;
   }, [portalItems, colFOffers]);
 
@@ -749,7 +755,7 @@ export default function MarketplacePage() {
     let r = [...rentingItems];
     if (colFRenting.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(colFRenting.brand.toLowerCase()));
     if (colFRenting.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(colFRenting.model.toLowerCase()));
-    if (colFRenting.year)   r = r.filter(i => String(i.year) === colFRenting.year);
+    if (colFRenting.year)   r = r.filter(i => matchEnum(colFRenting.year, i.year));
     if (colFRenting.status === 'active')   r = r.filter(i => i.is_active);
     if (colFRenting.status === 'inactive') r = r.filter(i => !i.is_active);
     return r;
@@ -761,19 +767,19 @@ export default function MarketplacePage() {
     if (colFPart.client)   r = r.filter(i => `${i.owner_name||''} ${i.user_email||''}`.toLowerCase().includes(colFPart.client.toLowerCase()));
     if (colFPart.priceMax) r = r.filter(i => i.price <= Number(colFPart.priceMax));
     if (colFPart.kmMax)    r = r.filter(i => i.mileage <= Number(colFPart.kmMax));
-    if (colFPart.year)     r = r.filter(i => String(i.year) === colFPart.year);
-    if (colFPart.fuel)     r = r.filter(i => (i.fuel||'').toLowerCase() === colFPart.fuel.toLowerCase());
+    if (colFPart.year)     r = r.filter(i => matchEnum(colFPart.year, i.year));
+    if (colFPart.fuel)     r = r.filter(i => matchEnumCI(colFPart.fuel, i.fuel));
     return r;
   }, [particularsItems, colFPart]);
 
   const displayConcItems = useMemo(() => {
     let r = [...items];
     if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
-    if (colFConc.sellerType) r = r.filter(i => i.seller_type === colFConc.sellerType);
+    if (colFConc.sellerType) r = r.filter(i => matchEnum(colFConc.sellerType, i.seller_type));
     if (colFConc.seller)     r = r.filter(i => (i.seller||'').toLowerCase().includes(colFConc.seller.toLowerCase()));
     if (colFConc.priceMax)   r = r.filter(i => (i.sale_price ?? i.price) <= Number(colFConc.priceMax));
     if (colFConc.kmMax)      r = r.filter(i => i.mileage <= Number(colFConc.kmMax));
-    if (colFConc.year)       r = r.filter(i => String(i.year) === colFConc.year);
+    if (colFConc.year)       r = r.filter(i => matchEnum(colFConc.year, i.year));
     return r;
   }, [items, colFConc]);
 
@@ -1412,6 +1418,7 @@ export default function MarketplacePage() {
                       <select value={colFRenting.year} onChange={e => setColFRenting(f => ({...f, year: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
@@ -1522,6 +1529,7 @@ export default function MarketplacePage() {
                       <select value={colFPart.year} onChange={e => setColFPart(f => ({...f, year: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {partYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
@@ -1529,6 +1537,7 @@ export default function MarketplacePage() {
                       <select value={colFPart.fuel} onChange={e => setColFPart(f => ({...f, fuel: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {partFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
@@ -1621,6 +1630,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.portal} onChange={e => setColFOffers(f => ({...f, portal: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         <option value="autoscout24">AutoScout24</option>
                         <option value="cochescom">coches.com</option>
                         <option value="flexicar">Flexicar</option>
@@ -1632,6 +1642,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.sellerType} onChange={e => setColFOffers(f => ({...f, sellerType: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         <option value="particular">Particular</option>
                         <option value="professional">Profesional</option>
                         <option value="concesionario">Concesionario</option>
@@ -1656,6 +1667,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.year} onChange={e => setColFOffers(f => ({...f, year: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {portalYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
@@ -1663,6 +1675,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.fuel} onChange={e => setColFOffers(f => ({...f, fuel: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {portalFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
@@ -1738,6 +1751,7 @@ export default function MarketplacePage() {
                       <select value={colFConc.sellerType} onChange={e => setColFConc(f => ({...f, sellerType: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         <option value="concesionario">Concesionario</option>
                         <option value="importador">Importador</option>
                       </select>
@@ -1764,6 +1778,7 @@ export default function MarketplacePage() {
                       <select value={colFConc.year} onChange={e => setColFConc(f => ({...f, year: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
                         {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
