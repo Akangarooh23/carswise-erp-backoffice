@@ -614,6 +614,10 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+  const [colFOffers,   setColFOffers]   = useState({ brand: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '' });
+  const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
+  const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
+  const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
 
   // ── Visit availability state ──────────────────────────────────────────────
   const [expandedVisits, setExpandedVisits] = useState<string | null>(null);
@@ -716,11 +720,62 @@ export default function MarketplacePage() {
 
   const rentingItems = useMemo(() => items.filter(i => i.renting_available), [items]);
 
-  const brandOptions  = useMemo(() => [...new Set(items.map(i => i.brand).filter(Boolean))].sort(), [items]);
-  const fuelOptions   = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
-  const yearOptions   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
-  const colorOptions  = useMemo(() => [...new Set(items.flatMap(i => i.available_colors ?? []).filter(Boolean))].sort(), [items]);
-  const sellerOptions = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
+  const brandOptions   = useMemo(() => [...new Set(items.map(i => i.brand).filter(Boolean))].sort(), [items]);
+  const fuelOptions    = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
+  const yearOptions    = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
+  const colorOptions   = useMemo(() => [...new Set(items.flatMap(i => i.available_colors ?? []).filter(Boolean))].sort(), [items]);
+  const sellerOptions  = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
+  const concYearOpts   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
+  const concSellerOpts = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
+
+  const portalFuelOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [portalItems]);
+  const portalYearOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [portalItems]);
+  const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
+  const partYearOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [particularsItems]);
+
+  const displayPortalItems = useMemo(() => {
+    let r = [...portalItems] as any[];
+    if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
+    if (colFOffers.portal)     r = r.filter(i => i.portal === colFOffers.portal);
+    if (colFOffers.sellerType) r = r.filter(i => i.seller_type === colFOffers.sellerType);
+    if (colFOffers.priceMax)   r = r.filter(i => i.price <= Number(colFOffers.priceMax));
+    if (colFOffers.kmMax)      r = r.filter(i => i.mileage <= Number(colFOffers.kmMax));
+    if (colFOffers.year)       r = r.filter(i => String(i.year) === colFOffers.year);
+    if (colFOffers.fuel)       r = r.filter(i => (i.fuel||'').toLowerCase() === colFOffers.fuel.toLowerCase());
+    return r;
+  }, [portalItems, colFOffers]);
+
+  const displayRentingItems = useMemo(() => {
+    let r = [...rentingItems];
+    if (colFRenting.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(colFRenting.brand.toLowerCase()));
+    if (colFRenting.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(colFRenting.model.toLowerCase()));
+    if (colFRenting.year)   r = r.filter(i => String(i.year) === colFRenting.year);
+    if (colFRenting.status === 'active')   r = r.filter(i => i.is_active);
+    if (colFRenting.status === 'inactive') r = r.filter(i => !i.is_active);
+    return r;
+  }, [rentingItems, colFRenting]);
+
+  const displayPartItems = useMemo(() => {
+    let r = [...particularsItems] as any[];
+    if (colFPart.brand)    r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFPart.brand.toLowerCase()));
+    if (colFPart.client)   r = r.filter(i => `${i.owner_name||''} ${i.user_email||''}`.toLowerCase().includes(colFPart.client.toLowerCase()));
+    if (colFPart.priceMax) r = r.filter(i => i.price <= Number(colFPart.priceMax));
+    if (colFPart.kmMax)    r = r.filter(i => i.mileage <= Number(colFPart.kmMax));
+    if (colFPart.year)     r = r.filter(i => String(i.year) === colFPart.year);
+    if (colFPart.fuel)     r = r.filter(i => (i.fuel||'').toLowerCase() === colFPart.fuel.toLowerCase());
+    return r;
+  }, [particularsItems, colFPart]);
+
+  const displayConcItems = useMemo(() => {
+    let r = [...items];
+    if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
+    if (colFConc.sellerType) r = r.filter(i => i.seller_type === colFConc.sellerType);
+    if (colFConc.seller)     r = r.filter(i => (i.seller||'').toLowerCase().includes(colFConc.seller.toLowerCase()));
+    if (colFConc.priceMax)   r = r.filter(i => (i.sale_price ?? i.price) <= Number(colFConc.priceMax));
+    if (colFConc.kmMax)      r = r.filter(i => i.mileage <= Number(colFConc.kmMax));
+    if (colFConc.year)       r = r.filter(i => String(i.year) === colFConc.year);
+    return r;
+  }, [items, colFConc]);
 
   const [editOffer, setEditOffer] = useState<VoOffer | null>(null);
   const [editForm, setEditForm]   = useState<Partial<VoOffer>>({});
@@ -1344,9 +1399,36 @@ export default function MarketplacePage() {
                     <th>Estado</th>
                     <th></th>
                   </tr>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <td className="px-3 py-1.5">
+                      <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Título…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFRenting.year} onChange={e => setColFRenting(f => ({...f, year: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFRenting.status} onChange={e => setColFRenting(f => ({...f, status: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="active">Publicado</option>
+                        <option value="inactive">Despublicado</option>
+                      </select>
+                    </td>
+                    <td></td>
+                  </tr>
                 </thead>
                 <tbody>
-                  {rentingItems.map((item) => (
+                  {displayRentingItems.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="flex items-center gap-3">
@@ -1406,15 +1488,55 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <>
-              <table className="erp-table">
+              <div className="overflow-x-auto">
+              <table className="erp-table w-full">
                 <thead>
                   <tr>
                     <th>Vehículo</th><th>Cliente</th><th>Precio</th><th>Km</th>
                     <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th><th>Acciones</th>
                   </tr>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <td className="px-3 py-1.5">
+                      <input value={colFPart.brand} onChange={e => setColFPart(f => ({...f, brand: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFPart.client} onChange={e => setColFPart(f => ({...f, client: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Cliente/email…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFPart.priceMax} onChange={e => setColFPart(f => ({...f, priceMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Cualquier precio</option>
+                        {[5000,10000,15000,20000,30000,50000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFPart.kmMax} onChange={e => setColFPart(f => ({...f, kmMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {[30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFPart.year} onChange={e => setColFPart(f => ({...f, year: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {partYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFPart.fuel} onChange={e => setColFPart(f => ({...f, fuel: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {partFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </td>
+                    <td></td><td></td><td></td>
+                  </tr>
                 </thead>
                 <tbody>
-                  {particularsItems.map((item) => (
+                  {displayPartItems.map((item) => (
                     <>
                     <tr key={item.id}>
                       <td>
@@ -1470,6 +1592,7 @@ export default function MarketplacePage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )
@@ -1478,10 +1601,75 @@ export default function MarketplacePage() {
             <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
           ) : (
             <>
-              <table className="erp-table">
-                <thead><tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr></thead>
+              {Object.values(colFOffers).some(Boolean) && (
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
+                  <span className="text-xs text-blue-600 font-medium">{displayPortalItems.length} de {portalItems.length} resultados</span>
+                  <button onClick={() => setColFOffers({ brand:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'' })}
+                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+              <table className="erp-table w-full">
+                <thead>
+                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <td className="px-3 py-1.5">
+                      <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.portal} onChange={e => setColFOffers(f => ({...f, portal: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="autoscout24">AutoScout24</option>
+                        <option value="cochescom">coches.com</option>
+                        <option value="flexicar">Flexicar</option>
+                        <option value="autohero">Autohero</option>
+                        <option value="wallapop">Wallapop</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.sellerType} onChange={e => setColFOffers(f => ({...f, sellerType: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="particular">Particular</option>
+                        <option value="professional">Profesional</option>
+                        <option value="concesionario">Concesionario</option>
+                        <option value="importador">Importador</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.priceMax} onChange={e => setColFOffers(f => ({...f, priceMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Cualquier precio</option>
+                        {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.kmMax} onChange={e => setColFOffers(f => ({...f, kmMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.year} onChange={e => setColFOffers(f => ({...f, year: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {portalYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.fuel} onChange={e => setColFOffers(f => ({...f, fuel: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {portalFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                </thead>
                 <tbody>
-                  {portalItems.map((item) => (
+                  {displayPortalItems.map((item: any) => (
                     <tr key={item.id}>
                       <td>
                         <div className="flex items-center gap-3">
@@ -1512,6 +1700,7 @@ export default function MarketplacePage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )
@@ -1520,7 +1709,15 @@ export default function MarketplacePage() {
             <div className="text-center py-12 text-slate-400 text-sm">Sin vehículos de concesionarios</div>
           ) : (
             <>
-              <table className="erp-table">
+              {Object.values(colFConc).some(Boolean) && (
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
+                  <span className="text-xs text-blue-600 font-medium">{displayConcItems.length} de {items.length} resultados</span>
+                  <button onClick={() => setColFConc({ brand:'', sellerType:'', seller:'', priceMax:'', kmMax:'', year:'' })}
+                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+              <table className="erp-table w-full">
                 <thead>
                   <tr>
                     <th>Vehículo</th>
@@ -1532,9 +1729,50 @@ export default function MarketplacePage() {
                     <th>Ubicación</th>
                     <th>Enlace</th>
                   </tr>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <td className="px-3 py-1.5">
+                      <input value={colFConc.brand} onChange={e => setColFConc(f => ({...f, brand: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFConc.sellerType} onChange={e => setColFConc(f => ({...f, sellerType: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="concesionario">Concesionario</option>
+                        <option value="importador">Importador</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFConc.seller} onChange={e => setColFConc(f => ({...f, seller: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Concesionario…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFConc.priceMax} onChange={e => setColFConc(f => ({...f, priceMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Cualquier precio</option>
+                        {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFConc.kmMax} onChange={e => setColFConc(f => ({...f, kmMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFConc.year} onChange={e => setColFConc(f => ({...f, year: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5"></td>
+                    <td className="px-3 py-1.5"></td>
+                  </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {displayConcItems.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="flex items-center gap-3">
@@ -1566,6 +1804,7 @@ export default function MarketplacePage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <Pagination page={page} total={total} limit={500} onChange={setPage} />
             </>
           )
