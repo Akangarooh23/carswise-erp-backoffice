@@ -1178,7 +1178,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[15000,20000,25000,30000,40000,60000].map(p =>
+                        {[500,1000,15000,20000,25000,30000,40000,60000].map(p =>
                           <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
@@ -1525,7 +1525,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[5000,10000,15000,20000,30000,50000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                        {[500,1000,5000,10000,15000,20000,30000,50000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1533,7 +1533,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                        {[500,1000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1665,7 +1665,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                        {[500,1000,10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1673,7 +1673,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                        {[500,1000,10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1778,7 +1778,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
+                        {[500,1000,10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1786,7 +1786,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {[10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
+                        {[500,1000,10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
