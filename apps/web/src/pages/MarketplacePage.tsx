@@ -1697,7 +1697,7 @@ export default function MarketplacePage() {
               <div className="overflow-x-auto">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th></tr>
+                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Enlace</th></tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
@@ -1758,6 +1758,7 @@ export default function MarketplacePage() {
                         {portalFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
+                    <td></td>
                   </tr>
                 </thead>
                 <tbody>
@@ -1788,6 +1789,13 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
+                      <td>
+                        {(item as any).url
+                          ? <a href={(item as any).url} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                              onClick={e => e.stopPropagation()}>Ver ↗</a>
+                          : <span className="text-slate-300">–</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1892,8 +1900,8 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.year || '–'}</td>
                       <td className="text-sm text-slate-500">{item.location || '–'}</td>
                       <td>
-                        {item.url
-                          ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Ver</a>
+                        {item.source_url
+                          ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
                           : <span className="text-slate-300">–</span>}
                       </td>
                     </tr>
