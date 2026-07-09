@@ -960,7 +960,6 @@ export default function MarketplacePage() {
       portal:         item.portal ?? '',
       url:            item.url ?? '',
       image_url:      item.image_url ?? '',
-      description:    item.description ?? '',
       warranty_months: item.warranty_months ?? '',
       co2:            item.co2 ?? '',
     });
@@ -2324,12 +2323,6 @@ export default function MarketplacePage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">URL imagen principal</label>
                 <input value={portalEditForm.image_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, image_url: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
-              </div>
-              {/* Description */}
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Descripción</label>
-                <textarea value={portalEditForm.description ?? ''} onChange={e => setPortalEditForm(f => ({...f, description: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none" rows={4} />
               </div>
             </div>
 
