@@ -728,6 +728,12 @@ export default function MarketplacePage() {
   const concYearOpts   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
   const concSellerOpts = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
 
+  const PORTAL_LABEL: Record<string, string> = {
+    flexicar: 'Flexicar', autohero: 'Autohero', autoscout24: 'AutoScout24',
+    cochescom: 'Coches.com', cochesnet: 'Coches.net', wallapop: 'Wallapop',
+    milanuncios: 'Milanuncios',
+  };
+  const portalOpts    = useMemo(() => [...new Set(portalItems.map((i:any) => i.portal).filter(Boolean))].sort(), [portalItems]);
   const portalFuelOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [portalItems]);
   const portalYearOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [portalItems]);
   const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
@@ -744,7 +750,7 @@ export default function MarketplacePage() {
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
     if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
-    if (colFOffers.portal)     r = r.filter(i => matchEnum(colFOffers.portal, i.portal));
+    if (colFOffers.portal)     r = r.filter(i => matchEnumCI(colFOffers.portal, i.portal));
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
     if (colFOffers.priceMax)   r = r.filter(i => matchRange(colFOffers.priceMax, i.price));
     if (colFOffers.kmMax)      r = r.filter(i => matchRange(colFOffers.kmMax, i.mileage));
@@ -1134,9 +1140,11 @@ export default function MarketplacePage() {
               className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Todos los portales</option>
               <option value="autoscout24">AutoScout24</option>
-              <option value="cochescom">coches.com</option>
+              <option value="cochescom">Coches.com</option>
+              <option value="cochesnet">Coches.net</option>
               <option value="flexicar">Flexicar</option>
               <option value="autohero">Autohero</option>
+              <option value="milanuncios">Milanuncios</option>
               <option value="wallapop">Wallapop</option>
             </select>
             <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)}
@@ -1707,11 +1715,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        <option value="autoscout24">AutoScout24</option>
-                        <option value="cochescom">coches.com</option>
-                        <option value="flexicar">Flexicar</option>
-                        <option value="autohero">Autohero</option>
-                        <option value="wallapop">Wallapop</option>
+                        {portalOpts.map((p:any) => <option key={p} value={p}>{PORTAL_LABEL[p] ?? p}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -2309,8 +2313,8 @@ export default function MarketplacePage() {
                 <select value={portalEditForm.portal ?? ''} onChange={e => setPortalEditForm(f => ({...f, portal: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
-                  {['flexicar','autohero','autoscout24','cochescom','wallapop'].map(v =>
-                    <option key={v} value={v}>{v}</option>)}
+                  {['autohero','autoscout24','cochescom','cochesnet','flexicar','milanuncios','wallapop'].map(v =>
+                    <option key={v} value={v}>{PORTAL_LABEL[v] ?? v}</option>)}
                 </select>
               </div>
               <div>
