@@ -806,6 +806,12 @@ export default function MarketplacePage() {
   const [imageUrls, setImageUrls]           = useState<string[]>(['']);
   const [savingImages, setSavingImages]     = useState(false);
 
+  const [portalEditOffer, setPortalEditOffer] = useState<any | null>(null);
+  const [portalEditForm,  setPortalEditForm]  = useState<Record<string,any>>({});
+  const [savingPortal,    setSavingPortal]    = useState(false);
+  const [savePortalError, setSavePortalError] = useState('');
+  const [savePortalOk,    setSavePortalOk]    = useState(false);
+
   const [showImport, setShowImport]         = useState(false);
   const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
   const [importFileName, setImportFileName] = useState('');
@@ -929,6 +935,67 @@ export default function MarketplacePage() {
     if (res.ok) { setEditOffer(null); load(page); }
     else setSaveError(JSON.stringify((res as { detail?: unknown }).detail ?? res, null, 2));
     setSaving(false);
+  }
+
+  function openPortalEdit(item: any) {
+    setPortalEditOffer(item);
+    setPortalEditForm({
+      title: item.title ?? '',
+      brand: item.brand ?? '',
+      model: item.model ?? '',
+      version: item.version ?? '',
+      year: item.year ?? '',
+      price: item.price ?? '',
+      mileage: item.mileage ?? '',
+      fuel: item.fuel ?? '',
+      color: item.color ?? '',
+      transmission: item.transmission ?? '',
+      cv: item.cv ?? '',
+      doors: item.doors ?? '',
+      seats: item.seats ?? '',
+      body_type: item.body_type ?? '',
+      seller_type: item.seller_type ?? '',
+      seller: item.seller ?? '',
+      location: item.location ?? '',
+      portal: item.portal ?? '',
+      source_url: item.source_url ?? '',
+      image_url: item.image_url ?? '',
+      description: item.description ?? '',
+      warranty_months: item.warranty_months ?? '',
+      co2: item.co2 ?? '',
+    });
+    setSavePortalError('');
+    setSavePortalOk(false);
+  }
+
+  async function savePortalEdit() {
+    if (!portalEditOffer) return;
+    setSavingPortal(true);
+    setSavePortalError('');
+    setSavePortalOk(false);
+    const NUMERIC = new Set(['year','price','mileage','cv','doors','seats','warranty_months','co2']);
+    const values = Object.fromEntries(
+      Object.entries(portalEditForm).map(([k, v]) => {
+        if (NUMERIC.has(k)) {
+          if (v === '' || v === null || v === undefined) return [k, null];
+          const n = Number(v);
+          return [k, Number.isNaN(n) ? null : n];
+        }
+        return [k, v === '' ? null : v];
+      })
+    );
+    const res = await api.patch<{ ok: boolean; detail?: unknown }>('/market/table-row', {
+      table: 'vo', id: portalEditOffer.id, values,
+    });
+    if (res.ok) {
+      setSavePortalOk(true);
+      // update local portalItems list
+      setPortalItems((prev: any[]) => prev.map((i: any) => i.id === portalEditOffer.id ? { ...i, ...values } : i));
+      setTimeout(() => setPortalEditOffer(null), 800);
+    } else {
+      setSavePortalError(JSON.stringify((res as any).detail ?? res, null, 2));
+    }
+    setSavingPortal(false);
   }
 
   async function toggleActive(offer: VoOffer) {
@@ -1696,7 +1763,7 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayPortalItems.map((item: any) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} onClick={() => openPortalEdit(item)} className="cursor-pointer hover:bg-blue-50 transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
@@ -2082,6 +2149,197 @@ export default function MarketplacePage() {
               <button onClick={saveImages} disabled={savingImages}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
                 {savingImages ? 'Guardando…' : 'Guardar imágenes'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Portal offer edit modal ─────────────────────────────────────────── */}
+      <Modal open={!!portalEditOffer} onClose={() => setPortalEditOffer(null)} title="Editar oferta de portal" size="lg">
+        {portalEditOffer && (
+          <div className="space-y-5">
+            {/* Preview strip */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              {portalEditOffer.image_url && (
+                <img src={portalEditOffer.image_url} alt="" className="w-16 h-12 object-cover rounded-md shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="font-medium text-slate-800 text-sm truncate">{portalEditOffer.title}</p>
+                <p className="text-xs text-slate-400">{portalEditOffer.portal} · {portalEditOffer.id}</p>
+              </div>
+              {portalEditOffer.source_url && (
+                <a href={portalEditOffer.source_url} target="_blank" rel="noopener noreferrer"
+                  className="ml-auto text-xs text-blue-600 hover:underline shrink-0">Ver original ↗</a>
+              )}
+            </div>
+
+            {/* Fields grid */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {/* Row 1 */}
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Título</label>
+                <input value={portalEditForm.title ?? ''} onChange={e => setPortalEditForm(f => ({...f, title: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* Brand / Model / Version */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Marca</label>
+                <input value={portalEditForm.brand ?? ''} onChange={e => setPortalEditForm(f => ({...f, brand: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Modelo</label>
+                <input value={portalEditForm.model ?? ''} onChange={e => setPortalEditForm(f => ({...f, model: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Versión</label>
+                <input value={portalEditForm.version ?? ''} onChange={e => setPortalEditForm(f => ({...f, version: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: 1.5 TDI 115 CV DSG" />
+              </div>
+              {/* Numeric row */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Año</label>
+                <input type="number" value={portalEditForm.year ?? ''} onChange={e => setPortalEditForm(f => ({...f, year: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Precio (€)</label>
+                <input type="number" value={portalEditForm.price ?? ''} onChange={e => setPortalEditForm(f => ({...f, price: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Kilómetros</label>
+                <input type="number" value={portalEditForm.mileage ?? ''} onChange={e => setPortalEditForm(f => ({...f, mileage: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">CV</label>
+                <input type="number" value={portalEditForm.cv ?? ''} onChange={e => setPortalEditForm(f => ({...f, cv: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* Fuel / Transmission */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Combustible</label>
+                <select value={portalEditForm.fuel ?? ''} onChange={e => setPortalEditForm(f => ({...f, fuel: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','GLP','GNC','Hidrógeno'].map(v =>
+                    <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Cambio</label>
+                <select value={portalEditForm.transmission ?? ''} onChange={e => setPortalEditForm(f => ({...f, transmission: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  <option value="manual">Manual</option>
+                  <option value="automatico">Automático</option>
+                </select>
+              </div>
+              {/* Body / Color / Doors / Seats */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Carrocería</label>
+                <select value={portalEditForm.body_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, body_type: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['Berlina','SUV','Familiar','Furgoneta','Coupé','Cabriolet','Pick-up','Monovolumen','Todoterreno'].map(v =>
+                    <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Color</label>
+                <input value={portalEditForm.color ?? ''} onChange={e => setPortalEditForm(f => ({...f, color: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Blanco" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Puertas</label>
+                <input type="number" value={portalEditForm.doors ?? ''} onChange={e => setPortalEditForm(f => ({...f, doors: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Plazas</label>
+                <input type="number" value={portalEditForm.seats ?? ''} onChange={e => setPortalEditForm(f => ({...f, seats: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* CO2 / Warranty */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">CO₂ (g/km)</label>
+                <input type="number" value={portalEditForm.co2 ?? ''} onChange={e => setPortalEditForm(f => ({...f, co2: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Garantía (meses)</label>
+                <input type="number" value={portalEditForm.warranty_months ?? ''} onChange={e => setPortalEditForm(f => ({...f, warranty_months: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* Seller */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Tipo vendedor</label>
+                <select value={portalEditForm.seller_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, seller_type: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  <option value="particular">Particular</option>
+                  <option value="professional">Profesional</option>
+                  <option value="concesionario">Concesionario</option>
+                  <option value="importador">Importador</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Vendedor / Concesionario</label>
+                <input value={portalEditForm.seller ?? ''} onChange={e => setPortalEditForm(f => ({...f, seller: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* Location */}
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación</label>
+                <input value={portalEditForm.location ?? ''} onChange={e => setPortalEditForm(f => ({...f, location: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              {/* Portal / Source URL */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Portal</label>
+                <select value={portalEditForm.portal ?? ''} onChange={e => setPortalEditForm(f => ({...f, portal: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['flexicar','autohero','autoscout24','cochescom','wallapop'].map(v =>
+                    <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">URL anuncio</label>
+                <input value={portalEditForm.source_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, source_url: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
+              </div>
+              {/* Image URL */}
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">URL imagen principal</label>
+                <input value={portalEditForm.image_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, image_url: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
+              </div>
+              {/* Description */}
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Descripción</label>
+                <textarea value={portalEditForm.description ?? ''} onChange={e => setPortalEditForm(f => ({...f, description: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none" rows={4} />
+              </div>
+            </div>
+
+            {savePortalError && (
+              <pre className="text-xs text-red-600 bg-red-50 rounded-lg p-3 overflow-auto max-h-32">{savePortalError}</pre>
+            )}
+            {savePortalOk && (
+              <p className="text-xs text-green-600 font-medium">✓ Guardado correctamente</p>
+            )}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button onClick={() => setPortalEditOffer(null)}
+                className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                Cerrar
+              </button>
+              <button onClick={savePortalEdit} disabled={savingPortal}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {savingPortal ? 'Guardando…' : 'Guardar cambios'}
               </button>
             </div>
           </div>
