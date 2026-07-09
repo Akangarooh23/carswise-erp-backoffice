@@ -940,29 +940,29 @@ export default function MarketplacePage() {
   function openPortalEdit(item: any) {
     setPortalEditOffer(item);
     setPortalEditForm({
-      title: item.title ?? '',
-      brand: item.brand ?? '',
-      model: item.model ?? '',
-      version: item.version ?? '',
-      year: item.year ?? '',
-      price: item.price ?? '',
-      mileage: item.mileage ?? '',
-      fuel: item.fuel ?? '',
-      color: item.color ?? '',
-      transmission: item.transmission ?? '',
-      cv: item.cv ?? '',
-      doors: item.doors ?? '',
-      seats: item.seats ?? '',
-      body_type: item.body_type ?? '',
-      seller_type: item.seller_type ?? '',
-      seller: item.seller ?? '',
-      location: item.location ?? '',
-      portal: item.portal ?? '',
-      source_url: item.source_url ?? '',
-      image_url: item.image_url ?? '',
-      description: item.description ?? '',
+      title:          item.title ?? '',
+      brand:          item.brand ?? '',
+      model:          item.model ?? '',
+      version:        item.version ?? '',
+      year:           item.year ?? '',
+      price:          item.price ?? '',
+      mileage:        item.mileage ?? '',
+      fuel:           item.fuel ?? '',
+      color:          item.color ?? '',
+      transmission:   item.transmission ?? '',
+      power_cv:       item.power_cv ?? '',
+      doors:          item.doors ?? '',
+      seats:          item.seats ?? '',
+      body_type:      item.body_type ?? '',
+      seller_type:    item.seller_type ?? '',
+      dealer_name:    item.dealer_name ?? '',
+      location:       item.location ?? '',
+      portal:         item.portal ?? '',
+      url:            item.url ?? '',
+      image_url:      item.image_url ?? '',
+      description:    item.description ?? '',
       warranty_months: item.warranty_months ?? '',
-      co2: item.co2 ?? '',
+      co2:            item.co2 ?? '',
     });
     setSavePortalError('');
     setSavePortalOk(false);
@@ -973,7 +973,7 @@ export default function MarketplacePage() {
     setSavingPortal(true);
     setSavePortalError('');
     setSavePortalOk(false);
-    const NUMERIC = new Set(['year','price','mileage','cv','doors','seats','warranty_months','co2']);
+    const NUMERIC = new Set(['year','price','mileage','power_cv','doors','seats','warranty_months','co2']);
     const values = Object.fromEntries(
       Object.entries(portalEditForm).map(([k, v]) => {
         if (NUMERIC.has(k)) {
@@ -985,11 +985,10 @@ export default function MarketplacePage() {
       })
     );
     const res = await api.patch<{ ok: boolean; detail?: unknown }>('/market/table-row', {
-      table: 'vo', id: portalEditOffer.id, values,
+      table: 'offers', id: portalEditOffer.id, values,
     });
     if (res.ok) {
       setSavePortalOk(true);
-      // update local portalItems list
       setPortalItems((prev: any[]) => prev.map((i: any) => i.id === portalEditOffer.id ? { ...i, ...values } : i));
       setTimeout(() => setPortalEditOffer(null), 800);
     } else {
@@ -1893,8 +1892,8 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.year || '–'}</td>
                       <td className="text-sm text-slate-500">{item.location || '–'}</td>
                       <td>
-                        {item.source_url
-                          ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
+                        {item.url
+                          ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Ver</a>
                           : <span className="text-slate-300">–</span>}
                       </td>
                     </tr>
@@ -2168,8 +2167,8 @@ export default function MarketplacePage() {
                 <p className="font-medium text-slate-800 text-sm truncate">{portalEditOffer.title}</p>
                 <p className="text-xs text-slate-400">{portalEditOffer.portal} · {portalEditOffer.id}</p>
               </div>
-              {portalEditOffer.source_url && (
-                <a href={portalEditOffer.source_url} target="_blank" rel="noopener noreferrer"
+              {portalEditOffer.url && (
+                <a href={portalEditOffer.url} target="_blank" rel="noopener noreferrer"
                   className="ml-auto text-xs text-blue-600 hover:underline shrink-0">Ver original ↗</a>
               )}
             </div>
@@ -2216,7 +2215,7 @@ export default function MarketplacePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">CV</label>
-                <input type="number" value={portalEditForm.cv ?? ''} onChange={e => setPortalEditForm(f => ({...f, cv: e.target.value}))}
+                <input type="number" value={portalEditForm.power_cv ?? ''} onChange={e => setPortalEditForm(f => ({...f, power_cv: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Fuel / Transmission */}
@@ -2288,7 +2287,7 @@ export default function MarketplacePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Vendedor / Concesionario</label>
-                <input value={portalEditForm.seller ?? ''} onChange={e => setPortalEditForm(f => ({...f, seller: e.target.value}))}
+                <input value={portalEditForm.dealer_name ?? ''} onChange={e => setPortalEditForm(f => ({...f, dealer_name: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Location */}
@@ -2309,7 +2308,7 @@ export default function MarketplacePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">URL anuncio</label>
-                <input value={portalEditForm.source_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, source_url: e.target.value}))}
+                <input value={portalEditForm.url ?? ''} onChange={e => setPortalEditForm(f => ({...f, url: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
               </div>
               {/* Image URL */}

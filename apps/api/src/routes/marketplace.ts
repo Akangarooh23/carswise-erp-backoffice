@@ -85,7 +85,10 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
       query(
         `SELECT id, portal, title, brand, model, version, year, mileage, price, fuel,
                 body_type, color, doors, seats, power_cv, traction, image_url, url,
-                seller_type, scraped_at, updated_at
+                seller_type, transmission, co2, warranty_months,
+                COALESCE(dealer_name, '') AS dealer_name,
+                COALESCE(province, COALESCE(location, '')) AS location,
+                description, scraped_at, updated_at
          FROM moveadvisor_market_offers ${where}
          ORDER BY updated_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
