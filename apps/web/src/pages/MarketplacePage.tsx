@@ -739,7 +739,7 @@ export default function MarketplacePage() {
   const matchEnumCI = (val: string, field: any) =>
     val === '__empty__' ? isEmpty(field) : (field||'').toLowerCase() === val.toLowerCase();
   const matchRange = (val: string, field: any) =>
-    val === '__empty__' ? isEmpty(field) : Number(field) <= Number(val);
+    val === '__empty__' ? !field : Number(field) <= Number(val);
 
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
