@@ -593,8 +593,15 @@ type ParticularsOffer = {
 
 // ── Informe de portales (PDF) ─────────────────────────────────────────────────
 
-type PortalStat = { portal: string; total: number; active: number };
+type PortalStat = { portal: string; total: number; active: number; updated_last_day: number };
 type PortalStats = { market: PortalStat[]; vo: PortalStat[]; marketTotal: number; voTotal: number; generatedAt: string };
+
+// Vehículos disponibles en cada portal (aprox., medidos/estimados en la evaluación).
+// null = volumen muy alto o no medible (C2C).
+const PORTAL_DISPONIBLES: Record<string, number> = {
+  autoscout24: 275000, cochescom: 79000, flexicar: 22500, autohero: 5000, milanuncios: 200000,
+  modrive: 1967, vian: 618, gamboa: 463,
+};
 
 const PORTAL_LABELS: Record<string, string> = {
   autoscout24: 'AutoScout24', cochescom: 'coches.com', flexicar: 'Flexicar',
@@ -904,25 +911,27 @@ export default function MarketplacePage() {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 27, 35);
         doc.text(title, M, startY);
         const body = rows.map((r) => {
-          const pct = r.total ? Math.round((100 * r.active) / r.total) : 0;
-          return [portalLabel(r.portal), fmt(r.total), fmt(r.active), `${pct}%`];
+          const disp = PORTAL_DISPONIBLES[r.portal];
+          return [portalLabel(r.portal), disp ? fmt(disp) : '—', fmt(r.total), fmt(r.active), fmt(r.updated_last_day)];
         });
         const act = rows.reduce((a, r) => a + r.active, 0);
+        const upd = rows.reduce((a, r) => a + (r.updated_last_day || 0), 0);
         autoTable(doc, {
           startY: startY + 10,
           margin: { left: M, right: M },
-          head: [['Portal', 'Vehículos', 'Activos', '% activos']],
+          head: [['Portal', 'En la web', 'Obtenidos', 'Activos', 'Últ. 24h']],
           body,
-          foot: [['Total', fmt(total), fmt(act), '']],
+          foot: [['Total', '', fmt(total), fmt(act), fmt(upd)]],
           theme: 'grid',
-          styles: { fontSize: 9.5, cellPadding: 6, lineColor: [227, 232, 237], lineWidth: 0.5, textColor: [20, 27, 35] },
+          styles: { fontSize: 9.5, cellPadding: 5, lineColor: [227, 232, 237], lineWidth: 0.5, textColor: [20, 27, 35] },
           headStyles: { fillColor: [251, 252, 253], textColor: [138, 149, 161], fontStyle: 'bold' },
           footStyles: { fillColor: [251, 252, 253], textColor: [20, 27, 35], fontStyle: 'bold' },
-          columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+          columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
           didParseCell: (d) => {
-            if (d.section === 'body' && d.column.index === 3) {
-              const pct = parseInt(String(d.cell.raw), 10) || 0;
-              d.cell.styles.textColor = pct >= 70 ? [46, 125, 91] : pct >= 30 ? [176, 116, 15] : [178, 58, 58];
+            // "Últ. 24h": verde si hubo actualización, rojo si 0 (portal sin refrescar)
+            if (d.section === 'body' && d.column.index === 4) {
+              const n = parseInt(String(d.cell.raw).replace(/\D/g, ''), 10) || 0;
+              d.cell.styles.textColor = n > 0 ? [46, 125, 91] : [178, 58, 58];
               d.cell.styles.fontStyle = 'bold';
             }
           },

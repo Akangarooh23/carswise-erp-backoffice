@@ -111,14 +111,16 @@ marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'suppor
     const [market, vo] = await Promise.all([
       query(`SELECT portal,
                     COUNT(*)::int AS total,
-                    COUNT(*) FILTER (WHERE is_active)::int AS active
+                    COUNT(*) FILTER (WHERE is_active)::int AS active,
+                    COUNT(*) FILTER (WHERE last_seen_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
              FROM moveadvisor_market_offers
              GROUP BY portal
              HAVING COUNT(*) > 20
              ORDER BY total DESC`),
       query(`SELECT portal,
                     COUNT(*)::int AS total,
-                    COUNT(*) FILTER (WHERE is_active)::int AS active
+                    COUNT(*) FILTER (WHERE is_active)::int AS active,
+                    COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
              FROM moveadvisor_marketplace_vo_offers
              GROUP BY portal
              ORDER BY total DESC`),
