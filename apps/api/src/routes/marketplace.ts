@@ -104,6 +104,40 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   }
 });
 
+// ── Portal stats (informe de cobertura, en vivo) ──────────────────────────────
+
+marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
+  try {
+    const [market, vo] = await Promise.all([
+      query(`SELECT portal,
+                    COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE is_active)::int AS active
+             FROM moveadvisor_market_offers
+             GROUP BY portal
+             HAVING COUNT(*) > 20
+             ORDER BY total DESC`),
+      query(`SELECT portal,
+                    COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE is_active)::int AS active
+             FROM moveadvisor_marketplace_vo_offers
+             GROUP BY portal
+             ORDER BY total DESC`),
+    ]);
+    res.json({
+      ok: true,
+      data: {
+        market: market.rows,
+        vo: vo.rows,
+        marketTotal: (market.rows as { total: number }[]).reduce((a, r) => a + r.total, 0),
+        voTotal: (vo.rows as { total: number }[]).reduce((a, r) => a + r.total, 0),
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'marketplace_portal_stats_failed', detail: (err as Error).message });
+  }
+});
+
 // ── Carswise VO Marketplace ───────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
