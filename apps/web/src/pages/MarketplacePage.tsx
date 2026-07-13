@@ -607,62 +607,6 @@ function portalLabel(p: string): string {
   return PORTAL_LABELS[p] || (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
 }
 
-function buildPortalReportHtml(data: PortalStats): string {
-  const fmt = (n: number) => Number(n || 0).toLocaleString('es-ES');
-  const esc = (s: string) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
-  const dt = new Date(data.generatedAt);
-  const fecha = dt.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) +
-    ' · ' + dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  const rowHtml = (r: PortalStat) => {
-    const pct = r.total ? Math.round((100 * r.active) / r.total) : 0;
-    const cls = pct >= 70 ? 'g' : pct >= 30 ? 'w' : 'b';
-    return `<tr><td class="p">${esc(portalLabel(r.portal))}</td><td class="n">${fmt(r.total)}</td>` +
-      `<td class="n">${fmt(r.active)}</td><td class="n"><span class="pill ${cls}">${pct}%</span></td></tr>`;
-  };
-  const table = (title: string, rows: PortalStat[], total: number) => {
-    const act = rows.reduce((a, r) => a + r.active, 0);
-    return `<h2>${esc(title)}</h2><div class="tw"><table>` +
-      `<thead><tr><th>Portal</th><th class="n">Vehículos</th><th class="n">Activos</th><th class="n">% activos</th></tr></thead>` +
-      `<tbody>${rows.map(rowHtml).join('')}</tbody>` +
-      `<tfoot><tr><td class="p">Total</td><td class="n">${fmt(total)}</td><td class="n">${fmt(act)}</td><td></td></tr></tfoot>` +
-      `</table></div>`;
-  };
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>CarsWise · Informe de portales</title><style>
-    :root{--ink:#141b23;--muted:#5a6673;--faint:#8a95a1;--border:#e3e8ed;--petrol:#1e5b7b;
-      --g:#2e7d5b;--gb:#e7f2ec;--w:#b0740f;--wb:#fbf1de;--b:#b23a3a;--bb:#f7e7e7;
-      --mono:ui-monospace,"Cascadia Code",Consolas,monospace;--sans:-apple-system,"Segoe UI",system-ui,sans-serif;}
-    *{box-sizing:border-box;} body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff;padding:36px 40px;-webkit-font-smoothing:antialiased;}
-    .eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--petrol);margin:0 0 8px;}
-    h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;}
-    .sub{color:var(--muted);font-size:14px;margin:0 0 4px;}
-    .tot{color:var(--faint);font-size:13px;font-family:var(--mono);margin:0 0 26px;}
-    h2{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:26px 0 10px;}
-    .tw{border:1px solid var(--border);border-radius:11px;overflow:hidden;}
-    table{width:100%;border-collapse:collapse;font-size:13.5px;}
-    thead th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:11px 15px;border-bottom:1px solid var(--border);background:#fbfcfd;}
-    td{padding:10px 15px;border-bottom:1px solid var(--border);}
-    tbody tr:last-child td{border-bottom:1px solid var(--border);}
-    .p{font-weight:600;}
-    .n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;}
-    tfoot td{font-weight:700;background:#fbfcfd;border-bottom:none;}
-    .pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;}
-    .pill.g{background:var(--gb);color:var(--g);} .pill.w{background:var(--wb);color:var(--w);} .pill.b{background:var(--bb);color:var(--b);}
-    .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;}
-    .btn{position:fixed;top:20px;right:20px;background:var(--petrol);color:#fff;border:none;font:600 13px var(--sans);padding:10px 16px;border-radius:999px;cursor:pointer;box-shadow:0 4px 14px rgba(20,45,60,.22);}
-    @media print{.btn{display:none;} body{padding:0;} *{-webkit-print-color-adjust:exact;print-color-adjust:exact;} tbody tr{break-inside:avoid;} @page{margin:14mm;}}
-  </style></head><body>
-    <button class="btn" onclick="window.print()">Descargar PDF</button>
-    <p class="eyebrow">CarsWise · Inteligencia de mercado</p>
-    <h1>Informe de portales</h1>
-    <p class="sub">Vehículos capturados por portal y cuántos siguen activos (en vivo).</p>
-    <p class="tot">${fmt(data.marketTotal + data.voTotal)} vehículos en total · generado ${esc(fecha)}</p>
-    ${table('Portales de mercado', data.market, data.marketTotal)}
-    ${table('Concesionarios VO', data.vo, data.voTotal)}
-    <p class="foot">“Activos” = ofertas refrescadas recientemente (siguen publicadas). Datos en vivo de la base de datos de CarsWise.</p>
-    <script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},350);};</script>
-  </body></html>`;
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function MarketplacePage() {
@@ -931,17 +875,65 @@ export default function MarketplacePage() {
     setLoading(false);
   }, [tab, q, brand, statusFilter, portalFilter, sellerFilter]);
 
-  // Genera el informe de portales (en vivo) y lo abre en una ventana para imprimir/guardar PDF.
+  // Genera el informe de portales (en vivo) como PDF y lo descarga directamente.
   const descargarInforme = useCallback(async () => {
     setReportLoading(true);
     try {
       const res = await api.get<PortalStats>('/marketplace/portal-stats');
       if (!res.ok) { window.alert('No se pudo generar el informe. Inténtalo de nuevo.'); return; }
-      const w = window.open('', '_blank', 'width=980,height=820');
-      if (!w) { window.alert('Permite las ventanas emergentes de este sitio para descargar el informe.'); return; }
-      w.document.open();
-      w.document.write(buildPortalReportHtml(res.data));
-      w.document.close();
+      const data = res.data;
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+      const fmt = (n: number) => Number(n || 0).toLocaleString('es-ES');
+      const M = 40;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9); doc.setTextColor(30, 91, 123);
+      doc.text('CARSWISE · INTELIGENCIA DE MERCADO', M, 46);
+      doc.setFontSize(21); doc.setTextColor(20, 27, 35);
+      doc.text('Informe de portales', M, 72);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10); doc.setTextColor(90, 102, 115);
+      const dt = new Date(data.generatedAt);
+      const fecha = dt.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) +
+        ' · ' + dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      doc.text(`${fmt(data.marketTotal + data.voTotal)} vehículos en total · generado ${fecha}`, M, 90);
+
+      const drawTable = (title: string, rows: PortalStat[], total: number, startY: number): number => {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 27, 35);
+        doc.text(title, M, startY);
+        const body = rows.map((r) => {
+          const pct = r.total ? Math.round((100 * r.active) / r.total) : 0;
+          return [portalLabel(r.portal), fmt(r.total), fmt(r.active), `${pct}%`];
+        });
+        const act = rows.reduce((a, r) => a + r.active, 0);
+        autoTable(doc, {
+          startY: startY + 10,
+          margin: { left: M, right: M },
+          head: [['Portal', 'Vehículos', 'Activos', '% activos']],
+          body,
+          foot: [['Total', fmt(total), fmt(act), '']],
+          theme: 'grid',
+          styles: { fontSize: 9.5, cellPadding: 6, lineColor: [227, 232, 237], lineWidth: 0.5, textColor: [20, 27, 35] },
+          headStyles: { fillColor: [251, 252, 253], textColor: [138, 149, 161], fontStyle: 'bold' },
+          footStyles: { fillColor: [251, 252, 253], textColor: [20, 27, 35], fontStyle: 'bold' },
+          columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+          didParseCell: (d) => {
+            if (d.section === 'body' && d.column.index === 3) {
+              const pct = parseInt(String(d.cell.raw), 10) || 0;
+              d.cell.styles.textColor = pct >= 70 ? [46, 125, 91] : pct >= 30 ? [176, 116, 15] : [178, 58, 58];
+              d.cell.styles.fontStyle = 'bold';
+            }
+          },
+        });
+        return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+      };
+
+      const y = drawTable('Portales de mercado', data.market, data.marketTotal, 118);
+      drawTable('Concesionarios VO', data.vo, data.voTotal, y + 34);
+
+      doc.save('CarsWise-Informe-Portales.pdf');
     } catch {
       window.alert('No se pudo generar el informe. Inténtalo de nuevo.');
     } finally {
