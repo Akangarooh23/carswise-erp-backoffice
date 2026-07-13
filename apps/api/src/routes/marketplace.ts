@@ -734,7 +734,13 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
 
-  const conditions: string[] = ["(vs.state = 'active_sale' OR vs.is_listed = true)", "v.price IS NOT NULL", "v.price != '' AND v.price != '0'"];
+  const conditions: string[] = [
+    "(vs.state = 'active_sale' OR vs.is_listed = true)",
+    "v.price IS NOT NULL",
+    "v.price != '' AND v.price != '0'",
+    // Exclude vehicles whose marketplace record has been explicitly deactivated (unpublished)
+    "NOT EXISTS (SELECT 1 FROM moveadvisor_marketplace_vo_offers mp WHERE mp.id = 'idcar-' || v.id::text AND mp.is_active = FALSE)",
+  ];
   const values: unknown[]    = [];
 
   if (q) {
@@ -788,8 +794,8 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
   const isListed = state === 'active_sale';
 
   try {
-    const vRow = await query(`SELECT user_email, user_id FROM moveadvisor_user_vehicles WHERE id = $1 LIMIT 1`, [vehicleId]);
-    const v    = (vRow as unknown as { rows: { user_email: string; user_id: string | null }[] }).rows?.[0];
+    const vRow = await query(`SELECT user_email, user_id, brand, model, year FROM moveadvisor_user_vehicles WHERE id = $1 LIMIT 1`, [vehicleId]);
+    const v    = (vRow as unknown as { rows: { user_email: string; user_id: string | null; brand: string; model: string; year: number }[] }).rows?.[0];
     if (!v) return res.status(404).json({ ok: false, error: 'vehicle_not_found' });
 
     await query(
@@ -798,6 +804,24 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
        ON CONFLICT (user_email, vehicle_id) DO UPDATE SET is_listed = EXCLUDED.is_listed, updated_at = NOW()`,
       [v.user_email, v.user_id, vehicleId, isListed]
     );
+
+    if (!isListed) {
+      const offerId = `idcar-${vehicleId}`;
+      await query(`UPDATE moveadvisor_marketplace_vo_offers SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [offerId]).catch(() => {});
+      if (v.brand && v.model && v.year) {
+        await query(
+          `UPDATE moveadvisor_marketplace_vo_offers
+           SET is_active = FALSE, updated_at = NOW()
+           WHERE lower(COALESCE(brand,'')) = lower($1)
+             AND lower(COALESCE(model,'')) = lower($2)
+             AND year = $3
+             AND seller_type != 'particular'
+             AND id != $4`,
+          [v.brand, v.model, Number(v.year), offerId]
+        ).catch(() => {});
+      }
+    }
+
     res.json({ ok: true, vehicleId, state, isListed });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'db_error', detail: (err as Error).message });
