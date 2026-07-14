@@ -807,8 +807,16 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
       [v.user_email, v.user_id, vehicleId, isListed]
     );
 
-    if (!isListed) {
-      const offerId = `idcar-${vehicleId}`;
+    const offerId = `idcar-${vehicleId}`;
+
+    if (isListed) {
+      // On publish: reactivate the marketplace record if it exists
+      await query(
+        `UPDATE moveadvisor_marketplace_vo_offers SET is_active = TRUE, updated_at = NOW() WHERE id = $1`,
+        [offerId]
+      ).catch(() => {});
+    } else {
+      // On unpublish: deactivate the marketplace record and any dealer duplicates
       await query(`UPDATE moveadvisor_marketplace_vo_offers SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [offerId]).catch(() => {});
       if (v.brand && v.model && v.year) {
         await query(
