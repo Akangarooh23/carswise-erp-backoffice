@@ -838,6 +838,8 @@ export default function MarketplacePage() {
 
   const [portalEditOffer, setPortalEditOffer] = useState<any | null>(null);
   const [portalEditForm,  setPortalEditForm]  = useState<Record<string,any>>({});
+  const [portalDetailLoading, setPortalDetailLoading] = useState(false);
+  const portalEditIdRef = useRef<string>('');
   const [savingPortal,    setSavingPortal]    = useState(false);
   const [savePortalError, setSavePortalError] = useState('');
   const [savePortalOk,    setSavePortalOk]    = useState(false);
@@ -1035,34 +1037,62 @@ export default function MarketplacePage() {
     setSaving(false);
   }
 
-  function openPortalEdit(item: any) {
+  // Construye el formulario con TODOS los campos editables de la oferta.
+  function portalFormFromOffer(o: any): Record<string, any> {
+    return {
+      title:               o.title ?? '',
+      brand:               o.brand ?? '',
+      model:               o.model ?? '',
+      version:             o.version ?? '',
+      year:                o.year ?? '',
+      price:               o.price ?? '',
+      mileage:             o.mileage ?? '',
+      fuel:                o.fuel ?? '',
+      color:               o.color ?? '',
+      transmission:        o.transmission ?? '',
+      power_cv:            o.power_cv ?? '',
+      power_kw:            o.power_kw ?? '',
+      doors:               o.doors ?? '',
+      seats:               o.seats ?? '',
+      body_type:           o.body_type ?? '',
+      environmental_label: o.environmental_label ?? '',
+      traction:            o.traction ?? '',
+      displacement:        o.displacement ?? '',
+      co2:                 o.co2 ?? '',
+      consumption:         o.consumption ?? '',
+      warranty_months:     o.warranty_months ?? '',
+      next_itv:            o.next_itv ?? '',
+      monthly_price:       o.monthly_price ?? '',
+      finance_price:       o.finance_price ?? '',
+      seller_type:         o.seller_type ?? '',
+      dealer_name:         o.dealer_name ?? '',
+      location:            o.location ?? '',
+      province:            o.province ?? '',
+      city:                o.city ?? '',
+      listing_type:        o.listing_type ?? '',
+      portal:              o.portal ?? '',
+      url:                 o.url ?? '',
+      image_url:           o.image_url ?? '',
+      is_active:           o.is_active ?? null,
+    };
+  }
+
+  async function openPortalEdit(item: any) {
+    portalEditIdRef.current = item.id;
     setPortalEditOffer(item);
-    setPortalEditForm({
-      title:          item.title ?? '',
-      brand:          item.brand ?? '',
-      model:          item.model ?? '',
-      version:        item.version ?? '',
-      year:           item.year ?? '',
-      price:          item.price ?? '',
-      mileage:        item.mileage ?? '',
-      fuel:           item.fuel ?? '',
-      color:          item.color ?? '',
-      transmission:   item.transmission ?? '',
-      power_cv:       item.power_cv ?? '',
-      doors:          item.doors ?? '',
-      seats:          item.seats ?? '',
-      body_type:      item.body_type ?? '',
-      seller_type:    item.seller_type ?? '',
-      dealer_name:    item.dealer_name ?? '',
-      location:       item.location ?? '',
-      portal:         item.portal ?? '',
-      url:            item.url ?? '',
-      image_url:      item.image_url ?? '',
-      warranty_months: item.warranty_months ?? '',
-      co2:            item.co2 ?? '',
-    });
+    setPortalEditForm(portalFormFromOffer(item)); // instantáneo con los datos del listado
     setSavePortalError('');
     setSavePortalOk(false);
+    // Trae la ficha completa (etiqueta, cilindrada, consumo, ITV, precios, provincia…)
+    setPortalDetailLoading(true);
+    try {
+      const res = await api.get<any>(`/marketplace/offers/${encodeURIComponent(item.id)}`);
+      if (res.ok && res.data && portalEditIdRef.current === item.id) {
+        setPortalEditOffer((prev: any) => (prev && prev.id === item.id ? { ...prev, ...res.data } : prev));
+        setPortalEditForm(portalFormFromOffer(res.data));
+      }
+    } catch { /* si falla la ficha, se queda con los datos del listado */ }
+    finally { setPortalDetailLoading(false); }
   }
 
   async function savePortalEdit() {
@@ -1070,15 +1100,21 @@ export default function MarketplacePage() {
     setSavingPortal(true);
     setSavePortalError('');
     setSavePortalOk(false);
-    const NUMERIC = new Set(['year','price','mileage','power_cv','doors','seats','warranty_months','co2']);
+    // Coerción por tipo de columna → nunca envía texto a una columna numérica (no da error)
+    const INT = new Set(['year','mileage','power_cv','power_kw','doors','seats','warranty_months']);
+    const DEC = new Set(['price','monthly_price','finance_price','consumption']);
     const values = Object.fromEntries(
       Object.entries(portalEditForm).map(([k, v]) => {
-        if (NUMERIC.has(k)) {
-          if (v === '' || v === null || v === undefined) return [k, null];
-          const n = Number(v);
-          return [k, Number.isNaN(n) ? null : n];
+        if (k === 'is_active') {
+          if (typeof v === 'boolean') return [k, v];
+          if (v === 'true')  return [k, true];
+          if (v === 'false') return [k, false];
+          return [k, null];
         }
-        return [k, v === '' ? null : v];
+        if (v === '' || v === null || v === undefined) return [k, null];
+        if (INT.has(k)) { const n = Math.trunc(Number(String(v).replace(',', '.'))); return [k, Number.isFinite(n) ? n : null]; }
+        if (DEC.has(k)) { const n = Number(String(v).replace(/[^\d.,-]/g, '').replace(',', '.')); return [k, Number.isFinite(n) ? n : null]; }
+        return [k, v];
       })
     );
     const res = await api.patch<{ ok: boolean; detail?: unknown }>('/market/table-row', {
@@ -2273,7 +2309,7 @@ export default function MarketplacePage() {
               )}
               <div className="min-w-0">
                 <p className="font-medium text-slate-800 text-sm truncate">{portalEditOffer.title}</p>
-                <p className="text-xs text-slate-400">{portalEditOffer.portal} · {portalEditOffer.id}</p>
+                <p className="text-xs text-slate-400">{portalEditOffer.portal} · {portalEditOffer.id}{portalDetailLoading ? ' · cargando ficha…' : ''}</p>
               </div>
               {portalEditOffer.url && (
                 <a href={portalEditOffer.url} target="_blank" rel="noopener noreferrer"
@@ -2332,7 +2368,7 @@ export default function MarketplacePage() {
                 <select value={portalEditForm.fuel ?? ''} onChange={e => setPortalEditForm(f => ({...f, fuel: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
-                  {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','GLP','GNC','Hidrógeno'].map(v =>
+                  {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','Gas'].map(v =>
                     <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
@@ -2341,8 +2377,8 @@ export default function MarketplacePage() {
                 <select value={portalEditForm.transmission ?? ''} onChange={e => setPortalEditForm(f => ({...f, transmission: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
-                  <option value="manual">Manual</option>
-                  <option value="automatico">Automático</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Automatica">Automática</option>
                 </select>
               </div>
               {/* Body / Color / Doors / Seats */}
@@ -2351,7 +2387,7 @@ export default function MarketplacePage() {
                 <select value={portalEditForm.body_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, body_type: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
-                  {['Berlina','SUV','Familiar','Furgoneta','Coupé','Cabriolet','Pick-up','Monovolumen','Todoterreno'].map(v =>
+                  {['SUV','Berlina','Compacto','Familiar','Monovolumen','Coupé','Cabrio','Furgoneta','Pick Up'].map(v =>
                     <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
@@ -2381,6 +2417,53 @@ export default function MarketplacePage() {
                 <input type="number" value={portalEditForm.warranty_months ?? ''} onChange={e => setPortalEditForm(f => ({...f, warranty_months: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
+              {/* Potencia kW / Etiqueta DGT / Tracción */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Potencia (kW)</label>
+                <input type="number" value={portalEditForm.power_kw ?? ''} onChange={e => setPortalEditForm(f => ({...f, power_kw: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Etiqueta DGT</label>
+                <select value={portalEditForm.environmental_label ?? ''} onChange={e => setPortalEditForm(f => ({...f, environmental_label: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['0 Emisiones','ECO','C','B'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Tracción</label>
+                <select value={portalEditForm.traction ?? ''} onChange={e => setPortalEditForm(f => ({...f, traction: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['Delantera','Trasera','4x4'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Cilindrada (cc)</label>
+                <input type="number" value={portalEditForm.displacement ?? ''} onChange={e => setPortalEditForm(f => ({...f, displacement: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="1968" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Consumo (l/100 km)</label>
+                <input type="number" step="0.1" value={portalEditForm.consumption ?? ''} onChange={e => setPortalEditForm(f => ({...f, consumption: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="5.2" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Próxima ITV</label>
+                <input value={portalEditForm.next_itv ?? ''} onChange={e => setPortalEditForm(f => ({...f, next_itv: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="MM/AAAA" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Cuota mensual (€)</label>
+                <input type="number" value={portalEditForm.monthly_price ?? ''} onChange={e => setPortalEditForm(f => ({...f, monthly_price: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Precio financiado (€)</label>
+                <input type="number" value={portalEditForm.finance_price ?? ''} onChange={e => setPortalEditForm(f => ({...f, finance_price: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
               {/* Seller */}
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Tipo vendedor</label>
@@ -2399,8 +2482,18 @@ export default function MarketplacePage() {
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Location */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Provincia</label>
+                <input value={portalEditForm.province ?? ''} onChange={e => setPortalEditForm(f => ({...f, province: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Madrid" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Ciudad</label>
+                <input value={portalEditForm.city ?? ''} onChange={e => setPortalEditForm(f => ({...f, city: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación (texto libre)</label>
                 <input value={portalEditForm.location ?? ''} onChange={e => setPortalEditForm(f => ({...f, location: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -2424,6 +2517,26 @@ export default function MarketplacePage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">URL imagen principal</label>
                 <input value={portalEditForm.image_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, image_url: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
+              </div>
+              {/* Estado / Tipo de listado */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Estado</label>
+                <select
+                  value={portalEditForm.is_active === true ? 'true' : portalEditForm.is_active === false ? 'false' : ''}
+                  onChange={e => setPortalEditForm(f => ({...f, is_active: e.target.value === '' ? null : e.target.value === 'true'}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  <option value="true">Activa</option>
+                  <option value="false">Inactiva</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Tipo de listado</label>
+                <select value={portalEditForm.listing_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, listing_type: e.target.value}))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['compra','renting'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
             </div>
 

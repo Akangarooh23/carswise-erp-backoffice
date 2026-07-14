@@ -962,9 +962,9 @@ export async function updateMarketTableRow(input: {
     return null;
   }
 
-  const { rows: columnRows } = await pool.query<{ column_name: string }>(
+  const { rows: columnRows } = await pool.query<{ column_name: string; is_nullable: string }>(
     `
-    SELECT column_name
+    SELECT column_name, is_nullable
     FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = $1
     `,
@@ -972,6 +972,7 @@ export async function updateMarketTableRow(input: {
   );
 
   const tableColumns = new Set(columnRows.map((row) => row.column_name));
+  const notNullColumns = new Set(columnRows.filter((row) => row.is_nullable === "NO").map((row) => row.column_name));
   if (!tableColumns.has("id")) {
     return null;
   }
@@ -981,7 +982,9 @@ export async function updateMarketTableRow(input: {
   const sanitizedEntries = requestedEntries
     .filter(([column]) => tableColumns.has(column) && !protectedColumns.has(column))
     .filter(([, value]) => typeof value !== "object" || value === null)
-    .map(([column, value]) => [column, value === "" ? null : value] as const);
+    .map(([column, value]) => [column, value === "" ? null : value] as const)
+    // Nunca poner NULL en una columna NOT NULL → se omite el campo (mantiene el valor actual) en vez de romper el guardado
+    .filter(([column, value]) => !(value === null && notNullColumns.has(column)));
 
   if (sanitizedEntries.length === 0) {
     const { rows } = await pool.query<MarketVoTableRow>(

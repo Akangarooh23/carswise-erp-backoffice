@@ -104,6 +104,40 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   }
 });
 
+// ── Single portal offer (ficha completa, todos los campos editables) ──────────
+
+marketplaceRouter.get('/marketplace/offers/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, portal, title, brand, model, version, year, mileage, price,
+              monthly_price, finance_price, fuel, transmission, color,
+              COALESCE(body_type, '') AS body_type,
+              COALESCE(environmental_label, '') AS environmental_label,
+              doors, seats, power_cv, power_kw, traction,
+              COALESCE(displacement, '') AS displacement,
+              COALESCE(co2::text, '') AS co2, consumption,
+              warranty_months, COALESCE(next_itv, '') AS next_itv,
+              COALESCE(dealer_name, '') AS dealer_name, seller_type,
+              COALESCE(listing_type, '') AS listing_type,
+              COALESCE(province, '') AS province, COALESCE(city, '') AS city,
+              COALESCE(location, '') AS location,
+              image_url, url, is_active,
+              scraped_at, updated_at, last_seen_at
+       FROM moveadvisor_market_offers
+       WHERE id = $1
+       LIMIT 1`,
+      [req.params.id]
+    );
+    if (!result.rows.length) {
+      res.status(404).json({ ok: false, error: 'offer_not_found' });
+      return;
+    }
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'marketplace_offer_detail_failed', detail: (err as Error).message });
+  }
+});
+
 // ── Portal stats (informe de cobertura, en vivo) ──────────────────────────────
 
 marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
