@@ -737,10 +737,11 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   const offset  = (page - 1) * limit;
 
   const conditions: string[] = [
-    "(vs.state = 'active_sale' OR vs.is_listed = true)",
     "v.price IS NOT NULL",
     "v.price != '' AND v.price != '0'",
-    // Exclude vehicles whose marketplace record has been explicitly deactivated (unpublished)
+    // Show vehicles that are listed in vehicle_states OR have an active marketplace record
+    "(COALESCE(vs.is_listed, false) = true OR EXISTS (SELECT 1 FROM moveadvisor_marketplace_vo_offers mp WHERE mp.id = 'idcar-' || v.id::text AND mp.is_active = TRUE))",
+    // Exclude vehicles explicitly deactivated in marketplace
     "NOT EXISTS (SELECT 1 FROM moveadvisor_marketplace_vo_offers mp WHERE mp.id = 'idcar-' || v.id::text AND mp.is_active = FALSE)",
   ];
   const values: unknown[]    = [];
@@ -762,7 +763,7 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
                 COALESCE(u.name || ' ' || COALESCE(u.apellidos, ''), u.name, v.user_email) AS owner_name,
                 u.phone AS owner_phone
          FROM moveadvisor_user_vehicles v
-         INNER JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
+         LEFT JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
          LEFT JOIN moveadvisor_users u ON lower(u.email) = lower(v.user_email)
          ${where}
          ORDER BY v.updated_at DESC
@@ -772,7 +773,7 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
       query(
         `SELECT COUNT(*)::int AS total
          FROM moveadvisor_user_vehicles v
-         INNER JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
+         LEFT JOIN moveadvisor_user_vehicle_states vs ON vs.vehicle_id = v.id
          ${where}`,
         values
       ),
