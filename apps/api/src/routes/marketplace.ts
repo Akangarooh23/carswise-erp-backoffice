@@ -84,7 +84,10 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
     const [rows, total] = await Promise.all([
       query(
         `SELECT id, portal, title, brand, model, version, year, mileage, price, fuel,
-                COALESCE(body_type, '') AS body_type, color, doors, seats, power_cv, traction,
+                COALESCE(body_type, '') AS body_type, color, doors, seats, power_cv, power_kw, traction,
+                COALESCE(environmental_label, '') AS environmental_label,
+                COALESCE(displacement, '') AS displacement,
+                consumption,
                 image_url, url, seller_type, transmission,
                 COALESCE(co2::text, '') AS co2,
                 warranty_months,

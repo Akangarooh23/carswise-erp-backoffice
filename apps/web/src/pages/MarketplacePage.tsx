@@ -580,6 +580,9 @@ type PortalOffer = {
   id: string; portal: string; title: string; brand: string; model: string;
   year: number; price: number; mileage: number; fuel: string; image_url?: string; url?: string;
   seller_type?: string;
+  color?: string; body_type?: string; transmission?: string; power_cv?: number; power_kw?: number;
+  doors?: number; seats?: number; displacement?: string; co2?: string; environmental_label?: string;
+  traction?: string; consumption?: number;
 };
 
 type ParticularsOffer = {
@@ -638,7 +641,7 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
-  const [colFOffers,   setColFOffers]   = useState({ brand: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '' });
+  const [colFOffers,   setColFOffers]   = useState({ brand: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
@@ -760,6 +763,10 @@ export default function MarketplacePage() {
   const portalOpts    = useMemo(() => [...new Set(portalItems.map((i:any) => i.portal).filter(Boolean))].sort(), [portalItems]);
   const portalFuelOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [portalItems]);
   const portalYearOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [portalItems]);
+  const portalColorOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.color).filter(Boolean))].sort(), [portalItems]);
+  const portalBodyOpts  = useMemo(() => [...new Set(portalItems.map((i:any) => i.body_type).filter(Boolean))].sort(), [portalItems]);
+  const portalTransOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.transmission).filter(Boolean))].sort(), [portalItems]);
+  const portalTracOpts  = useMemo(() => [...new Set(portalItems.map((i:any) => i.traction).filter(Boolean))].sort(), [portalItems]);
   const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
   const partYearOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [particularsItems]);
 
@@ -770,6 +777,8 @@ export default function MarketplacePage() {
     val === '__empty__' ? isEmpty(field) : (field||'').toLowerCase() === val.toLowerCase();
   const matchRange = (val: string, field: any) =>
     val === '__empty__' ? !field : Number(field) <= Number(val);
+  const matchMin = (val: string, field: any) =>
+    val === '__empty__' ? isEmpty(field) : Number(field) >= Number(val);
 
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
@@ -780,6 +789,17 @@ export default function MarketplacePage() {
     if (colFOffers.kmMax)      r = r.filter(i => matchRange(colFOffers.kmMax, i.mileage));
     if (colFOffers.year)       r = r.filter(i => matchEnum(colFOffers.year, i.year));
     if (colFOffers.fuel)       r = r.filter(i => matchEnumCI(colFOffers.fuel, i.fuel));
+    if (colFOffers.color)      r = r.filter(i => matchEnumCI(colFOffers.color, i.color));
+    if (colFOffers.body)       r = r.filter(i => matchEnumCI(colFOffers.body, i.body_type));
+    if (colFOffers.trans)      r = r.filter(i => matchEnumCI(colFOffers.trans, i.transmission));
+    if (colFOffers.cvMin)      r = r.filter(i => matchMin(colFOffers.cvMin, i.power_cv));
+    if (colFOffers.doors)      r = r.filter(i => matchEnum(colFOffers.doors, i.doors));
+    if (colFOffers.seats)      r = r.filter(i => matchEnum(colFOffers.seats, i.seats));
+    if (colFOffers.ccMin)      r = r.filter(i => matchMin(colFOffers.ccMin, i.displacement));
+    if (colFOffers.co2Max)     r = r.filter(i => matchRange(colFOffers.co2Max, i.co2));
+    if (colFOffers.etiq)       r = r.filter(i => matchEnum(colFOffers.etiq, i.environmental_label));
+    if (colFOffers.trac)       r = r.filter(i => matchEnumCI(colFOffers.trac, i.traction));
+    if (colFOffers.consMax)    r = r.filter(i => matchRange(colFOffers.consMax, i.consumption));
     return r;
   }, [portalItems, colFOffers]);
 
@@ -1836,14 +1856,14 @@ export default function MarketplacePage() {
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayPortalItems.length} de {portalItems.length} resultados</span>
-                  <button onClick={() => setColFOffers({ brand:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'' })}
+                  <button onClick={() => setColFOffers({ brand:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
               <div className="overflow-x-auto">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Enlace</th></tr>
+                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
@@ -1900,6 +1920,83 @@ export default function MarketplacePage() {
                         {portalFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.color} onChange={e => setColFOffers(f => ({...f, color: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option><option value="__empty__">(Vacío)</option>
+                        {portalColorOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.body} onChange={e => setColFOffers(f => ({...f, body: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {portalBodyOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.trans} onChange={e => setColFOffers(f => ({...f, trans: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option><option value="__empty__">(Vacío)</option>
+                        {portalTransOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.cvMin} onChange={e => setColFOffers(f => ({...f, cvMin: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option><option value="__empty__">(Vacío)</option>
+                        {[60,90,110,130,150,190,250,350].map(v => <option key={v} value={v}>≥ {v} CV</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.doors} onChange={e => setColFOffers(f => ({...f, doors: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {[2,3,4,5].map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.seats} onChange={e => setColFOffers(f => ({...f, seats: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {[2,4,5,6,7,9].map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.ccMin} onChange={e => setColFOffers(f => ({...f, ccMin: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {[900,1200,1600,2000,3000].map(v => <option key={v} value={v}>≥ {v} cc</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.co2Max} onChange={e => setColFOffers(f => ({...f, co2Max: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option><option value="__empty__">(Vacío)</option>
+                        {[90,100,120,140,160,200].map(v => <option key={v} value={v}>≤ {v} g/km</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.etiq} onChange={e => setColFOffers(f => ({...f, etiq: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {['0 Emisiones','ECO','C','B'].map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.trac} onChange={e => setColFOffers(f => ({...f, trac: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option><option value="__empty__">(Vacío)</option>
+                        {portalTracOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.consMax} onChange={e => setColFOffers(f => ({...f, consMax: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option><option value="__empty__">(Vacío)</option>
+                        {[4,5,6,7,8,10].map(v => <option key={v} value={v}>≤ {v} l</option>)}
+                      </select>
+                    </td>
                     <td></td>
                   </tr>
                 </thead>
@@ -1931,6 +2028,17 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.color || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.body_type || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 capitalize whitespace-nowrap">{item.transmission || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.power_cv ? `${item.power_cv} CV` : <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 text-center">{item.doors || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 text-center">{item.seats || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.displacement ? `${item.displacement} cc` : <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.co2 ? `${item.co2} g` : <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.environmental_label || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.traction || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.consumption ? `${item.consumption} l` : <span className="text-slate-300">–</span>}</td>
                       <td>
                         {(item as any).url
                           ? <a href={(item as any).url} target="_blank" rel="noopener noreferrer"
