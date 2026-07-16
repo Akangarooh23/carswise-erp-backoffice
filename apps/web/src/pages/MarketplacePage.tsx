@@ -646,7 +646,7 @@ export default function MarketplacePage() {
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
   const [colFDeb, setColFDeb] = useState(colF);
-  const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
+  const [colFRenting,  setColFRenting]  = useState({ title: '', brand: '', model: '', yearMin: '', yearMax: '', kmMin: '', kmMax: '', m12Min: '', m12Max: '', m24Min: '', m24Max: '', m36Min: '', m36Max: '', m48Min: '', m48Max: '', m60Min: '', m60Max: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMin: '', priceMax: '', kmMax: '', year: '', fuel: '', location: '', plate: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
   const [colFRentingDeb, setColFRentingDeb] = useState(colFRenting);
@@ -813,11 +813,21 @@ export default function MarketplacePage() {
 
   const displayRentingItems = useMemo(() => {
     let r = [...rentingItems];
-    if (colFRenting.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(colFRenting.brand.toLowerCase()));
-    if (colFRenting.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(colFRenting.model.toLowerCase()));
-    if (colFRenting.year)   r = r.filter(i => matchEnum(colFRenting.year, i.year));
-    if (colFRenting.status === 'active')   r = r.filter(i => i.is_active);
-    if (colFRenting.status === 'inactive') r = r.filter(i => !i.is_active);
+    const cr = colFRenting;
+    const gte = (v: string, f: any) => !v || (f != null && Number(f) >= Number(v));
+    const lte = (v: string, f: any) => !v || (f != null && Number(f) <= Number(v));
+    if (cr.title)  r = r.filter(i => (i.title||'').toLowerCase().includes(cr.title.toLowerCase()));
+    if (cr.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(cr.brand.toLowerCase()));
+    if (cr.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(cr.model.toLowerCase()));
+    if (cr.yearMin || cr.yearMax) r = r.filter(i => gte(cr.yearMin, i.year) && lte(cr.yearMax, i.year));
+    if (cr.kmMin || cr.kmMax)     r = r.filter(i => gte(cr.kmMin, (i as any).renting_km_year) && lte(cr.kmMax, (i as any).renting_km_year));
+    if (cr.m12Min || cr.m12Max)   r = r.filter(i => gte(cr.m12Min, (i as any).renting_12m) && lte(cr.m12Max, (i as any).renting_12m));
+    if (cr.m24Min || cr.m24Max)   r = r.filter(i => gte(cr.m24Min, (i as any).renting_24m) && lte(cr.m24Max, (i as any).renting_24m));
+    if (cr.m36Min || cr.m36Max)   r = r.filter(i => gte(cr.m36Min, (i as any).renting_36m) && lte(cr.m36Max, (i as any).renting_36m));
+    if (cr.m48Min || cr.m48Max)   r = r.filter(i => gte(cr.m48Min, (i as any).renting_48m) && lte(cr.m48Max, (i as any).renting_48m));
+    if (cr.m60Min || cr.m60Max)   r = r.filter(i => gte(cr.m60Min, (i as any).renting_60m) && lte(cr.m60Max, (i as any).renting_60m));
+    if (cr.status === 'active')   r = r.filter(i => i.is_active);
+    if (cr.status === 'inactive') r = r.filter(i => !i.is_active);
     return r;
   }, [rentingItems, colFRenting]);
 
@@ -948,7 +958,6 @@ export default function MarketplacePage() {
         const cf = colFRentingDeb;
         if (cf.brand)  params.set('bm', cf.brand);
         if (cf.model)  params.set('model', cf.model);
-        if (cf.year && cf.year !== '__empty__') params.set('year', cf.year);
         if (cf.status === 'active')   params.set('is_active', 'true');
         if (cf.status === 'inactive') params.set('is_active', 'false');
       }
@@ -1814,23 +1823,50 @@ export default function MarketplacePage() {
                     <th></th>
                   </tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
+                    {/* Vehículo (título) */}
                     <td className="px-3 py-1.5">
-                      <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
+                      <input value={colFRenting.title} onChange={e => setColFRenting(f => ({...f, title: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Título…" />
                     </td>
+                    {/* Marca + Modelo por separado */}
                     <td className="px-3 py-1.5">
-                      <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                      <div className="flex gap-1">
+                        <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                        <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                      </div>
                     </td>
+                    {/* Año (rango) */}
                     <td className="px-3 py-1.5">
-                      <select value={colFRenting.year} onChange={e => setColFRenting(f => ({...f, year: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
-                        <option value="">Todos</option>
-                        <option value="__empty__">(Vacío)</option>
-                        {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
-                      </select>
+                      <div className="flex gap-1 items-center">
+                        <input type="number" value={colFRenting.yearMin} onChange={e => setColFRenting(f => ({...f, yearMin: e.target.value}))}
+                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Desde" />
+                        <input type="number" value={colFRenting.yearMax} onChange={e => setColFRenting(f => ({...f, yearMax: e.target.value}))}
+                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Hasta" />
+                      </div>
                     </td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                    {/* Km/año (rango) */}
+                    <td className="px-3 py-1.5">
+                      <div className="flex gap-1 items-center">
+                        <input type="number" value={colFRenting.kmMin} onChange={e => setColFRenting(f => ({...f, kmMin: e.target.value}))}
+                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                        <input type="number" value={colFRenting.kmMax} onChange={e => setColFRenting(f => ({...f, kmMax: e.target.value}))}
+                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                      </div>
+                    </td>
+                    {/* 12 / 24 / 36 / 48 / 60 meses (rango €/mes) */}
+                    {([['m12Min','m12Max'],['m24Min','m24Max'],['m36Min','m36Max'],['m48Min','m48Max'],['m60Min','m60Max']] as const).map(([kMin, kMax]) => (
+                      <td key={kMin} className="px-3 py-1.5">
+                        <div className="flex gap-1 items-center">
+                          <input type="number" value={colFRenting[kMin]} onChange={e => setColFRenting(f => ({...f, [kMin]: e.target.value}))}
+                            className="w-12 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                          <input type="number" value={colFRenting[kMax]} onChange={e => setColFRenting(f => ({...f, [kMax]: e.target.value}))}
+                            className="w-12 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                        </div>
+                      </td>
+                    ))}
+                    {/* Estado */}
                     <td className="px-3 py-1.5">
                       <select value={colFRenting.status} onChange={e => setColFRenting(f => ({...f, status: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
