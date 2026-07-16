@@ -1676,7 +1676,8 @@ export default function MarketplacePage() {
                 <tbody>
                   {displayItems.map((item) => (
                     <>
-                    <tr key={item.id} className={selectedIds.has(item.id) ? 'bg-blue-50' : ''}>
+                    <tr key={item.id} onClick={() => openEdit(item)}
+                      className={`cursor-pointer hover:bg-blue-50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50' : ''}`}>
                       <td className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox"
                           checked={selectedIds.has(item.id)}
@@ -1757,7 +1758,7 @@ export default function MarketplacePage() {
                           {item.is_active ? 'Publicado' : 'Despublicado'}
                         </Badge>
                       </td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1 items-center">
                           <button onClick={() => openEdit(item)}
                             className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
@@ -1901,7 +1902,8 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayRentingItems.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} onClick={() => openEdit(item)}
+                      className="cursor-pointer hover:bg-blue-50 transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
@@ -1927,7 +1929,7 @@ export default function MarketplacePage() {
                           {item.is_active ? 'Publicado' : 'Despublicado'}
                         </Badge>
                       </td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1 items-center">
                           <button onClick={() => openEdit(item)}
                             className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
@@ -2034,7 +2036,8 @@ export default function MarketplacePage() {
                 <tbody>
                   {displayPartItems.map((item) => (
                     <>
-                    <tr key={item.id}>
+                    <tr key={item.id} onClick={() => openPartEdit(item)}
+                      className="cursor-pointer hover:bg-blue-50 transition-colors">
                       <td>
                         <p className="font-medium text-slate-800 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
                         {item.year ? <p className="text-xs text-slate-400">{item.year}{item.fuel ? ` · ${item.fuel}` : ''}{item.cv ? ` · ${item.cv} CV` : ''}</p> : null}
@@ -2053,7 +2056,7 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
                       <td className="text-sm text-slate-500">{item.vehicle_location || '–'}</td>
                       <td className="text-sm text-slate-500">{item.plate || '–'}</td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1.5 items-center">
                           <button
                             onClick={() => openPartEdit(item)}
@@ -2410,7 +2413,8 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayConcItems.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} onClick={() => openEdit(item)}
+                      className="cursor-pointer hover:bg-blue-50 transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
@@ -2435,7 +2439,7 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
                       <td className="text-sm text-slate-500">{item.year || '–'}</td>
                       <td className="text-sm text-slate-500">{item.location || '–'}</td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         {item.source_url
                           ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
                           : <span className="text-slate-300">–</span>}
