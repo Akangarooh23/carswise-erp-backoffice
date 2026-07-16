@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
-import { updateMarketTableRow } from '../data/store.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 
@@ -142,16 +141,55 @@ marketplaceRouter.get('/marketplace/offers/:id', requireRole(['admin', 'support'
 });
 
 // Guardar cambios manuales de una oferta de portal (rellenar/corregir datos).
+// Escribe DIRECTO en moveadvisor_market_offers (la misma tabla que lee el GET) para
+// evitar resoluciones de tabla ambiguas. Seguro: solo columnas reales, sin protegidas,
+// y nunca pone NULL en columnas NOT NULL (omite el campo -> no rompe el guardado).
 marketplaceRouter.patch('/marketplace/offers/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    res.status(400).json({ ok: false, error: 'missing_id' });
+    return;
+  }
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const values = (body.values && typeof body.values === 'object') ? body.values : body;
+
   try {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const values = (body.values && typeof body.values === 'object') ? body.values : body;
-    const data = await updateMarketTableRow({ kind: 'offers', id: req.params.id, values });
-    if (!data) {
+    const cols = await query<{ column_name: string; is_nullable: string }>(
+      `SELECT column_name, is_nullable FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'moveadvisor_market_offers'`
+    );
+    const tableColumns = new Set(cols.rows.map((r) => r.column_name));
+    const notNull = new Set(cols.rows.filter((r) => r.is_nullable === 'NO').map((r) => r.column_name));
+    const protectedCols = new Set(['id', 'first_seen_at', 'scraped_at', 'created_at']);
+
+    const entries = Object.entries(values)
+      .filter(([col]) => tableColumns.has(col) && !protectedCols.has(col))
+      .filter(([, v]) => typeof v !== 'object' || v === null)
+      .map(([col, v]) => [col, v === '' ? null : v] as [string, unknown])
+      .filter(([col, v]) => !(v === null && notNull.has(col)));
+
+    // Nada editable → confirmar que la oferta existe
+    if (!entries.length) {
+      const cur = await query(`SELECT id FROM moveadvisor_market_offers WHERE id = $1 LIMIT 1`, [id]);
+      if (!cur.rows.length) { res.status(404).json({ ok: false, error: 'offer_not_found' }); return; }
+      res.json({ ok: true, data: cur.rows[0] });
+      return;
+    }
+
+    const params: unknown[] = [];
+    const setSql = entries.map(([col, v], i) => { params.push(v); return `"${col}" = $${i + 1}`; });
+    setSql.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE moveadvisor_market_offers SET ${setSql.join(', ')} WHERE id = $${params.length} RETURNING id`,
+      params
+    );
+    if (!result.rows.length) {
       res.status(404).json({ ok: false, error: 'offer_not_found' });
       return;
     }
-    res.json({ ok: true, data });
+    res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_offer_update_failed', detail: (err as Error).message });
   }
