@@ -640,7 +640,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
+  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', cc: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
@@ -734,6 +734,7 @@ export default function MarketplacePage() {
     if (colF.year)         r = r.filter(i => matchEnum(colF.year, i.year));
     if (colF.priceMax)     r = r.filter(i => matchRange(colF.priceMax, i.price));
     if (colF.color)        r = r.filter(i => colF.color === '__empty__' ? (!i.color && !i.available_colors?.length) : (i.available_colors?.includes(colF.color) || (i.color || '') === colF.color));
+    if (colF.cc)           r = r.filter(i => matchMin(colF.cc, (i as any).displacement));
     if (colF.seller)       r = r.filter(i => colF.seller === '__empty__' ? isEmpty(i.seller) : (i.seller || '') === colF.seller);
     if (colF.units === 'stock') r = r.filter(i => (i.units_available ?? 0) > 0);
     if (colF.modality === 'compra')   r = r.filter(i => i.available_for_purchase !== false);
@@ -928,6 +929,7 @@ export default function MarketplacePage() {
         if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
         if (cf.year && cf.year !== '__empty__')    params.set('year', cf.year);
         if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+        if (cf.cc && cf.cc !== '__empty__')        params.set('cc_min', cf.cc);
       }
       if (tab === 'renting') {
         const cf = colFRentingDeb;
@@ -1447,7 +1449,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', seller:'', units:'', noImage:'' })}
+                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -1474,6 +1476,8 @@ export default function MarketplacePage() {
                       { key: 'year',    label: 'Año'         },
                       { key: 'fuel',         label: 'Combustible'  },
                       { key: 'transmission', label: 'Cambio'       },
+                      { key: 'color',        label: 'Color'        },
+                      { key: 'displacement', label: 'Cilindrada'   },
                       { key: 'modalidad',    label: 'Modalidad'    },
                       { key: 'units_available', label: 'Unidades' },
                       { key: 'seller',  label: 'Vendedor'    },
@@ -1564,6 +1568,24 @@ export default function MarketplacePage() {
                         <option value="auto">Automático</option>
                       </select>
                     </td>
+                    {/* Color */}
+                    <td className="px-3 py-1.5">
+                      <select value={colF.color} onChange={e => setCol('color', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="__empty__">(Vacío)</option>
+                        {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    {/* Cilindrada */}
+                    <td className="px-3 py-1.5">
+                      <select value={colF.cc} onChange={e => setCol('cc', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option>
+                        <option value="__empty__">(Vacío)</option>
+                        {[900,1200,1600,2000,3000].map(v => <option key={v} value={v}>≥ {v} cc</option>)}
+                      </select>
+                    </td>
                     {/* Modalidad */}
                     <td className="px-3 py-1.5">
                       <select value={colF.modality} onChange={e => setCol('modality', e.target.value)}
@@ -1576,19 +1598,11 @@ export default function MarketplacePage() {
                     </td>
                     {/* Unidades */}
                     <td className="px-3 py-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <select value={colF.color} onChange={e => setCol('color', e.target.value)}
-                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
-                          <option value="">Todos colores</option>
-                          <option value="__empty__">(Vacío)</option>
-                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
-                          <input type="checkbox" checked={colF.units === 'stock'}
-                            onChange={e => setCol('units', e.target.checked ? 'stock' : '')} />
-                          Stock
-                        </label>
-                      </div>
+                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                        <input type="checkbox" checked={colF.units === 'stock'}
+                          onChange={e => setCol('units', e.target.checked ? 'stock' : '')} />
+                        Stock
+                      </label>
                     </td>
                     {/* Vendedor */}
                     <td className="px-3 py-1.5">
@@ -1644,6 +1658,8 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
                       <td className="text-sm text-slate-500">{item.transmission || '–'}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.color || '–'}</td>
+                      <td className="text-sm text-slate-500 whitespace-nowrap">{(item as any).displacement ? `${(item as any).displacement} cc` : '–'}</td>
                       {/* Modalidad — columna separada */}
                       <td>
                         <div className="flex gap-1 flex-wrap">
