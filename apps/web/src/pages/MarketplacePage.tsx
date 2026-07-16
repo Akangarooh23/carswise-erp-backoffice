@@ -1073,6 +1073,7 @@ export default function MarketplacePage() {
       portal:              o.portal ?? '',
       url:                 o.url ?? '',
       image_url:           o.image_url ?? '',
+      image_urls:          Array.isArray(o.images) ? o.images.filter(Boolean) : (o.image_url ? [o.image_url] : []),
       is_active:           o.is_active ?? null,
     };
   }
@@ -1103,8 +1104,9 @@ export default function MarketplacePage() {
     // Coerción por tipo de columna → nunca envía texto a una columna numérica (no da error)
     const INT = new Set(['year','mileage','power_cv','power_kw','doors','seats','warranty_months']);
     const DEC = new Set(['price','monthly_price','finance_price','consumption']);
-    const values = Object.fromEntries(
-      Object.entries(portalEditForm).map(([k, v]) => {
+    const gallery = Array.isArray(portalEditForm.image_urls) ? portalEditForm.image_urls.filter((u: string) => u && String(u).trim()) : [];
+    const values: Record<string, unknown> = Object.fromEntries(
+      Object.entries(portalEditForm).filter(([k]) => k !== 'image_urls').map(([k, v]) => {
         if (k === 'is_active') {
           if (typeof v === 'boolean') return [k, v];
           if (v === 'true')  return [k, true];
@@ -1117,6 +1119,9 @@ export default function MarketplacePage() {
         return [k, v];
       })
     );
+    // Galería: image_urls (UI) → images (JSON en BD, columna text) + image_url (1ª foto)
+    values.images = JSON.stringify(gallery);
+    values.image_url = gallery[0] ?? '';
     const res = await api.patch<{ ok: boolean; detail?: unknown }>(
       `/marketplace/offers/${encodeURIComponent(portalEditOffer.id)}`,
       values
@@ -2513,11 +2518,27 @@ export default function MarketplacePage() {
                 <input value={portalEditForm.url ?? ''} onChange={e => setPortalEditForm(f => ({...f, url: e.target.value}))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
               </div>
-              {/* Image URL */}
+              {/* Galería de fotos */}
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">URL imagen principal</label>
-                <input value={portalEditForm.image_url ?? ''} onChange={e => setPortalEditForm(f => ({...f, image_url: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
+                <label className="block text-xs font-medium text-slate-500 mb-1">Fotos (galería) — la 1ª es la principal</label>
+                {(portalEditForm.image_urls?.length ? portalEditForm.image_urls : ['']).map((url: string, idx: number) => (
+                  <div key={idx} className="flex gap-2 mb-2 items-center">
+                    <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
+                    {url ? <img src={url} alt="" className="w-10 h-7 object-cover rounded bg-slate-100 shrink-0" /> : <span className="w-10 h-7 shrink-0" />}
+                    <input value={url}
+                      onChange={e => setPortalEditForm(f => { const next = [...(f.image_urls ?? [''])]; next[idx] = e.target.value; return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      placeholder={idx === 0 ? 'https://… (principal)' : `https://… (foto ${idx + 1})`} />
+                    {(portalEditForm.image_urls?.length ?? 0) > 1 && (
+                      <button type="button" onClick={() => setPortalEditForm(f => { const next = (f.image_urls ?? []).filter((_: string, i: number) => i !== idx); return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
+                        className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>
+                    )}
+                  </div>
+                ))}
+                {(portalEditForm.image_urls?.length ?? 0) < 15 && (
+                  <button type="button" onClick={() => setPortalEditForm(f => ({...f, image_urls: [...(f.image_urls ?? ['']), '']}))}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Añadir foto</button>
+                )}
               </div>
               {/* Estado / Tipo de listado */}
               <div>

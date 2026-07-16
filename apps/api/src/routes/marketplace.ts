@@ -122,7 +122,9 @@ marketplaceRouter.get('/marketplace/offers/:id', requireRole(['admin', 'support'
               COALESCE(listing_type, '') AS listing_type,
               COALESCE(province, '') AS province, COALESCE(city, '') AS city,
               COALESCE(location, '') AS location,
-              image_url, url, is_active,
+              image_url,
+              CASE WHEN images IS NOT NULL AND images <> '' AND images <> '[]' THEN images::json ELSE '[]'::json END AS images,
+              url, is_active,
               scraped_at, updated_at, last_seen_at
        FROM moveadvisor_market_offers
        WHERE id = $1
