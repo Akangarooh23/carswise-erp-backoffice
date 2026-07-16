@@ -7,41 +7,44 @@ export const workshopLocationsRouter = Router();
 
 // ── GET /workshop-locations ───────────────────────────────────────────────────
 workshopLocationsRouter.get('/workshop-locations', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
-  const q        = String(req.query.q || '').trim();
-  const province = String(req.query.province || '').trim();
-  const city     = String(req.query.city || '').trim();
-  const partner  = String(req.query.partner || '').trim();
-  const active   = req.query.active;
+  const filterId       = String(req.query.id        || '').trim();
+  const filterSource   = String(req.query.source    || '').trim();
+  const filterPartner  = String(req.query.partner   || '').trim();
+  const filterName     = String(req.query.name      || '').trim();
+  const filterAddress  = String(req.query.address   || '').trim();
+  const filterCity     = String(req.query.city      || '').trim();
+  const filterProvince = String(req.query.province  || '').trim();
+  const filterPostcode = String(req.query.postcode  || '').trim();
+  const filterPhone    = String(req.query.has_phone || '').trim();   // 'yes' | 'no' | ''
+  const filterWeb      = String(req.query.has_web   || '').trim();   // 'yes' | 'no' | ''
+  const filterHours    = String(req.query.has_hours || '').trim();   // 'yes' | 'no' | ''
+  const filterActive   = String(req.query.active    || '').trim();   // 'true' | 'false' | ''
 
-  const page  = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const page   = Math.max(1, Number(req.query.page)  || 1);
+  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
   const conditions: string[] = [];
-  const values: unknown[] = [];
+  const values: unknown[]    = [];
 
-  if (q) {
-    values.push(`%${q.toLowerCase()}%`);
-    conditions.push(
-      `(lower(COALESCE(name,'')) LIKE $${values.length} OR lower(COALESCE(city,'')) LIKE $${values.length} OR lower(COALESCE(address,'')) LIKE $${values.length})`
-    );
-  }
-  if (province) {
-    values.push(`%${province.toLowerCase()}%`);
-    conditions.push(`lower(COALESCE(province,'')) LIKE $${values.length}`);
-  }
-  if (city) {
-    values.push(`%${city.toLowerCase()}%`);
-    conditions.push(`lower(COALESCE(city,'')) LIKE $${values.length}`);
-  }
-  if (partner) {
-    values.push(partner.toLowerCase());
-    conditions.push(`lower(COALESCE(partner,'')) = $${values.length}`);
-  }
-  if (active === 'true' || active === 'false') {
-    values.push(active === 'true');
-    conditions.push(`is_active = $${values.length}`);
-  }
+  const push = (val: unknown) => { values.push(val); return `$${values.length}`; };
+
+  if (filterId)       conditions.push(`id = ${push(Number(filterId))}`);
+  if (filterSource)   conditions.push(`lower(COALESCE(source,'')) = ${push(filterSource.toLowerCase())}`);
+  if (filterPartner)  conditions.push(`lower(COALESCE(partner,'')) = ${push(filterPartner.toLowerCase())}`);
+  if (filterName)     conditions.push(`lower(COALESCE(name,'')) LIKE ${push('%' + filterName.toLowerCase() + '%')}`);
+  if (filterAddress)  conditions.push(`lower(COALESCE(address,'')) LIKE ${push('%' + filterAddress.toLowerCase() + '%')}`);
+  if (filterCity)     conditions.push(`lower(COALESCE(city,'')) LIKE ${push('%' + filterCity.toLowerCase() + '%')}`);
+  if (filterProvince) conditions.push(`lower(COALESCE(province,'')) LIKE ${push('%' + filterProvince.toLowerCase() + '%')}`);
+  if (filterPostcode) conditions.push(`lower(COALESCE(postcode,'')) LIKE ${push('%' + filterPostcode.toLowerCase() + '%')}`);
+  if (filterPhone === 'yes') conditions.push(`phone IS NOT NULL AND phone <> ''`);
+  if (filterPhone === 'no')  conditions.push(`(phone IS NULL OR phone = '')`);
+  if (filterWeb === 'yes')   conditions.push(`website IS NOT NULL AND website <> ''`);
+  if (filterWeb === 'no')    conditions.push(`(website IS NULL OR website = '')`);
+  if (filterHours === 'yes') conditions.push(`business_hours IS NOT NULL AND business_hours <> ''`);
+  if (filterHours === 'no')  conditions.push(`(business_hours IS NULL OR business_hours = '')`);
+  if (filterActive === 'true')  conditions.push(`is_active = true`);
+  if (filterActive === 'false') conditions.push(`is_active = false`);
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -54,12 +57,12 @@ workshopLocationsRouter.get('/workshop-locations', requireRole(['admin', 'suppor
          FROM workshop_locations
          ${where}
          ORDER BY name ASC
-         LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-        [...values, limit, offset]
+         LIMIT ${push(limit)} OFFSET ${push(offset)}`,
+        values
       ),
       query(
         `SELECT COUNT(*)::int AS total FROM workshop_locations ${where}`,
-        values
+        values.slice(0, values.length - 2)   // exclude limit/offset placeholders
       ),
     ]);
 
@@ -118,16 +121,15 @@ workshopLocationsRouter.patch('/workshop-locations/:id', requireRole(['admin', '
   }
 
   const fields = parsed.data;
-  const keys = Object.keys(fields) as (keyof typeof fields)[];
+  const keys   = Object.keys(fields) as (keyof typeof fields)[];
   if (!keys.length) {
     res.status(400).json({ ok: false, error: 'no_fields_to_update' });
     return;
   }
 
-  const setClauses = keys.map((k, i) => {
-    if (k === 'service_types') return `service_types = $${i + 1}::text[]`;
-    return `${k} = $${i + 1}`;
-  }).join(', ');
+  const setClauses = keys.map((k, i) =>
+    k === 'service_types' ? `service_types = $${i + 1}::text[]` : `${k} = $${i + 1}`
+  ).join(', ');
   const values = [...keys.map((k) => fields[k]), req.params.id];
 
   try {

@@ -144,9 +144,11 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
                 warranty_months,
                 COALESCE(dealer_name, '') AS dealer_name,
                 COALESCE(province, COALESCE(location, '')) AS location,
+                market_price_es, import_comps, import_cost, import_margin, import_margin_pct, import_score,
+                import_published, import_locked,
                 scraped_at, updated_at
          FROM moveadvisor_market_offers ${where}
-         ORDER BY updated_at DESC
+         ORDER BY ${country === 'DE' ? 'import_score DESC NULLS LAST, import_margin DESC NULLS LAST' : 'updated_at DESC'}
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),

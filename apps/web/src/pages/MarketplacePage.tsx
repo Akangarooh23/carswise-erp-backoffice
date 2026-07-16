@@ -1287,6 +1287,17 @@ export default function MarketplacePage() {
     setSavingPortal(false);
   }
 
+  // Importación: publicar/despublicar un coche DE al cliente (bloquea la auto-selección: import_locked)
+  async function toggleImportPublish(item: any) {
+    const next = !item.import_published;
+    const values = { import_published: next, import_locked: true };
+    setPortalItems((prev: any[]) => prev.map((i: any) => i.id === item.id ? { ...i, ...values } : i));
+    const res = await api.patch(`/marketplace/offers/${encodeURIComponent(item.id)}`, values);
+    if (!res.ok) { // revertir si falla
+      setPortalItems((prev: any[]) => prev.map((i: any) => i.id === item.id ? { ...i, import_published: item.import_published, import_locked: item.import_locked } : i));
+    }
+  }
+
   function openPartEdit(item: any) {
     setParticEditOffer(item);
     setParticEditForm({
@@ -2124,12 +2135,13 @@ export default function MarketplacePage() {
               <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th><th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
+                  <tr><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
+                    {tab === 'exportacion' && <><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td></>}
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.marca} onChange={e => setColFOffers(f => ({...f, marca: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
@@ -2285,6 +2297,26 @@ export default function MarketplacePage() {
                           </div>
                         </div>
                       </td>
+                      {tab === 'exportacion' && <>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => toggleImportPublish(item)}
+                            className={`text-xs font-semibold px-2 py-1 rounded whitespace-nowrap ${item.import_published
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                            {item.import_published ? '✓ Publicado' : 'Publicar'}
+                          </button>
+                        </td>
+                        <td className="text-sm font-semibold whitespace-nowrap">
+                          {item.import_margin != null
+                            ? <span className={item.import_margin >= 1500 ? 'text-emerald-700' : item.import_margin > 0 ? 'text-amber-600' : 'text-red-500'}>
+                                {item.import_margin > 0 ? '+' : ''}{Number(item.import_margin).toLocaleString('es-ES')} €
+                                {item.import_margin_pct != null && <span className="text-slate-400 font-normal"> ({Math.round(item.import_margin_pct * 100)}%)</span>}
+                              </span>
+                            : <span className="text-slate-300">–</span>}
+                        </td>
+                        <td className="text-sm text-slate-500 whitespace-nowrap">{item.market_price_es != null ? `${Number(item.market_price_es).toLocaleString('es-ES')} €` : '–'}</td>
+                        <td className="text-sm text-slate-400">{item.import_comps ?? '–'}</td>
+                      </>}
                       <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
                       <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
                       <td className="text-sm text-slate-500 max-w-[220px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
