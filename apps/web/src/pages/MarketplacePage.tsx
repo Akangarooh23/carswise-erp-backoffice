@@ -640,7 +640,7 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', cc: '', seller: '', units: '', noImage: '' });
+  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
@@ -732,7 +732,12 @@ export default function MarketplacePage() {
     if (colF.fuel)         r = r.filter(i => matchEnumCI(colF.fuel, i.fuel));
     if (colF.transmission) r = r.filter(i => colF.transmission === '__empty__' ? isEmpty(i.transmission) : (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
     if (colF.year)         r = r.filter(i => matchEnum(colF.year, i.year));
-    if (colF.priceMax)     r = r.filter(i => matchRange(colF.priceMax, i.price));
+    if (colF.priceMin)     r = r.filter(i => Number(i.price) >= Number(colF.priceMin));
+    if (colF.priceMax)     r = r.filter(i => Number(i.price) <= Number(colF.priceMax));
+    if (colF.salePriceMin) r = r.filter(i => i.sale_price != null && Number(i.sale_price) >= Number(colF.salePriceMin));
+    if (colF.salePriceMax) r = r.filter(i => i.sale_price != null && Number(i.sale_price) <= Number(colF.salePriceMax));
+    if (colF.estado === 'active')   r = r.filter(i => i.is_active);
+    if (colF.estado === 'inactive') r = r.filter(i => !i.is_active);
     if (colF.color)        r = r.filter(i => colF.color === '__empty__' ? (!i.color && !i.available_colors?.length) : (i.available_colors?.includes(colF.color) || (i.color || '') === colF.color));
     if (colF.cc)           r = r.filter(i => matchMin(colF.cc, (i as any).displacement));
     if (colF.seller)       r = r.filter(i => colF.seller === '__empty__' ? isEmpty(i.seller) : (i.seller || '') === colF.seller);
@@ -928,7 +933,12 @@ export default function MarketplacePage() {
         if (cf.fuel && cf.fuel !== '__empty__')    params.set('fuel', cf.fuel);
         if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
         if (cf.year && cf.year !== '__empty__')    params.set('year', cf.year);
-        if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+        if (cf.priceMin)     params.set('price_min', cf.priceMin);
+        if (cf.priceMax)     params.set('price_max', cf.priceMax);
+        if (cf.salePriceMin) params.set('sale_price_min', cf.salePriceMin);
+        if (cf.salePriceMax) params.set('sale_price_max', cf.salePriceMax);
+        if (cf.estado === 'active')   params.set('is_active', 'true');
+        if (cf.estado === 'inactive') params.set('is_active', 'false');
         if (cf.cc && cf.cc !== '__empty__')        params.set('cc_min', cf.cc);
       }
       if (tab === 'renting') {
@@ -1449,7 +1459,7 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMax:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
+                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMin:'', priceMax:'', salePriceMin:'', salePriceMax:'', estado:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -1497,6 +1507,8 @@ export default function MarketplacePage() {
                   </tr>
                   {/* ── Row 2: column filters ── */}
                   <tr className="bg-slate-50 border-b border-slate-100">
+                    {/* Checkbox (alineación) */}
+                    <td className="w-10 px-3"></td>
                     {/* Vehículo */}
                     <td className="px-3 py-1.5">
                       <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
@@ -1526,18 +1538,26 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
                         placeholder="Versión…" />
                     </td>
-                    {/* P. Compra */}
+                    {/* P. Compra (rango mín–máx) */}
                     <td className="px-3 py-1.5">
-                      <select value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
-                        <option value="">Cualquier precio</option>
-                        <option value="__empty__">(Vacío)</option>
-                        {[500,1000,15000,20000,25000,30000,40000,60000].map(p =>
-                          <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
-                      </select>
+                      <div className="flex gap-1 items-center">
+                        <input type="number" value={colF.priceMin} onChange={e => setCol('priceMin', e.target.value)}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-slate-300 text-xs">–</span>
+                        <input type="number" value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                      </div>
                     </td>
-                    {/* P. Venta */}
-                    <td className="px-3 py-1.5"></td>
+                    {/* P. Venta (rango mín–máx) */}
+                    <td className="px-3 py-1.5">
+                      <div className="flex gap-1 items-center">
+                        <input type="number" value={colF.salePriceMin} onChange={e => setCol('salePriceMin', e.target.value)}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-slate-300 text-xs">–</span>
+                        <input type="number" value={colF.salePriceMax} onChange={e => setCol('salePriceMax', e.target.value)}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                      </div>
+                    </td>
                     {/* Km */}
                     <td className="px-3 py-1.5"></td>
                     {/* Año */}
@@ -1614,7 +1634,14 @@ export default function MarketplacePage() {
                       </select>
                     </td>
                     {/* Estado */}
-                    <td className="px-3 py-1.5"></td>
+                    <td className="px-3 py-1.5">
+                      <select value={colF.estado} onChange={e => setCol('estado', e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todos</option>
+                        <option value="active">Activa</option>
+                        <option value="inactive">Inactiva</option>
+                      </select>
+                    </td>
                     <td></td>
                   </tr>
                 </thead>

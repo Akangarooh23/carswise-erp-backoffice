@@ -385,7 +385,10 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   addLike(s('provincia'), 'provincia');
   addLike(s('seller'), 'seller');
   addNum(s('year'), 'year', '=');
+  addNum(s('price_min'), 'price', '>=');
   addNum(s('price_max'), 'price', '<=');
+  addNum(s('sale_price_min'), 'sale_price', '>=');
+  addNum(s('sale_price_max'), 'sale_price', '<=');
   addNum(s('km_max'), 'mileage', '<=');
   addNum(s('cc_min'), 'displacement', '>=');
 
