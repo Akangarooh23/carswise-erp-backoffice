@@ -354,6 +354,35 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     }
   }
 
+  // Filtros de columna server-side (mismo criterio que ofertas de portales). '__empty__' = sin dato.
+  const s = (k: string) => String(req.query[k] || '').trim();
+  const addTextCI = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(val.toLowerCase()); conditions.push(`lower(COALESCE(${col}, '')) = $${values.length}`);
+  };
+  const addLike = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(`%${val.toLowerCase()}%`); conditions.push(`lower(COALESCE(${col}, '')) LIKE $${values.length}`);
+  };
+  const addNum = (val: string, col: string, op: '<=' | '>=' | '=') => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`${col} IS NULL`); return; }
+    values.push(Number(val)); conditions.push(`${col} ${op} $${values.length}`);
+  };
+  addLike(s('model'), 'model');
+  addLike(s('version'), 'version');
+  addTextCI(s('color'), 'color');
+  addTextCI(s('fuel'), 'fuel');
+  addTextCI(s('transmission'), 'transmission');
+  addLike(s('power'), 'power');
+  addLike(s('provincia'), 'provincia');
+  addNum(s('year'), 'year', '=');
+  addNum(s('price_max'), 'price', '<=');
+  addNum(s('km_max'), 'mileage', '<=');
+  addNum(s('cc_min'), 'displacement', '>=');
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {
@@ -381,6 +410,27 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_vo_failed', detail: (err as Error).message });
+  }
+});
+
+// Valores distintos para los desplegables de filtro VO (toda la BD). ANTES de '/marketplace/vo/:id'.
+marketplaceRouter.get('/marketplace/vo/filter-options', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
+  try {
+    const distinct = async (col: string): Promise<string[]> => {
+      const r = await query<{ v: string }>(
+        `SELECT DISTINCT ${col} AS v FROM moveadvisor_marketplace_vo_offers WHERE COALESCE(${col}::text, '') <> '' ORDER BY 1`
+      );
+      return r.rows.map((x) => x.v).filter(Boolean);
+    };
+    const [colors, fuels, transmissions, sellers, provincias, portals] = await Promise.all([
+      distinct('color'), distinct('fuel'), distinct('transmission'), distinct('seller'), distinct('provincia'), distinct('portal'),
+    ]);
+    const yearsRes = await query<{ v: number }>(
+      `SELECT DISTINCT year AS v FROM moveadvisor_marketplace_vo_offers WHERE year IS NOT NULL ORDER BY year DESC`
+    );
+    res.json({ ok: true, data: { colors, fuels, transmissions, sellers, provincias, portals, years: yearsRes.rows.map((x) => x.v) } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'marketplace_vo_filter_options_failed', detail: (err as Error).message });
   }
 });
 

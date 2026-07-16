@@ -644,6 +644,8 @@ export default function MarketplacePage() {
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
+  const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
+  const [colFDeb, setColFDeb] = useState(colF);
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
@@ -884,6 +886,15 @@ export default function MarketplacePage() {
     return () => clearTimeout(t);
   }, [colFOffers]);
 
+  // Opciones + debounce de filtros VO (VO Empresas / Renting / Concesionarios)
+  useEffect(() => {
+    api.get<typeof voFilterOpts>('/marketplace/vo/filter-options').then((r) => { if (r.ok && r.data) setVoFilterOpts(r.data); });
+  }, []);
+  useEffect(() => {
+    const t = setTimeout(() => setColFDeb(colF), 350);
+    return () => clearTimeout(t);
+  }, [colF]);
+
   const load = useCallback(async (p: number) => {
     setLoading(true);
     if (tab === 'vo' || tab === 'renting' || tab === 'concesionarios') {
@@ -894,6 +905,16 @@ export default function MarketplacePage() {
       if (tab === 'vo')             params.set('available_for_purchase', 'true');
       if (tab === 'renting')        params.set('renting_available', 'true');
       if (tab === 'concesionarios') params.set('seller_type', 'concesionario,importador');
+      if (tab === 'vo') {
+        const cf = colFDeb;
+        if (cf.brand && cf.brand !== '__empty__') params.set('brand', cf.brand);
+        if (cf.model)                              params.set('model', cf.model);
+        if (cf.version)                            params.set('version', cf.version);
+        if (cf.fuel && cf.fuel !== '__empty__')    params.set('fuel', cf.fuel);
+        if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
+        if (cf.year && cf.year !== '__empty__')    params.set('year', cf.year);
+        if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+      }
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else if (tab === 'particulares') {
@@ -933,7 +954,7 @@ export default function MarketplacePage() {
     }
     // exportacion: no data yet
     setLoading(false);
-  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb]);
+  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb, colFDeb]);
 
   // Genera el informe de portales (en vivo) como PDF y lo descarga directamente.
   const descargarInforme = useCallback(async () => {
