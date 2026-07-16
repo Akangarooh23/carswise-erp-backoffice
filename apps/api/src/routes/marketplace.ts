@@ -99,6 +99,14 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
     values.push(`%${bm.toLowerCase()}%`);
     conditions.push(`(lower(COALESCE(brand,'')) LIKE $${values.length} OR lower(COALESCE(model,'')) LIKE $${values.length})`);
   }
+  const addLike = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(`%${val.toLowerCase()}%`); conditions.push(`lower(COALESCE(${col}, '')) LIKE $${values.length}`);
+  };
+  addLike(s('brand'), 'brand');
+  addLike(s('model'), 'model');
+  addLike(s('version'), 'version');
   addExactStr(portal, 'portal');
   addExactStr(sellerType, 'seller_type');
   addNum(s('year'), 'year', '=');

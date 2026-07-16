@@ -641,7 +641,7 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
-  const [colFOffers,   setColFOffers]   = useState({ brand: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
+  const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
@@ -778,6 +778,9 @@ export default function MarketplacePage() {
   const displayPortalItems = useMemo(() => {
     let r = [...portalItems] as any[];
     if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
+    if (colFOffers.marca)      r = r.filter(i => (i.brand||'').toLowerCase().includes(colFOffers.marca.toLowerCase()));
+    if (colFOffers.modelo)     r = r.filter(i => (i.model||'').toLowerCase().includes(colFOffers.modelo.toLowerCase()));
+    if (colFOffers.version)    r = r.filter(i => (i.version||'').toLowerCase().includes(colFOffers.version.toLowerCase()));
     if (colFOffers.portal)     r = r.filter(i => matchEnumCI(colFOffers.portal, i.portal));
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
     if (colFOffers.priceMax)   r = r.filter(i => matchRange(colFOffers.priceMax, i.price));
@@ -907,6 +910,9 @@ export default function MarketplacePage() {
       if (portalVal) params.set('portal', portalVal);
       if (sellerVal) params.set('seller_type', sellerVal);
       if (cf.brand)    params.set('bm', cf.brand);
+      if (cf.marca)    params.set('brand', cf.marca);
+      if (cf.modelo)   params.set('model', cf.modelo);
+      if (cf.version)  params.set('version', cf.version);
       if (cf.year)     params.set('year', cf.year);
       if (cf.fuel)     params.set('fuel', cf.fuel);
       if (cf.priceMax) params.set('price_max', cf.priceMax);
@@ -1881,18 +1887,30 @@ export default function MarketplacePage() {
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
-                  <button onClick={() => setColFOffers({ brand:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
+                  <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
               <div className="overflow-x-auto">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
+                  <tr><th>Vehículo</th><th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFOffers.marca} onChange={e => setColFOffers(f => ({...f, marca: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFOffers.modelo} onChange={e => setColFOffers(f => ({...f, modelo: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFOffers.version} onChange={e => setColFOffers(f => ({...f, version: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.portal} onChange={e => setColFOffers(f => ({...f, portal: e.target.value}))}
@@ -2037,6 +2055,9 @@ export default function MarketplacePage() {
                           </div>
                         </div>
                       </td>
+                      <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 max-w-[220px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
                       <td><Badge variant="blue">{item.portal}</Badge></td>
                       <td>
                         {item.seller_type === 'particular'
