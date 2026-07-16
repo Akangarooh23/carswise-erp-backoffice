@@ -649,6 +649,10 @@ export default function MarketplacePage() {
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
+  const [colFRentingDeb, setColFRentingDeb] = useState(colFRenting);
+  const [colFPartDeb,    setColFPartDeb]    = useState(colFPart);
+  const [colFConcDeb,    setColFConcDeb]    = useState(colFConc);
+  const [partFilterOpts, setPartFilterOpts] = useState<{ fuels: string[]; colors: string[]; transmissions: string[]; years: string[] }>({ fuels: [], colors: [], transmissions: [], years: [] });
 
   // ── Visit availability state ──────────────────────────────────────────────
   const [expandedVisits, setExpandedVisits] = useState<string | null>(null);
@@ -764,8 +768,6 @@ export default function MarketplacePage() {
     cochescom: 'Coches.com', cochesnet: 'Coches.net', wallapop: 'Wallapop',
     milanuncios: 'Milanuncios',
   };
-  const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
-  const partYearOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [particularsItems]);
 
   const isEmpty = (v: any) => v === null || v === undefined || v === '';
   const matchEnum = (val: string, field: any) =>
@@ -900,6 +902,12 @@ export default function MarketplacePage() {
     const t = setTimeout(() => setColFDeb(colF), 350);
     return () => clearTimeout(t);
   }, [colF]);
+  useEffect(() => { const t = setTimeout(() => setColFRentingDeb(colFRenting), 350); return () => clearTimeout(t); }, [colFRenting]);
+  useEffect(() => { const t = setTimeout(() => setColFPartDeb(colFPart), 350); return () => clearTimeout(t); }, [colFPart]);
+  useEffect(() => { const t = setTimeout(() => setColFConcDeb(colFConc), 350); return () => clearTimeout(t); }, [colFConc]);
+  useEffect(() => {
+    api.get<typeof partFilterOpts>('/marketplace/particulares/filter-options').then((r) => { if (r.ok && r.data) setPartFilterOpts(r.data); });
+  }, []);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -921,11 +929,35 @@ export default function MarketplacePage() {
         if (cf.year && cf.year !== '__empty__')    params.set('year', cf.year);
         if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
       }
+      if (tab === 'renting') {
+        const cf = colFRentingDeb;
+        if (cf.brand)  params.set('bm', cf.brand);
+        if (cf.model)  params.set('model', cf.model);
+        if (cf.year && cf.year !== '__empty__') params.set('year', cf.year);
+        if (cf.status === 'active')   params.set('is_active', 'true');
+        if (cf.status === 'inactive') params.set('is_active', 'false');
+      }
+      if (tab === 'concesionarios') {
+        const cf = colFConcDeb;
+        if (cf.brand)   params.set('bm', cf.brand);
+        if (cf.seller)  params.set('seller', cf.seller);
+        if (cf.sellerType && cf.sellerType !== '__empty__') params.set('seller_type', cf.sellerType);
+        if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+        if (cf.kmMax && cf.kmMax !== '__empty__')       params.set('km_max', cf.kmMax);
+        if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
+      }
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
       if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else if (tab === 'particulares') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
       if (q) params.set('q', q);
+      const cf = colFPartDeb;
+      if (cf.brand)    params.set('bm', cf.brand);
+      if (cf.client)   params.set('client', cf.client);
+      if (cf.fuel && cf.fuel !== '__empty__')         params.set('fuel', cf.fuel);
+      if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
+      if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+      if (cf.kmMax && cf.kmMax !== '__empty__')       params.set('km_max', cf.kmMax);
       const res = await api.get<ParticularsOffer[]>(`/marketplace/particulares?${params}`);
       if (res.ok) { setParticularsItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else if (tab === 'offers') {
@@ -960,7 +992,7 @@ export default function MarketplacePage() {
     }
     // exportacion: no data yet
     setLoading(false);
-  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb, colFDeb]);
+  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb, colFDeb, colFRentingDeb, colFPartDeb, colFConcDeb]);
 
   // Genera el informe de portales (en vivo) como PDF y lo descarga directamente.
   const descargarInforme = useCallback(async () => {
@@ -1859,7 +1891,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {partYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                        {partFilterOpts.years.map((y) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1867,7 +1899,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {partFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
+                        {partFilterOpts.fuels.map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
                     <td></td><td></td><td></td>

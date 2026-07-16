@@ -371,6 +371,11 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     if (val === '__empty__') { conditions.push(`${col} IS NULL`); return; }
     values.push(Number(val)); conditions.push(`${col} ${op} $${values.length}`);
   };
+  const bmVo = s('bm');
+  if (bmVo) {
+    values.push(`%${bmVo.toLowerCase()}%`);
+    conditions.push(`(lower(COALESCE(brand,'')) LIKE $${values.length} OR lower(COALESCE(model,'')) LIKE $${values.length})`);
+  }
   addLike(s('model'), 'model');
   addLike(s('version'), 'version');
   addTextCI(s('color'), 'color');
@@ -378,6 +383,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   addTextCI(s('transmission'), 'transmission');
   addLike(s('power'), 'power');
   addLike(s('provincia'), 'provincia');
+  addLike(s('seller'), 'seller');
   addNum(s('year'), 'year', '=');
   addNum(s('price_max'), 'price', '<=');
   addNum(s('km_max'), 'mileage', '<=');
@@ -965,6 +971,38 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
     conditions.push(`(lower(COALESCE(v.title,'')) LIKE $${values.length} OR lower(COALESCE(v.brand,'')) LIKE $${values.length} OR lower(COALESCE(v.model,'')) LIKE $${values.length})`);
   }
 
+  // Filtros de columna server-side (año/km/precio son texto → cast seguro). '__empty__' = sin dato.
+  const s = (k: string) => String(req.query[k] || '').trim();
+  const pLike = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(`%${val.toLowerCase()}%`); conditions.push(`lower(COALESCE(${col}, '')) LIKE $${values.length}`);
+  };
+  const pEq = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(val.toLowerCase()); conditions.push(`lower(COALESCE(${col}, '')) = $${values.length}`);
+  };
+  const pNumMax = (val: string, col: string) => {
+    if (!val) return;
+    values.push(Number(val)); conditions.push(`(CASE WHEN ${col} ~ '^[0-9.]+$' THEN ${col}::numeric ELSE NULL END) <= $${values.length}`);
+  };
+  const bmP = s('bm');
+  if (bmP) {
+    values.push(`%${bmP.toLowerCase()}%`);
+    conditions.push(`(lower(COALESCE(v.brand,'')) LIKE $${values.length} OR lower(COALESCE(v.model,'')) LIKE $${values.length} OR lower(COALESCE(v.title,'')) LIKE $${values.length})`);
+  }
+  const clientP = s('client');
+  if (clientP) { values.push(`%${clientP.toLowerCase()}%`); conditions.push(`lower(COALESCE(v.user_email,'')) LIKE $${values.length}`); }
+  pLike(s('version'), 'v.version');
+  pEq(s('fuel'), 'v.fuel');
+  pEq(s('color'), 'v.color');
+  pLike(s('transmission'), 'v.transmission_type');
+  const yearP = s('year');
+  if (yearP) { if (yearP === '__empty__') conditions.push(`COALESCE(v.year,'')=''`); else { values.push(yearP); conditions.push(`v.year = $${values.length}`); } }
+  pNumMax(s('price_max'), 'v.price');
+  pNumMax(s('km_max'), 'v.mileage');
+
   const where = `WHERE ${conditions.join(' AND ')}`;
 
   try {
@@ -995,6 +1033,24 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'particulares_failed', detail: (err as Error).message });
+  }
+});
+
+// Valores distintos para los desplegables de filtro de Particulares (toda la BD).
+marketplaceRouter.get('/marketplace/particulares/filter-options', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
+  try {
+    const distinct = async (col: string): Promise<string[]> => {
+      const r = await query<{ v: string }>(
+        `SELECT DISTINCT ${col} AS v FROM moveadvisor_user_vehicles WHERE COALESCE(${col}::text, '') <> '' ORDER BY 1`
+      );
+      return r.rows.map((x) => x.v).filter(Boolean);
+    };
+    const [fuels, colors, transmissions, years] = await Promise.all([
+      distinct('fuel'), distinct('color'), distinct('transmission_type'), distinct('year'),
+    ]);
+    res.json({ ok: true, data: { fuels, colors, transmissions, years } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'particulares_filter_options_failed', detail: (err as Error).message });
   }
 });
 
