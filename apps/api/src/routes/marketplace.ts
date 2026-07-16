@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
+import { updateMarketTableRow } from '../data/store.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 
@@ -135,6 +136,22 @@ marketplaceRouter.get('/marketplace/offers/:id', requireRole(['admin', 'support'
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_offer_detail_failed', detail: (err as Error).message });
+  }
+});
+
+// Guardar cambios manuales de una oferta de portal (rellenar/corregir datos).
+marketplaceRouter.patch('/marketplace/offers/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const values = (body.values && typeof body.values === 'object') ? body.values : body;
+    const data = await updateMarketTableRow({ kind: 'offers', id: req.params.id, values });
+    if (!data) {
+      res.status(404).json({ ok: false, error: 'offer_not_found' });
+      return;
+    }
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'marketplace_offer_update_failed', detail: (err as Error).message });
   }
 });
 

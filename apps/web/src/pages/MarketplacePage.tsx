@@ -1117,9 +1117,10 @@ export default function MarketplacePage() {
         return [k, v];
       })
     );
-    const res = await api.patch<{ ok: boolean; detail?: unknown }>('/market/table-row', {
-      table: 'offers', id: portalEditOffer.id, values,
-    });
+    const res = await api.patch<{ ok: boolean; detail?: unknown }>(
+      `/marketplace/offers/${encodeURIComponent(portalEditOffer.id)}`,
+      values
+    );
     if (res.ok) {
       setSavePortalOk(true);
       setPortalItems((prev: any[]) => prev.map((i: any) => i.id === portalEditOffer.id ? { ...i, ...values } : i));
