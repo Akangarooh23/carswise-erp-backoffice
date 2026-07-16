@@ -1003,8 +1003,12 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   pLike(s('transmission'), 'v.transmission_type');
   const yearP = s('year');
   if (yearP) { if (yearP === '__empty__') conditions.push(`COALESCE(v.year,'')=''`); else { values.push(yearP); conditions.push(`v.year = $${values.length}`); } }
+  const priceMinP = s('price_min');
+  if (priceMinP) { values.push(Number(priceMinP)); conditions.push(`(CASE WHEN v.price ~ '^[0-9.]+$' THEN v.price::numeric ELSE NULL END) >= $${values.length}`); }
   pNumMax(s('price_max'), 'v.price');
   pNumMax(s('km_max'), 'v.mileage');
+  pLike(s('location'), 'v.vehicle_location');
+  pLike(s('plate'), 'v.plate');
 
   const where = `WHERE ${conditions.join(' AND ')}`;
 

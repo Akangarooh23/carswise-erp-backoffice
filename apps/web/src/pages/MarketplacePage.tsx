@@ -647,7 +647,7 @@ export default function MarketplacePage() {
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
   const [colFDeb, setColFDeb] = useState(colF);
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
-  const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
+  const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMin: '', priceMax: '', kmMax: '', year: '', fuel: '', location: '', plate: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
   const [colFRentingDeb, setColFRentingDeb] = useState(colFRenting);
   const [colFPartDeb,    setColFPartDeb]    = useState(colFPart);
@@ -825,10 +825,13 @@ export default function MarketplacePage() {
     let r = [...particularsItems] as any[];
     if (colFPart.brand)    r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFPart.brand.toLowerCase()));
     if (colFPart.client)   r = r.filter(i => `${i.owner_name||''} ${i.user_email||''}`.toLowerCase().includes(colFPart.client.toLowerCase()));
-    if (colFPart.priceMax) r = r.filter(i => matchRange(colFPart.priceMax, i.price));
+    if (colFPart.priceMin) r = r.filter(i => Number(i.price) >= Number(colFPart.priceMin));
+    if (colFPart.priceMax) r = r.filter(i => Number(i.price) <= Number(colFPart.priceMax));
     if (colFPart.kmMax)    r = r.filter(i => matchRange(colFPart.kmMax, i.mileage));
     if (colFPart.year)     r = r.filter(i => matchEnum(colFPart.year, i.year));
     if (colFPart.fuel)     r = r.filter(i => matchEnumCI(colFPart.fuel, i.fuel));
+    if (colFPart.location) r = r.filter(i => (i.vehicle_location||'').toLowerCase().includes(colFPart.location.toLowerCase()));
+    if (colFPart.plate)    r = r.filter(i => (i.plate||'').toLowerCase().includes(colFPart.plate.toLowerCase()));
     return r;
   }, [particularsItems, colFPart]);
 
@@ -968,8 +971,11 @@ export default function MarketplacePage() {
       if (cf.client)   params.set('client', cf.client);
       if (cf.fuel && cf.fuel !== '__empty__')         params.set('fuel', cf.fuel);
       if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
-      if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+      if (cf.priceMin)  params.set('price_min', cf.priceMin);
+      if (cf.priceMax)  params.set('price_max', cf.priceMax);
       if (cf.kmMax && cf.kmMax !== '__empty__')       params.set('km_max', cf.kmMax);
+      if (cf.location)  params.set('location', cf.location);
+      if (cf.plate)     params.set('plate', cf.plate);
       const res = await api.get<ParticularsOffer[]>(`/marketplace/particulares?${params}`);
       if (res.ok) { setParticularsItems(res.data); setTotal(res.meta?.total ?? 0); }
     } else if (tab === 'offers') {
@@ -1914,12 +1920,13 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Cliente/email…" />
                     </td>
                     <td className="px-3 py-1.5">
-                      <select value={colFPart.priceMax} onChange={e => setColFPart(f => ({...f, priceMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
-                        <option value="">Cualquier precio</option>
-                        <option value="__empty__">(Vacío)</option>
-                        {[500,1000,5000,10000,15000,20000,30000,50000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
-                      </select>
+                      <div className="flex gap-1 items-center">
+                        <input type="number" value={colFPart.priceMin} onChange={e => setColFPart(f => ({...f, priceMin: e.target.value}))}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-slate-300 text-xs">–</span>
+                        <input type="number" value={colFPart.priceMax} onChange={e => setColFPart(f => ({...f, priceMax: e.target.value}))}
+                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                      </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFPart.kmMax} onChange={e => setColFPart(f => ({...f, kmMax: e.target.value}))}
@@ -1945,7 +1952,15 @@ export default function MarketplacePage() {
                         {partFilterOpts.fuels.map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
-                    <td></td><td></td><td></td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFPart.location} onChange={e => setColFPart(f => ({...f, location: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Ubicación…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFPart.plate} onChange={e => setColFPart(f => ({...f, plate: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Matrícula…" />
+                    </td>
+                    <td></td>
                   </tr>
                 </thead>
                 <tbody>
