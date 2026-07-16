@@ -171,7 +171,32 @@ export interface Ticket {
   events?: TicketEvent[];
 }
 
-// ── Workshops ─────────────────────────────────────────────────────────────────
+// ── Workshop Locations (directorio público ~55k talleres) ─────────────────────
+export interface WorkshopLocation {
+  id: number;
+  source?: string;
+  partner?: string;
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  postcode?: string | null;
+  province?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  phone?: string | null;
+  website?: string | null;
+  is_active: boolean;
+  rating?: number | null;
+  rating_count?: number | null;
+  service_types?: string[] | null;
+  business_hours?: string | null;
+  osm_id?: string | null;
+  external_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Workshops (partner ERP) ───────────────────────────────────────────────────
 export interface Workshop {
   id: string;
   name: string;
