@@ -1453,7 +1453,7 @@ export default function MarketplacePage() {
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
                 </div>
               )}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
                   {/* ── Row 1: sortable labels ── */}
@@ -1764,7 +1764,7 @@ export default function MarketplacePage() {
               No hay ofertas de renting. Pulsa "+ Añadir oferta renting" para crear la primera.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
                   <tr>
@@ -1870,7 +1870,7 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
                   <tr>
@@ -2000,7 +2000,7 @@ export default function MarketplacePage() {
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
                   <tr><th>Vehículo</th><th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
@@ -2221,7 +2221,7 @@ export default function MarketplacePage() {
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
                   <tr>
