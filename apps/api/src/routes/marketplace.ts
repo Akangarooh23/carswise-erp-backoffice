@@ -997,6 +997,8 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
   }
   const clientP = s('client');
   if (clientP) { values.push(`%${clientP.toLowerCase()}%`); conditions.push(`lower(COALESCE(v.user_email,'')) LIKE $${values.length}`); }
+  pLike(s('brand'), 'v.brand');
+  pLike(s('model'), 'v.model');
   pLike(s('version'), 'v.version');
   pEq(s('fuel'), 'v.fuel');
   pEq(s('color'), 'v.color');
