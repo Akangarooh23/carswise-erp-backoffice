@@ -646,9 +646,9 @@ export default function MarketplacePage() {
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
   const [colFDeb, setColFDeb] = useState(colF);
-  const [colFRenting,  setColFRenting]  = useState({ title: '', brand: '', model: '', yearMin: '', yearMax: '', kmMin: '', kmMax: '', m12Min: '', m12Max: '', m24Min: '', m24Max: '', m36Min: '', m36Max: '', m48Min: '', m48Max: '', m60Min: '', m60Max: '', status: '' });
+  const [colFRenting,  setColFRenting]  = useState({ title: '', brand: '', model: '', version: '', yearMin: '', yearMax: '', kmMin: '', kmMax: '', m12Min: '', m12Max: '', m24Min: '', m24Max: '', m36Min: '', m36Max: '', m48Min: '', m48Max: '', m60Min: '', m60Max: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', marca: '', modelo: '', version: '', client: '', priceMin: '', priceMax: '', kmMax: '', year: '', fuel: '', location: '', plate: '' });
-  const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
+  const [colFConc,     setColFConc]     = useState({ brand: '', marca: '', modelo: '', version: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
   const [colFRentingDeb, setColFRentingDeb] = useState(colFRenting);
   const [colFPartDeb,    setColFPartDeb]    = useState(colFPart);
   const [colFConcDeb,    setColFConcDeb]    = useState(colFConc);
@@ -819,6 +819,7 @@ export default function MarketplacePage() {
     if (cr.title)  r = r.filter(i => (i.title||'').toLowerCase().includes(cr.title.toLowerCase()));
     if (cr.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(cr.brand.toLowerCase()));
     if (cr.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(cr.model.toLowerCase()));
+    if (cr.version) r = r.filter(i => (i.version||'').toLowerCase().includes(cr.version.toLowerCase()));
     if (cr.yearMin || cr.yearMax) r = r.filter(i => gte(cr.yearMin, i.year) && lte(cr.yearMax, i.year));
     if (cr.kmMin || cr.kmMax)     r = r.filter(i => gte(cr.kmMin, (i as any).renting_km_year) && lte(cr.kmMax, (i as any).renting_km_year));
     if (cr.m12Min || cr.m12Max)   r = r.filter(i => gte(cr.m12Min, (i as any).renting_12m) && lte(cr.m12Max, (i as any).renting_12m));
@@ -850,7 +851,10 @@ export default function MarketplacePage() {
 
   const displayConcItems = useMemo(() => {
     let r = [...items];
-    if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
+    if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
+    if (colFConc.marca)      r = r.filter(i => (i.brand||'').toLowerCase().includes(colFConc.marca.toLowerCase()));
+    if (colFConc.modelo)     r = r.filter(i => (i.model||'').toLowerCase().includes(colFConc.modelo.toLowerCase()));
+    if (colFConc.version)    r = r.filter(i => (i.version||'').toLowerCase().includes(colFConc.version.toLowerCase()));
     if (colFConc.sellerType) r = r.filter(i => matchEnum(colFConc.sellerType, i.seller_type));
     if (colFConc.seller)     r = r.filter(i => (i.seller||'').toLowerCase().includes(colFConc.seller.toLowerCase()));
     if (colFConc.priceMax)   r = r.filter(i => matchRange(colFConc.priceMax, i.sale_price ?? i.price));
@@ -967,6 +971,9 @@ export default function MarketplacePage() {
       if (tab === 'concesionarios') {
         const cf = colFConcDeb;
         if (cf.brand)   params.set('bm', cf.brand);
+        if (cf.marca)   params.set('brand_like', cf.marca);
+        if (cf.modelo)  params.set('model', cf.modelo);
+        if (cf.version) params.set('version', cf.version);
         if (cf.seller)  params.set('seller', cf.seller);
         if (cf.sellerType && cf.sellerType !== '__empty__') params.set('seller_type', cf.sellerType);
         if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
@@ -1817,7 +1824,9 @@ export default function MarketplacePage() {
                 <thead>
                   <tr>
                     <th>Vehículo</th>
-                    <th>Marca / Modelo</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Versión</th>
                     <th>Año</th>
                     <th>Km/año</th>
                     <th>12 meses</th>
@@ -1834,14 +1843,20 @@ export default function MarketplacePage() {
                       <input value={colFRenting.title} onChange={e => setColFRenting(f => ({...f, title: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Título…" />
                     </td>
-                    {/* Marca + Modelo por separado */}
+                    {/* Marca */}
                     <td className="px-3 py-1.5">
-                      <div className="flex gap-1">
-                        <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
-                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
-                        <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
-                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
-                      </div>
+                      <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                    </td>
+                    {/* Modelo */}
+                    <td className="px-3 py-1.5">
+                      <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                    </td>
+                    {/* Versión */}
+                    <td className="px-3 py-1.5">
+                      <input value={colFRenting.version} onChange={e => setColFRenting(f => ({...f, version: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     {/* Año (rango) */}
                     <td className="px-3 py-1.5">
@@ -1897,10 +1912,9 @@ export default function MarketplacePage() {
                           <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
                         </div>
                       </td>
-                      <td>
-                        <p className="text-sm font-medium text-slate-700">{item.brand}</p>
-                        <p className="text-xs text-slate-400">{item.model}{item.version ? ` · ${item.version}` : ''}</p>
-                      </td>
+                      <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-slate-500 max-w-[200px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
                       <td className="text-sm text-slate-500">{item.year}</td>
                       <td className="text-sm text-slate-500">{item.renting_km_year ? `${(item.renting_km_year as number).toLocaleString('es-ES')} km` : '–'}</td>
                       <td className="text-sm text-slate-600">{fmtCuota(item.renting_12m as number | null)}</td>
@@ -2316,7 +2330,7 @@ export default function MarketplacePage() {
               {Object.values(colFConc).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{displayConcItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColFConc({ brand:'', sellerType:'', seller:'', priceMax:'', kmMax:'', year:'' })}
+                  <button onClick={() => setColFConc({ brand:'', marca:'', modelo:'', version:'', sellerType:'', seller:'', priceMax:'', kmMax:'', year:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
@@ -2325,6 +2339,9 @@ export default function MarketplacePage() {
                 <thead>
                   <tr>
                     <th>Vehículo</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Versión</th>
                     <th>Tipo</th>
                     <th>Concesionario</th>
                     <th>Precio</th>
@@ -2336,7 +2353,19 @@ export default function MarketplacePage() {
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFConc.brand} onChange={e => setColFConc(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca/modelo…" />
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFConc.marca} onChange={e => setColFConc(f => ({...f, marca: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFConc.modelo} onChange={e => setColFConc(f => ({...f, modelo: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input value={colFConc.version} onChange={e => setColFConc(f => ({...f, version: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.sellerType} onChange={e => setColFConc(f => ({...f, sellerType: e.target.value}))}
@@ -2391,6 +2420,9 @@ export default function MarketplacePage() {
                           </div>
                         </div>
                       </td>
+                      <td className="text-sm text-slate-600">{item.brand || '–'}</td>
+                      <td className="text-sm text-slate-600">{item.model || '–'}</td>
+                      <td className="text-sm text-slate-500 max-w-[180px] truncate" title={item.version || ''}>{item.version || '–'}</td>
                       <td>
                         {item.seller_type === 'concesionario'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">Concesionario</span>

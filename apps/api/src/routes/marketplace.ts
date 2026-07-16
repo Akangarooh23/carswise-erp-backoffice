@@ -376,6 +376,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     values.push(`%${bmVo.toLowerCase()}%`);
     conditions.push(`(lower(COALESCE(brand,'')) LIKE $${values.length} OR lower(COALESCE(model,'')) LIKE $${values.length})`);
   }
+  addLike(s('brand_like'), 'brand');
   addLike(s('model'), 'model');
   addLike(s('version'), 'version');
   addTextCI(s('color'), 'color');
