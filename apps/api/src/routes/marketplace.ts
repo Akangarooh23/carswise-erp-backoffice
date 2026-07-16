@@ -61,22 +61,61 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   const page   = Math.max(1, Number(req.query.page) || 1);
   const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
+  const s = (k: string) => String(req.query[k] || '').trim();
 
   const conditions: string[] = [];
   const values: unknown[]    = [];
+
+  // Helpers de filtro. '__empty__' = sin dato.
+  const addTextCI = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(val.toLowerCase()); conditions.push(`lower(COALESCE(${col}, '')) = $${values.length}`);
+  };
+  const addNum = (val: string, col: string, op: '<=' | '>=' | '=') => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`${col} IS NULL`); return; }
+    values.push(Number(val)); conditions.push(`${col} ${op} $${values.length}`);
+  };
+  // varchar numérico (displacement, co2): vacío = COALESCE ''; comparación con cast seguro
+  const addVarcharNum = (val: string, col: string, op: '<=' | '>=') => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(Number(val));
+    conditions.push(`(CASE WHEN ${col} ~ '^[0-9]+$' THEN ${col}::int ELSE NULL END) ${op} $${values.length}`);
+  };
+  const addExactStr = (val: string, col: string) => {
+    if (!val) return;
+    if (val === '__empty__') { conditions.push(`COALESCE(${col}, '') = ''`); return; }
+    values.push(val); conditions.push(`${col} = $${values.length}`);
+  };
 
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
     conditions.push(`(lower(COALESCE(title,'')) LIKE $${values.length} OR lower(brand) LIKE $${values.length} OR lower(model) LIKE $${values.length})`);
   }
-  if (portal) {
-    values.push(portal);
-    conditions.push(`portal = $${values.length}`);
+  const bm = s('bm');
+  if (bm) {
+    values.push(`%${bm.toLowerCase()}%`);
+    conditions.push(`(lower(COALESCE(brand,'')) LIKE $${values.length} OR lower(COALESCE(model,'')) LIKE $${values.length})`);
   }
-  if (sellerType) {
-    values.push(sellerType);
-    conditions.push(`seller_type = $${values.length}`);
-  }
+  addExactStr(portal, 'portal');
+  addExactStr(sellerType, 'seller_type');
+  addNum(s('year'), 'year', '=');
+  addTextCI(s('fuel'), 'fuel');
+  addNum(s('price_max'), 'price', '<=');
+  addNum(s('km_max'), 'mileage', '<=');
+  addTextCI(s('color'), 'color');
+  addTextCI(s('body_type'), 'body_type');
+  addTextCI(s('transmission'), 'transmission');
+  addNum(s('cv_min'), 'power_cv', '>=');
+  addNum(s('doors'), 'doors', '=');
+  addNum(s('seats'), 'seats', '=');
+  addVarcharNum(s('cc_min'), 'displacement', '>=');
+  addVarcharNum(s('co2_max'), 'co2', '<=');
+  addExactStr(s('etiq'), 'environmental_label');
+  addTextCI(s('traction'), 'traction');
+  addNum(s('cons_max'), 'consumption', '<=');
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -104,6 +143,29 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_offers_failed', detail: (err as Error).message });
+  }
+});
+
+// Valores distintos para los desplegables de filtro (sobre TODA la BD, no la página).
+// OJO: debe ir ANTES de '/marketplace/offers/:id' para que no lo capture como id.
+marketplaceRouter.get('/marketplace/offers/filter-options', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
+  try {
+    const distinct = async (col: string): Promise<string[]> => {
+      const r = await query<{ v: string }>(
+        `SELECT DISTINCT ${col} AS v FROM moveadvisor_market_offers WHERE COALESCE(${col}::text, '') <> '' ORDER BY 1`
+      );
+      return r.rows.map((x) => x.v).filter(Boolean);
+    };
+    const [colors, bodyTypes, transmissions, tractions, fuels, portals] = await Promise.all([
+      distinct('color'), distinct('body_type'), distinct('transmission'),
+      distinct('traction'), distinct('fuel'), distinct('portal'),
+    ]);
+    const yearsRes = await query<{ v: number }>(
+      `SELECT DISTINCT year AS v FROM moveadvisor_market_offers WHERE year IS NOT NULL ORDER BY year DESC`
+    );
+    res.json({ ok: true, data: { colors, bodyTypes, transmissions, tractions, fuels, portals, years: yearsRes.rows.map((x) => x.v) } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'marketplace_filter_options_failed', detail: (err as Error).message });
   }
 });
 

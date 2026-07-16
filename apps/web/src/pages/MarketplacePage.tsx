@@ -642,6 +642,8 @@ export default function MarketplacePage() {
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMax: '', color: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
+  const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
+  const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
   const [colFRenting,  setColFRenting]  = useState({ brand: '', model: '', year: '', status: '' });
   const [colFPart,     setColFPart]     = useState({ brand: '', client: '', priceMax: '', kmMax: '', year: '', fuel: '' });
   const [colFConc,     setColFConc]     = useState({ brand: '', sellerType: '', seller: '', priceMax: '', kmMax: '', year: '' });
@@ -760,13 +762,6 @@ export default function MarketplacePage() {
     cochescom: 'Coches.com', cochesnet: 'Coches.net', wallapop: 'Wallapop',
     milanuncios: 'Milanuncios',
   };
-  const portalOpts    = useMemo(() => [...new Set(portalItems.map((i:any) => i.portal).filter(Boolean))].sort(), [portalItems]);
-  const portalFuelOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [portalItems]);
-  const portalYearOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [portalItems]);
-  const portalColorOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.color).filter(Boolean))].sort(), [portalItems]);
-  const portalBodyOpts  = useMemo(() => [...new Set(portalItems.map((i:any) => i.body_type).filter(Boolean))].sort(), [portalItems]);
-  const portalTransOpts = useMemo(() => [...new Set(portalItems.map((i:any) => i.transmission).filter(Boolean))].sort(), [portalItems]);
-  const portalTracOpts  = useMemo(() => [...new Set(portalItems.map((i:any) => i.traction).filter(Boolean))].sort(), [portalItems]);
   const partFuelOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.fuel).filter(Boolean))].sort(), [particularsItems]);
   const partYearOpts   = useMemo(() => [...new Set(particularsItems.map((i:any) => i.year).filter(Boolean))].sort((a:any,b:any) => b-a), [particularsItems]);
 
@@ -875,6 +870,17 @@ export default function MarketplacePage() {
     api.get<string[]>('/marketplace/brands').then((r) => { if (r.ok) setBrands(r.data); });
   }, []);
 
+  // Opciones de los desplegables de filtro (valores de TODA la BD, no de la página cargada)
+  useEffect(() => {
+    api.get<typeof portalFilterOpts>('/marketplace/offers/filter-options').then((r) => { if (r.ok && r.data) setPortalFilterOpts(r.data); });
+  }, []);
+
+  // Debounce de los filtros de columna de ofertas (evita recargar en cada tecla)
+  useEffect(() => {
+    const t = setTimeout(() => setColFOffersDeb(colFOffers), 350);
+    return () => clearTimeout(t);
+  }, [colFOffers]);
+
   const load = useCallback(async (p: number) => {
     setLoading(true);
     if (tab === 'vo' || tab === 'renting' || tab === 'concesionarios') {
@@ -895,14 +901,33 @@ export default function MarketplacePage() {
     } else if (tab === 'offers') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
       if (q) params.set('q', q);
-      if (portalFilter) params.set('portal', portalFilter);
-      if (sellerFilter) params.set('seller_type', sellerFilter);
+      const cf = colFOffersDeb;
+      const portalVal = cf.portal || portalFilter;
+      const sellerVal = cf.sellerType || sellerFilter;
+      if (portalVal) params.set('portal', portalVal);
+      if (sellerVal) params.set('seller_type', sellerVal);
+      if (cf.brand)    params.set('bm', cf.brand);
+      if (cf.year)     params.set('year', cf.year);
+      if (cf.fuel)     params.set('fuel', cf.fuel);
+      if (cf.priceMax) params.set('price_max', cf.priceMax);
+      if (cf.kmMax)    params.set('km_max', cf.kmMax);
+      if (cf.color)    params.set('color', cf.color);
+      if (cf.body)     params.set('body_type', cf.body);
+      if (cf.trans)    params.set('transmission', cf.trans);
+      if (cf.cvMin)    params.set('cv_min', cf.cvMin);
+      if (cf.doors)    params.set('doors', cf.doors);
+      if (cf.seats)    params.set('seats', cf.seats);
+      if (cf.ccMin)    params.set('cc_min', cf.ccMin);
+      if (cf.co2Max)   params.set('co2_max', cf.co2Max);
+      if (cf.etiq)     params.set('etiq', cf.etiq);
+      if (cf.trac)     params.set('traction', cf.trac);
+      if (cf.consMax)  params.set('cons_max', cf.consMax);
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
     }
     // exportacion: no data yet
     setLoading(false);
-  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter]);
+  }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb]);
 
   // Genera el informe de portales (en vivo) como PDF y lo descarga directamente.
   const descargarInforme = useCallback(async () => {
@@ -1855,7 +1880,7 @@ export default function MarketplacePage() {
             <>
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
-                  <span className="text-xs text-blue-600 font-medium">{displayPortalItems.length} de {portalItems.length} resultados</span>
+                  <span className="text-xs text-blue-600 font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
                   <button onClick={() => setColFOffers({ brand:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
@@ -1874,7 +1899,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {portalOpts.map((p:any) => <option key={p} value={p}>{PORTAL_LABEL[p] ?? p}</option>)}
+                        {portalFilterOpts.portals.map((p) => <option key={p} value={p}>{PORTAL_LABEL[p] ?? p}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1909,7 +1934,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {portalYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
+                        {portalFilterOpts.years.map((y) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1917,28 +1942,28 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {portalFuelOpts.map((f:any) => <option key={f} value={f}>{f}</option>)}
+                        {portalFilterOpts.fuels.map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.color} onChange={e => setColFOffers(f => ({...f, color: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
-                        {portalColorOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                        {portalFilterOpts.colors.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.body} onChange={e => setColFOffers(f => ({...f, body: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
-                        {portalBodyOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                        {portalFilterOpts.bodyTypes.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.trans} onChange={e => setColFOffers(f => ({...f, trans: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
-                        {portalTransOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                        {portalFilterOpts.transmissions.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -1987,7 +2012,7 @@ export default function MarketplacePage() {
                       <select value={colFOffers.trac} onChange={e => setColFOffers(f => ({...f, trac: e.target.value}))}
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
-                        {portalTracOpts.map((v:any) => <option key={v} value={v}>{v}</option>)}
+                        {portalFilterOpts.tractions.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
