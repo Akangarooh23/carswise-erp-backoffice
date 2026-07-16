@@ -1053,6 +1053,47 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
   }
 });
 
+// Particulares: editar los datos del vehículo (moveadvisor_user_vehicles).
+// Todos los campos son texto; whitelist de columnas editables; nunca NULL en NOT NULL.
+marketplaceRouter.patch('/marketplace/particulares/:id', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) { res.status(400).json({ ok: false, error: 'missing_id' }); return; }
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const values = (body.values && typeof body.values === 'object') ? body.values : body;
+  const EDITABLE = new Set(['title', 'brand', 'model', 'version', 'year', 'mileage', 'fuel', 'color', 'price', 'cv', 'transmission_type', 'vehicle_location', 'plate', 'notes']);
+
+  try {
+    const cols = await query<{ column_name: string; is_nullable: string }>(
+      `SELECT column_name, is_nullable FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'moveadvisor_user_vehicles'`
+    );
+    const tableColumns = new Set(cols.rows.map((r) => r.column_name));
+    const notNull = new Set(cols.rows.filter((r) => r.is_nullable === 'NO').map((r) => r.column_name));
+
+    const entries = Object.entries(values)
+      .filter(([col]) => EDITABLE.has(col) && tableColumns.has(col))
+      .filter(([, v]) => typeof v !== 'object' || v === null)
+      .map(([col, v]) => [col, (v === '' || v == null) ? null : String(v)] as [string, unknown])
+      .filter(([col, v]) => !(v === null && notNull.has(col)));
+
+    if (!entries.length) { res.status(400).json({ ok: false, error: 'no_fields' }); return; }
+
+    const params: unknown[] = [];
+    const setSql = entries.map(([col, v], i) => { params.push(v); return `"${col}" = $${i + 1}`; });
+    if (tableColumns.has('updated_at')) setSql.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE moveadvisor_user_vehicles SET ${setSql.join(', ')} WHERE id = $${params.length} RETURNING id`,
+      params
+    );
+    if (!result.rows.length) { res.status(404).json({ ok: false, error: 'vehicle_not_found' }); return; }
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'particulares_update_failed', detail: (err as Error).message });
+  }
+});
+
 // ── Brands list ───────────────────────────────────────────────────────────────
 
 marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {

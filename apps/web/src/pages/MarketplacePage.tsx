@@ -864,6 +864,12 @@ export default function MarketplacePage() {
   const [savePortalError, setSavePortalError] = useState('');
   const [savePortalOk,    setSavePortalOk]    = useState(false);
 
+  const [particEditOffer, setParticEditOffer] = useState<any | null>(null);
+  const [particEditForm,  setParticEditForm]  = useState<Record<string, any>>({});
+  const [savingPartic,    setSavingPartic]    = useState(false);
+  const [savePartError,   setSavePartError]   = useState('');
+  const [savePartOk,      setSavePartOk]      = useState(false);
+
   const [showImport, setShowImport]         = useState(false);
   const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
   const [importFileName, setImportFileName] = useState('');
@@ -1206,6 +1212,34 @@ export default function MarketplacePage() {
       setSavePortalError(JSON.stringify((res as any).detail ?? res, null, 2));
     }
     setSavingPortal(false);
+  }
+
+  function openPartEdit(item: any) {
+    setParticEditOffer(item);
+    setParticEditForm({
+      title: item.title ?? '', brand: item.brand ?? '', model: item.model ?? '', version: item.version ?? '',
+      year: item.year ?? '', mileage: item.mileage ?? '', fuel: item.fuel ?? '', color: item.color ?? '',
+      price: item.price ?? '', cv: item.cv ?? '', transmission_type: item.transmission_type ?? '',
+      vehicle_location: item.vehicle_location ?? '', plate: item.plate ?? '', notes: item.notes ?? '',
+    });
+    setSavePartError(''); setSavePartOk(false);
+  }
+
+  async function savePartEdit() {
+    if (!particEditOffer) return;
+    setSavingPartic(true); setSavePartError(''); setSavePartOk(false);
+    const values = Object.fromEntries(Object.entries(particEditForm).map(([k, v]) => [k, v === '' ? null : v]));
+    const res = await api.patch<{ ok: boolean; detail?: unknown }>(
+      `/marketplace/particulares/${encodeURIComponent(particEditOffer.id)}`, values
+    );
+    if (res.ok) {
+      setSavePartOk(true);
+      setParticularsItems((prev: any[]) => prev.map((i: any) => i.id === particEditOffer.id ? { ...i, ...values } : i));
+      setTimeout(() => setParticEditOffer(null), 800);
+    } else {
+      setSavePartError(JSON.stringify((res as any).detail ?? res, null, 2));
+    }
+    setSavingPartic(false);
   }
 
   async function toggleActive(offer: VoOffer) {
@@ -1860,6 +1894,12 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.plate || '–'}</td>
                       <td>
                         <div className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => openPartEdit(item)}
+                            className="px-2 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100"
+                          >
+                            Editar
+                          </button>
                           <button
                             onClick={() => toggleParticular(item)}
                             className="px-2 py-1 rounded text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
@@ -2752,6 +2792,85 @@ export default function MarketplacePage() {
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
                 {savingPortal ? 'Guardando…' : 'Guardar cambios'}
               </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Editar vehículo particular ──────────────────────────────────────── */}
+      <Modal open={!!particEditOffer} onClose={() => setParticEditOffer(null)} title="Editar vehículo (particular)" size="lg">
+        {particEditOffer && (
+          <div className="space-y-5">
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="font-medium text-slate-800 text-sm">{[particEditOffer.brand, particEditOffer.model, particEditOffer.version].filter(Boolean).join(' ') || particEditOffer.title}</p>
+              <p className="text-xs text-slate-400">{particEditOffer.owner_name || particEditOffer.user_email} · {particEditOffer.id}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Título</label>
+                <input value={particEditForm.title ?? ''} onChange={e => setParticEditForm(f => ({...f, title: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Marca</label>
+                <input value={particEditForm.brand ?? ''} onChange={e => setParticEditForm(f => ({...f, brand: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Modelo</label>
+                <input value={particEditForm.model ?? ''} onChange={e => setParticEditForm(f => ({...f, model: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Versión</label>
+                <input value={particEditForm.version ?? ''} onChange={e => setParticEditForm(f => ({...f, version: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Año</label>
+                <input value={particEditForm.year ?? ''} onChange={e => setParticEditForm(f => ({...f, year: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Kilómetros</label>
+                <input value={particEditForm.mileage ?? ''} onChange={e => setParticEditForm(f => ({...f, mileage: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Precio (€)</label>
+                <input value={particEditForm.price ?? ''} onChange={e => setParticEditForm(f => ({...f, price: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">CV</label>
+                <input value={particEditForm.cv ?? ''} onChange={e => setParticEditForm(f => ({...f, cv: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Combustible</label>
+                <select value={particEditForm.fuel ?? ''} onChange={e => setParticEditForm(f => ({...f, fuel: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">–</option>
+                  {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','Gas'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Cambio</label>
+                <input value={particEditForm.transmission_type ?? ''} onChange={e => setParticEditForm(f => ({...f, transmission_type: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Manual / Automático" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Color</label>
+                <input value={particEditForm.color ?? ''} onChange={e => setParticEditForm(f => ({...f, color: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Matrícula</label>
+                <input value={particEditForm.plate ?? ''} onChange={e => setParticEditForm(f => ({...f, plate: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación</label>
+                <input value={particEditForm.vehicle_location ?? ''} onChange={e => setParticEditForm(f => ({...f, vehicle_location: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Notas</label>
+                <textarea value={particEditForm.notes ?? ''} onChange={e => setParticEditForm(f => ({...f, notes: e.target.value}))} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            {savePartError && <pre className="text-xs text-red-600 bg-red-50 rounded-lg p-3 overflow-auto max-h-32">{savePartError}</pre>}
+            {savePartOk && <p className="text-xs text-green-600 font-medium">✓ Guardado correctamente</p>}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button onClick={() => setParticEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cerrar</button>
+              <button onClick={savePartEdit} disabled={savingPartic} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">{savingPartic ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
           </div>
         )}
