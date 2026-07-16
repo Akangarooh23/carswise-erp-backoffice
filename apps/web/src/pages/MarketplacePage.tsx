@@ -24,7 +24,7 @@ const TABS = [
   { key: 'offers',         label: 'Ofertas de portales'   },
   { key: 'renting',        label: 'Ofertas Renting'       },
   { key: 'concesionarios', label: 'VO Concesionarios'     },
-  { key: 'exportacion',    label: 'Exportación'           },
+  { key: 'exportacion',    label: 'Importación'           },
 ] as const;
 type Tab = typeof TABS[number]['key'];
 
@@ -1000,8 +1000,10 @@ export default function MarketplacePage() {
       if (cf.plate)     params.set('plate', cf.plate);
       const res = await api.get<ParticularsOffer[]>(`/marketplace/particulares?${params}`);
       if (res.ok) { setParticularsItems(res.data); setTotal(res.meta?.total ?? 0); }
-    } else if (tab === 'offers') {
+    } else if (tab === 'offers' || tab === 'exportacion') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
+      // 'offers' = marketplace nacional (ES); 'exportacion' = importación de coches DE.
+      params.set('country', tab === 'exportacion' ? 'DE' : 'ES');
       if (q) params.set('q', q);
       const cf = colFOffersDeb;
       const portalVal = cf.portal || portalFilter;
@@ -1030,7 +1032,6 @@ export default function MarketplacePage() {
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
     }
-    // exportacion: no data yet
     setLoading(false);
   }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb, colFDeb, colFRentingDeb, colFPartDeb, colFConcDeb]);
 
@@ -2104,9 +2105,13 @@ export default function MarketplacePage() {
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
           )
-        ) : tab === 'offers' ? (
+        ) : (tab === 'offers' || tab === 'exportacion') ? (
           portalItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
+            <div className="text-center py-12 text-slate-400 text-sm">
+              {tab === 'exportacion'
+                ? 'Sin coches de importación (DE) todavía. Aparecerán aquí cuando corra el scraper AutoScout24-DE.'
+                : 'Sin resultados'}
+            </div>
           ) : (
             <>
               {Object.values(colFOffers).some(Boolean) && (
@@ -2452,12 +2457,6 @@ export default function MarketplacePage() {
               <Pagination page={page} total={total} limit={500} onChange={setPage} />
             </>
           )
-        ) : tab === 'exportacion' ? (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-3">🌍</div>
-            <p className="font-semibold text-slate-700 text-sm mb-1">Exportación / Importación</p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">Vehículos seleccionados de Europa. Esta sección estará disponible próximamente.</p>
-          </div>
         ) : null}
       </div>
 
