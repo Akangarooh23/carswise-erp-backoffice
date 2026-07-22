@@ -603,7 +603,7 @@ type PortalStats = { market: PortalStat[]; vo: PortalStat[]; marketTotal: number
 // null = volumen muy alto o no medible (C2C).
 const PORTAL_DISPONIBLES: Record<string, number> = {
   autoscout24: 275000, cochescom: 79000, flexicar: 22500, autohero: 5000, milanuncios: 200000,
-  modrive: 1967, vian: 618, gamboa: 463,
+  autocasion: 124000, modrive: 1967, vian: 618, gamboa: 463,
 };
 
 const PORTAL_LABELS: Record<string, string> = {
