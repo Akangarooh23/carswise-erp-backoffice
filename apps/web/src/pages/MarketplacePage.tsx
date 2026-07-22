@@ -610,6 +610,7 @@ const PORTAL_LABELS: Record<string, string> = {
   autoscout24: 'AutoScout24', cochescom: 'coches.com', flexicar: 'Flexicar',
   autohero: 'Autohero', wallapop: 'Wallapop', milanuncios: 'Milanuncios',
   cochesnet: 'coches.net', 'coches.net': 'coches.net', ocasionplus: 'OcasiónPlus',
+  autocasion: 'Autocasión',
   modrive: 'Modrive', vian: 'VIAN', gamboa: 'Gamboa',
   'marketplace-vo': 'Marketplace VO', 'renting-leasys': 'Renting (Leasys)',
 };
@@ -772,7 +773,7 @@ export default function MarketplacePage() {
   const PORTAL_LABEL: Record<string, string> = {
     flexicar: 'Flexicar', autohero: 'Autohero', autoscout24: 'AutoScout24',
     cochescom: 'Coches.com', cochesnet: 'Coches.net', wallapop: 'Wallapop',
-    milanuncios: 'Milanuncios',
+    milanuncios: 'Milanuncios', autocasion: 'Autocasión',
   };
 
   const isEmpty = (v: any) => v === null || v === undefined || v === '';
@@ -1469,6 +1470,7 @@ export default function MarketplacePage() {
               className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Todos los portales</option>
               <option value="autoscout24">AutoScout24</option>
+              <option value="autocasion">Autocasión</option>
               <option value="cochescom">Coches.com</option>
               <option value="cochesnet">Coches.net</option>
               <option value="flexicar">Flexicar</option>
