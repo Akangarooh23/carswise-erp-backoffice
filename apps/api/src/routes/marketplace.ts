@@ -278,10 +278,11 @@ marketplaceRouter.patch('/marketplace/offers/:id', requireRole(['admin', 'suppor
 
 marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
-    const [market, vo] = await Promise.all([
+    const [market, vo, imp] = await Promise.all([
       query(`SELECT portal,
                     COUNT(*)::int AS total,
                     COUNT(*) FILTER (WHERE is_active)::int AS active,
+                    COUNT(*) FILTER (WHERE import_published)::int AS published_cw,
                     COUNT(*) FILTER (WHERE last_seen_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
              FROM moveadvisor_market_offers
              GROUP BY portal
@@ -290,8 +291,18 @@ marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'suppor
       query(`SELECT portal,
                     COUNT(*)::int AS total,
                     COUNT(*) FILTER (WHERE is_active)::int AS active,
+                    COUNT(*) FILTER (WHERE is_active)::int AS published_cw,
                     COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
              FROM moveadvisor_marketplace_vo_offers
+             GROUP BY portal
+             ORDER BY total DESC`),
+      query(`SELECT portal,
+                    COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE is_active)::int AS active,
+                    COUNT(*) FILTER (WHERE import_published)::int AS published_cw,
+                    COUNT(*) FILTER (WHERE last_seen_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
+             FROM moveadvisor_market_offers
+             WHERE country = 'DE'
              GROUP BY portal
              ORDER BY total DESC`),
     ]);
@@ -300,8 +311,10 @@ marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'suppor
       data: {
         market: market.rows,
         vo: vo.rows,
+        import: imp.rows,
         marketTotal: (market.rows as { total: number }[]).reduce((a, r) => a + r.total, 0),
         voTotal: (vo.rows as { total: number }[]).reduce((a, r) => a + r.total, 0),
+        importTotal: (imp.rows as { total: number }[]).reduce((a, r) => a + r.total, 0),
         generatedAt: new Date().toISOString(),
       },
     });

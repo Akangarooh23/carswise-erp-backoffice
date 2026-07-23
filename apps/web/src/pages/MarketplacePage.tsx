@@ -596,14 +596,15 @@ type ParticularsOffer = {
 
 // ── Informe de portales (PDF) ─────────────────────────────────────────────────
 
-type PortalStat = { portal: string; total: number; active: number; updated_last_day: number };
-type PortalStats = { market: PortalStat[]; vo: PortalStat[]; marketTotal: number; voTotal: number; generatedAt: string };
+type PortalStat = { portal: string; total: number; active: number; published_cw?: number; updated_last_day: number };
+type PortalStats = { market: PortalStat[]; vo: PortalStat[]; import?: PortalStat[]; marketTotal: number; voTotal: number; importTotal?: number; generatedAt: string };
 
-// Vehículos disponibles en cada portal (aprox., medidos/estimados en la evaluación).
-// null = volumen muy alto o no medible (C2C).
+// Vehículos disponibles en cada portal ("En la web"). Medidos en vivo 2026-07-23 salvo indicación.
+// Sin clave = volumen no medible / bloqueado (C2C, coches.net DataDome).
 const PORTAL_DISPONIBLES: Record<string, number> = {
-  autoscout24: 275000, cochescom: 79000, flexicar: 22500, autohero: 5000, milanuncios: 200000,
-  autocasion: 124000, modrive: 1967, vian: 618, gamboa: 463,
+  autoscout24: 269207, cochescom: 79000 /* estimado */, flexicar: 25000, autohero: 5000 /* estimado */, milanuncios: 200000 /* estimado */,
+  autocasion: 125291, clicars: 1730, ocasionplus: 13572, canalcar: 494,
+  modrive: 1967, vian: 618, gamboa: 463,
 };
 
 const PORTAL_LABELS: Record<string, string> = {
@@ -1066,24 +1067,30 @@ export default function MarketplacePage() {
         doc.text(title, M, startY);
         const body = rows.map((r) => {
           const disp = PORTAL_DISPONIBLES[r.portal];
-          return [portalLabel(r.portal), disp ? fmt(disp) : '—', fmt(r.total), fmt(r.active), fmt(r.updated_last_day)];
+          return [portalLabel(r.portal), disp ? fmt(disp) : '—', fmt(r.total), fmt(r.active), fmt(r.published_cw ?? 0), fmt(r.updated_last_day)];
         });
         const act = rows.reduce((a, r) => a + r.active, 0);
+        const pub = rows.reduce((a, r) => a + (r.published_cw || 0), 0);
         const upd = rows.reduce((a, r) => a + (r.updated_last_day || 0), 0);
         autoTable(doc, {
           startY: startY + 10,
           margin: { left: M, right: M },
-          head: [['Portal', 'En la web', 'Obtenidos', 'Activos', 'Últ. 24h']],
+          head: [['Portal', 'En la web', 'Obtenidos', 'Activos', 'Publicados CW', 'Últ. 24h']],
           body,
-          foot: [['Total', '', fmt(total), fmt(act), fmt(upd)]],
+          foot: [['Total', '', fmt(total), fmt(act), fmt(pub), fmt(upd)]],
           theme: 'grid',
           styles: { fontSize: 9.5, cellPadding: 5, lineColor: [227, 232, 237], lineWidth: 0.5, textColor: [20, 27, 35] },
           headStyles: { fillColor: [251, 252, 253], textColor: [138, 149, 161], fontStyle: 'bold' },
           footStyles: { fillColor: [251, 252, 253], textColor: [20, 27, 35], fontStyle: 'bold' },
-          columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+          columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
           didParseCell: (d) => {
-            // "Últ. 24h": verde si hubo actualización, rojo si 0 (portal sin refrescar)
+            // "Publicados CW": verde si >0 (lo tenemos en carswiseai.com)
             if (d.section === 'body' && d.column.index === 4) {
+              const n = parseInt(String(d.cell.raw).replace(/\D/g, ''), 10) || 0;
+              if (n > 0) { d.cell.styles.textColor = [30, 91, 123]; d.cell.styles.fontStyle = 'bold'; }
+            }
+            // "Últ. 24h": verde si hubo actualización, rojo si 0 (portal sin refrescar)
+            if (d.section === 'body' && d.column.index === 5) {
               const n = parseInt(String(d.cell.raw).replace(/\D/g, ''), 10) || 0;
               d.cell.styles.textColor = n > 0 ? [46, 125, 91] : [178, 58, 58];
               d.cell.styles.fontStyle = 'bold';
@@ -1093,7 +1100,10 @@ export default function MarketplacePage() {
         return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
       };
 
-      const y = drawTable('Portales de mercado', data.market, data.marketTotal, 118);
+      let y = drawTable('Portales de mercado', data.market, data.marketTotal, 118);
+      if (data.import && data.import.length) {
+        y = drawTable('Importación (DE → publicada en CarsWise)', data.import, data.importTotal ?? 0, y + 34);
+      }
       drawTable('Concesionarios VO', data.vo, data.voTotal, y + 34);
 
       doc.save('CarsWise-Informe-Portales.pdf');
