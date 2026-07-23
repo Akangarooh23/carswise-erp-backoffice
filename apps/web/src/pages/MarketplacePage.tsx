@@ -1102,7 +1102,7 @@ export default function MarketplacePage() {
 
       let y = drawTable('Portales de mercado', data.market, data.marketTotal, 118);
       if (data.import && data.import.length) {
-        y = drawTable('Importación (DE → publicada en CarsWise)', data.import, data.importTotal ?? 0, y + 34);
+        y = drawTable('Importación (DE, publicada en CarsWise)', data.import, data.importTotal ?? 0, y + 34);
       }
       drawTable('Concesionarios VO', data.vo, data.voTotal, y + 34);
 
