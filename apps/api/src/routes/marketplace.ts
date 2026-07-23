@@ -282,7 +282,7 @@ marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'suppor
       query(`SELECT portal,
                     COUNT(*)::int AS total,
                     COUNT(*) FILTER (WHERE is_active)::int AS active,
-                    0 AS published_cw,
+                    COUNT(*) FILTER (WHERE is_active AND COALESCE(country,'ES') <> 'DE')::int AS published_cw,
                     COUNT(*) FILTER (WHERE last_seen_at > NOW() - INTERVAL '1 day')::int AS updated_last_day
              FROM moveadvisor_market_offers
              GROUP BY portal
