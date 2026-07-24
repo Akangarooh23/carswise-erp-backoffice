@@ -130,6 +130,10 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   // COALESCE por si alguna fila antigua quedara con country NULL.
   const country = s('country');
   if (country) { values.push(country); conditions.push(`COALESCE(country, 'ES') = $${values.length}`); }
+  // Estado: 'true' = activa (o sin dato), 'false' = inactiva (vendida/retirada).
+  const active = s('active');
+  if (active === 'true') conditions.push(`COALESCE(is_active, TRUE) = TRUE`);
+  else if (active === 'false') conditions.push(`is_active = FALSE`);
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -148,6 +152,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
                 COALESCE(province, COALESCE(location, '')) AS location,
                 market_price_es, import_comps, import_cost, import_margin, import_margin_pct, import_score,
                 import_published, import_locked,
+                is_active, last_checked_at,
                 scraped_at, updated_at
          FROM moveadvisor_market_offers ${where}
          ORDER BY ${country === 'DE' ? 'import_score DESC NULLS LAST, import_margin DESC NULLS LAST' : 'updated_at DESC'}

@@ -583,6 +583,7 @@ type PortalOffer = {
   color?: string; body_type?: string; transmission?: string; power_cv?: number; power_kw?: number;
   doors?: number; seats?: number; displacement?: string; co2?: string; environmental_label?: string;
   traction?: string; consumption?: number;
+  is_active?: boolean; last_checked_at?: string | null;
 };
 
 type ParticularsOffer = {
@@ -646,7 +647,7 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
-  const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
+  const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
@@ -798,6 +799,8 @@ export default function MarketplacePage() {
     if (colFOffers.version)    r = r.filter(i => (i.version||'').toLowerCase().includes(colFOffers.version.toLowerCase()));
     if (colFOffers.portal)     r = r.filter(i => matchEnumCI(colFOffers.portal, i.portal));
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
+    if (colFOffers.estado === 'active')   r = r.filter(i => i.is_active !== false);
+    if (colFOffers.estado === 'inactive') r = r.filter(i => i.is_active === false);
     if (colFOffers.priceMax)   r = r.filter(i => matchRange(colFOffers.priceMax, i.price));
     if (colFOffers.kmMax)      r = r.filter(i => matchRange(colFOffers.kmMax, i.mileage));
     if (colFOffers.year)       r = r.filter(i => matchEnum(colFOffers.year, i.year));
@@ -1034,6 +1037,8 @@ export default function MarketplacePage() {
       if (cf.etiq)     params.set('etiq', cf.etiq);
       if (cf.trac)     params.set('traction', cf.trac);
       if (cf.consMax)  params.set('cons_max', cf.consMax);
+      if (cf.estado === 'active')   params.set('active', 'true');
+      if (cf.estado === 'inactive') params.set('active', 'false');
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) {
         setPortalItems(res.data);
@@ -2184,14 +2189,14 @@ export default function MarketplacePage() {
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
                   <span className="text-xs text-blue-600 font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
-                  <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
+                  <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', estado:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'' })}
                     className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
                 </div>
               )}
               <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
+                  <tr><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Estado</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Enlace</th></tr>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
@@ -2216,6 +2221,14 @@ export default function MarketplacePage() {
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.portals.map((p) => <option key={p} value={p}>{PORTAL_LABEL[p] ?? p}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <select value={colFOffers.estado} onChange={e => setColFOffers(f => ({...f, estado: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option>
+                        <option value="active">Activas</option>
+                        <option value="inactive">Inactivas</option>
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -2377,6 +2390,11 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
                       <td className="text-sm text-slate-500 max-w-[220px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
                       <td><Badge variant="blue">{item.portal}</Badge></td>
+                      <td>
+                        {item.is_active === false
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 whitespace-nowrap">Inactiva</span>
+                          : <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">Activa</span>}
+                      </td>
                       <td>
                         {item.seller_type === 'particular'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Particular</span>
