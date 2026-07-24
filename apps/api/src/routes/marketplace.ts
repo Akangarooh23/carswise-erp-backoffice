@@ -160,7 +160,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
         [...values, limit, offset]
       ),
       query(`SELECT COUNT(*)::int AS total,
-                    COUNT(*) FILTER (WHERE COALESCE(url,'') <> '' AND portal <> 'flexicar')::int AS verifiable,
+                    COUNT(*) FILTER (WHERE COALESCE(url,'') <> '' AND portal NOT IN ('flexicar','autoscout24'))::int AS verifiable,
                     COUNT(*) FILTER (WHERE (last_checked_at AT TIME ZONE 'Europe/Madrid')::date = (now() AT TIME ZONE 'Europe/Madrid')::date)::int AS verified_today
              FROM moveadvisor_market_offers ${where}`, values),
     ]);
