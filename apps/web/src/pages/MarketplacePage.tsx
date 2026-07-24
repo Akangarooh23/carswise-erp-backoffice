@@ -1051,11 +1051,12 @@ export default function MarketplacePage() {
     if (verifyRunning) return;
     setVerifyRunning(true);
     try {
+      // batch alto = LIMIT cubre TODAS las verificables (~395k) en una sola corrida (~5 h).
       const res = await api.post<{ started?: boolean; alreadyRunning?: boolean; batch?: number }>(
-        '/marketplace/verify-liveness/run', { batch: 150000 });
+        '/marketplace/verify-liveness/run', { batch: 1000000 });
       if (res.ok) {
         if (res.data?.alreadyRunning) window.alert('Ya hay una verificación en curso.');
-        else window.alert(`Verificación lanzada en segundo plano (lote de ${(res.data?.batch ?? 150000).toLocaleString('es-ES')}). Tarda ~1-2 h; el contador "verificadas hoy" irá subiendo — refresca la página cada rato.`);
+        else window.alert('Verificación COMPLETA lanzada en segundo plano (todas las ofertas). Tarda ~5 h; el contador "verificadas hoy" irá subiendo hasta ~100% — refresca la página cada rato. No hace falta volver a pulsar.');
       } else {
         window.alert('No se pudo lanzar la verificación.');
       }
@@ -1479,7 +1480,7 @@ export default function MarketplacePage() {
             )}
             <button onClick={verificarAhora} disabled={verifyRunning}
               className="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60">
-              {verifyRunning ? 'Lanzando…' : '🔄 Verificar ofertas'}
+              {verifyRunning ? 'Lanzando…' : '🔄 Verificar todas'}
             </button>
             <button onClick={descargarInforme} disabled={reportLoading}
               className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
