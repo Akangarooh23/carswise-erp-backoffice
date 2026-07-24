@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
@@ -152,11 +154,42 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset]
       ),
-      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_market_offers ${where}`, values),
+      query(`SELECT COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE COALESCE(url,'') <> '' AND portal <> 'flexicar')::int AS verifiable,
+                    COUNT(*) FILTER (WHERE (last_checked_at AT TIME ZONE 'Europe/Madrid')::date = (now() AT TIME ZONE 'Europe/Madrid')::date)::int AS verified_today
+             FROM moveadvisor_market_offers ${where}`, values),
     ]);
-    res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
+    const t0 = total.rows[0];
+    res.json({ ok: true, data: rows.rows, meta: { total: t0.total, verifiable: t0.verifiable, verified_today: t0.verified_today, page, limit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_offers_failed', detail: (err as Error).message });
+  }
+});
+
+// ── Verificador de vivo/muerto: lanzar el lote grande en segundo plano ─────────
+// Spawnea el script standalone (repo movilidad-advisor) de forma independiente a la
+// petición. Solo admin. Guard en memoria para no lanzar dos a la vez.
+let verifyLivenessRunning = false;
+marketplaceRouter.post('/marketplace/verify-liveness/run', requireRole(['admin']), (req, res) => {
+  if (verifyLivenessRunning) return res.json({ ok: true, data: { alreadyRunning: true } });
+  const scriptPath = process.env.VERIFY_LIVENESS_SCRIPT
+    || 'C:/Users/Anapi/Projects/movilidad-advisor/scripts/verify-liveness.js';
+  const batch = Math.min(1_000_000, Math.max(1000, Number((req.body as { batch?: number } | undefined)?.batch) || 150000));
+  try {
+    verifyLivenessRunning = true;
+    const child = spawn(process.execPath, [scriptPath], {
+      cwd: path.dirname(path.dirname(scriptPath)), // .../movilidad-advisor
+      env: { ...process.env, BATCH: String(batch), PER_DOMAIN: process.env.VERIFY_PER_DOMAIN || '10' },
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.on('exit', () => { verifyLivenessRunning = false; });
+    child.on('error', () => { verifyLivenessRunning = false; });
+    child.unref();
+    res.json({ ok: true, data: { started: true, batch } });
+  } catch (err) {
+    verifyLivenessRunning = false;
+    res.status(500).json({ ok: false, error: 'verify_liveness_run_failed', detail: (err as Error).message });
   }
 });
 

@@ -636,6 +636,9 @@ export default function MarketplacePage() {
   const [statusFilter, setStatus] = useState('');
   const [loading, setLoading]     = useState(true);
   const [reportLoading, setReportLoading] = useState(false);
+  const [verifiedToday, setVerifiedToday] = useState(0);
+  const [verifiable, setVerifiable]       = useState(0);
+  const [verifyRunning, setVerifyRunning] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulking, setBulking]         = useState(false);
@@ -1032,10 +1035,34 @@ export default function MarketplacePage() {
       if (cf.trac)     params.set('traction', cf.trac);
       if (cf.consMax)  params.set('cons_max', cf.consMax);
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
-      if (res.ok) { setPortalItems(res.data); setTotal(res.meta?.total ?? 0); }
+      if (res.ok) {
+        setPortalItems(res.data);
+        const m = res.meta as { total?: number; verifiable?: number; verified_today?: number } | undefined;
+        setTotal(m?.total ?? 0);
+        setVerifiable(m?.verifiable ?? 0);
+        setVerifiedToday(m?.verified_today ?? 0);
+      }
     }
     setLoading(false);
   }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, colFOffersDeb, colFDeb, colFRentingDeb, colFPartDeb, colFConcDeb]);
+
+  // Lanza el verificador de vivo/muerto (lote grande) en segundo plano vía la API local.
+  const verificarAhora = useCallback(async () => {
+    if (verifyRunning) return;
+    setVerifyRunning(true);
+    try {
+      const res = await api.post<{ started?: boolean; alreadyRunning?: boolean; batch?: number }>(
+        '/marketplace/verify-liveness/run', { batch: 150000 });
+      if (res.ok) {
+        if (res.data?.alreadyRunning) window.alert('Ya hay una verificación en curso.');
+        else window.alert(`Verificación lanzada en segundo plano (lote de ${(res.data?.batch ?? 150000).toLocaleString('es-ES')}). Tarda ~1-2 h; el contador "verificadas hoy" irá subiendo — refresca la página cada rato.`);
+      } else {
+        window.alert('No se pudo lanzar la verificación.');
+      }
+    } finally {
+      setVerifyRunning(false);
+    }
+  }, [verifyRunning]);
 
   // Genera el informe de portales (en vivo) como PDF y lo descarga directamente.
   const descargarInforme = useCallback(async () => {
@@ -1439,10 +1466,26 @@ export default function MarketplacePage() {
             + Añadir oferta renting
           </button>
         ) : tab === 'offers' ? (
-          <button onClick={descargarInforme} disabled={reportLoading}
-            className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
-            {reportLoading ? 'Generando…' : '📄 Descargar informe PDF'}
-          </button>
+          <div className="flex items-center gap-3">
+            {verifiable > 0 && (
+              <span className="text-xs text-slate-500 whitespace-nowrap">
+                Verificadas hoy:{' '}
+                <b className={
+                  verifiedToday / verifiable >= 0.9 ? 'text-emerald-600'
+                  : verifiedToday / verifiable >= 0.4 ? 'text-amber-600' : 'text-slate-700'
+                }>{verifiedToday.toLocaleString('es-ES')}</b>
+                {' / '}{verifiable.toLocaleString('es-ES')} ({Math.round((verifiedToday / verifiable) * 100)}%)
+              </span>
+            )}
+            <button onClick={verificarAhora} disabled={verifyRunning}
+              className="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60">
+              {verifyRunning ? 'Lanzando…' : '🔄 Verificar ofertas'}
+            </button>
+            <button onClick={descargarInforme} disabled={reportLoading}
+              className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+              {reportLoading ? 'Generando…' : '📄 Descargar informe PDF'}
+            </button>
+          </div>
         ) : undefined}
       />
 
