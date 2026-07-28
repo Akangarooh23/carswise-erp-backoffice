@@ -126,6 +126,8 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   addExactStr(s('etiq'), 'environmental_label');
   addTextCI(s('traction'), 'traction');
   addNum(s('cons_max'), 'consumption', '<=');
+  addLike(s('province'), 'province');
+  addLike(s('city'), 'city');
   // País: 'ES' = marketplace nacional (portales), 'DE' = importación (AutoScout24 Alemania).
   // COALESCE por si alguna fila antigua quedara con country NULL.
   const country = s('country');
@@ -150,6 +152,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
                 warranty_months,
                 COALESCE(dealer_name, '') AS dealer_name,
                 COALESCE(province, COALESCE(location, '')) AS location,
+                COALESCE(province, '') AS province, COALESCE(city, '') AS city,
                 market_price_es, import_comps, import_cost, import_margin, import_margin_pct, import_score,
                 import_published, import_locked,
                 is_active, last_checked_at,
