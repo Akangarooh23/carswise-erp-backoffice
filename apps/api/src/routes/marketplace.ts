@@ -126,8 +126,8 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   addExactStr(s('etiq'), 'environmental_label');
   addTextCI(s('traction'), 'traction');
   addNum(s('cons_max'), 'consumption', '<=');
-  addLike(s('province'), 'province');
-  addLike(s('city'), 'city');
+  addTextCI(s('province'), 'province');
+  addTextCI(s('city'), 'city');
   // País: 'ES' = marketplace nacional (portales), 'DE' = importación (AutoScout24 Alemania).
   // COALESCE por si alguna fila antigua quedara con country NULL.
   const country = s('country');
@@ -211,14 +211,15 @@ marketplaceRouter.get('/marketplace/offers/filter-options', requireRole(['admin'
       );
       return r.rows.map((x) => x.v).filter(Boolean);
     };
-    const [colors, bodyTypes, transmissions, tractions, fuels, portals] = await Promise.all([
+    const [colors, bodyTypes, transmissions, tractions, fuels, portals, provinces, cities] = await Promise.all([
       distinct('color'), distinct('body_type'), distinct('transmission'),
       distinct('traction'), distinct('fuel'), distinct('portal'),
+      distinct('province'), distinct('city'),
     ]);
     const yearsRes = await query<{ v: number }>(
       `SELECT DISTINCT year AS v FROM moveadvisor_market_offers WHERE year IS NOT NULL ORDER BY year DESC`
     );
-    res.json({ ok: true, data: { colors, bodyTypes, transmissions, tractions, fuels, portals, years: yearsRes.rows.map((x) => x.v) } });
+    res.json({ ok: true, data: { colors, bodyTypes, transmissions, tractions, fuels, portals, provinces, cities, years: yearsRes.rows.map((x) => x.v) } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'marketplace_filter_options_failed', detail: (err as Error).message });
   }

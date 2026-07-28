@@ -650,7 +650,7 @@ export default function MarketplacePage() {
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '', province: '', city: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
-  const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], years: [] });
+  const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; provinces: string[]; cities: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], provinces: [], cities: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
   const [colFDeb, setColFDeb] = useState(colF);
   const [colFRenting,  setColFRenting]  = useState({ title: '', brand: '', model: '', version: '', yearMin: '', yearMax: '', kmMin: '', kmMax: '', m12Min: '', m12Max: '', m24Min: '', m24Max: '', m36Min: '', m36Max: '', m48Min: '', m48Max: '', m60Min: '', m60Max: '', status: '' });
@@ -817,8 +817,8 @@ export default function MarketplacePage() {
     if (colFOffers.etiq)       r = r.filter(i => matchEnum(colFOffers.etiq, i.environmental_label));
     if (colFOffers.trac)       r = r.filter(i => matchEnumCI(colFOffers.trac, i.traction));
     if (colFOffers.consMax)    r = r.filter(i => matchRange(colFOffers.consMax, i.consumption));
-    if (colFOffers.province)   r = r.filter(i => (i.province || i.location || '').toLowerCase().includes(colFOffers.province.toLowerCase()));
-    if (colFOffers.city)       r = r.filter(i => (i.city || '').toLowerCase().includes(colFOffers.city.toLowerCase()));
+    if (colFOffers.province)   r = r.filter(i => matchEnumCI(colFOffers.province, i.province));
+    if (colFOffers.city)       r = r.filter(i => matchEnumCI(colFOffers.city, i.city));
     return r;
   }, [portalItems, colFOffers]);
 
@@ -2357,12 +2357,20 @@ export default function MarketplacePage() {
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
-                      <input value={colFOffers.province} onChange={e => setColFOffers(f => ({...f, province: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Provincia…" />
+                      <select value={colFOffers.province} onChange={e => setColFOffers(f => ({...f, province: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option>
+                        <option value="__empty__">(Vacío)</option>
+                        {portalFilterOpts.provinces.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
                     </td>
                     <td className="px-3 py-1.5">
-                      <input value={colFOffers.city} onChange={e => setColFOffers(f => ({...f, city: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Ciudad…" />
+                      <select value={colFOffers.city} onChange={e => setColFOffers(f => ({...f, city: e.target.value}))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        <option value="">Todas</option>
+                        <option value="__empty__">(Vacío)</option>
+                        {portalFilterOpts.cities.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
                     </td>
                     <td></td>
                   </tr>
