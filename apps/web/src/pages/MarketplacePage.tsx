@@ -103,7 +103,7 @@ function parseXlsx(buffer: ArrayBuffer): Record<string, string>[] {
 
 function exportXlsx(items: VoOffer[]) {
   const data = items.map((o) => ({
-    title: o.title, brand: o.brand, model: o.model, year: o.year,
+    title: o.title, brand: o.brand, model: o.model, version: o.version ?? '', year: o.year,
     price: o.price, mileage: o.mileage, fuel: o.fuel ?? '', power: o.power ?? '',
     color: o.color ?? '', location: o.location ?? '', seller: o.seller ?? '',
     seller_type: o.seller_type ?? '',
