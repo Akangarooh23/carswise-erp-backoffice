@@ -61,7 +61,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   const portal = String(req.query.portal || '').trim();
   const sellerType = String(req.query.seller_type || '').trim();
   const page   = Math.max(1, Number(req.query.page) || 1);
-  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const limit  = req.query.export === '1' ? 999999 : Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
   const s = (k: string) => String(req.query[k] || '').trim();
 
@@ -375,7 +375,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   const rentingAvailable    = req.query.renting_available;
   const sellerType          = String(req.query.seller_type || '').trim();
   const page                = Math.max(1, Number(req.query.page) || 1);
-  const limit               = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
+  const limit               = req.query.export === '1' ? 999999 : Math.min(500, Math.max(10, Number(req.query.limit) || 50));
   const offset              = (page - 1) * limit;
 
   const conditions: string[] = [];
@@ -1018,7 +1018,7 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
 marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q       = String(req.query.q    || '').trim();
   const page    = Math.max(1, Number(req.query.page)  || 1);
-  const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const limit   = req.query.export === '1' ? 999999 : Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
 
   const conditions: string[] = [

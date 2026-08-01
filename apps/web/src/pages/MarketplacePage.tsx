@@ -124,6 +124,39 @@ function exportXlsx(items: VoOffer[]) {
   xlsxDownload(wb, `marketplace-vo-${Date.now()}.xlsx`);
 }
 
+function exportParticularsXlsx(rows: ParticularsOffer[]) {
+  const data = rows.map((o) => ({
+    titulo: o.title, marca: o.brand, modelo: o.model, version: o.version ?? '',
+    anio: o.year, km: o.mileage, combustible: o.fuel, color: o.color ?? '',
+    precio: o.price, cv: o.cv ?? '', cambio: o.transmission_type ?? '',
+    ubicacion: o.vehicle_location ?? '', matricula: o.plate ?? '',
+    propietario: o.owner_name ?? '', telefono: o.owner_phone ?? '',
+    email_cliente: o.user_email, notas: o.notes ?? '',
+    url_anuncio: o.listing_url ?? '', actualizado: o.updated_at,
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Particulares');
+  xlsxDownload(wb, `particulares-${Date.now()}.xlsx`);
+}
+
+function exportPortalXlsx(rows: PortalOffer[], sheetName: string, filePrefix: string) {
+  const data = rows.map((o) => ({
+    portal: o.portal, titulo: o.title, marca: o.brand, modelo: o.model,
+    anio: o.year, precio: o.price, km: o.mileage, combustible: o.fuel ?? '',
+    color: o.color ?? '', carroceria: o.body_type ?? '', cambio: o.transmission ?? '',
+    cv: o.power_cv ?? '', kw: o.power_kw ?? '', puertas: o.doors ?? '',
+    plazas: o.seats ?? '', cilindrada: o.displacement ?? '', co2: o.co2 ?? '',
+    etiqueta_dgt: o.environmental_label ?? '', traccion: o.traction ?? '',
+    consumo: o.consumption ?? '', provincia: o.province ?? '', ciudad: o.city ?? '',
+    tipo_vendedor: o.seller_type ?? '', activo: o.is_active ? 'Sí' : 'No', url: o.url ?? '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  xlsxDownload(wb, `${filePrefix}-${Date.now()}.xlsx`);
+}
+
 function downloadTemplate() {
   // Three units of the same Golf (same offer, different colors/mileage)
   const example = [
@@ -1435,12 +1468,118 @@ export default function MarketplacePage() {
   }
 
   async function doExport() {
-    const params = new URLSearchParams({ limit: '2500', page: '1' });
+    const params = new URLSearchParams({ export: '1', page: '1', available_for_purchase: 'true' });
     if (q)            params.set('q', q);
     if (brand)        params.set('brand', brand);
     if (statusFilter) params.set('is_active', statusFilter);
+    const cf = colF;
+    if (cf.brand && cf.brand !== '__empty__') params.set('brand', cf.brand);
+    if (cf.model)        params.set('model', cf.model);
+    if (cf.version)      params.set('version', cf.version);
+    if (cf.fuel && cf.fuel !== '__empty__') params.set('fuel', cf.fuel);
+    if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
+    if (cf.year && cf.year !== '__empty__') params.set('year', cf.year);
+    if (cf.priceMin)     params.set('price_min', cf.priceMin);
+    if (cf.priceMax)     params.set('price_max', cf.priceMax);
+    if (cf.salePriceMin) params.set('sale_price_min', cf.salePriceMin);
+    if (cf.salePriceMax) params.set('sale_price_max', cf.salePriceMax);
+    if (cf.estado === 'active')   params.set('is_active', 'true');
+    if (cf.estado === 'inactive') params.set('is_active', 'false');
+    if (cf.cc && cf.cc !== '__empty__') params.set('cc_min', cf.cc);
     const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
     if (res.ok) exportXlsx(res.data);
+  }
+
+  async function doExportRenting() {
+    const params = new URLSearchParams({ export: '1', page: '1', renting_available: 'true' });
+    if (q) params.set('q', q);
+    if (brand) params.set('brand', brand);
+    if (statusFilter) params.set('is_active', statusFilter);
+    const cf = colFRenting;
+    if (cf.brand) params.set('bm', cf.brand);
+    if (cf.model) params.set('model', cf.model);
+    if (cf.status === 'active')   params.set('is_active', 'true');
+    if (cf.status === 'inactive') params.set('is_active', 'false');
+    const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
+    if (res.ok) exportXlsx(res.data);
+  }
+
+  async function doExportConcesionarios() {
+    const params = new URLSearchParams({ export: '1', page: '1', seller_type: 'concesionario,importador' });
+    if (q) params.set('q', q);
+    if (brand) params.set('brand', brand);
+    if (statusFilter) params.set('is_active', statusFilter);
+    const cf = colFConc;
+    if (cf.brand)   params.set('bm', cf.brand);
+    if (cf.marca)   params.set('brand_like', cf.marca);
+    if (cf.modelo)  params.set('model', cf.modelo);
+    if (cf.version) params.set('version', cf.version);
+    if (cf.seller)  params.set('seller', cf.seller);
+    if (cf.sellerType && cf.sellerType !== '__empty__') params.set('seller_type', cf.sellerType);
+    if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
+    if (cf.kmMax && cf.kmMax !== '__empty__')       params.set('km_max', cf.kmMax);
+    if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
+    const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
+    if (res.ok) exportXlsx(res.data);
+  }
+
+  async function doExportParticulares() {
+    const params = new URLSearchParams({ export: '1', page: '1' });
+    if (q) params.set('q', q);
+    const cf = colFPart;
+    if (cf.brand)   params.set('bm', cf.brand);
+    if (cf.marca)   params.set('brand', cf.marca);
+    if (cf.modelo)  params.set('model', cf.modelo);
+    if (cf.version) params.set('version', cf.version);
+    if (cf.client)  params.set('client', cf.client);
+    if (cf.fuel && cf.fuel !== '__empty__')       params.set('fuel', cf.fuel);
+    if (cf.year && cf.year !== '__empty__')       params.set('year', cf.year);
+    if (cf.priceMin) params.set('price_min', cf.priceMin);
+    if (cf.priceMax) params.set('price_max', cf.priceMax);
+    if (cf.kmMax && cf.kmMax !== '__empty__')     params.set('km_max', cf.kmMax);
+    if (cf.location) params.set('location', cf.location);
+    if (cf.plate)    params.set('plate', cf.plate);
+    const res = await api.get<ParticularsOffer[]>(`/marketplace/particulares?${params}`);
+    if (res.ok) exportParticularsXlsx(res.data);
+  }
+
+  async function doExportOffers(country: 'ES' | 'DE') {
+    const params = new URLSearchParams({ export: '1', page: '1', country });
+    if (q) params.set('q', q);
+    const cf = colFOffers;
+    const portalVal = cf.portal || portalFilter;
+    const sellerVal = cf.sellerType || sellerFilter;
+    if (portalVal) params.set('portal', portalVal);
+    if (sellerVal) params.set('seller_type', sellerVal);
+    if (cf.brand)    params.set('bm', cf.brand);
+    if (cf.marca)    params.set('brand', cf.marca);
+    if (cf.modelo)   params.set('model', cf.modelo);
+    if (cf.version)  params.set('version', cf.version);
+    if (cf.year)     params.set('year', cf.year);
+    if (cf.fuel)     params.set('fuel', cf.fuel);
+    if (cf.priceMax) params.set('price_max', cf.priceMax);
+    if (cf.kmMax)    params.set('km_max', cf.kmMax);
+    if (cf.color)    params.set('color', cf.color);
+    if (cf.body)     params.set('body_type', cf.body);
+    if (cf.trans)    params.set('transmission', cf.trans);
+    if (cf.cvMin)    params.set('cv_min', cf.cvMin);
+    if (cf.doors)    params.set('doors', cf.doors);
+    if (cf.seats)    params.set('seats', cf.seats);
+    if (cf.ccMin)    params.set('cc_min', cf.ccMin);
+    if (cf.co2Max)   params.set('co2_max', cf.co2Max);
+    if (cf.etiq)     params.set('etiq', cf.etiq);
+    if (cf.trac)     params.set('traction', cf.trac);
+    if (cf.consMax)  params.set('cons_max', cf.consMax);
+    if (cf.province) params.set('province', cf.province);
+    if (cf.city)     params.set('city', cf.city);
+    if (cf.estado === 'active')   params.set('active', 'true');
+    if (cf.estado === 'inactive') params.set('active', 'false');
+    const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
+    if (res.ok) {
+      const sheetName = country === 'DE' ? 'Importación' : 'Portales';
+      const filePrefix = country === 'DE' ? 'importacion' : 'portales';
+      exportPortalXlsx(res.data, sheetName, filePrefix);
+    }
   }
 
   return (
@@ -1472,9 +1611,25 @@ export default function MarketplacePage() {
             </button>
           </div>
         ) : tab === 'renting' ? (
-          <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_RENTING_FORM); }}
-            className="px-4 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-            + Añadir oferta renting
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={doExportRenting}
+              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              📤 Exportar Excel
+            </button>
+            <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_RENTING_FORM); }}
+              className="px-4 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+              + Añadir oferta renting
+            </button>
+          </div>
+        ) : tab === 'concesionarios' ? (
+          <button onClick={doExportConcesionarios}
+            className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            📤 Exportar Excel
+          </button>
+        ) : tab === 'particulares' ? (
+          <button onClick={doExportParticulares}
+            className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            📤 Exportar Excel
           </button>
         ) : tab === 'offers' ? (
           <div className="flex items-center gap-3">
@@ -1488,6 +1643,10 @@ export default function MarketplacePage() {
                 {' / '}{verifiable.toLocaleString('es-ES')} ({Math.round((verifiedToday / verifiable) * 100)}%)
               </span>
             )}
+            <button onClick={() => doExportOffers('ES')}
+              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              📤 Exportar Excel
+            </button>
             <button onClick={verificarAhora} disabled={verifyRunning}
               className="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60">
               {verifyRunning ? 'Lanzando…' : '🔄 Verificar todas'}
@@ -1497,6 +1656,11 @@ export default function MarketplacePage() {
               {reportLoading ? 'Generando…' : '📄 Descargar informe PDF'}
             </button>
           </div>
+        ) : tab === 'exportacion' ? (
+          <button onClick={() => doExportOffers('DE')}
+            className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            📤 Exportar Excel
+          </button>
         ) : undefined}
       />
 
