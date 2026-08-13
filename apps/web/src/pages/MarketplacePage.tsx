@@ -768,7 +768,7 @@ export default function MarketplacePage() {
     let r = [...items];
     if (colF.brand)        r = r.filter(i => colF.brand === '__empty__' ? isEmpty(i.brand) : (i.brand || '').toLowerCase() === colF.brand.toLowerCase());
     if (colF.model)        r = r.filter(i => (i.model || '').toLowerCase().includes(colF.model.toLowerCase()));
-    if (colF.version)      r = r.filter(i => (i.version || '').toLowerCase().includes(colF.version.toLowerCase()));
+    if (colF.version)      r = r.filter(i => colF.version === '__empty__' ? isEmpty(i.version) : (i.version || '').toLowerCase().includes(colF.version.toLowerCase()));
     if (colF.fuel)         r = r.filter(i => matchEnumCI(colF.fuel, i.fuel));
     if (colF.transmission) r = r.filter(i => colF.transmission === '__empty__' ? isEmpty(i.transmission) : (i.transmission || '').toLowerCase().includes(colF.transmission.toLowerCase()));
     if (colF.year)         r = r.filter(i => matchEnum(colF.year, i.year));
@@ -830,7 +830,7 @@ export default function MarketplacePage() {
     if (colFOffers.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''}`.toLowerCase().includes(colFOffers.brand.toLowerCase()));
     if (colFOffers.marca)      r = r.filter(i => (i.brand||'').toLowerCase().includes(colFOffers.marca.toLowerCase()));
     if (colFOffers.modelo)     r = r.filter(i => (i.model||'').toLowerCase().includes(colFOffers.modelo.toLowerCase()));
-    if (colFOffers.version)    r = r.filter(i => (i.version||'').toLowerCase().includes(colFOffers.version.toLowerCase()));
+    if (colFOffers.version)    r = r.filter(i => colFOffers.version === '__empty__' ? isEmpty(i.version) : (i.version||'').toLowerCase().includes(colFOffers.version.toLowerCase()));
     if (colFOffers.portal)     r = r.filter(i => matchEnumCI(colFOffers.portal, i.portal));
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
     if (colFOffers.estado === 'active')   r = r.filter(i => i.is_active !== false);
@@ -863,7 +863,7 @@ export default function MarketplacePage() {
     if (cr.title)  r = r.filter(i => (i.title||'').toLowerCase().includes(cr.title.toLowerCase()));
     if (cr.brand)  r = r.filter(i => (i.brand||'').toLowerCase().includes(cr.brand.toLowerCase()));
     if (cr.model)  r = r.filter(i => (i.model||'').toLowerCase().includes(cr.model.toLowerCase()));
-    if (cr.version) r = r.filter(i => (i.version||'').toLowerCase().includes(cr.version.toLowerCase()));
+    if (cr.version) r = r.filter(i => cr.version === '__empty__' ? isEmpty(i.version) : (i.version||'').toLowerCase().includes(cr.version.toLowerCase()));
     if (cr.yearMin || cr.yearMax) r = r.filter(i => gte(cr.yearMin, i.year) && lte(cr.yearMax, i.year));
     if (cr.kmMin || cr.kmMax)     r = r.filter(i => gte(cr.kmMin, (i as any).renting_km_year) && lte(cr.kmMax, (i as any).renting_km_year));
     if (cr.m12Min || cr.m12Max)   r = r.filter(i => gte(cr.m12Min, (i as any).renting_12m) && lte(cr.m12Max, (i as any).renting_12m));
@@ -881,7 +881,7 @@ export default function MarketplacePage() {
     if (colFPart.brand)    r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFPart.brand.toLowerCase()));
     if (colFPart.marca)    r = r.filter(i => (i.brand||'').toLowerCase().includes(colFPart.marca.toLowerCase()));
     if (colFPart.modelo)   r = r.filter(i => (i.model||'').toLowerCase().includes(colFPart.modelo.toLowerCase()));
-    if (colFPart.version)  r = r.filter(i => (i.version||'').toLowerCase().includes(colFPart.version.toLowerCase()));
+    if (colFPart.version)  r = r.filter(i => colFPart.version === '__empty__' ? isEmpty(i.version) : (i.version||'').toLowerCase().includes(colFPart.version.toLowerCase()));
     if (colFPart.client)   r = r.filter(i => `${i.owner_name||''} ${i.user_email||''}`.toLowerCase().includes(colFPart.client.toLowerCase()));
     if (colFPart.priceMin) r = r.filter(i => Number(i.price) >= Number(colFPart.priceMin));
     if (colFPart.priceMax) r = r.filter(i => Number(i.price) <= Number(colFPart.priceMax));
@@ -898,7 +898,7 @@ export default function MarketplacePage() {
     if (colFConc.brand)      r = r.filter(i => `${i.brand||''} ${i.model||''} ${i.title||''}`.toLowerCase().includes(colFConc.brand.toLowerCase()));
     if (colFConc.marca)      r = r.filter(i => (i.brand||'').toLowerCase().includes(colFConc.marca.toLowerCase()));
     if (colFConc.modelo)     r = r.filter(i => (i.model||'').toLowerCase().includes(colFConc.modelo.toLowerCase()));
-    if (colFConc.version)    r = r.filter(i => (i.version||'').toLowerCase().includes(colFConc.version.toLowerCase()));
+    if (colFConc.version)    r = r.filter(i => colFConc.version === '__empty__' ? isEmpty(i.version) : (i.version||'').toLowerCase().includes(colFConc.version.toLowerCase()));
     if (colFConc.sellerType) r = r.filter(i => matchEnum(colFConc.sellerType, i.seller_type));
     if (colFConc.seller)     r = r.filter(i => (i.seller||'').toLowerCase().includes(colFConc.seller.toLowerCase()));
     if (colFConc.priceMax)   r = r.filter(i => matchRange(colFConc.priceMax, i.sale_price ?? i.price));
@@ -993,7 +993,7 @@ export default function MarketplacePage() {
         const cf = colFDeb;
         if (cf.brand && cf.brand !== '__empty__') params.set('brand', cf.brand);
         if (cf.model)                              params.set('model', cf.model);
-        if (cf.version)                            params.set('version', cf.version);
+        if (cf.version && cf.version !== '__empty__') params.set('version', cf.version);
         if (cf.fuel && cf.fuel !== '__empty__')    params.set('fuel', cf.fuel);
         if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
         if (cf.year && cf.year !== '__empty__')    params.set('year', cf.year);
@@ -1017,7 +1017,7 @@ export default function MarketplacePage() {
         if (cf.brand)   params.set('bm', cf.brand);
         if (cf.marca)   params.set('brand_like', cf.marca);
         if (cf.modelo)  params.set('model', cf.modelo);
-        if (cf.version) params.set('version', cf.version);
+        if (cf.version && cf.version !== '__empty__') params.set('version', cf.version);
         if (cf.seller)  params.set('seller', cf.seller);
         if (cf.sellerType && cf.sellerType !== '__empty__') params.set('seller_type', cf.sellerType);
         if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
@@ -1033,7 +1033,7 @@ export default function MarketplacePage() {
       if (cf.brand)    params.set('bm', cf.brand);
       if (cf.marca)    params.set('brand', cf.marca);
       if (cf.modelo)   params.set('model', cf.modelo);
-      if (cf.version)  params.set('version', cf.version);
+      if (cf.version && cf.version !== '__empty__')  params.set('version', cf.version);
       if (cf.client)   params.set('client', cf.client);
       if (cf.fuel && cf.fuel !== '__empty__')         params.set('fuel', cf.fuel);
       if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
@@ -1057,7 +1057,7 @@ export default function MarketplacePage() {
       if (cf.brand)    params.set('bm', cf.brand);
       if (cf.marca)    params.set('brand', cf.marca);
       if (cf.modelo)   params.set('model', cf.modelo);
-      if (cf.version)  params.set('version', cf.version);
+      if (cf.version && cf.version !== '__empty__')  params.set('version', cf.version);
       if (cf.year)     params.set('year', cf.year);
       if (cf.fuel)     params.set('fuel', cf.fuel);
       if (cf.priceMax) params.set('price_max', cf.priceMax);
@@ -1475,7 +1475,7 @@ export default function MarketplacePage() {
     const cf = colF;
     if (cf.brand && cf.brand !== '__empty__') params.set('brand', cf.brand);
     if (cf.model)        params.set('model', cf.model);
-    if (cf.version)      params.set('version', cf.version);
+    if (cf.version && cf.version !== '__empty__') params.set('version', cf.version);
     if (cf.fuel && cf.fuel !== '__empty__') params.set('fuel', cf.fuel);
     if (cf.transmission && cf.transmission !== '__empty__') params.set('transmission', cf.transmission);
     if (cf.year && cf.year !== '__empty__') params.set('year', cf.year);
@@ -1513,7 +1513,7 @@ export default function MarketplacePage() {
     if (cf.brand)   params.set('bm', cf.brand);
     if (cf.marca)   params.set('brand_like', cf.marca);
     if (cf.modelo)  params.set('model', cf.modelo);
-    if (cf.version) params.set('version', cf.version);
+    if (cf.version && cf.version !== '__empty__') params.set('version', cf.version);
     if (cf.seller)  params.set('seller', cf.seller);
     if (cf.sellerType && cf.sellerType !== '__empty__') params.set('seller_type', cf.sellerType);
     if (cf.priceMax && cf.priceMax !== '__empty__') params.set('price_max', cf.priceMax);
@@ -1530,7 +1530,7 @@ export default function MarketplacePage() {
     if (cf.brand)   params.set('bm', cf.brand);
     if (cf.marca)   params.set('brand', cf.marca);
     if (cf.modelo)  params.set('model', cf.modelo);
-    if (cf.version) params.set('version', cf.version);
+    if (cf.version && cf.version !== '__empty__') params.set('version', cf.version);
     if (cf.client)  params.set('client', cf.client);
     if (cf.fuel && cf.fuel !== '__empty__')       params.set('fuel', cf.fuel);
     if (cf.year && cf.year !== '__empty__')       params.set('year', cf.year);
@@ -1554,7 +1554,7 @@ export default function MarketplacePage() {
     if (cf.brand)    params.set('bm', cf.brand);
     if (cf.marca)    params.set('brand', cf.marca);
     if (cf.modelo)   params.set('model', cf.modelo);
-    if (cf.version)  params.set('version', cf.version);
+    if (cf.version && cf.version !== '__empty__')  params.set('version', cf.version);
     if (cf.year)     params.set('year', cf.year);
     if (cf.fuel)     params.set('fuel', cf.fuel);
     if (cf.priceMax) params.set('price_max', cf.priceMax);
@@ -1804,9 +1804,15 @@ export default function MarketplacePage() {
                     </td>
                     {/* Versión */}
                     <td className="px-3 py-1.5">
-                      <input value={colF.version} onChange={e => setCol('version', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
-                        placeholder="Versión…" />
+                      <div className="flex gap-1 items-center">
+                        <input value={colF.version === '__empty__' ? '' : colF.version} onChange={e => setCol('version', e.target.value)}
+                          disabled={colF.version === '__empty__'}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 disabled:bg-slate-100 disabled:text-slate-400"
+                          placeholder="Versión…" />
+                        <button onClick={() => setCol('version', colF.version === '__empty__' ? '' : '__empty__')}
+                          title="Filtrar sin versión"
+                          className={`shrink-0 text-xs px-1.5 py-1 rounded border ${colF.version === '__empty__' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-amber-300'}`}>∅</button>
+                      </div>
                     </td>
                     {/* P. Compra (rango mín–máx) */}
                     <td className="px-3 py-1.5">
@@ -2098,8 +2104,14 @@ export default function MarketplacePage() {
                     </td>
                     {/* Versión */}
                     <td className="px-3 py-1.5">
-                      <input value={colFRenting.version} onChange={e => setColFRenting(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                      <div className="flex gap-1 items-center">
+                        <input value={colFRenting.version === '__empty__' ? '' : colFRenting.version} onChange={e => setColFRenting(f => ({...f, version: e.target.value}))}
+                          disabled={colFRenting.version === '__empty__'}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Versión…" />
+                        <button onClick={() => setColFRenting(f => ({...f, version: f.version === '__empty__' ? '' : '__empty__'}))}
+                          title="Filtrar sin versión"
+                          className={`shrink-0 text-xs px-1.5 py-1 rounded border ${colFRenting.version === '__empty__' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-amber-300'}`}>∅</button>
+                      </div>
                     </td>
                     {/* Año (rango) */}
                     <td className="px-3 py-1.5">
@@ -2224,8 +2236,14 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
-                      <input value={colFPart.version} onChange={e => setColFPart(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                      <div className="flex gap-1 items-center">
+                        <input value={colFPart.version === '__empty__' ? '' : colFPart.version} onChange={e => setColFPart(f => ({...f, version: e.target.value}))}
+                          disabled={colFPart.version === '__empty__'}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Versión…" />
+                        <button onClick={() => setColFPart(f => ({...f, version: f.version === '__empty__' ? '' : '__empty__'}))}
+                          title="Filtrar sin versión"
+                          className={`shrink-0 text-xs px-1.5 py-1 rounded border ${colFPart.version === '__empty__' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-amber-300'}`}>∅</button>
+                      </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.client} onChange={e => setColFPart(f => ({...f, client: e.target.value}))}
@@ -2381,8 +2399,14 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
-                      <input value={colFOffers.version} onChange={e => setColFOffers(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                      <div className="flex gap-1 items-center">
+                        <input value={colFOffers.version === '__empty__' ? '' : colFOffers.version} onChange={e => setColFOffers(f => ({...f, version: e.target.value}))}
+                          disabled={colFOffers.version === '__empty__'}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Versión…" />
+                        <button onClick={() => setColFOffers(f => ({...f, version: f.version === '__empty__' ? '' : '__empty__'}))}
+                          title="Filtrar sin versión"
+                          className={`shrink-0 text-xs px-1.5 py-1 rounded border ${colFOffers.version === '__empty__' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-amber-300'}`}>∅</button>
+                      </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.portal} onChange={e => setColFOffers(f => ({...f, portal: e.target.value}))}
@@ -2665,8 +2689,14 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
-                      <input value={colFConc.version} onChange={e => setColFConc(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                      <div className="flex gap-1 items-center">
+                        <input value={colFConc.version === '__empty__' ? '' : colFConc.version} onChange={e => setColFConc(f => ({...f, version: e.target.value}))}
+                          disabled={colFConc.version === '__empty__'}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Versión…" />
+                        <button onClick={() => setColFConc(f => ({...f, version: f.version === '__empty__' ? '' : '__empty__'}))}
+                          title="Filtrar sin versión"
+                          className={`shrink-0 text-xs px-1.5 py-1 rounded border ${colFConc.version === '__empty__' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-amber-300'}`}>∅</button>
+                      </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.sellerType} onChange={e => setColFConc(f => ({...f, sellerType: e.target.value}))}
