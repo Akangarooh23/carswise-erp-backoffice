@@ -5,6 +5,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge.js';
 import type { Ticket, TicketStatus } from '../types/index.js';
+import Icono from '../components/ui/Icono.js';
 
 function fmtDateTime(s: string) {
   return new Date(s).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -119,7 +120,7 @@ export default function TicketDetailPage() {
               ) : ticket.events.map((ev) => (
                 <div key={ev.id} className="flex gap-3">
                   <div className="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-brand-400 text-xs">✏</span>
+                    <span className="text-brand-400"><Icono nombre="lapiz" tam={13} /></span>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-brand-500">{ev.actor}</p>

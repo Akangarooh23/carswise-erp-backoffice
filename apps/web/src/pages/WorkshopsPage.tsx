@@ -4,6 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import type { WorkshopLocation } from '../types/index.js';
+import Icono from '../components/ui/Icono.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -372,7 +373,7 @@ export default function WorkshopsPage() {
               <span>ID: <strong className="text-brand-400">{selected?.id}</strong></span>
               <span>Fuente: <strong className="text-brand-400">{selected?.source ?? '–'}</strong></span>
               {selected?.rating != null && (
-                <span>⭐ {selected.rating.toFixed(1)} ({selected.rating_count?.toLocaleString('es-ES') ?? 0} reseñas)</span>
+                <span className="inline-flex items-center gap-1"><Icono nombre="estrella" tam={13} /> {selected.rating.toFixed(1)} ({selected.rating_count?.toLocaleString('es-ES') ?? 0} reseñas)</span>
               )}
             </div>
 
@@ -434,7 +435,7 @@ export default function WorkshopsPage() {
             {/* Business hours */}
             <div className="border border-brand-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-brand-500">🕐 Horario comercial</span>
+                <span className="text-sm font-semibold text-brand-500">Horario comercial</span>
                 <button type="button" onClick={() => setForm({ ...form, hoursFreeMode: !form.hoursFreeMode })}
                   className="text-xs text-acento-texto hover:text-brand-600">
                   {form.hoursFreeMode ? 'Usar editor visual' : 'Edición libre'}

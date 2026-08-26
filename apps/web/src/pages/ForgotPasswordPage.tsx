@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import Icono from '../components/ui/Icono.js';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState('');
@@ -26,11 +27,11 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
-            🔐
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-acento text-brand-700 mb-4 shadow-lg">
+            <Icono nombre="coche" tam={30} />
           </div>
           <h1 className="text-white text-xl font-bold">Recuperar contraseña</h1>
           <p className="text-brand-300 text-sm mt-1">PopCar ERP</p>
@@ -39,7 +40,7 @@ export default function ForgotPasswordPage() {
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           {sent ? (
             <div className="text-center space-y-4">
-              <div className="text-4xl">📧</div>
+              <div className="flex justify-center text-brand-300"><Icono nombre="sobre" tam={34} /></div>
               <p className="text-brand-500 font-semibold">Revisa tu email</p>
               <p className="text-brand-400 text-sm">
                 Si el email es correcto, recibirás un enlace para restablecer tu contraseña en los próximos minutos.
@@ -66,7 +67,7 @@ export default function ForgotPasswordPage() {
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@carswise.es"
+                  placeholder="tu correo de trabajo"
                   className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
                 />
               </div>

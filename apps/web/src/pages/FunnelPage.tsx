@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
+import Icono from '../components/ui/Icono.js';
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ const FUNNEL_TABS = [
   { key: 'ofertas',    label: 'Ofertas más vistas' },
   { key: 'sesiones',   label: 'Por sesión / usuario' },
   { key: 'eventos',    label: 'Eventos recientes' },
-  { key: 'generador',  label: '🔗 Generador de links' },
+  { key: 'generador',  label: 'Generador de links' },
 ] as const;
 type FunnelTab = typeof FUNNEL_TABS[number]['key'];
 
@@ -419,7 +420,7 @@ export default function FunnelPage() {
   const [exporting, setExporting] = useState<'sessions' | 'events' | null>(null);
 
   // UTM link builder
-  const [utmBase,     setUtmBase]     = useState('https://www.carswiseai.com/marketplace-vo');
+  const [utmBase,     setUtmBase]     = useState('https://www.popcar.tech/marketplace-vo');
   const [utmSource,   setUtmSource]   = useState('');
   const [utmMedium,   setUtmMedium]   = useState('');
   const [utmCampaign, setUtmCampaign] = useState('');
@@ -633,7 +634,7 @@ export default function FunnelPage() {
               <input type="text" placeholder="Filtrar por usuario (email)…" value={globalUser}
                 onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
                 className="text-xs border border-brand-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-brand-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-brand-300 text-xs">🔍</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-brand-300"><Icono nombre="buscar" tam={13} /></span>
               {globalUser && <button onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-300 hover:text-brand-400 text-xs">×</button>}
             </div>
             <div className="flex items-center gap-1">
@@ -1095,14 +1096,14 @@ export default function FunnelPage() {
                   type="text"
                   value={utmBase}
                   onChange={(e) => setUtmBase(e.target.value)}
-                  placeholder="https://www.carswiseai.com/marketplace-vo/..."
+                  placeholder="https://www.popcar.tech/marketplace-vo/..."
                   className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                 />
                 <div className="flex gap-2 mt-1.5 flex-wrap">
                   {[
-                    { label: 'Marketplace',  url: 'https://www.carswiseai.com/marketplace-vo' },
-                    { label: 'Renting',      url: 'https://www.carswiseai.com/marketplace-vo?tipo=renting' },
-                    { label: 'Inicio',       url: 'https://www.carswiseai.com' },
+                    { label: 'Marketplace',  url: 'https://www.popcar.tech/marketplace-vo' },
+                    { label: 'Renting',      url: 'https://www.popcar.tech/marketplace-vo?tipo=renting' },
+                    { label: 'Inicio',       url: 'https://www.popcar.tech' },
                   ].map((s) => (
                     <button key={s.label} onClick={() => setUtmBase(s.url)}
                       className="text-[11px] text-brand-600 hover:underline border border-brand-200 rounded px-2 py-0.5 bg-brand-50 hover:bg-brand-100 transition-colors">
@@ -1260,7 +1261,7 @@ export default function FunnelPage() {
                           <td className="text-xs text-brand-400 max-w-[160px] truncate">
                             {e.offer_title
                               ? e.offer_id
-                                ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
+                                ? <a href={`https://www.popcar.tech/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
                                 : e.offer_title
                               : <span className="text-brand-300">–</span>}
                           </td>

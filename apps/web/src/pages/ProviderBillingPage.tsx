@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import Icono from '../components/ui/Icono.js';
 import { api, downloadInvoicePdf } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
@@ -530,7 +531,7 @@ export default function ProviderBillingPage() {
                           <div className="flex items-center gap-1">
                             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
                               className="text-xs text-acento-texto hover:underline whitespace-nowrap">
-                              📄 Ver PDF
+                              Ver PDF
                             </a>
                             <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
                               className="text-xs text-brand-300 hover:text-brand-400 ml-1 whitespace-nowrap">
@@ -684,7 +685,7 @@ export default function ProviderBillingPage() {
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setRecvPdfFile(e.target.files?.[0] ?? null)} />
-              <span className="text-2xl">{recvPdfFile ? '📄' : '📁'}</span>
+              <span className="text-brand-400"><Icono nombre={recvPdfFile ? 'documento' : 'carpeta'} tam={24} /></span>
               <span className="text-sm text-brand-400">
                 {recvPdfFile ? recvPdfFile.name : 'Seleccionar PDF (opcional)'}
               </span>
@@ -719,7 +720,7 @@ export default function ProviderBillingPage() {
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
-              <span className="text-2xl">{pdfFile ? '📄' : '📁'}</span>
+              <span className="text-brand-400"><Icono nombre={pdfFile ? 'documento' : 'carpeta'} tam={24} /></span>
               <span className="text-sm text-brand-400">{pdfFile ? pdfFile.name : 'Seleccionar PDF'}</span>
             </label>
             <div className="flex justify-end gap-2">

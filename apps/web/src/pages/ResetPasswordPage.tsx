@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import Icono from '../components/ui/Icono.js';
 
 export default function ResetPasswordPage() {
   const [params]                  = useSearchParams();
@@ -49,9 +50,9 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-brand-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 shadow-2xl text-center max-w-sm w-full space-y-4">
-          <div className="text-4xl">⚠️</div>
+          <div className="flex justify-center text-amber-500"><Icono nombre="aviso" tam={34} /></div>
           <p className="text-brand-500 font-semibold">Enlace inválido</p>
           <p className="text-brand-400 text-sm">El enlace de recuperación no es válido.</p>
           <Link to="/forgot-password" className="block text-sm text-acento-texto hover:underline">
@@ -63,11 +64,11 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
-            🔑
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-acento text-brand-700 mb-4 shadow-lg">
+            <Icono nombre="coche" tam={30} />
           </div>
           <h1 className="text-white text-xl font-bold">Nueva contraseña</h1>
           <p className="text-brand-300 text-sm mt-1">PopCar ERP</p>
@@ -76,7 +77,7 @@ export default function ResetPasswordPage() {
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           {done ? (
             <div className="text-center space-y-4">
-              <div className="text-4xl">✅</div>
+              <div className="flex justify-center text-emerald-600"><Icono nombre="comprobado" tam={34} /></div>
               <p className="text-brand-500 font-semibold">Contraseña actualizada</p>
               <p className="text-brand-400 text-sm">
                 Tu contraseña ha sido cambiada correctamente. Redirigiendo al inicio de sesión…

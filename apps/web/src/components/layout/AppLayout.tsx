@@ -31,7 +31,7 @@ export default function AppLayout() {
       setPendingLeads(current);
       if (prevPendingRef.current !== null && current > prevPendingRef.current) {
         const delta = current - prevPendingRef.current;
-        showToast(`📩 ${delta} nuevo${delta > 1 ? 's' : ''} lead${delta > 1 ? 's' : ''} pendiente${delta > 1 ? 's' : ''}`);
+        showToast(`${delta} nuevo${delta > 1 ? 's' : ''} lead${delta > 1 ? 's' : ''} pendiente${delta > 1 ? 's' : ''}`);
         window.dispatchEvent(new CustomEvent('cw:new-leads', { detail: { count: delta } }));
       }
       prevPendingRef.current = current;

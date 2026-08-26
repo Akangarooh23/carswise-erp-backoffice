@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/auth.js';
 import { api } from '../api/client.js';
+import Icono from '../components/ui/Icono.js';
 
 export default function LoginPage() {
   const { user, login } = useAuth();
@@ -11,10 +12,9 @@ export default function LoginPage() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
-  if (user) {
-    navigate('/dashboard', { replace: true });
-    return null;
-  }
+  // Redirigir se declara, no se ejecuta pintando: llamar aqui a navigate()
+  // cambia el enrutador en mitad del pintado de esta misma pantalla.
+  if (user) return <Navigate to="/dashboard" replace />;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -36,12 +36,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
-            🚗
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-acento text-brand-700 mb-4 shadow-lg">
+            <Icono nombre="coche" tam={30} />
           </div>
           <h1 className="text-white text-xl font-bold"><span className="text-acento">Pop</span>Car ERP</h1>
           <p className="text-brand-300 text-sm mt-1">Backoffice interno</p>
@@ -57,7 +57,7 @@ export default function LoginPage() {
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@carswise.es"
+              placeholder="tu correo de trabajo"
               className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
             />
           </div>

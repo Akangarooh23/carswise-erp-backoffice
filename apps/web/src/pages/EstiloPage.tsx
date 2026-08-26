@@ -21,7 +21,8 @@ const ICONOS: NombreIcono[] = [
   'megafono', 'documento', 'embudo', 'grafico', 'taller', 'tarjeta', 'edificio',
   'escudo', 'equipo', 'tabla', 'historial', 'servicio', 'ojo', 'informe',
   'estrella', 'diamante', 'reloj', 'aviso', 'comprobado', 'euro', 'bandeja',
-  'salir', 'buscar',
+  'salir', 'buscar', 'sobre', 'telefono', 'descargar', 'subir', 'refrescar',
+  'imagen', 'carpeta', 'lapiz', 'rayo', 'bateria', 'surtidor', 'bidon',
 ];
 
 const COLORES: { nombre: string; clase: string; hex: string; nota?: string }[] = [

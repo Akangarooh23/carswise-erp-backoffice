@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import Icono from './Icono.js';
 
 interface SearchInputProps {
   value: string;
@@ -23,7 +24,7 @@ export function SearchInput({ value, onChange, placeholder = 'Buscar…', classN
 
   return (
     <div className={`relative ${className}`}>
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-300 text-sm">🔍</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-300"><Icono nombre="buscar" tam={15} /></span>
       <input
         ref={ref}
         type="search"

@@ -5,10 +5,24 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { SearchInput } from '../components/ui/SearchInput.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import type { IdCar } from '../types/index.js';
+import Icono, { type NombreIcono } from '../components/ui/Icono.js';
 
-const FUEL_ICONS: Record<string, string> = {
-  electric: '⚡', hybrid: '🔋', gasoline: '⛽', diesel: '🛢️', other: '🔧',
-};
+/**
+ * Que icono le toca a un combustible.
+ *
+ * El dato viene escrito a mano y de Excel de proveedores: «Gasolina»,
+ * «Diésel», «Electrico» sin tilde, «Hybrid Gasoline». Se normaliza y se busca
+ * por trozo, no por igualdad, porque la lista de formas no se acaba nunca.
+ */
+function iconoCombustible(fuel: string): NombreIcono {
+  const t = fuel.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (t.includes('electr')) return 'rayo';
+  if (t.includes('hibrid') || t.includes('hybrid') || t.includes('phev')) return 'bateria';
+  if (t.includes('gasolin') || t.includes('gasoline')) return 'surtidor';
+  if (t.includes('diesel')) return 'bidon';
+  if (t.includes('gas') || t.includes('glp') || t.includes('gnc')) return 'surtidor';
+  return 'llave-inglesa';
+}
 
 function fmtDate(s: string) {
   return s ? new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
@@ -76,7 +90,7 @@ export default function IdCarsPage() {
                     <td className="text-sm text-brand-400 font-mono">{v.plate || '–'}</td>
                     <td className="text-sm">
                       {v.fuel
-                        ? <span>{FUEL_ICONS[v.fuel] ?? '🔧'} {v.fuel}</span>
+                        ? <span className="inline-flex items-center gap-1"><Icono nombre={iconoCombustible(v.fuel)} tam={14} /> {v.fuel}</span>
                         : <span className="text-brand-300">–</span>}
                     </td>
                     <td className="text-sm text-brand-400">{v.mileage_km ? `${Number(v.mileage_km).toLocaleString('es-ES')} km` : '–'}</td>

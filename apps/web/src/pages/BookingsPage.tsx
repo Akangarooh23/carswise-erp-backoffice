@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import Icono from '../components/ui/Icono.js';
 
 type Booking = {
   id: string;
@@ -146,14 +147,14 @@ export default function BookingsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-20 text-brand-300">
           <div className="text-center">
-            <div className="text-4xl mb-3 animate-pulse">📅</div>
+            <div className="flex justify-center mb-3 animate-pulse"><Icono nombre="calendario" tam={34} /></div>
             <div className="text-sm">Cargando agenda…</div>
           </div>
         </div>
       ) : days.length === 0 ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <div className="text-5xl mb-4">📭</div>
+            <div className="flex justify-center mb-4 text-brand-200"><Icono nombre="bandeja" tam={42} /></div>
             <div className="font-semibold text-brand-400">Sin citas en este período</div>
             <div className="text-sm text-brand-300 mt-1">Prueba con un rango de fechas más amplio</div>
           </div>
@@ -271,7 +272,7 @@ export default function BookingsPage() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="px-3 py-1.5 text-xs font-bold text-acento-texto bg-acento-tenue border border-acento rounded-lg hover:bg-acento-tenue transition-colors"
                                 >
-                                  ✉ Contactar
+                                  Contactar
                                 </a>
                                 {b.buyer_phone && (
                                   <a
@@ -279,7 +280,7 @@ export default function BookingsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="px-3 py-1.5 text-xs font-bold text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
                                   >
-                                    📞 Llamar
+                                    Llamar
                                   </a>
                                 )}
                               </div>

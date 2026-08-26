@@ -283,12 +283,12 @@ export default function BillingPage() {
                                     setDownloadingId(null);
                                   }}
                                   className="text-xs text-emerald-600 hover:underline disabled:opacity-50 whitespace-nowrap">
-                                  {downloadingId === `${inv.id}_send` ? 'Enviando…' : '✉ Enviar'}
+                                  {downloadingId === `${inv.id}_send` ? 'Enviando…' : 'Enviar'}
                                 </button>
                               </div>
                               {pdfError?.id === inv.id && (
                                 <span className="text-[10px] text-red-600 font-medium max-w-[180px] leading-tight">
-                                  ⚠ {pdfError.msg}
+                                  {pdfError.msg}
                                 </span>
                               )}
                               {inv.cw_sent_at && (

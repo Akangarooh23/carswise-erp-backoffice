@@ -108,7 +108,7 @@ export default function ContractsPage() {
 
   return (
     <div>
-      <PageHeader title="Contratos" subtitle="Compras y rentings gestionados a través de CarsWise" />
+      <PageHeader title="Contratos" subtitle="Compras y rentings gestionados a través de PopCar" />
 
       {/* Stats */}
       {stats && (

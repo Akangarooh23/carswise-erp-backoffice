@@ -19,7 +19,10 @@ export type NombreIcono =
   | 'grafico' | 'taller' | 'tarjeta' | 'edificio' | 'escudo'
   | 'equipo' | 'tabla' | 'historial' | 'servicio' | 'ojo'
   | 'informe' | 'estrella' | 'diamante' | 'reloj' | 'aviso'
-  | 'comprobado' | 'euro' | 'bandeja' | 'salir' | 'buscar';
+  | 'comprobado' | 'euro' | 'bandeja' | 'salir' | 'buscar'
+  | 'sobre' | 'telefono' | 'descargar' | 'subir' | 'refrescar'
+  | 'imagen' | 'carpeta' | 'lapiz' | 'rayo' | 'bateria'
+  | 'surtidor' | 'bidon';
 
 /** Cada entrada es el interior de un <svg viewBox="0 0 24 24">. */
 const TRAZOS: Record<NombreIcono, string> = {
@@ -53,6 +56,18 @@ const TRAZOS: Record<NombreIcono, string> = {
   bandeja:        'M3.5 13.5 6 5.5h12l2.5 8v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1zM3.5 13.5H8l1.5 2.5h5l1.5-2.5h4.5',
   salir:          'M9 4.5H5.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1H9M15 8l4 4-4 4M19 12H9',
   buscar:         'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4',
+  sobre:          'M3.5 7A1.5 1.5 0 0 1 5 5.5h14A1.5 1.5 0 0 1 20.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM3.5 7.5 12 13l8.5-5.5',
+  telefono:       'M7 3.5H4.8a1.5 1.5 0 0 0-1.5 1.7c.5 4 2.2 7.5 4.8 10.1s6.2 4.3 10.1 4.8a1.5 1.5 0 0 0 1.7-1.5V16a1.5 1.5 0 0 0-1.3-1.5l-2.4-.3a1.5 1.5 0 0 0-1.4.6l-.8 1a12 12 0 0 1-5.3-5.3l1-.8a1.5 1.5 0 0 0 .6-1.4l-.3-2.4A1.5 1.5 0 0 0 7 3.5z',
+  descargar:      'M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4 17v2.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V17',
+  subir:          'M12 15V4M7.5 8 12 3.5 16.5 8M4 17v2.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V17',
+  refrescar:      'M20 12a8 8 0 1 1-2.5-5.8M20.5 3.5v4.5H16',
+  imagen:         'M3.5 6A1.5 1.5 0 0 1 5 4.5h14A1.5 1.5 0 0 1 20.5 6v12a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18zM8.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3M3.5 16l4.5-4.5 4 4 3-2.5 5 4.5',
+  carpeta:        'M3.5 6.5a1 1 0 0 1 1-1h4l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1z',
+  lapiz:          'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17zM14.5 5.5l4 4',
+  rayo:           'M13.5 3 5 13.5h6L10.5 21 19 10.5h-6z',
+  bateria:        'M3.5 8.5A1.5 1.5 0 0 1 5 7h11a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 16 17H5a1.5 1.5 0 0 1-1.5-1.5zM20 10.5v3M6.5 10.5v3M10 10.5v3',
+  surtidor:       'M5 20V5.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 13 5.5V20M3.5 20h11M6.5 7.5h5v3.5h-5zM13 9h3.5a1 1 0 0 1 1 1v6a1.5 1.5 0 0 0 3 0v-6l-2-3',
+  bidon:          'M12 20.5c3 0 5.5-2.3 5.5-5.2 0-3.8-5.5-11.8-5.5-11.8S6.5 11.5 6.5 15.3c0 2.9 2.5 5.2 5.5 5.2z',
 };
 
 export interface PropsIcono {

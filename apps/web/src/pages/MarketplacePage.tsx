@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { Fragment, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import type { VoOffer, VoUnit, UnitStatus, RentingPricesJson } from '../types/index.js';
+import Icono from '../components/ui/Icono.js';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -297,7 +298,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                 />
                 {idx === 0 ? (
                   <div className="absolute top-1 left-1 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
-                    ⭐ Principal
+                    Principal
                   </div>
                 ) : (
                   <button
@@ -309,7 +310,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                     }}
                     className="absolute top-1 left-1 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
                   >
-                    ⭐ Principal
+                    Principal
                   </button>
                 )}
               </div>
@@ -532,7 +533,7 @@ function VisitsPanel({
             {data.slots.length === 0 && <p className="text-xs text-brand-300">Sin franjas configuradas.</p>}
             {data.slots.map((s: any) => (
               <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-acento-tenue border border-acento-tenue' : 'bg-white border border-brand-100'}`}>
-                <span className="text-[10px]">{s.status === 'booked' ? '🔵' : '🟢'}</span>
+                <span className={`inline-block w-2 h-2 rounded-full ${s.status === 'booked' ? 'bg-brand-400' : 'bg-emerald-500'}`} />
                 <span className="flex-1 font-medium text-brand-500">{fmtVDate(s.starts_at)} · {fmtVTime(s.starts_at)}–{fmtVTime(s.ends_at)}</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${s.status === 'booked' ? 'bg-acento-tenue text-acento-texto' : 'bg-emerald-100 text-emerald-700'}`}>
                   {s.status === 'booked' ? 'Reservada' : 'Libre'}
@@ -1134,7 +1135,7 @@ export default function MarketplacePage() {
         autoTable(doc, {
           startY: startY + 10,
           margin: { left: M, right: M },
-          head: [['Portal', 'En la web', 'Obtenidos', 'Activos', 'Publicados CW', 'Últ. 24h']],
+          head: [['Portal', 'En la web', 'Obtenidos', 'Activos', 'Publicados PopCar', 'Últ. 24h']],
           body,
           foot: [['Total', '', fmt(total), fmt(act), fmt(pub), fmt(upd)]],
           theme: 'grid',
@@ -1143,7 +1144,7 @@ export default function MarketplacePage() {
           footStyles: { fillColor: [251, 252, 253], textColor: [20, 27, 35], fontStyle: 'bold' },
           columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
           didParseCell: (d) => {
-            // "Publicados CW": verde si >0 (lo tenemos en carswiseai.com)
+            // "Publicados PopCar": verde si >0 (lo tenemos en popcar.tech)
             if (d.section === 'body' && d.column.index === 4) {
               const n = parseInt(String(d.cell.raw).replace(/\D/g, ''), 10) || 0;
               if (n > 0) { d.cell.styles.textColor = [30, 91, 123]; d.cell.styles.fontStyle = 'bold'; }
@@ -1480,15 +1481,15 @@ export default function MarketplacePage() {
           <div className="flex gap-2 flex-wrap">
             <button onClick={downloadTemplate}
               className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
-              📄 Plantilla Excel
+              Plantilla Excel
             </button>
             <button onClick={() => { setShowImport(true); setImportResult(null); setImportRows([]); setImportFileName(''); }}
               className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
-              📥 Importar Excel
+              Importar Excel
             </button>
             <button onClick={doExport}
               className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
-              📤 Exportar Excel
+              Exportar Excel
             </button>
             <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_FORM); }}
               className="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700">
@@ -1514,11 +1515,11 @@ export default function MarketplacePage() {
             )}
             <button onClick={verificarAhora} disabled={verifyRunning}
               className="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60">
-              {verifyRunning ? 'Lanzando…' : '🔄 Verificar todas'}
+              {verifyRunning ? 'Lanzando…' : 'Verificar todas'}
             </button>
             <button onClick={descargarInforme} disabled={reportLoading}
               className="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
-              {reportLoading ? 'Generando…' : '📄 Descargar informe PDF'}
+              {reportLoading ? 'Generando…' : 'Descargar informe PDF'}
             </button>
           </div>
         ) : undefined}
@@ -1777,8 +1778,8 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayItems.map((item) => (
-                    <>
-                    <tr key={item.id} onClick={() => openEdit(item)}
+                    <Fragment key={item.id}>
+                    <tr onClick={() => openEdit(item)}
                       className={`cursor-pointer hover:bg-acento-tenue transition-colors ${selectedIds.has(item.id) ? 'bg-acento-tenue' : ''}`}>
                       <td className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox"
@@ -1796,7 +1797,7 @@ export default function MarketplacePage() {
                           {(item.image_url || item.image_urls?.[0]) ? (
                             <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-brand-100 shrink-0" />
                           ) : (
-                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg">🚗</div>
+                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg"></div>
                           )}
                           <div>
                             {/* El titulo no se pinta: es marca + modelo + version,
@@ -1873,7 +1874,7 @@ export default function MarketplacePage() {
                             onClick={() => { setImageEditOffer(item); setImageUrls(item.image_urls?.length ? item.image_urls : ['']); }}
                             title="Editar imágenes"
                             className={`text-xs font-medium px-2 py-1 rounded ${!item.image_url && !(item.image_urls?.length) ? 'text-orange-500 hover:bg-orange-50' : 'text-brand-400 hover:bg-acento-tenue'}`}>
-                            🖼️
+                            <Icono nombre="imagen" tam={14} />
                           </button>
                           <button onClick={() => toggleActive(item)}
                             className={`text-xs font-medium px-2 py-1 rounded ${item.is_active
@@ -1887,7 +1888,7 @@ export default function MarketplacePage() {
                           </button>
                           <button onClick={() => openVisitsPanel(item.id)}
                             className={`text-xs font-medium px-2 py-1 rounded ${expandedVisits === item.id ? 'bg-brand-100 text-brand-500' : 'text-brand-400 hover:bg-brand-50'}`}>
-                            🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
+                            {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
                           </button>
                         </div>
                       </td>
@@ -1909,7 +1910,7 @@ export default function MarketplacePage() {
                         </td>
                       </tr>
                     )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2014,7 +2015,7 @@ export default function MarketplacePage() {
                           {(item.image_url || item.image_urls?.[0]) ? (
                             <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-brand-100 shrink-0" />
                           ) : (
-                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg">🚗</div>
+                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg"></div>
                           )}
                             {/* El titulo no se pinta: es marca + modelo + version,
                                 que ya tienen columna propia y filtro. Repetirlo
@@ -2143,8 +2144,8 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayPartItems.map((item) => (
-                    <>
-                    <tr key={item.id} onClick={() => openPartEdit(item)}
+                    <Fragment key={item.id}>
+                    <tr onClick={() => openPartEdit(item)}
                       className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <p className="font-medium text-brand-600 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
@@ -2182,7 +2183,7 @@ export default function MarketplacePage() {
                             onClick={() => openVisitsPanel(item.id)}
                             className={`px-2 py-1 rounded text-xs font-semibold border ${expandedVisits === item.id ? 'bg-brand-100 text-brand-500 border-brand-200' : 'bg-brand-50 text-brand-400 border-brand-200 hover:bg-brand-100'}`}
                           >
-                            🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
+                            {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
                           </button>
                         </div>
                       </td>
@@ -2204,7 +2205,7 @@ export default function MarketplacePage() {
                         </td>
                       </tr>
                     )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2801,7 +2802,7 @@ export default function MarketplacePage() {
                     />
                     {idx === 0 ? (
                       <div className="absolute top-1 left-1 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
-                        ⭐ Principal
+                        Principal
                       </div>
                     ) : (
                       <button
@@ -2809,7 +2810,7 @@ export default function MarketplacePage() {
                         onClick={() => setImageUrls(prev => [url, ...prev.filter(u => u !== url)])}
                         className="absolute top-1 left-1 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
                       >
-                        ⭐ Hacer principal
+                        Hacer principal
                       </button>
                     )}
                     <button
@@ -3225,13 +3226,13 @@ export default function MarketplacePage() {
           </p>
           <button onClick={downloadTemplate}
             className="text-sm text-acento-texto hover:text-brand-600 font-medium">
-            📄 Descargar plantilla Excel
+            Descargar plantilla Excel
           </button>
 
           <div className="border-2 border-dashed border-brand-200 rounded-xl p-6 text-center">
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" id="xlsx-upload" />
             <label htmlFor="xlsx-upload" className="cursor-pointer block">
-              <div className="text-3xl mb-2">📥</div>
+              <div className="flex justify-center mb-2 text-brand-300"><Icono nombre="descargar" tam={30} /></div>
               <p className="text-sm font-medium text-brand-500">
                 {importFileName || 'Haz clic para seleccionar el fichero Excel'}
               </p>

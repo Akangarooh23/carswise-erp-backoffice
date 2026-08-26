@@ -110,7 +110,7 @@ const TYPE_LABELS: Record<string, string> = {
   info:     'Solicitar info',
   visit:    'Agendar visita',
   question: 'Preguntar',
-  renting:  '🔑 Oferta de renting',
+  renting:  'Oferta de renting',
 };
 const TYPE_COLORS: Record<string, string> = {
   info:     'bg-acento-tenue text-acento-texto',
@@ -617,7 +617,7 @@ export default function LeadsPage() {
               <option value="info">Solicitar info</option>
               <option value="visit">Agendar visita</option>
               <option value="question">Preguntar</option>
-              <option value="renting">🔑 Oferta de renting</option>
+              <option value="renting">Oferta de renting</option>
             </select>
             <select value={filterOrigin} onChange={(e) => { setFilterOrigin(e.target.value); setPage(1); }}
               className="border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -784,7 +784,7 @@ export default function LeadsPage() {
                             >
                               {lead.meta?.appointment_time && (
                                 <p className="text-[10px] font-bold text-emerald-700 mb-0.5">
-                                  ⏰ {lead.meta.appointment_time}
+                                  {lead.meta.appointment_time}
                                 </p>
                               )}
                               <p className="text-[11px] font-semibold text-brand-500 truncate leading-tight">
@@ -795,7 +795,7 @@ export default function LeadsPage() {
                               </p>
                               {lead.meta?.appointment_contact && (
                                 <p className="text-[10px] text-emerald-600 mt-0.5">
-                                  👤 {lead.meta.appointment_contact}
+                                  {lead.meta.appointment_contact}
                                 </p>
                               )}
                             </button>
@@ -939,7 +939,7 @@ export default function LeadsPage() {
                               <div className="flex flex-wrap gap-1.5">
                                 {(item.offers_viewed ?? []).map((o, i) => (
                                   <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-acento-tenue border border-acento text-acento-texto rounded text-xs font-medium max-w-[240px] truncate">
-                                    🚗 {o.title}
+                                    {o.title}
                                   </span>
                                 ))}
                               </div>
@@ -1035,7 +1035,7 @@ export default function LeadsPage() {
                                       <div className="space-y-1">
                                         {(item.offers_viewed ?? []).map((o, i) => (
                                           <div key={i} className="flex items-center gap-2 text-xs text-acento-texto bg-acento-tenue border border-acento rounded-lg px-2.5 py-1.5">
-                                            🚗{' '}
+                                            {' '}
                                             {o.url ? (
                                               <a href={o.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-acento-texto truncate">
                                                 {o.title}
@@ -1157,7 +1157,7 @@ export default function LeadsPage() {
 
             {selected.appointment_type === 'visit' && (
               <div className="bg-acento-tenue border border-acento rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-acento-texto">📅 Datos de la cita</p>
+                <p className="text-xs font-semibold text-acento-texto">Datos de la cita</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs text-brand-400 mb-1">Fecha</label>
@@ -1187,7 +1187,7 @@ export default function LeadsPage() {
 
             {selected.meta?.reschedule_proposals?.length ? (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-orange-700">🔄 El cliente propone estas opciones — selecciona una para rellenar la fecha</p>
+                <p className="text-xs font-semibold text-orange-700">El cliente propone estas opciones — selecciona una para rellenar la fecha</p>
                 <div className="space-y-1.5">
                   {selected.meta.reschedule_proposals.map((p, i) => {
                     const isSelected = editApptDate === p.date && editApptTime === (p.time || '');
@@ -1198,8 +1198,8 @@ export default function LeadsPage() {
                           isSelected ? 'bg-green-100 border-green-400 text-green-800' : 'bg-white border-orange-300 hover:bg-orange-100 text-brand-500 cursor-pointer'
                         }`}>
                         <span>
-                          📅 {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
-                          {p.time && <span className="ml-2 text-brand-400">⏰ {p.time}</span>}
+                          {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
+                          {p.time && <span className="ml-2 text-brand-400">{p.time}</span>}
                         </span>
                         <span className={`text-xs font-semibold ml-2 shrink-0 ${isSelected ? 'text-green-700' : 'text-orange-600'}`}>
                           {isSelected ? '✓ Seleccionada' : 'Usar esta →'}
@@ -1278,7 +1278,7 @@ export default function LeadsPage() {
                selected.status !== 'Cerrado' && selected.status !== 'Descartado' && selected.status !== 'Cancelado' && (
                 <button onClick={() => openContractModal(selected)}
                   className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">
-                  📝 Crear contrato de renting
+                  Crear contrato de renting
                 </button>
               )}
               <button onClick={() => saveLead()} disabled={saving}
@@ -1287,7 +1287,7 @@ export default function LeadsPage() {
               </button>
               <button onClick={notifyClient} disabled={notifying || saving}
                 className="px-4 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg disabled:opacity-60 font-medium">
-                {notifying ? 'Enviando…' : `📧 ${selected.notified_at ? 'Reenviar notificación' : 'Guardar y notificar cliente'}`}
+                {notifying ? 'Enviando…' : `${selected.notified_at ? 'Reenviar notificación' : 'Guardar y notificar cliente'}`}
               </button>
             </div>
           </div>

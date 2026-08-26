@@ -4,10 +4,11 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import type { IdCar, IdCarFile } from '../types/index.js';
+import Icono, { type NombreIcono } from '../components/ui/Icono.js';
 
-const MIME_ICONS: Record<string, string> = {
-  'image/jpeg': '🖼️', 'image/png': '🖼️', 'image/webp': '🖼️', 'image/gif': '🖼️',
-  'application/pdf': '📄',
+const MIME_ICONS: Record<string, NombreIcono> = {
+  'image/jpeg': 'imagen', 'image/png': 'imagen', 'image/webp': 'imagen', 'image/gif': 'imagen',
+  'application/pdf': 'documento',
 };
 const DOC_TYPE_LABELS: Record<string, string> = {
   photo: 'Foto', document: 'Documento', technical_sheet: 'Ficha Técnica',
@@ -40,8 +41,8 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function fileIcon(f: IdCarFile) {
-  return MIME_ICONS[f.file_mime_type] ?? (f.file_mime_type.startsWith('image/') ? '🖼️' : '📎');
+function fileIcon(f: IdCarFile): NombreIcono {
+  return MIME_ICONS[f.file_mime_type] ?? (f.file_mime_type.startsWith('image/') ? 'imagen' : 'documento');
 }
 function fmtBytes(n: number) {
   if (!n) return '';
@@ -522,7 +523,7 @@ export default function IdCarDetailPage() {
 
                     {photoIdx === 0 ? (
                       <div className="absolute top-1.5 left-1.5 z-10 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
-                        ⭐ Principal
+                        Principal
                       </div>
                     ) : (
                       <button
@@ -531,7 +532,7 @@ export default function IdCarDetailPage() {
                         disabled={settingPrimary}
                         className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
                       >
-                        ⭐ Principal
+                        Principal
                       </button>
                     )}
 
@@ -577,7 +578,7 @@ export default function IdCarDetailPage() {
                   <div className="mb-3 space-y-1.5">
                     {existing.map((f) => (
                       <div key={f.id} className="flex items-center gap-2 bg-brand-50 rounded-md px-3 py-2">
-                        <span className="text-sm">{fileIcon(f)}</span>
+                        <span className="text-brand-400"><Icono nombre={fileIcon(f)} tam={16} /></span>
                         <span className="text-xs text-brand-500 flex-1 truncate" title={f.file_name}>{f.file_name}</span>
                         <span className="text-xs text-brand-300 shrink-0">{fmtBytes(f.file_size)}</span>
                         <span className="text-xs text-brand-300 shrink-0">{fmtDate(f.created_at)}</span>
@@ -660,7 +661,7 @@ export default function IdCarDetailPage() {
             disabled={publishing}
             className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {publishing ? 'Publicando…' : '🚀 Publicar en Marketplace'}
+            {publishing ? 'Publicando…' : 'Publicar en Marketplace'}
           </button>
         </div>
 
