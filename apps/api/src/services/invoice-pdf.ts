@@ -36,18 +36,6 @@ async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null
   } catch { return null; }
 }
 
-// ── Fetch logo bytes ──────────────────────────────────────────────────────────
-let logoCache: Uint8Array | null = null;
-async function fetchLogo(): Promise<Uint8Array | null> {
-  if (logoCache) return logoCache;
-  try {
-    const res = await fetch('https://carswiseai.com/carswise-logo.png');
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    logoCache = new Uint8Array(buf);
-    return logoCache;
-  } catch { return null; }
-}
 
 export interface InvoiceLine {
   description: string;
@@ -93,47 +81,30 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   const M = 56;
 
   // ── Palette ───────────────────────────────────────────────────────────────────
-  const INK        = rgb(0.055, 0.090, 0.149);
-  const AMBER      = rgb(0.729, 0.459, 0.090);
-  const AMBER_DEEP = rgb(0.522, 0.310, 0.043);
-  const AMBER_TINT = rgb(0.984, 0.953, 0.894);
-  const TEXT       = rgb(0.133, 0.165, 0.220);
-  const MUTED      = rgb(0.420, 0.455, 0.518);
-  const FAINT      = rgb(0.604, 0.631, 0.682);
-  const LINE       = rgb(0.914, 0.925, 0.945);
-  const LINE_SOFT  = rgb(0.945, 0.953, 0.969);
+  const INK        = rgb(0.067, 0.067, 0.067);  // #111111  Pop Black
+  const AMARILLO   = rgb(1.000, 0.769, 0.000);  // #FFC400  solo relleno, nunca texto sobre blanco
+  const AMARILLO_T = rgb(0.420, 0.322, 0.000);  // #6B5200  el amarillo llevado a texto legible
+  const AMARILLO_F = rgb(1.000, 0.965, 0.851);  // #FFF6D9  fondos de aviso
+  const TEXT       = rgb(0.165, 0.165, 0.157);  // #2A2A28
+  const MUTED      = rgb(0.369, 0.369, 0.349);  // #5E5E59
+  const FAINT      = rgb(0.588, 0.588, 0.561);  // #96968F
+  const LINE       = rgb(0.788, 0.780, 0.753);  // #C9C7C0
+  const LINE_SOFT  = rgb(0.894, 0.894, 0.875);  // #E4E4DF
   const WHITE      = rgb(1, 1, 1);
-  const HDR_MUTED  = rgb(0.682, 0.714, 0.769);
-  const ROW_BG     = rgb(0.988, 0.992, 1.000);
+  const HDR_MUTED  = rgb(0.588, 0.588, 0.561);  // #96968F  sobre el negro de cabecera
+  const ROW_BG     = rgb(0.961, 0.961, 0.953);  // #F5F5F4
 
   // ── HEADER ────────────────────────────────────────────────────────────────────
   const HEADER_H = 110;
   page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: HEADER_H, color: INK });
-  page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: 4, color: AMBER });
+  page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: 4, color: AMARILLO });
 
-  // Logo / brand
-  const logoBytes = await fetchLogo();
-  if (logoBytes) {
-    try {
-      const img = await pdfDoc.embedPng(logoBytes);
-      const { width: iw, height: ih } = img.scale(1);
-      const scale = Math.min(130 / iw, 52 / ih);
-      page.drawImage(img, { x: M, y: height - HEADER_H + 28, width: iw * scale, height: ih * scale });
-      const cwW = boldFont.widthOfTextAtSize('CarsWise ', 16);
-      page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 12, size: 16, font: boldFont, color: WHITE });
-      page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 12, size: 16, font: boldFont, color: AMBER });
-    } catch {
-      const cwW = boldFont.widthOfTextAtSize('CarsWise ', 18);
-      page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 58, size: 18, font: boldFont, color: WHITE });
-      page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 58, size: 18, font: boldFont, color: AMBER });
-      page.drawText('MOVILIDAD INTELIGENTE', { x: M, y: height - HEADER_H + 40, size: 8, font: regularFont, color: HDR_MUTED });
-    }
-  } else {
-    const cwW = boldFont.widthOfTextAtSize('CarsWise ', 18);
-    page.drawText('CarsWise ', { x: M, y: height - HEADER_H + 58, size: 18, font: boldFont, color: WHITE });
-    page.drawText('AI', { x: M + cwW, y: height - HEADER_H + 58, size: 18, font: boldFont, color: AMBER });
-    page.drawText('MOVILIDAD INTELIGENTE', { x: M, y: height - HEADER_H + 40, size: 8, font: regularFont, color: HDR_MUTED });
-  }
+  // La marca, dibujada. Antes se bajaba un PNG de la web en cada factura:
+  // una llamada de red que podia fallar para acabar escribiendo el nombre
+  // igualmente por el camino de repuesto.
+  const anchoPop = boldFont.widthOfTextAtSize('Pop', 20);
+  page.drawText('Pop', { x: M, y: height - HEADER_H + 56, size: 20, font: boldFont, color: AMARILLO });
+  page.drawText('Car', { x: M + anchoPop, y: height - HEADER_H + 56, size: 20, font: boldFont, color: WHITE });
 
   // Doc title right
   const docTitle  = data.series === 'RECT' ? 'FACTURA RECTIFICATIVA' : 'FACTURA';
@@ -154,14 +125,14 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   const partyTopY = y;
 
   // Left: EMISOR
-  page.drawText('EMISOR', { x: M, y: partyTopY, size: 9, font: boldFont, color: AMBER });
-  page.drawText('CarsWise AI',                        { x: M, y: partyTopY - 16, size: 13, font: boldFont,    color: TEXT  });
+  page.drawText('EMISOR', { x: M, y: partyTopY, size: 9, font: boldFont, color: AMARILLO });
+  page.drawText('PopCar Mobility S.L.',               { x: M, y: partyTopY - 16, size: 13, font: boldFont,    color: TEXT  });
   page.drawText('NIF: Pendiente de asignación',  { x: M, y: partyTopY - 31, size: 10, font: regularFont, color: MUTED });
   page.drawText('Dirección: Pendiente de asignación', { x: M, y: partyTopY - 44, size: 10, font: regularFont, color: MUTED });
-  page.drawText('carswiseai.com',                     { x: M, y: partyTopY - 57, size: 10, font: regularFont, color: AMBER_DEEP });
+  page.drawText('www.popcar.tech',                    { x: M, y: partyTopY - 57, size: 10, font: regularFont, color: AMARILLO_T });
 
   // Right: FACTURAR A
-  page.drawText('FACTURAR A', { x: colR, y: partyTopY, size: 9, font: boldFont, color: AMBER });
+  page.drawText('FACTURAR A', { x: colR, y: partyTopY, size: 9, font: boldFont, color: AMARILLO });
   page.drawText(data.recipientName, { x: colR, y: partyTopY - 16, size: 13, font: boldFont, color: TEXT });
   let recvY = partyTopY - 31;
   if (data.recipientEmail) {
@@ -224,8 +195,8 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
       const refLabel  = refPart.includes(':') ? refPart : `Ref. Stripe · ${refPart}`;
       const badgeW    = regularFont.widthOfTextAtSize(refLabel, 9) + 18;
       const badgeY    = y - 50;
-      page.drawRectangle({ x: M + 16, y: badgeY - 4, width: badgeW, height: 16, color: AMBER_TINT, borderColor: rgb(0.941, 0.890, 0.784), borderWidth: 1 });
-      page.drawText(refLabel, { x: M + 25, y: badgeY + 1, size: 9, font: boldFont, color: AMBER_DEEP });
+      page.drawRectangle({ x: M + 16, y: badgeY - 4, width: badgeW, height: 16, color: AMARILLO_F, borderColor: rgb(0.941, 0.890, 0.784), borderWidth: 1 });
+      page.drawText(refLabel, { x: M + 25, y: badgeY + 1, size: 9, font: boldFont, color: AMARILLO_T });
     }
 
     const amtW = boldFont.widthOfTextAtSize(fmtEur(line.amount), 12);
@@ -256,7 +227,7 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   // Dark total box
   const totalBoxH = 46;
   page.drawRectangle({ x: totX, y: y - totalBoxH, width: totW, height: totalBoxH, color: INK });
-  page.drawRectangle({ x: totX, y: y - totalBoxH, width: 4, height: totalBoxH, color: AMBER });
+  page.drawRectangle({ x: totX, y: y - totalBoxH, width: 4, height: totalBoxH, color: AMARILLO });
   page.drawText('TOTAL FACTURA', { x: totX + 14, y: y - 16, size: 9, font: boldFont, color: HDR_MUTED });
   const totalStr = fmtEur(total);
   const totalStrW = boldFont.widthOfTextAtSize(totalStr, 22);
@@ -288,10 +259,10 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   const thanksPrefix = 'Gracias por confiar en ';
   const thanksPW = regularFont.widthOfTextAtSize(thanksPrefix, 11);
   page.drawText(thanksPrefix, { x: M, y: footerBaseY, size: 11, font: regularFont, color: MUTED });
-  page.drawText('CarsWise AI', { x: M + thanksPW, y: footerBaseY, size: 11, font: boldFont, color: TEXT });
-  const siteStr = 'carswiseai.com';
+  page.drawText('PopCar', { x: M + thanksPW, y: footerBaseY, size: 11, font: boldFont, color: TEXT });
+  const siteStr = 'www.popcar.tech';
   const siteW = boldFont.widthOfTextAtSize(siteStr, 11);
-  page.drawText(siteStr, { x: width - M - siteW, y: footerBaseY, size: 11, font: boldFont, color: AMBER_DEEP });
+  page.drawText(siteStr, { x: width - M - siteW, y: footerBaseY, size: 11, font: boldFont, color: AMARILLO_T });
 
   return pdfDoc.save();
 }

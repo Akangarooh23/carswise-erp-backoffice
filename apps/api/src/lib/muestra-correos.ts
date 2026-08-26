@@ -30,7 +30,7 @@ const CORREOS: [string, string][] = [
     cuerpo:
       parrafo('Hola <strong>Ana Picazo</strong>,') +
       parrafo('El contrato de renting de <strong>Volkswagen T-Roc 1.5 TSI Sport</strong> ha quedado formalizado.') +
-      datos([['Nº de contrato', 'CW-RENT-2026-014'], ['Color', 'Gris urano'],
+      datos([['Nº de contrato', 'PC-RENT-2026-014'], ['Color', 'Gris urano'],
              ['Duración', '48 meses'], ['Km/año incluidos', '15.000 km'],
              ['Cuota mensual', '389 €/mes'], ['Inicio', '1 de septiembre de 2026'],
              ['Fin previsto', '1 de septiembre de 2030']]) +

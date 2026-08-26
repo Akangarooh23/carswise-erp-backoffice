@@ -38,15 +38,23 @@ function rentingContractEmailHtml(data: {
   });
 }
 
-// Generate sequential contract ID like CW-RENT-2026-001
+/**
+ * El siguiente numero de contrato: PC-RENT-2026-001.
+ *
+ * Se mira el ultimo sufijo emitido del año, no cuantos hay. Contando filas,
+ * borrar un contrato hace que el siguiente repita un numero ya usado.
+ */
 async function generateContractId(): Promise<string> {
   const year = new Date().getFullYear();
+  const prefijo = `PC-RENT-${year}-`;
   const result = await query(
-    `SELECT COUNT(*) AS cnt FROM moveadvisor_renting_contracts WHERE id LIKE $1`,
-    [`CW-RENT-${year}-%`]
+    `SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '^.*-', ''), '')::int), 0) AS ultimo
+       FROM moveadvisor_renting_contracts
+      WHERE id LIKE $1`,
+    [`${prefijo}%`]
   );
-  const seq = Number((result.rows[0] as { cnt: string }).cnt) + 1;
-  return `CW-RENT-${year}-${String(seq).padStart(3, '0')}`;
+  const seq = Number((result.rows[0] as { ultimo: number }).ultimo) + 1;
+  return `${prefijo}${String(seq).padStart(3, '0')}`;
 }
 
 // ── GET /contracts — unified list of purchases + renting contracts ─────────────
