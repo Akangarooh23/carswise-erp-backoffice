@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage.js';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordPage from './pages/ResetPasswordPage.js';
 
+const ColaPage = lazy(() => import('./pages/ColaPage.js'));
 const EquipoPage = lazy(() => import('./pages/EquipoPage.js'));
 const ActividadPage = lazy(() => import('./pages/ActividadPage.js'));
 const EstiloPage = lazy(() => import('./pages/EstiloPage.js'));
@@ -59,6 +60,8 @@ export const router = createBrowserRouter([
       { path: 'consentimientos',      element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
       // La guia de estilo. Sin enlace en el menu: es para quien construye, no
       // para quien trabaja.
+      // Las cuatro colas comparten pantalla: mismo trabajo, distintas columnas.
+      { path: 'colas/:cola', element: <Suspense fallback={<Loader />}><ColaPage /></Suspense> },
       { path: 'equipo', element: <Suspense fallback={<Loader />}><EquipoPage /></Suspense> },
       { path: 'actividad', element: <Suspense fallback={<Loader />}><ActividadPage /></Suspense> },
       { path: 'estilo', element: <Suspense fallback={<Loader />}><EstiloPage /></Suspense> },
