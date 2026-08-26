@@ -6,57 +6,36 @@ import { config } from '../config.js';
 
 export const contractsRouter = Router();
 
-const RESEND_API = 'https://api.resend.com/emails';
-const FROM_EMAIL = config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>';
+import { enviar, plantilla, parrafo, datos, boton, esc, MARCA } from '../lib/correo.js';
 
-function esc(s: unknown): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
-}
-
-async function sendClientEmail(to: string, subject: string, html: string): Promise<void> {
-  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
-  const res = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { message?: string }).message || `Resend error ${res.status}`);
-  }
-}
+/** Lo que el cliente necesita saber: nunca se desvia a un buzon de pruebas. */
+const enviarContrato = (to: string, subject: string, html: string) =>
+  enviar({ to, subject, html, alClienteSiempre: true });
 
 function rentingContractEmailHtml(data: {
   contact_name: string; vehicle_title: string; color: string; quantity: number;
   duration_months: number; km_year: number; monthly_price: number;
   start_date: string; end_date: string; contract_id: string;
 }): string {
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-  const fmtNum = (n: number) => n.toLocaleString('es-ES');
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#059669">🚗 ¡Tu contrato de renting está activo!</h2>
-      <p>Hola <strong>${esc(data.contact_name) || 'cliente'}</strong>,</p>
-      <p>Tu contrato de renting del vehículo <strong>${esc(data.vehicle_title)}</strong> ha sido formalizado. Aquí tienes el resumen:</p>
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0">
-        <p style="margin:4px 0;font-size:14px">🔖 <strong>Nº Contrato:</strong> ${esc(data.contract_id)}</p>
-        <p style="margin:4px 0;font-size:14px">🎨 <strong>Color:</strong> ${esc(data.color)}${data.quantity > 1 ? ` × ${data.quantity}` : ''}</p>
-        <p style="margin:4px 0;font-size:14px">📅 <strong>Duración:</strong> ${data.duration_months} meses</p>
-        <p style="margin:4px 0;font-size:14px">🛣️ <strong>Km/año incluidos:</strong> ${fmtNum(data.km_year)} km</p>
-        <p style="margin:4px 0;font-size:14px">💶 <strong>Cuota mensual:</strong> ${fmtNum(data.monthly_price)} €/mes</p>
-        <p style="margin:4px 0;font-size:14px">📆 <strong>Inicio:</strong> ${fmtDate(data.start_date)}</p>
-        <p style="margin:4px 0;font-size:14px">📆 <strong>Fin previsto:</strong> ${fmtDate(data.end_date)}</p>
-      </div>
-      <p>El vehículo ya aparece en tu garaje digital (IDCar). Desde allí podrás gestionar documentos, incidencias y el historial de mantenimiento.</p>
-      <p><a href="https://carswiseai.com/panel/vehiculos"
-            style="display:inline-block;background:#059669;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-        Ver mi vehículo en renting →
-      </a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+  const fecha = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  const num = (n: number) => n.toLocaleString('es-ES');
+  return plantilla({
+    titulo: 'Tu contrato de renting está activo',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(data.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`El contrato de renting de <strong>${esc(data.vehicle_title)}</strong> ha quedado formalizado.`) +
+      datos([
+        ['Nº de contrato', esc(data.contract_id)],
+        ['Color', esc(data.color) + (data.quantity > 1 ? ` × ${data.quantity}` : '')],
+        ['Duración', `${data.duration_months} meses`],
+        ['Km/año incluidos', `${num(data.km_year)} km`],
+        ['Cuota mensual', `${num(data.monthly_price)} €/mes`],
+        ['Inicio', fecha(data.start_date)],
+        ['Fin previsto', fecha(data.end_date)],
+      ]) +
+      parrafo('El vehículo ya aparece en tu garaje digital. Desde ahí puedes guardar documentos, registrar incidencias y llevar el historial de mantenimiento.') +
+      boton('Ver mi vehículo en renting', `${MARCA.sitioUrl}/panel/vehiculos`),
+  });
 }
 
 // Generate sequential contract ID like CW-RENT-2026-001
@@ -314,9 +293,9 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
     } catch (e) { console.error('[contracts] provider invoice error:', (e as Error).message); }
 
     // Send email to client
-    sendClientEmail(
+    enviarContrato(
       lead.user_email,
-      `🚗 Tu contrato de renting está activo — ${lead.vehicle_title || 'CarsWise'}`,
+      `Tu contrato de renting está activo — ${lead.vehicle_title || 'PopCar'}`,
       rentingContractEmailHtml({
         contact_name: lead.contact_name,
         vehicle_title: lead.vehicle_title,

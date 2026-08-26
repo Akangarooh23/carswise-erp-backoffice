@@ -10,6 +10,7 @@ import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { Role } from '../middleware/auth.js';
+import { enviar, plantilla, parrafo, boton, esc } from '../lib/correo.js';
 
 export const authRouter = Router();
 
@@ -30,48 +31,18 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 }
 
 async function sendResetEmail(to: string, name: string, resetUrl: string): Promise<void> {
-  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
-  const recipient = config.RESEND_TEST_EMAIL || to;
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'CarsWise <support@carswiseai.com>',
-      to: recipient,
-      subject: 'Recuperación de contraseña — CarsWise ERP',
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-          <div style="background:#2563eb;border-radius:12px 12px 0 0;padding:24px;text-align:center">
-            <div style="font-size:32px;margin-bottom:8px">🔐</div>
-            <h1 style="color:#fff;margin:0;font-size:20px">Recuperación de contraseña</h1>
-          </div>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:28px">
-            <p>Hola <strong>${name}</strong>,</p>
-            <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>CarsWise ERP</strong>.</p>
-            <p>Haz clic en el botón para crear una nueva contraseña:</p>
-            <div style="text-align:center;margin:28px 0">
-              <a href="${resetUrl}"
-                 style="background:#2563eb;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
-                Restablecer contraseña
-              </a>
-            </div>
-            <p style="font-size:13px;color:#64748b">
-              Este enlace es válido durante <strong>1 hora</strong>.<br>
-              Si no solicitaste este cambio, ignora este email — tu contraseña no se modificará.
-            </p>
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
-            <p style="font-size:12px;color:#94a3b8;margin:0">
-              El equipo de CarsWise — <a href="https://carswiseai.com" style="color:#94a3b8">carswiseai.com</a>
-            </p>
-          </div>
-        </div>
-      `,
+  await enviar({
+    to,
+    subject: 'Recuperación de contraseña — PopCar ERP',
+    html: plantilla({
+      titulo: 'Recuperación de contraseña',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(name)}</strong>,`) +
+        parrafo('Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>PopCar ERP</strong>.') +
+        boton('Restablecer la contraseña', resetUrl) +
+        parrafo('El enlace vale durante una hora. Si no has pedido el cambio, ignora este correo: la contraseña no se toca.', 14),
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string };
-    throw new Error(err.message || `Resend error ${res.status}`);
-  }
 }
 
 const ENSURE_REFRESH_TABLE = `

@@ -2,33 +2,25 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { buildInvoicePdf, generateAndStoreInvoicePdf, nextInvoiceNumber, type InvoiceData } from '../services/invoice-pdf.js';
+import { enviar, plantilla, parrafo, esc, MARCA } from '../lib/correo.js';
 
 export const invoiceDownloadRouter = Router();
 
 // ── Helper: send invoice PDF by email via Resend ─────────────────────────────
-const RESEND_API = 'https://api.resend.com/emails';
-
 async function sendInvoiceEmail(to: string, invoiceNumber: string, pdfBytes: Uint8Array): Promise<void> {
-  const apiKey = (await import('../config.js')).config.RESEND_API_KEY;
-  if (!apiKey) return;
-  const fromEmail = (await import('../config.js')).config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>';
-  const base64Pdf = Buffer.from(pdfBytes).toString('base64');
-  await fetch(RESEND_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: fromEmail,
-      to,
-      subject: `Tu factura ${invoiceNumber} — CarsWiseAi`,
-      html: `<div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1e293b">
-        <h2 style="color:#2563eb">📄 Tu factura está lista</h2>
-        <p>Adjuntamos tu factura <strong>${invoiceNumber}</strong> de CarsWiseAi.</p>
-        <p style="font-size:13px;color:#64748b">Puedes consultar el detalle en tu panel: <a href="https://carswiseai.com/panel">carswiseai.com/panel</a></p>
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
-        <p style="font-size:12px;color:#94a3b8">El equipo de CarsWise — carswiseai.com</p>
-      </div>`,
-      attachments: [{ filename: `${invoiceNumber}.pdf`, content: base64Pdf }],
-    }),
+  const html = plantilla({
+    titulo: 'Tu factura está lista',
+    cuerpo:
+      parrafo(`Adjuntamos la factura <strong>${esc(invoiceNumber)}</strong>.`) +
+      parrafo(`El detalle está en tu panel: <a href="${MARCA.sitioUrl}/panel" style="color:#111111;font-weight:600">${MARCA.sitio}/panel</a>`, 14),
+  });
+  // Si falla, no se corta la descarga: el PDF ya lo tiene delante.
+  await enviar({
+    to,
+    subject: `Tu factura ${invoiceNumber} — PopCar`,
+    html,
+    alClienteSiempre: true,
+    attachments: [{ filename: `${invoiceNumber}.pdf`, content: Buffer.from(pdfBytes).toString('base64') }],
   }).catch(() => {});
 }
 

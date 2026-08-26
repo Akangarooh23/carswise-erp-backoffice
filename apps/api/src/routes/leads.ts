@@ -6,186 +6,114 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 
 export const leadsRouter = Router();
 
-const RESEND_API = 'https://api.resend.com/emails';
-const FROM_EMAIL = config.RESEND_FROM_EMAIL || 'CarsWise <onboarding@resend.dev>';
+import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 
-function esc(s: unknown): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
+/** El panel del cliente, a donde apuntan casi todos los correos. */
+const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
-  // In dev, Resend sandbox only allows sending to the account owner's email
-  const recipient = config.RESEND_TEST_EMAIL || to;
-  const res = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: recipient, subject, html }),
+/**
+ * Aviso interno: respeta RESEND_TEST_EMAIL, asi que en pruebas se desvia.
+ * Es para lo que puede esperar. Lo que el cliente necesita saber va por
+ * `alCliente`, que nunca se desvia.
+ */
+type Lead = Record<string, string>;
+
+const alEquipo = (to: string, subject: string, html: string) => enviar({ to, subject, html });
+const alCliente = (to: string, subject: string, html: string) => enviar({ to, subject, html, alClienteSiempre: true });
+
+function visitEmailHtml(lead: Lead): string {
+  const cita: [string, string][] = [];
+  if (lead.appointment_date)    cita.push(['Fecha', esc(lead.appointment_date)]);
+  if (lead.appointment_time)    cita.push(['Hora', esc(lead.appointment_time)]);
+  if (lead.appointment_address) cita.push(['Dirección', esc(lead.appointment_address)]);
+  if (lead.appointment_contact) cita.push(['Pregunta por', esc(lead.appointment_contact)]);
+
+  return plantilla({
+    titulo: 'Tu cita está lista',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Hemos gestionado tu solicitud de visita para el vehículo <strong>${esc(lead.vehicle_title)}</strong>.`) +
+      (cita.length ? datos(cita) : '') +
+      (lead.erp_response ? parrafo(`<strong>Mensaje del equipo:</strong><br>${esc(lead.erp_response)}`) : '') +
+      aviso(
+        'Confirma la cita para asegurar el turno',
+        'Si no la confirmas, el turno puede asignarse a otro cliente.'
+      ) +
+      boton('Confirmar la cita', PANEL()) +
+      parrafo(`Si necesitas cancelar o cambiar la fecha, también se hace desde ahí.`, 14),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { message?: string }).message || `Resend error ${res.status}`);
-  }
 }
 
-// Always sends to the real client email — no RESEND_TEST_EMAIL override
-async function sendClientEmail(to: string, subject: string, html: string): Promise<void> {
-  if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
-  const res = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+function vendidoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Tu compra está confirmada',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`La compra del vehículo <strong>${esc(lead.vehicle_title)}</strong> ha quedado completada. Que lo disfrutes.`) +
+      parrafo('Si te surge cualquier duda con el vehículo, escríbenos respondiendo a este correo.', 14) +
+      enlace('Ir a mi panel', PANEL()),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { message?: string }).message || `Resend error ${res.status}`);
-  }
 }
 
-function visitEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#2563eb">📅 Tu cita está lista — acción requerida</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>El equipo de CarsWise ha gestionado tu solicitud de visita para el vehículo <strong>${esc(lead.vehicle_title)}</strong>.</p>
-      ${lead.appointment_date ? `
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:4px 0">📅 <strong>Fecha:</strong> ${esc(lead.appointment_date)}</p>
-        ${lead.appointment_time ? `<p style="margin:4px 0">⏰ <strong>Hora:</strong> ${esc(lead.appointment_time)}</p>` : ''}
-        ${lead.appointment_address ? `<p style="margin:4px 0">📍 <strong>Dirección:</strong> ${esc(lead.appointment_address)}</p>` : ''}
-        ${lead.appointment_contact ? `<p style="margin:4px 0">👤 <strong>Pregunta por:</strong> ${esc(lead.appointment_contact)}</p>` : ''}
-      </div>` : ''}
-      ${lead.erp_response ? `<p><strong>Mensaje de CarsWise:</strong><br>${esc(lead.erp_response)}</p>` : ''}
-
-      <div style="background:#fefce8;border:2px solid #fbbf24;border-radius:12px;padding:18px 20px;margin:24px 0">
-        <p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#92400e">⚠️ Confirma tu cita para asegurar el turno</p>
-        <p style="margin:0 0 14px 0;font-size:13px;color:#78350f">
-          Para que la visita quede registrada, confirma la cita desde tu panel. Si no la confirmas, el turno puede ser asignado a otro cliente.
-        </p>
-        <a href="https://carswiseai.com/panel/solicitudes"
-           style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-          ✅ Confirmar cita →
-        </a>
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin:20px 0;font-size:13px;color:#475569">
-        ¿Necesitas cancelar o cambiar la fecha? También puedes gestionarlo desde tu panel:<br>
-        <a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">carswiseai.com/panel/solicitudes</a>
-      </div>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+function rentingCerradoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Tu renting está confirmado',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`El contrato de renting de <strong>${esc(lead.vehicle_title)}</strong> ha quedado procesado.`) +
+      parrafo('Si te surge cualquier duda sobre el contrato o el vehículo, escríbenos respondiendo a este correo.', 14) +
+      enlace('Ver mi panel', PANEL()),
+  });
 }
 
-function vendidoEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#059669">🎉 ¡Enhorabuena por tu compra!</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>Nos alegra confirmar que la compra del vehículo <strong>${esc(lead.vehicle_title)}</strong> ha sido completada. ¡Esperamos que disfrutes mucho de tu nuevo coche!</p>
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
-        <p style="margin:0;font-size:15px;font-weight:700;color:#065f46">🚗 ¡Que lo disfrutes!</p>
-      </div>
-      <p style="font-size:13px;color:#475569">Si tienes cualquier duda o necesitas ayuda con tu vehículo, no dudes en contactarnos. Estamos aquí para ayudarte.</p>
-      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">Ir a mi panel →</a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+function descartadoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Gracias por tu tiempo',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Entendemos que <strong>${esc(lead.vehicle_title)}</strong> no era lo que buscabas. Encontrar el coche adecuado lleva su tiempo.`) +
+      boton('Ver más vehículos', MARCA.sitioUrl) +
+      parrafo('Si nos cuentas qué necesitas, te ayudamos a acotar la búsqueda.', 14),
+  });
 }
 
-function rentingCerradoEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#059669">🎉 ¡Enhorabuena por tu renting!</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>Nos alegra confirmar que el contrato de renting para <strong>${esc(lead.vehicle_title)}</strong> ha sido procesado. ¡Disfruta de tu nuevo vehículo!</p>
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
-        <p style="margin:0;font-size:15px;font-weight:700;color:#065f46">🔑 ¡Que lo disfrutes!</p>
-      </div>
-      <p style="font-size:13px;color:#475569">Si tienes cualquier duda sobre tu contrato o el vehículo, no dudes en contactarnos.</p>
-      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#2563eb;font-weight:600">Ver mi panel →</a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+function rentingDescartadoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Tu solicitud de renting no ha salido adelante',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`La solicitud de renting para <strong>${esc(lead.vehicle_title)}</strong> no ha podido procesarse en esta ocasión.`) +
+      boton('Ver ofertas de renting', MARCA.sitioUrl) +
+      enlace('Ver mi panel', PANEL()),
+  });
 }
 
-function descartadoEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#475569">Gracias por tu tiempo</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>Entendemos que el vehículo <strong>${esc(lead.vehicle_title)}</strong> finalmente no era lo que buscabas. No pasa nada, encontrar el coche perfecto lleva su tiempo.</p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
-        <p style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151">¿Podemos ayudarte a encontrar otro vehículo?</p>
-        <a href="https://carswiseai.com"
-           style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-          Ver más vehículos →
-        </a>
-      </div>
-      <p style="font-size:13px;color:#475569">Nuestro equipo está disponible para ayudarte a encontrar el vehículo que mejor se adapte a tus necesidades y presupuesto.</p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+function infoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Respuesta a tu consulta',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Hemos atendido tu solicitud sobre <strong>${esc(lead.vehicle_title)}</strong>.`) +
+      (lead.erp_response
+        ? datos([['Respuesta', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
+        : '') +
+      (lead.vehicle_url ? enlace('Ver el anuncio del vehículo', lead.vehicle_url) : ''),
+  });
 }
 
-function rentingDescartadoEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#475569">Tu solicitud de renting no ha podido llevarse a cabo</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>Lamentamos informarte de que tu solicitud de renting para el vehículo <strong>${esc(lead.vehicle_title)}</strong> no ha podido procesarse en esta ocasión.</p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
-        <p style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151">¿Exploramos otras opciones de renting?</p>
-        <a href="https://carswiseai.com"
-           style="display:inline-block;background:#059669;color:#ffffff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-          Ver ofertas de renting →
-        </a>
-      </div>
-      <p style="font-size:13px;color:#475569">Nuestro equipo está disponible para ayudarte a encontrar la opción de renting que mejor se adapte a tus necesidades.</p>
-      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#059669;font-weight:600">Ver mi panel →</a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
+function rentingNotifyEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Actualización de tu solicitud de renting',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Hemos procesado tu solicitud de renting para <strong>${esc(lead.vehicle_title)}</strong>.`) +
+      (lead.erp_response
+        ? datos([['Mensaje del equipo', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
+        : '') +
+      enlace('Ver mi panel', PANEL()),
+  });
 }
 
-function infoEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#2563eb">💬 Respuesta a tu consulta</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>Hemos atendido tu solicitud sobre el vehículo <strong>${esc(lead.vehicle_title)}</strong>.</p>
-      ${lead.erp_response ? `
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0;white-space:pre-wrap">${esc(lead.erp_response)}</p>
-      </div>` : ''}
-      ${lead.vehicle_url ? `<p><a href="${lead.vehicle_url}" style="color:#2563eb">Ver el anuncio del vehículo →</a></p>` : ''}
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
-}
-
-function rentingNotifyEmailHtml(lead: Record<string, string>): string {
-  return `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#059669">🔑 Actualización de tu solicitud de renting</h2>
-      <p>Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,</p>
-      <p>El equipo de CarsWise ha procesado tu solicitud de renting para <strong>${esc(lead.vehicle_title)}</strong>.</p>
-      ${lead.erp_response ? `
-      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0 0 6px 0;font-size:12px;font-weight:700;color:#065f46">Mensaje de CarsWise:</p>
-        <p style="margin:0;white-space:pre-wrap;color:#065f46">${esc(lead.erp_response)}</p>
-      </div>` : ''}
-      <p style="font-size:13px;color:#475569">Puedes consultar el estado de tu solicitud en tu panel:</p>
-      <p style="font-size:13px"><a href="https://carswiseai.com/panel/solicitudes" style="color:#059669;font-weight:600">Ver mi panel →</a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
-}
 
 leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const status  = String(req.query.status || '').trim();
@@ -368,11 +296,11 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     if (status === 'Vendido' || status === 'Cerrado') {
       const isRentingLead = updatedLead.portal === 'marketplace-vo-renting';
       if (isRentingLead) {
-        sendClientEmail(updatedLead.user_email, `🎉 ¡Enhorabuena por tu renting! — ${updatedLead.vehicle_title || 'CarsWise'}`, rentingCerradoEmailHtml(updatedLead))
+        alCliente(updatedLead.user_email, `Tu renting está confirmado — ${updatedLead.vehicle_title || 'PopCar'}`, rentingCerradoEmailHtml(updatedLead))
           .catch((e: Error) => console.error('[leads] renting cerrado email error:', e.message));
         // Do NOT call processSaleOutcome — renting offers can be contracted multiple times
       } else {
-        sendClientEmail(updatedLead.user_email, `¡Enhorabuena! Tu compra — ${updatedLead.vehicle_title || 'CarsWise'}`, vendidoEmailHtml(updatedLead))
+        alCliente(updatedLead.user_email, `Tu compra está confirmada — ${updatedLead.vehicle_title || 'PopCar'}`, vendidoEmailHtml(updatedLead))
           .catch((e: Error) => console.error('[leads] vendido email error:', e.message));
         processSaleOutcome(updatedLead)
           .catch((e: Error) => console.error('[leads] sale outcome error:', e.message));
@@ -380,9 +308,9 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     } else if (status === 'Descartado') {
       const isRentingDescartado = updatedLead.portal === 'marketplace-vo-renting';
       const descSubject = isRentingDescartado
-        ? `Tu solicitud de renting — ${updatedLead.vehicle_title || 'CarsWise'}`
-        : `¿Podemos ayudarte con otro vehículo? — CarsWise`;
-      sendClientEmail(updatedLead.user_email, descSubject, isRentingDescartado ? rentingDescartadoEmailHtml(updatedLead) : descartadoEmailHtml(updatedLead))
+        ? `Tu solicitud de renting — ${updatedLead.vehicle_title || 'PopCar'}`
+        : `¿Podemos ayudarte con otro vehículo? — PopCar`;
+      alCliente(updatedLead.user_email, descSubject, isRentingDescartado ? rentingDescartadoEmailHtml(updatedLead) : descartadoEmailHtml(updatedLead))
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
     }
   } catch (err) {
@@ -391,28 +319,20 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 });
 
 async function sendIDCarReadyEmail(buyerEmail: string, contactName: string, vehicleTitle: string): Promise<void> {
-  const html = `
-    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-      <h2 style="color:#2563eb">🚗 ¡Tu IDCar ya está en tu garaje!</h2>
-      <p>Hola <strong>${esc(contactName) || 'cliente'}</strong>,</p>
-      <p>Hemos creado automáticamente la ficha digital de tu nuevo vehículo <strong>${esc(vehicleTitle)}</strong> en tu garaje CarsWise.</p>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0 0 8px 0;font-size:14px;font-weight:700;color:#1e40af">Desde tu IDCar podrás:</p>
-        <ul style="margin:0;padding-left:20px;font-size:13px;color:#1e40af;line-height:1.9">
-          <li>Guardar documentos (ficha técnica, permiso de circulación, ITV)</li>
-          <li>Registrar el historial de mantenimiento y reparaciones</li>
-          <li>Gestionar el seguro del vehículo</li>
-          <li>Solicitar tasaciones en cualquier momento</li>
-        </ul>
-      </div>
-      <p><a href="https://carswiseai.com/panel/vehiculos"
-            style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none">
-        Ver mi IDCar →
-      </a></p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:12px;color:#64748b">El equipo de CarsWise — <a href="https://carswiseai.com">carswiseai.com</a></p>
-    </div>`;
-  await sendClientEmail(buyerEmail, `Tu IDCar está listo — ${vehicleTitle}`, html);
+  const html = plantilla({
+    titulo: 'Tu IDCar ya está en tu garaje',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(contactName) || 'cliente'}</strong>,`) +
+      parrafo(`Hemos creado la ficha digital de <strong>${esc(vehicleTitle)}</strong> en tu garaje.`) +
+      parrafo('Desde el IDCar puedes:') +
+      `<ul style="margin:0 0 18px 0;padding-left:20px;font-size:14px;line-height:1.8;color:#2A2A28">` +
+        `<li>Guardar documentos: ficha técnica, permiso de circulación, ITV</li>` +
+        `<li>Registrar el mantenimiento y las reparaciones</li>` +
+        `<li>Gestionar el seguro del vehículo</li>` +
+      `</ul>` +
+      boton('Ver mi IDCar', `${MARCA.sitioUrl}/panel/vehiculos`),
+  });
+  await alCliente(buyerEmail, `Tu IDCar está listo — ${vehicleTitle}`, html);
 }
 
 async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
@@ -562,13 +482,13 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
     const isVisit = lead.lead_type === 'visit';
     const isRentingNotify = lead.lead_type === 'renting' || lead.portal === 'marketplace-vo-renting';
     const subject = isVisit
-      ? `Confirmación de visita — ${lead.vehicle_title || 'CarsWise'}`
+      ? `Confirmación de visita — ${lead.vehicle_title || 'PopCar'}`
       : isRentingNotify
-      ? `Actualización de tu solicitud de renting — ${lead.vehicle_title || 'CarsWise'}`
-      : `Respuesta a tu consulta — ${lead.vehicle_title || 'CarsWise'}`;
+      ? `Actualización de tu solicitud de renting — ${lead.vehicle_title || 'PopCar'}`
+      : `Respuesta a tu consulta — ${lead.vehicle_title || 'PopCar'}`;
     const html = isVisit ? visitEmailHtml(lead) : isRentingNotify ? rentingNotifyEmailHtml(lead) : infoEmailHtml(lead);
 
-    await sendEmail(lead.user_email, subject, html);
+    await alEquipo(lead.user_email, subject, html);
 
     const updated = await query(
       `UPDATE moveadvisor_market_leads
