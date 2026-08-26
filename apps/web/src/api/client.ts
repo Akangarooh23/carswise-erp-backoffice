@@ -83,14 +83,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
   return body as ApiResponse<T>;
 }
 
-export async function downloadInvoicePdf(path: string, filename: string) {
+/**
+ * Descarga un fichero que la API solo entrega con sesión.
+ *
+ * Un <a href> normal no lleva la cabecera de autorización, así que la descarga
+ * se pide con fetch y se entrega como blob. Vale para el PDF de una factura y
+ * para el CSV de todas: lo que cambia es la dirección.
+ */
+export async function descargaConSesion(path: string, filename: string) {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const msg = (body as { message?: string }).message || 'Error al generar el PDF';
+    const msg = (body as { message?: string }).message || 'No se ha podido descargar el fichero';
     throw new Error(msg);
   }
   const blob = await res.blob();

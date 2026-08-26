@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, downloadInvoicePdf } from '../api/client.js';
+import { api, descargaConSesion } from '../api/client.js';
+import Icono from '../components/ui/Icono.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatCard } from '../components/ui/Card.js';
 import { Pagination } from '../components/ui/Pagination.js';
@@ -70,6 +71,8 @@ const TAB_LABELS: Record<Tab, string> = {
 export default function BillingPage() {
   const [summary, setSummary]   = useState<BillingSummary | null>(null);
   const [tab, setTab]           = useState<Tab>('all');
+  const [exportando, setExportando] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [freeUsers, setFreeUsers] = useState<User[]>([]);
@@ -99,30 +102,25 @@ export default function BillingPage() {
     }
   }, [tab, page, refreshKey]);
 
-  function exportCsv() {
-    const BOM = '﻿';
-    const sep = ';';
-    const headers = ['Nº Factura', 'Fecha', 'Tipo', 'Cliente', 'Email', 'Descripción', 'Precio', 'Precio Facturado', 'Estado'];
-    const toSpanish = (n: number | null) => n == null ? '' : n.toFixed(2).replace('.', ',');
-    const rows = invoices.map(inv => [
-      inv.cw_invoice_number ?? '–',
-      inv.date ? new Date(inv.date).toLocaleDateString('es-ES') : '–',
-      TYPE_LABEL[inv.type] ?? inv.type,
-      inv.customer_name,
-      inv.customer_email,
-      inv.description,
-      toSpanish(inv.precio),
-      toSpanish(inv.precio_facturado),
-      inv.status,
-    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(sep));
-    const csv = BOM + [headers.map(h => `"${h}"`).join(sep), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `facturas-clientes-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  /**
+   * Descarga todas las facturas de la pestaña, no las de esta página.
+   *
+   * Antes se armaba el CSV con lo que hubiera cargado en memoria —cincuenta
+   * filas— y el fichero no avisaba de que estaba recortado. La API ya sabía
+   * exportarlo entero.
+   */
+  async function exportCsv() {
+    setExportando(true);
+    setExportError('');
+    try {
+      const hoy = new Date().toISOString().slice(0, 10);
+      const filtro = tab === 'all' ? '' : `?type=${tab}`;
+      await descargaConSesion(`/billing/invoices/export${filtro}`, `facturas-clientes-${hoy}.csv`);
+    } catch (e) {
+      setExportError((e as Error).message);
+    } finally {
+      setExportando(false);
+    }
   }
 
   return (
@@ -158,12 +156,17 @@ export default function BillingPage() {
             ))}
           </div>
           {tab !== 'free' && invoices.length > 0 && (
-            <button onClick={exportCsv}
-              className="ml-auto text-sm text-brand-400 border border-brand-200 rounded-lg px-4 py-1.5 hover:bg-brand-50">
-              ↓ Exportar CSV
+            <button onClick={exportCsv} title="Descarga todas las facturas de esta pestaña, no solo las de esta página"
+              disabled={exportando}
+              className="ml-auto inline-flex items-center gap-2 text-sm text-brand-400 border border-brand-200 rounded-lg px-4 py-1.5 hover:bg-brand-50 disabled:opacity-60">
+              <Icono nombre="descargar" tam={14} />
+              {exportando ? 'Preparando…' : 'Exportar CSV'}
             </button>
           )}
         </div>
+        {exportError && (
+          <p className="text-sm text-red-600 mb-3">No se ha podido exportar: {exportError}</p>
+        )}
 
         {(tab === 'venta' || tab === 'renting') && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
@@ -265,7 +268,7 @@ export default function BillingPage() {
                                   onClick={async () => {
                                     setPdfError(null);
                                     setDownloadingId(inv.id);
-                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
+                                    try { await descargaConSesion(`/invoices/subscription/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                     catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                     setDownloadingId(null);
                                   }}
@@ -278,7 +281,7 @@ export default function BillingPage() {
                                   onClick={async () => {
                                     setPdfError(null);
                                     setDownloadingId(`${inv.id}_send`);
-                                    try { await downloadInvoicePdf(`/invoices/subscription/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
+                                    try { await descargaConSesion(`/invoices/subscription/${inv.id}/pdf?send=true`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                     catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                     setDownloadingId(null);
                                   }}
@@ -303,7 +306,7 @@ export default function BillingPage() {
                               onClick={async () => {
                                 setPdfError(null);
                                 setDownloadingId(inv.id);
-                                try { await downloadInvoicePdf(`/invoices/sale/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
+                                try { await descargaConSesion(`/invoices/sale/${inv.id}/pdf`, `${inv.cw_invoice_number ?? inv.id}.pdf`); setRefreshKey(k => k + 1); }
                                 catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                 setDownloadingId(null);
                               }}

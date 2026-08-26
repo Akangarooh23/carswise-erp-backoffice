@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import Icono from '../components/ui/Icono.js';
-import { api, downloadInvoicePdf } from '../api/client.js';
+import { api, descargaConSesion } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
@@ -420,7 +420,7 @@ export default function ProviderBillingPage() {
                         <button
                           onClick={async () => {
                             setDownloadingId(inv.id);
-                            try { await downloadInvoicePdf(`/invoices/provider/${inv.id}/pdf`, `${inv.id}.pdf`); }
+                            try { await descargaConSesion(`/invoices/provider/${inv.id}/pdf`, `${inv.id}.pdf`); }
                             catch { /* silently fail */ }
                             setDownloadingId(null);
                             await load(page);
