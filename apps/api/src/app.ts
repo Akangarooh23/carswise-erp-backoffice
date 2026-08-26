@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { healthRouter } from './routes/health.js';
 import { personalRouter } from './routes/personal.js';
 import { colasRouter } from './routes/colas.js';
+import { datosRouter } from './routes/datos.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { usersRouter } from './routes/users.js';
@@ -36,6 +37,7 @@ export function createApp() {
   app.use('/api', healthRouter);
   app.use('/api', personalRouter);
   app.use('/api', colasRouter);
+  app.use('/api', datosRouter);
   app.use('/api', authRouter);
   app.use('/api', dashboardRouter);
   app.use('/api', usersRouter);
