@@ -5,7 +5,7 @@ import path from 'node:path';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
-import { prepara } from '../lib/importacion.js';
+import { prepara, fusionaRejilla, columnasDesdeRejilla, type Rejilla } from '../lib/importacion.js';
 
 export const marketplaceRouter = Router();
 
@@ -592,66 +592,12 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
   }
 });
 
-// ── Bulk create from CSV/Excel import ────────────────────────────────────────
-
-const voBulkRowSchema = z.object({
-  title:        z.string().min(1),
-  brand:        z.string().min(1),
-  model:        z.string().min(1),
-  year:         z.coerce.number().int().min(1990).max(2035),
-  price:        z.coerce.number().positive(),
-  mileage:      z.coerce.number().int().min(0).default(0),
-  fuel:         z.string().default(''),
-  power:        z.string().default(''),
-  color:        z.string().default(''),
-  location:     z.string().default(''),
-  seller:       z.string().default(''),
-  image_url:    z.string().default(''),
-  source_url:   z.string().default(''),
-  description:  z.string().default(''),
-});
-
-marketplaceRouter.post('/marketplace/vo/bulk', requireRole(['admin', 'operations']), async (req, res) => {
-  const rows = req.body?.rows;
-  if (!Array.isArray(rows) || rows.length === 0) {
-    res.status(400).json({ ok: false, error: 'no_rows' });
-    return;
-  }
-  if (rows.length > 500) {
-    res.status(400).json({ ok: false, error: 'too_many_rows', detail: 'Max 500 rows per import' });
-    return;
-  }
-
-  const results = { inserted: 0, errors: 0, errorDetails: [] as string[] };
-
-  for (const raw of rows) {
-    const parsed = voBulkRowSchema.safeParse(raw);
-    if (!parsed.success) {
-      results.errors++;
-      results.errorDetails.push(`Fila inválida: ${JSON.stringify(raw).slice(0, 80)}`);
-      continue;
-    }
-    const d = parsed.data;
-    const id = `erp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    try {
-      await query(
-        `INSERT INTO moveadvisor_marketplace_vo_offers
-           (id, title, brand, model, year, price, mileage, fuel, power, color,
-            location, seller, image_url, source_url, description,
-            portal_score, warranty_months, has_guarantee_seal, is_active, portal,
-            created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,80,0,false,true,'manual',NOW(),NOW())`,
-        [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel,
-         d.power, d.color, d.location, d.seller, d.image_url, d.source_url, d.description]
-      );
-      results.inserted++;
-    } catch {
-      results.errors++;
-    }
-  }
-
-  res.json({ ok: true, data: results });
-});
+// La ruta antigua de alta masiva vivia aqui, en /marketplace/vo/bulk, y tapaba
+// a la de activar y desactivar en bloque, que usa esa misma direccion: Express
+// se queda con la primera que encuentra. El resultado era que seleccionar
+// cincuenta vehiculos y pulsar «Desactivar» contestaba «no_rows» y no hacia
+// nada. La importacion de verdad es /marketplace/vo/bulk-with-units, que ademas
+// trae unidades y precios de renting, asi que la antigua no la llamaba nadie.
 
 // ── Update vehicle ────────────────────────────────────────────────────────────
 
@@ -922,13 +868,23 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
     try {
       // Upsert offer — find existing by brand+model+year+price
       const existing = await query(
-        `SELECT id FROM moveadvisor_marketplace_vo_offers WHERE lower(brand)=$1 AND lower(model)=$2 AND year=$3 AND price=$4 LIMIT 1`,
+        `SELECT id, renting_prices_json FROM moveadvisor_marketplace_vo_offers WHERE lower(brand)=$1 AND lower(model)=$2 AND year=$3 AND price=$4 LIMIT 1`,
         [first.brand.toLowerCase(), first.model.toLowerCase(), first.year, first.price]
       );
 
       let offerId: string;
       const imageUrlsArr = first.image_urls ? first.image_urls.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
       const sellerTypeVal = ['professional','particular'].includes(first.seller_type) ? first.seller_type : null;
+      // Las cinco columnas son la fila de 15.000 km de la rejilla. Si solo se
+      // tocan ellas, la web sigue cotizando el precio viejo.
+      const rejilla = fusionaRejilla(
+        first,
+        (existing.rows[0]?.renting_prices_json as Rejilla | null) ?? null
+      );
+      const rejillaSql = rejilla ? JSON.stringify(rejilla) : null;
+      // Las columnas salen de la rejilla, nunca del Excel directamente: son
+      // la fila de 15.000 km y no pueden decir otra cosa.
+      const col = columnasDesdeRejilla(rejilla);
 
       if (existing.rows.length) {
         offerId = existing.rows[0].id;
@@ -938,13 +894,14 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
              image_url=$7, image_urls=$8, source_url=$9, description=$10,
              available_for_purchase=$11, renting_available=$12, renting_km_year=$13,
              renting_12m=$14, renting_24m=$15, renting_36m=$16, renting_48m=$17, renting_60m=$18,
+             renting_prices_json=$20,
              has_stock_management=TRUE, updated_at=NOW()
            WHERE id=$19`,
           [first.title, first.fuel, first.power, first.location, first.seller, sellerTypeVal,
            imageUrlsArr[0] ?? null, JSON.stringify(imageUrlsArr), first.source_url, first.description,
            first.available_for_purchase !== 0, first.renting_available !== 0, first.renting_km_year,
-           first.renting_12m || null, first.renting_24m || null, first.renting_36m || null,
-           first.renting_48m || null, first.renting_60m || null, offerId]
+           col['12m'], col['24m'], col['36m'],
+           col['48m'], col['60m'], offerId, rejillaSql]
         );
         results.offers_updated++;
       } else {
@@ -954,16 +911,16 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
              (id, title, brand, model, year, price, fuel, power, location, seller, seller_type,
               image_url, image_urls, source_url, description,
               available_for_purchase, renting_available, renting_km_year,
-              renting_12m, renting_24m, renting_36m, renting_48m, renting_60m,
+              renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json,
               portal_score, warranty_months, has_guarantee_seal, is_active, portal,
               has_stock_management, created_at, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,80,0,false,true,'manual',TRUE,NOW(),NOW())`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,80,0,false,true,'manual',TRUE,NOW(),NOW())`,
           [offerId, first.title, first.brand, first.model, first.year, first.price,
            first.fuel, first.power, first.location, first.seller, sellerTypeVal,
            imageUrlsArr[0] ?? null, JSON.stringify(imageUrlsArr), first.source_url, first.description,
            first.available_for_purchase !== 0, first.renting_available !== 0, first.renting_km_year,
-           first.renting_12m || null, first.renting_24m || null, first.renting_36m || null,
-           first.renting_48m || null, first.renting_60m || null]
+           col['12m'], col['24m'], col['36m'],
+           col['48m'], col['60m'], rejillaSql]
         );
         results.offers_created++;
       }

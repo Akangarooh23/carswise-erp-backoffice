@@ -108,6 +108,85 @@ function motivo(error: z.ZodError): string {
     .join('; ');
 }
 
+// ── La rejilla de precios de renting ────────────────────────────────────────
+//
+// Un renting no tiene un precio: tiene veinte. Cinco plazos por cinco tramos de
+// kilómetros al año, y eso vive en `renting_prices_json`. Las cinco columnas
+// sueltas —renting_12m, renting_24m…— son la fila de 15.000 km de esa rejilla.
+//
+// El formulario del ERP ya mantenía las dos cosas a la vez. La importación de
+// Excel no: escribía las columnas y dejaba la rejilla como estaba. Como la web
+// cotiza desde la rejilla, importar un precio nuevo cambiaba el «desde» del
+// listado y dejaba el configurador cotizando el precio viejo. Sin aviso.
+
+export const KM_OPCIONES = [10000, 15000, 20000, 25000, 30000];
+const PLAZOS = ['12m', '24m', '36m', '48m', '60m'] as const;
+type Plazo = (typeof PLAZOS)[number];
+
+export interface Rejilla {
+  km_options: number[];
+  '12m'?: (number | null)[] | null;
+  '24m'?: (number | null)[] | null;
+  '36m'?: (number | null)[] | null;
+  '48m'?: (number | null)[] | null;
+  '60m'?: (number | null)[] | null;
+}
+
+/**
+ * La rejilla que queda tras importar una fila.
+ *
+ * Lo que trae el Excel manda sobre el tramo de 15.000 km; los demás tramos se
+ * conservan. Machacarlos sería peor: un Excel con una sola cifra por plazo no
+ * sabe nada de los otros cuatro tramos, y borrarlos dejaría la oferta sin
+ * precio para quien pida 10.000 o 30.000 km al año.
+ *
+ * Devuelve `null` cuando no queda ni un precio: así no se guarda una rejilla
+ * vacía que luego la web interpretaría como «ofrece renting sin precios».
+ */
+export function fusionaRejilla(fila: Fila, actual: Rejilla | null): Rejilla | null {
+  const kms = actual?.km_options?.length ? actual.km_options : KM_OPCIONES;
+  const i15 = kms.indexOf(15000);
+  const rejilla: Rejilla = { ...actual, km_options: kms };
+
+  let algunPrecio = false;
+  for (const plazo of PLAZOS) {
+    const delExcel = fila[`renting_${plazo.replace('m', '')}m` as keyof Fila] as number | null;
+    const anterior = (actual?.[plazo] ?? null) as (number | null)[] | null;
+
+    if (delExcel == null && !anterior) { delete rejilla[plazo]; continue; }
+
+    const tramos = anterior ? [...anterior] : new Array<number | null>(kms.length).fill(null);
+    while (tramos.length < kms.length) tramos.push(null);
+    // Si la rejilla no tuviera 15.000 km, el dato del Excel no tiene sitio
+    // donde ir: se conserva lo que hubiera y no se inventa un tramo.
+    if (delExcel != null && i15 >= 0) tramos[i15] = delExcel;
+
+    if (tramos.some((p) => p != null && p > 0)) { rejilla[plazo] = tramos; algunPrecio = true; }
+    else delete rejilla[plazo];
+  }
+
+  return algunPrecio ? rejilla : null;
+}
+
+/**
+ * Las cinco columnas sueltas, sacadas de la rejilla.
+ *
+ * No se escriben nunca por su cuenta: son la fila de 15.000 km, y punto. Así no
+ * pueden discrepar. Antes se escribían desde el Excel y la rejilla desde otro
+ * sitio, y bastaba con dejar una celda en blanco para que el listado perdiera
+ * el «desde X €/mes» mientras el configurador seguía cotizando.
+ */
+export function columnasDesdeRejilla(rejilla: Rejilla | null): Record<Plazo, number | null> {
+  const i15 = rejilla ? rejilla.km_options.indexOf(15000) : -1;
+  const salida = {} as Record<Plazo, number | null>;
+  for (const plazo of PLAZOS) {
+    const tramos = (rejilla?.[plazo] ?? null) as (number | null)[] | null;
+    const v = i15 >= 0 && tramos ? tramos[i15] : null;
+    salida[plazo] = v != null && v > 0 ? v : null;
+  }
+  return salida;
+}
+
 export function prepara(filas: unknown[]): Preparado {
   const grupos = new Map<string, Fila[]>();
   const vistas = new Map<string, Set<string>>();

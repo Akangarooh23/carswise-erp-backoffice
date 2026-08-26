@@ -649,6 +649,7 @@ export default function MarketplacePage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulking, setBulking]         = useState(false);
+  const [bulkAviso, setBulkAviso] = useState<string | null>(null);
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
@@ -1193,8 +1194,18 @@ export default function MarketplacePage() {
   async function bulkAction(action: 'activate' | 'deactivate') {
     if (selectedIds.size === 0) return;
     setBulking(true);
-    const r = await api.post('/marketplace/vo/bulk', { action, ids: [...selectedIds] });
-    if (r.ok) { setSelectedIds(new Set()); recargar(page); }
+    setBulkAviso(null);
+    const cuantos = selectedIds.size;
+    const r = await api.post<{ updated?: number }>('/marketplace/vo/bulk', { action, ids: [...selectedIds] });
+    if (r.ok) {
+      const n = (r as { updated?: number }).updated ?? cuantos;
+      setSelectedIds(new Set());
+      setBulkAviso(`${n} ${n === 1 ? 'vehículo' : 'vehículos'} ${action === 'activate' ? 'activados' : 'desactivados'}`);
+      recargar(page);
+    } else {
+      // Si falla, la selección se queda puesta: es lo que permite reintentar.
+      setBulkAviso('No se ha podido cambiar el estado. Inténtalo de nuevo.');
+    }
     setBulking(false);
   }
 
@@ -3342,19 +3353,29 @@ export default function MarketplacePage() {
         </div>
       </Modal>
 
+      {/* Lo que ha pasado con la última acción en bloque. */}
+      {bulkAviso && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-white border border-brand-200 shadow-lg rounded-lg px-4 py-2 text-sm text-brand-600 flex items-center gap-3">
+          {bulkAviso}
+          <button onClick={() => setBulkAviso(null)} aria-label="Cerrar aviso" className="text-brand-300 hover:text-brand-600">
+            <Icono nombre="salir" tam={14} />
+          </button>
+        </div>
+      )}
+
       {/* ── Bulk action bar ── */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-brand-600 text-white rounded-xl px-5 py-3 flex items-center gap-4 shadow-2xl">
           <span className="text-sm font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}</span>
           <button onClick={() => bulkAction('activate')} disabled={bulking}
             className="px-3 py-1.5 text-xs bg-green-500 hover:bg-green-400 rounded-lg font-medium disabled:opacity-60">
-            ✓ Activar
+            Activar
           </button>
           <button onClick={() => bulkAction('deactivate')} disabled={bulking}
             className="px-3 py-1.5 text-xs bg-brand-400 hover:bg-brand-400 rounded-lg font-medium disabled:opacity-60">
             Desactivar
           </button>
-          <button onClick={() => setSelectedIds(new Set())} className="text-brand-300 hover:text-white text-xs ml-1">
+          <button onClick={() => setSelectedIds(new Set())} aria-label="Quitar la selección" title="Quitar la selección" className="text-brand-300 hover:text-white text-xs ml-1">
             ✕
           </button>
         </div>
