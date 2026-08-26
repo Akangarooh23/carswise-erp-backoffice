@@ -946,8 +946,24 @@ export default function MarketplacePage() {
     api.get<typeof partFilterOpts>('/marketplace/particulares/filter-options').then((r) => { if (r.ok && r.data) setPartFilterOpts(r.data); });
   }, []);
 
+  // Lo ultimo que devolvio cada combinacion de pestana y filtros. Vive lo que
+  // dure la pantalla abierta: el problema era la espera al ir y venir entre
+  // pestanas, no tener datos de hace horas.
+  const memoriaPestanas = useRef<Map<string, { filas?: VoOffer[]; portales?: PortalOffer[]; total: number }>>(new Map());
+
   const load = useCallback(async (p: number) => {
-    setLoading(true);
+    // Si ya se miro esta combinacion, se ensena al instante y se refresca
+    // por detras. Sin parpadeo de «Cargando…» al volver a una pestana.
+    const llave = JSON.stringify([tab, p, q, brand, statusFilter, portalFilter, sellerFilter,
+      colFOffersDeb, colFDeb, colFRentingDeb, colFPartDeb, colFConcDeb]);
+    const guardado = memoriaPestanas.current.get(llave);
+    if (guardado) {
+      if (guardado.filas) setItems(guardado.filas);
+      if (guardado.portales) setPortalItems(guardado.portales);
+      setTotal(guardado.total);
+    } else {
+      setLoading(true);
+    }
     if (tab === 'vo' || tab === 'renting' || tab === 'concesionarios') {
       const params = new URLSearchParams({ page: String(p), limit: '500' });
       if (q)            params.set('q', q);
@@ -992,7 +1008,11 @@ export default function MarketplacePage() {
         if (cf.year && cf.year !== '__empty__')         params.set('year', cf.year);
       }
       const res = await api.get<VoOffer[]>(`/marketplace/vo?${params}`);
-      if (res.ok) { setItems(res.data); setTotal(res.meta?.total ?? 0); }
+      if (res.ok) {
+        setItems(res.data);
+        setTotal(res.meta?.total ?? 0);
+        memoriaPestanas.current.set(llave, { filas: res.data, total: res.meta?.total ?? 0 });
+      }
     } else if (tab === 'particulares') {
       const params = new URLSearchParams({ page: String(p), limit: '50' });
       if (q) params.set('q', q);
@@ -1051,6 +1071,7 @@ export default function MarketplacePage() {
         setTotal(m?.total ?? 0);
         setVerifiable(m?.verifiable ?? 0);
         setVerifiedToday(m?.verified_today ?? 0);
+        memoriaPestanas.current.set(llave, { portales: res.data, total: m?.total ?? 0 });
       }
     }
     setLoading(false);
@@ -1152,6 +1173,9 @@ export default function MarketplacePage() {
     }
   }, []);
 
+  // Tras cambiar algo, lo guardado es el estado anterior: se olvida y se pide.
+  const recargar = useCallback((p: number) => { memoriaPestanas.current.clear(); load(p); }, [load]);
+
   useEffect(() => { setPage(1); load(1); setSelectedIds(new Set()); }, [tab, q, brand, statusFilter, portalFilter, sellerFilter, load]);
   useEffect(() => { load(page); }, [page, load]);
 
@@ -1159,7 +1183,7 @@ export default function MarketplacePage() {
     if (selectedIds.size === 0) return;
     setBulking(true);
     const r = await api.post('/marketplace/vo/bulk', { action, ids: [...selectedIds] });
-    if (r.ok) { setSelectedIds(new Set()); load(page); }
+    if (r.ok) { setSelectedIds(new Set()); recargar(page); }
     setBulking(false);
   }
 
@@ -1232,7 +1256,7 @@ export default function MarketplacePage() {
         .filter(([, v]) => v !== undefined)
     );
     const res = await api.patch<{ detail?: unknown }>(`/marketplace/vo/${editOffer.id}`, payload);
-    if (res.ok) { setEditOffer(null); load(page); }
+    if (res.ok) { setEditOffer(null); recargar(page); }
     else setSaveError(JSON.stringify((res as { detail?: unknown }).detail ?? res, null, 2));
     setSaving(false);
   }
@@ -1377,18 +1401,18 @@ export default function MarketplacePage() {
 
   async function toggleActive(offer: VoOffer) {
     await api.patch(`/marketplace/vo/${offer.id}`, { is_active: !offer.is_active });
-    load(page);
+    recargar(page);
   }
 
   async function toggleParticular(item: ParticularsOffer) {
     await api.patch(`/marketplace/particulares/${item.id}/state`, { state: 'owned' });
-    load(page);
+    recargar(page);
   }
 
   async function saveCreate() {
     setCreating(true);
     const res = await api.post('/marketplace/vo', createForm);
-    if (res.ok) { setShowCreate(false); setCreateForm(EMPTY_FORM); setPage(1); load(1); }
+    if (res.ok) { setShowCreate(false); setCreateForm(EMPTY_FORM); setPage(1); recargar(1); }
     setCreating(false);
   }
 
@@ -1396,7 +1420,7 @@ export default function MarketplacePage() {
     if (!deleteTarget) return;
     setDeleting(true);
     const res = await api.delete(`/marketplace/vo/${deleteTarget.id}`);
-    if (res.ok) { setDeleteTarget(null); load(page); }
+    if (res.ok) { setDeleteTarget(null); recargar(page); }
     setDeleting(false);
   }
 
@@ -1405,7 +1429,7 @@ export default function MarketplacePage() {
     setSavingImages(true);
     const cleanUrls = imageUrls.filter(u => u.trim());
     const res = await api.patch(`/marketplace/vo/${imageEditOffer.id}`, { image_urls: cleanUrls });
-    if (res.ok) { setImageEditOffer(null); load(page); }
+    if (res.ok) { setImageEditOffer(null); recargar(page); }
     setSavingImages(false);
   }
 
@@ -1429,7 +1453,7 @@ export default function MarketplacePage() {
       setImportResult(res.data);
       setImportRows([]); setImportFileName('');
       if (fileRef.current) fileRef.current.value = '';
-      setPage(1); load(1);
+      setPage(1); recargar(1);
     }
     setImporting(false);
   }
