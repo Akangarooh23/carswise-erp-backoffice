@@ -235,8 +235,11 @@ export interface IdCar {
   model?: string;
   year?: number;
   plate?: string;
-  fuel_type?: string;
-  km?: number;
+  // Los nombres son los de la base. Antes ponia fuel_type y km, campos que la
+  // API no envia nunca; al ser opcionales TypeScript no se quejaba y la tabla
+  // pintaba un guion para siempre.
+  fuel?: string;
+  mileage_km?: number;
   created_at: string;
 }
 

@@ -75,11 +75,11 @@ export default function IdCarsPage() {
                     </td>
                     <td className="text-sm text-slate-600 font-mono">{v.plate || '–'}</td>
                     <td className="text-sm">
-                      {v.fuel_type
-                        ? <span>{FUEL_ICONS[v.fuel_type] ?? '🔧'} {v.fuel_type}</span>
+                      {v.fuel
+                        ? <span>{FUEL_ICONS[v.fuel] ?? '🔧'} {v.fuel}</span>
                         : <span className="text-slate-400">–</span>}
                     </td>
-                    <td className="text-sm text-slate-500">{v.km ? `${v.km.toLocaleString('es-ES')} km` : '–'}</td>
+                    <td className="text-sm text-slate-500">{v.mileage_km ? `${Number(v.mileage_km).toLocaleString('es-ES')} km` : '–'}</td>
                     <td className="text-sm text-slate-500">{v.year ?? '–'}</td>
                     <td className="text-xs text-slate-400">{fmtDate(v.created_at)}</td>
                   </tr>
