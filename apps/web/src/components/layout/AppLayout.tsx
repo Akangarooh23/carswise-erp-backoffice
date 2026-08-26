@@ -3,6 +3,9 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../store/auth.js';
 import { api } from '../../api/client.js';
 import Sidebar from './Sidebar.js';
+import PaletaComandos from '../ui/PaletaComandos.js';
+import AyudaAtajos from '../ui/AyudaAtajos.js';
+import { useAtajos } from '../../hooks/useAtajos.js';
 
 interface LeadStats { pending: number; }
 
@@ -11,6 +14,10 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [pendingLeads, setPendingLeads] = useState(0);
   const [toast, setToast]               = useState<string | null>(null);
+
+  // Los atajos. El hook se llama siempre, tambien sin sesion: React exige que
+  // el orden de los hooks no cambie entre renders.
+  const atajos = useAtajos(user?.role ?? 'support');
   const prevPendingRef = useRef<number | null>(null);
   const toastTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -45,6 +52,8 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      <PaletaComandos abierta={atajos.paleta} cerrar={atajos.cerrarPaleta} rol={user.role} />
+      <AyudaAtajos abierta={atajos.ayuda} cerrar={atajos.cerrarAyuda} rol={user.role} />
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
