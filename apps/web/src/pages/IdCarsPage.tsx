@@ -6,6 +6,13 @@ import { SearchInput } from '../components/ui/SearchInput.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import type { IdCar } from '../types/index.js';
 import Icono, { type NombreIcono } from '../components/ui/Icono.js';
+import { StatCard } from '../components/ui/Card.js';
+
+/** El resumen de arriba. La antigüedad sale del mismo año que enseña la tabla. */
+interface Resumen {
+  total: number; propietarios: number; electricos: number; hibridos: number;
+  antiguedadMedia: number | null;
+}
 
 /**
  * Que icono le toca a un combustible.
@@ -34,6 +41,7 @@ export default function IdCarsPage() {
   const [page, setPage]       = useState(1);
   const [q, setQ]             = useState('');
   const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState<Resumen | null>(null);
 
   const load = useCallback(async (p = page) => {
     setLoading(true);
@@ -44,12 +52,29 @@ export default function IdCarsPage() {
     setLoading(false);
   }, [q, page]);
 
+  // El resumen no depende del filtro ni de la página: se pide una vez.
+  useEffect(() => {
+    api.get<Resumen>('/idcars/stats/summary').then((r) => { if (r.ok) setResumen(r.data); });
+  }, []);
+
   useEffect(() => { setPage(1); }, [q]);
   useEffect(() => { load(page); }, [page, load]);
 
   return (
     <div>
       <PageHeader title="IDCars" subtitle={`${total.toLocaleString('es-ES')} vehículos registrados`} />
+
+      {resumen && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          <StatCard label="Vehículos" value={resumen.total} icon="coche" />
+          <StatCard label="Propietarios" value={resumen.propietarios} icon="usuarios"
+            sub={resumen.propietarios === resumen.total ? 'uno por vehículo' : 'algunos tienen más de uno'} />
+          <StatCard label="Electrificados" value={resumen.electricos + resumen.hibridos} icon="rayo"
+            sub={`${resumen.electricos} eléctricos · ${resumen.hibridos} híbridos`} />
+          <StatCard label="Antigüedad media" icon="reloj"
+            value={resumen.antiguedadMedia == null ? '–' : `${resumen.antiguedadMedia.toLocaleString('es-ES')} años`} />
+        </div>
+      )}
 
       <div className="mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar marca, modelo, matrícula…" className="w-72" />

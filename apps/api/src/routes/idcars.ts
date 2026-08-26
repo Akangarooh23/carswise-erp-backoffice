@@ -540,19 +540,45 @@ idcarsRouter.patch('/idcars/:id/primary-photo', requireRole(['admin', 'support',
   }
 });
 
+/**
+ * El resumen de arriba de la pantalla de IDCars.
+ *
+ * La antigüedad se calcula sobre `year`, que es la columna que enseña la tabla.
+ * Hay otra, `year_int`, que no siempre dice lo mismo —un Jaguar de 2006 figura
+ * ahí como 2004—, y una tarjeta que contradiga a la tabla que tiene debajo es
+ * peor que no tener tarjeta.
+ */
 idcarsRouter.get('/idcars/stats/summary', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
     const result = await query(
-      `SELECT
-        COUNT(*)::int                                          AS total,
-        COUNT(DISTINCT user_id)::int                          AS unique_owners,
-        COUNT(*) FILTER (WHERE lower(fuel) = 'eléctrico' OR lower(fuel) = 'electrico')::int AS electric,
-        COUNT(*) FILTER (WHERE lower(fuel) LIKE '%híbrido%' OR lower(fuel) LIKE '%hibrido%')::int AS hybrid,
-        ROUND(AVG(EXTRACT(YEAR FROM NOW()) - year_int)::numeric, 1) AS avg_age_years
-       FROM moveadvisor_user_vehicles`
-    ).catch(() => ({ rows: [{ total: 0, unique_owners: 0, electric: 0, hybrid: 0, avg_age_years: 0 }] }));
+      `WITH v AS (
+        SELECT
+          user_id,
+          lower(coalesce(fuel, '')) AS combustible,
+          NULLIF(regexp_replace(coalesce(year, ''), 'D', '', 'g'), '')::int AS anio
+        FROM moveadvisor_user_vehicles
+      )
+      SELECT
+        COUNT(*)::int                                              AS total,
+        COUNT(DISTINCT user_id)::int                               AS propietarios,
+        COUNT(*) FILTER (WHERE combustible LIKE '%electr%')::int   AS electricos,
+        COUNT(*) FILTER (WHERE combustible LIKE '%brido%')::int    AS hibridos,
+        ROUND(AVG(EXTRACT(YEAR FROM NOW()) - anio)::numeric, 1)     AS antiguedad_media
+      FROM v`
+    );
 
-    res.json({ ok: true, data: result.rows[0] });
+    const f = result.rows[0] as Record<string, unknown>;
+    res.json({
+      ok: true,
+      data: {
+        total:            Number(f.total) || 0,
+        propietarios:     Number(f.propietarios) || 0,
+        electricos:       Number(f.electricos) || 0,
+        hibridos:         Number(f.hibridos) || 0,
+        // Puede venir vacía si ningún vehículo tiene año legible.
+        antiguedadMedia:  f.antiguedad_media == null ? null : Number(f.antiguedad_media),
+      },
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'idcars_stats_failed', detail: (err as Error).message });
   }

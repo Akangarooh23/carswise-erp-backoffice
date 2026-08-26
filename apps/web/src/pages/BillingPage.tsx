@@ -7,6 +7,15 @@ import { StatCard } from '../components/ui/Card.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import type { User } from '../types/index.js';
 
+/** Lo cobrado, separado de lo intermediado: no es lo mismo. */
+interface ResumenCobros {
+  suscripciones: { n: number; cobrado: number };
+  informes:      { n: number; cobrado: number };
+  /** Lo que han costado los coches vendidos. No lo cobra PopCar. */
+  ventas:        { n: number; volumen: number };
+  rentings:      { n: number };
+}
+
 interface BillingSummary {
   free_count: number; plus_count: number; premium_count: number;
   active_trials: number; expired_trials: number; new_paid_30d: number;
@@ -68,8 +77,17 @@ const TAB_LABELS: Record<Tab, string> = {
   free:        'Usuarios free',
 };
 
+/** Euros en formato de aquí. Sin decimales cuando son redondos: 60 €, no 60,00 €. */
+const eur = (n: number) =>
+  n.toLocaleString('es-ES', {
+    style: 'currency', currency: 'EUR',
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+
 export default function BillingPage() {
   const [summary, setSummary]   = useState<BillingSummary | null>(null);
+  const [cobros, setCobros] = useState<ResumenCobros | null>(null);
   const [tab, setTab]           = useState<Tab>('all');
   const [exportando, setExportando] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -84,6 +102,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     api.get<BillingSummary>('/billing/summary').then((r) => { if (r.ok) setSummary(r.data); });
+    api.get<ResumenCobros>('/billing/invoices/stats').then((r) => { if (r.ok) setCobros(r.data); });
   }, []);
 
   useEffect(() => { setPage(1); }, [tab]);
@@ -139,6 +158,32 @@ export default function BillingPage() {
           <StatCard label="Trials activos"     value={summary.active_trials} icon="reloj" color="espera" />
           <StatCard label="Trials expirados"   value={summary.expired_trials} icon="aviso" color="urgente" />
           <StatCard label="Nuevos pagos (30d)" value={summary.new_paid_30d}  icon="tarjeta" color="bien" />
+        </div>
+      )}
+
+      {/* Lo cobrado. La tira de arriba cuenta personas; esta, dinero. */}
+      {cobros && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Suscripciones" icon="euro" color="bien"
+            value={eur(cobros.suscripciones.cobrado)}
+            sub={`${cobros.suscripciones.n} ${cobros.suscripciones.n === 1 ? 'factura' : 'facturas'} · IVA incluido`}
+          />
+          <StatCard
+            label="Informes de mercado" icon="informe" color="bien"
+            value={eur(cobros.informes.cobrado)}
+            sub={`${cobros.informes.n} ${cobros.informes.n === 1 ? 'factura' : 'facturas'} · IVA incluido`}
+          />
+          <StatCard
+            label="Vehículos vendidos" icon="coche"
+            value={cobros.ventas.n}
+            sub={`${eur(cobros.ventas.volumen)} intermediados · los cobra el proveedor`}
+          />
+          <StatCard
+            label="Contratos de renting" icon="llave"
+            value={cobros.rentings.n}
+            sub="gestionados hasta hoy"
+          />
         </div>
       )}
 

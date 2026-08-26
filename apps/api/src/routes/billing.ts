@@ -171,44 +171,59 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 });
 
 // ── Invoice stats ─────────────────────────────────────────────────────────────
+/**
+ * El resumen de arriba de la pantalla de facturación.
+ *
+ * Cada cifra con su nombre. Las suscripciones y los informes de mercado
+ * comparten tabla y se separan por la descripción, igual que en el listado.
+ *
+ * El volumen de ventas NO es facturación de PopCar: el proveedor cobra al
+ * cliente y PopCar cobra su comisión aparte. Ponerlo junto a los ingresos, sin
+ * decirlo, haría que la pantalla afirmara algo falso.
+ *
+ * Los importes cobrados llevan el IVA dentro, que es como se guardan.
+ */
 billingRouter.get('/billing/invoices/stats', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
-    const [susResult, ventaResult, rentingResult] = await Promise.all([
+    const [cobros, ventas, rentings] = await Promise.all([
       query(`
         SELECT
-          COUNT(*)::int                   AS count_suscripcion,
-          COALESCE(SUM(amount), 0)::numeric AS total_suscripcion
+          COALESCE(description, '') ~* '(informe|tasaci)' AS es_informe,
+          COUNT(*)::int                                   AS n,
+          COALESCE(SUM(amount), 0)::numeric               AS total
         FROM moveadvisor_user_invoices
-      `).catch(() => ({ rows: [{ count_suscripcion: 0, total_suscripcion: 0 }] })),
+        GROUP BY 1
+      `).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
       query(`
         SELECT
-          COUNT(*)::int                                            AS count_ventas,
-          COALESCE(SUM(COALESCE(l.sale_price, vo.price, mo.price)), 0)::numeric AS total_ventas
+          COUNT(*)::int AS n,
+          COALESCE(SUM(COALESCE(l.sale_price, vo.price, mo.price)), 0)::numeric AS volumen
         FROM moveadvisor_market_leads l
         LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
         LEFT JOIN moveadvisor_market_offers mo         ON mo.id = l.vehicle_id AND vo.id IS NULL
         WHERE l.status = 'Vendido'
-      `).catch(() => ({ rows: [{ count_ventas: 0, total_ventas: 0 }] })),
+      `).catch(() => ({ rows: [{ n: 0, volumen: 0 }] })),
 
-      query(`
-        SELECT COUNT(*)::int AS count_renting
-        FROM moveadvisor_renting_contracts
-      `).catch(() => ({ rows: [{ count_renting: 0 }] })),
+      query(`SELECT COUNT(*)::int AS n FROM moveadvisor_renting_contracts`)
+        .catch(() => ({ rows: [{ n: 0 }] })),
     ]);
 
-    const sus     = susResult.rows[0]     as Record<string, unknown>;
-    const venta   = ventaResult.rows[0]   as Record<string, unknown>;
-    const renting = rentingResult.rows[0] as Record<string, unknown>;
+    const fila = (informe: boolean) =>
+      (cobros.rows as Record<string, unknown>[]).find((r) => Boolean(r.es_informe) === informe);
+    const susc = fila(false);
+    const info = fila(true);
+    const vta  = ventas.rows[0]   as Record<string, unknown>;
+    const rent = rentings.rows[0] as Record<string, unknown>;
 
     res.json({
       ok: true,
       data: {
-        total_suscripcion: Number(sus.total_suscripcion)   || 0,
-        total_ventas:      Number(venta.total_ventas)       || 0,
-        count_suscripcion: Number(sus.count_suscripcion)   || 0,
-        count_ventas:      Number(venta.count_ventas)       || 0,
-        count_renting:     Number(renting.count_renting)    || 0,
+        suscripciones: { n: Number(susc?.n) || 0, cobrado: Number(susc?.total) || 0 },
+        informes:      { n: Number(info?.n) || 0, cobrado: Number(info?.total) || 0 },
+        // Lo que han costado los coches vendidos. No lo cobra PopCar.
+        ventas:        { n: Number(vta.n) || 0, volumen: Number(vta.volumen) || 0 },
+        rentings:      { n: Number(rent.n) || 0 },
       },
     });
   } catch (err) {
