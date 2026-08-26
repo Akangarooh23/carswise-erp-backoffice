@@ -53,7 +53,19 @@ export interface InvoiceData {
   recipientPhone?: string;
   recipientAddress?: string;
   lines: InvoiceLine[];
-  ivaRate?: number; // default 0.21
+  ivaRate?: number; // por defecto 0,21
+  /**
+   * Lo que se cobró de verdad, con el IVA dentro.
+   *
+   * Cuando el precio de cara al cliente es el total —una suscripción de 10 €,
+   * la venta de un coche— la base sale de dividir, y calcular después el IVA
+   * sobre esa base redondeada pierde un céntimo. Pasando aquí el total, el
+   * IVA es la resta y los tres importes cuadran con el cargo.
+   *
+   * Sin esto, el total se calcula sumando el IVA a la base: es lo correcto
+   * cuando lo que se conoce es la base, como en las facturas de proveedor.
+   */
+  totalCobrado?: number;
   notes?: string;
 }
 
@@ -62,6 +74,22 @@ function fmtEur(n: number): string {
 }
 function fmtDate(d: Date): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/**
+ * Los tres importes de una factura, y que sumen.
+ *
+ * Cuando el precio de cara al cliente es el total —una suscripción de 10 €—,
+ * la base sale de dividir y calcular el IVA sobre esa base ya redondeada
+ * pierde un céntimo: 8,26 + 1,73 son 9,99, no 10,00. El IVA es la diferencia,
+ * no un cálculo aparte.
+ */
+export function importes(data: Pick<InvoiceData, 'lines' | 'ivaRate' | 'totalCobrado'>) {
+  const redondea = (n: number) => Math.round(n * 100) / 100;
+  const ivaRate = data.ivaRate ?? 0.21;
+  const base    = redondea(data.lines.reduce((s, l) => s + l.amount, 0));
+  const total   = redondea(data.totalCobrado ?? base * (1 + ivaRate));
+  return { base, ivaAmt: redondea(total - base), total };
 }
 
 // ── Core PDF builder ──────────────────────────────────────────────────────────
@@ -73,10 +101,7 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   const boldFont    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const ivaRate = data.ivaRate ?? 0.21;
-  const base    = data.lines.reduce((s, l) => s + l.amount, 0);
-  const ivaAmt  = base * ivaRate;
-  const total   = base + ivaAmt;
+  const { base, ivaAmt, total } = importes(data);
 
   const M = 56;
 
@@ -219,7 +244,7 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   };
 
   drawTotRow('Base imponible', fmtEur(base));
-  drawTotRow(`IVA (${Math.round(ivaRate * 100)} %)`, fmtEur(ivaAmt));
+  drawTotRow(`IVA (${Math.round((data.ivaRate ?? 0.21) * 100)} %)`, fmtEur(ivaAmt));
   y -= 4;
   page.drawLine({ start: { x: totX, y }, end: { x: width - M, y }, thickness: 1, color: LINE });
   y -= 16;

@@ -194,6 +194,8 @@ invoiceDownloadRouter.get(
           amount,
         }],
         ivaRate,
+        // El precio de cara al cliente es el total: el IVA va dentro.
+        totalCobrado: totalWithIva,
       };
 
       const { pdf } = await generateAndStoreInvoicePdf(
@@ -278,6 +280,8 @@ invoiceDownloadRouter.get(
           amount: baseAmount,
         }],
         ivaRate,
+        // El precio de cara al cliente es el total: el IVA va dentro.
+        totalCobrado: totalWithIva,
         notes: lead.sale_notes ? String(lead.sale_notes) : undefined,
       };
 
