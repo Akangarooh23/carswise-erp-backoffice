@@ -118,6 +118,10 @@ function exportXlsx(items: VoOffer[]) {
     renting_36m: o.renting_36m ?? '',
     renting_48m: o.renting_48m ?? '',
     renting_60m: o.renting_60m ?? '',
+    // Sin estas dos, exportar y volver a importar deja una sola unidad por
+    // anuncio: las filas salen indistinguibles.
+    unit_color: o.color ?? '',
+    unit_mileage: o.mileage ?? 0,
   }));
   const ws = XLSX.utils.json_to_sheet(data, { header: EXCEL_HEADERS });
   const wb = XLSX.utils.book_new();
@@ -914,7 +918,13 @@ export default function MarketplacePage() {
   const [importRows, setImportRows]         = useState<Record<string, string>[]>([]);
   const [importFileName, setImportFileName] = useState('');
   const [importing, setImporting]           = useState(false);
-  const [importResult, setImportResult]     = useState<{ offers_created?: number; offers_updated?: number; units_added?: number; inserted?: number; errors: number } | null>(null);
+  const [importResult, setImportResult] = useState<{
+    filas_recibidas?: number; offers_created?: number; offers_updated?: number;
+    units_added?: number; inserted?: number; errors: number;
+    rechazadas?: { numero: number; motivo: string }[];
+    repetidas?: { numero: number; motivo: string }[];
+    errorDetails?: string[];
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1447,7 +1457,7 @@ export default function MarketplacePage() {
   async function doImport() {
     if (!importRows.length) return;
     setImporting(true);
-    const res = await api.post<{ offers_created: number; offers_updated: number; units_added: number; errors: number }>(
+    const res = await api.post<NonNullable<typeof importResult>>(
       '/marketplace/vo/bulk-with-units', { rows: importRows }
     );
     if (res.ok) {
@@ -3265,21 +3275,60 @@ export default function MarketplacePage() {
             </div>
           )}
 
-          {importResult && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm">
-              <p className="font-medium text-emerald-700">Importación completada</p>
-              <p className="text-emerald-600">
-                {importResult.offers_created !== undefined ? (
-                  <>
-                    {importResult.offers_created} ofertas creadas · {importResult.offers_updated} actualizadas · {importResult.units_added} unidades añadidas
-                    {importResult.errors > 0 ? ` · ${importResult.errors} errores` : ''}
-                  </>
-                ) : (
-                  <>{importResult.inserted} importados{importResult.errors > 0 ? ` · ${importResult.errors} errores` : ''}</>
+          {importResult && (() => {
+            const fuera = (importResult.rechazadas?.length ?? 0) + (importResult.repetidas?.length ?? 0) + (importResult.errors ?? 0);
+            const bien = fuera === 0;
+            return (
+              <div className={`rounded-lg px-4 py-3 text-sm border ${bien ? 'bg-emerald-50 border-emerald-200' : 'bg-acento-tenue border-acento'}`}>
+                <p className={`font-medium ${bien ? 'text-emerald-700' : 'text-brand-600'}`}>
+                  {bien ? 'Importación completada' : 'Importación completada, con filas fuera'}
+                </p>
+                <p className={bien ? 'text-emerald-600' : 'text-brand-500'}>
+                  {importResult.offers_created !== undefined ? (
+                    <>
+                      {importResult.filas_recibidas} filas leídas · {importResult.offers_created} anuncios creados
+                      {' · '}{importResult.offers_updated} actualizados · {importResult.units_added} unidades añadidas
+                    </>
+                  ) : (
+                    <>{importResult.inserted} importados</>
+                  )}
+                </p>
+          
+                {/* Lo que no entró, con el número de fila del Excel para poder ir a buscarlo. */}
+                {[
+                  ['No se pudieron leer', importResult.rechazadas],
+                  ['Repetidas: describen un coche ya descrito', importResult.repetidas],
+                ].map(([titulo, filas]) => {
+                  const lista = filas as { numero: number; motivo: string }[] | undefined;
+                  if (!lista?.length) return null;
+                  return (
+                    <details key={titulo as string} className="mt-2">
+                      <summary className="cursor-pointer font-medium text-brand-600">
+                        {lista.length} {titulo as string}
+                      </summary>
+                      <ul className="mt-1 ml-4 list-disc text-xs text-brand-500 max-h-40 overflow-y-auto">
+                        {lista.slice(0, 60).map((d) => (
+                          <li key={d.numero}>Fila {d.numero} · {d.motivo}</li>
+                        ))}
+                        {lista.length > 60 && <li>…y {lista.length - 60} más</li>}
+                      </ul>
+                    </details>
+                  );
+                })}
+          
+                {!!importResult.errorDetails?.length && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer font-medium text-red-700">
+                      {importResult.errors} filas con error al guardar
+                    </summary>
+                    <ul className="mt-1 ml-4 list-disc text-xs text-brand-500 max-h-40 overflow-y-auto">
+                      {importResult.errorDetails.map((d, i) => <li key={i}>{d}</li>)}
+                    </ul>
+                  </details>
                 )}
-              </p>
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           <div className="flex justify-end gap-3">
             <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">

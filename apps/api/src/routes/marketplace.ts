@@ -5,6 +5,7 @@ import path from 'node:path';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
+import { prepara } from '../lib/importacion.js';
 
 export const marketplaceRouter = Router();
 
@@ -888,31 +889,6 @@ marketplaceRouter.delete('/marketplace/vo/units/:unitId', requireRole(['admin', 
 
 // ── Bulk import with units (one row per unit, grouped by brand+model+year+price) ──
 
-const voBulkUnitRowSchema = z.object({
-  title:                 z.string().min(1),
-  brand:                 z.string().min(1),
-  model:                 z.string().min(1),
-  year:                  z.coerce.number().int().min(1990).max(2035),
-  price:                 z.coerce.number().min(0).default(0),
-  fuel:                  z.string().default(''),
-  power:                 z.string().default(''),
-  location:              z.string().default(''),
-  seller:                z.string().default(''),
-  seller_type:           z.string().default(''),
-  image_urls:            z.string().default(''),
-  source_url:            z.string().default(''),
-  description:           z.string().default(''),
-  available_for_purchase: z.coerce.number().default(1),
-  renting_available:     z.coerce.number().default(0),
-  renting_km_year:       z.coerce.number().int().default(15000),
-  renting_12m:           z.coerce.number().nullable().default(null),
-  renting_24m:           z.coerce.number().nullable().default(null),
-  renting_36m:           z.coerce.number().nullable().default(null),
-  renting_48m:           z.coerce.number().nullable().default(null),
-  renting_60m:           z.coerce.number().nullable().default(null),
-  unit_color:            z.string().default(''),
-  unit_mileage:          z.coerce.number().int().min(0).default(0),
-});
 
 marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 'operations']), async (req, res) => {
   const rows = req.body?.rows;
@@ -925,20 +901,24 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
     return;
   }
 
-  const results = { offers_created: 0, offers_updated: 0, units_added: 0, errors: 0, errorDetails: [] as string[] };
+  const { grupos, rechazadas, repetidas } = prepara(rows);
 
-  // Group rows by brand+model+year+price
-  const groups = new Map<string, typeof rows>();
-  for (const raw of rows) {
-    const d = voBulkUnitRowSchema.safeParse(raw);
-    if (!d.success) { results.errors++; results.errorDetails.push(`Fila inválida: ${JSON.stringify(raw).slice(0, 80)}`); continue; }
-    const key = `${d.data.brand.toLowerCase()}|${d.data.model.toLowerCase()}|${d.data.year}|${d.data.price}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(d.data);
-  }
+  const results = {
+    filas_recibidas: rows.length,
+    offers_created: 0,
+    offers_updated: 0,
+    units_added: 0,
+    // Filas que no se pudieron leer y filas que describian un coche ya
+    // descrito en la misma subida. Van con el numero de fila del Excel para
+    // que se puedan buscar en el fichero.
+    rechazadas,
+    repetidas,
+    errors: 0,
+    errorDetails: [] as string[],
+  };
 
-  for (const groupRows of groups.values()) {
-    const first = groupRows[0] as ReturnType<typeof voBulkUnitRowSchema.parse>;
+  for (const groupRows of grupos) {
+    const first = groupRows[0];
     try {
       // Upsert offer — find existing by brand+model+year+price
       const existing = await query(
@@ -990,7 +970,7 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
 
       // Add units — skip if same color+mileage already exists as available
       for (const row of groupRows) {
-        const r = row as ReturnType<typeof voBulkUnitRowSchema.parse>;
+        const r = row;
         const dup = await query(
           `SELECT id FROM moveadvisor_marketplace_vo_units WHERE offer_id=$1 AND color=$2 AND mileage=$3 AND status='available' LIMIT 1`,
           [offerId, r.unit_color, r.unit_mileage]
@@ -1005,8 +985,8 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
         results.units_added++;
       }
     } catch (err) {
-      results.errors++;
-      results.errorDetails.push((err as Error).message.slice(0, 120));
+      results.errors += groupRows.length;
+      results.errorDetails.push(`${groupRows.length} fila${groupRows.length > 1 ? 's' : ''} de ${first.brand} ${first.model}: ${(err as Error).message.slice(0, 90)}`);
     }
   }
 

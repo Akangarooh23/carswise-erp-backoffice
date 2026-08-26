@@ -10,7 +10,8 @@
     "dev:web": "npm run dev -w @carswise/web",
     "dev:api": "npm run dev -w @carswise/api",
     "build": "npm run build -w @carswise/web && npm run build -w @carswise/api",
-    "start": "npm run start -w @carswise/api"
+    "start": "npm run start -w @carswise/api",
+    "test": "tsx --test \"apps/api/src/**/*.test.ts\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
