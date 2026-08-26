@@ -20,7 +20,7 @@ function fmtCuota(n: number | null | undefined) { return n ? `${n.toLocaleString
 
 const TABS = [
   { key: 'vo',             label: 'VO Empresas Renting'   },
-  { key: 'particulares',   label: 'Particulares CarsWise' },
+  { key: 'particulares',   label: 'Particulares PopCar' },
   { key: 'offers',         label: 'Ofertas de portales'   },
   { key: 'renting',        label: 'Ofertas Renting'       },
   { key: 'concesionarios', label: 'VO Concesionarios'     },
@@ -130,7 +130,7 @@ function downloadTemplate() {
     {
       title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
       year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
-      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      location: 'Madrid', seller: 'PopCar', seller_type: 'professional',
       image_urls: 'https://example.com/foto1.jpg|https://example.com/foto2.jpg',
       source_url: '', description: 'Vehículo en excelente estado.',
       available_for_purchase: 0, renting_available: 1,
@@ -140,7 +140,7 @@ function downloadTemplate() {
     {
       title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
       year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
-      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      location: 'Madrid', seller: 'PopCar', seller_type: 'professional',
       image_urls: '', source_url: '', description: '',
       available_for_purchase: 0, renting_available: 1,
       renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
@@ -149,7 +149,7 @@ function downloadTemplate() {
     {
       title: 'Volkswagen Golf 1.6 TDI Comfortline', brand: 'Volkswagen', model: 'Golf',
       year: 2020, price: 14500, fuel: 'Diésel', power: '85 CV',
-      location: 'Madrid', seller: 'CarsWise', seller_type: 'professional',
+      location: 'Madrid', seller: 'PopCar', seller_type: 'professional',
       image_urls: '', source_url: '', description: '',
       available_for_purchase: 0, renting_available: 1,
       renting_km_year: 15000, renting_12m: '', renting_24m: '', renting_36m: 350, renting_48m: 299, renting_60m: 269,
@@ -438,7 +438,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                 </table>
               </div>
               <div className="border-t border-slate-100 pt-3">
-                <label className={LABEL_CLS}>Fee CarsWise (€) <span className="text-slate-400 font-normal">— importe que CarsWise factura al proveedor por cada contrato de renting firmado</span></label>
+                <label className={LABEL_CLS}>Fee PopCar (€) <span className="text-slate-400 font-normal">— importe que CarsWise factura al proveedor por cada contrato de renting firmado</span></label>
                 <input
                   type="number"
                   className={`${INPUT_CLS} max-w-[180px]`}
@@ -1140,11 +1140,11 @@ export default function MarketplacePage() {
 
       let y = drawTable('Portales de mercado', data.market, data.marketTotal, 118);
       if (data.import && data.import.length) {
-        y = drawTable('Importación (DE, publicada en CarsWise)', data.import, data.importTotal ?? 0, y + 34);
+        y = drawTable('Importación (DE, publicada en PopCar)', data.import, data.importTotal ?? 0, y + 34);
       }
       drawTable('Concesionarios VO', data.vo, data.voTotal, y + 34);
 
-      doc.save('CarsWise-Informe-Portales.pdf');
+      doc.save('PopCar-Informe-Portales.pdf');
     } catch {
       window.alert('No se pudo generar el informe. Inténtalo de nuevo.');
     } finally {
@@ -1770,13 +1770,16 @@ export default function MarketplacePage() {
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
-                            <img src={item.image_url || item.image_urls?.[0]} alt="" referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
                           ) : (
                             <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
                           )}
                           <div>
-                            <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
-                            <p className="text-xs text-slate-400">{item.location || '–'}</p>
+                            {/* El titulo no se pinta: es marca + modelo + version,
+                                que ya tienen columna propia y filtro. Repetirlo
+                                partia cada fila en tres lineas. Va en el title de
+                                la foto, para poder leerlo entero al pasar por encima. */}
+                            <p className="text-[13px] text-brand-500">{item.location || '–'}</p>
                             {item.internal_location && (
                               <p className="text-[10px] font-mono text-slate-300 leading-tight">{item.internal_location}</p>
                             )}
@@ -1985,11 +1988,14 @@ export default function MarketplacePage() {
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
-                            <img src={item.image_url || item.image_urls?.[0]} alt="" referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
                           ) : (
                             <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
                           )}
-                          <p className="font-medium text-slate-800 text-sm leading-snug">{item.title}</p>
+                            {/* El titulo no se pinta: es marca + modelo + version,
+                                que ya tienen columna propia y filtro. Repetirlo
+                                partia cada fila en tres lineas. Va en el title de
+                                la foto, para poder leerlo entero al pasar por encima. */}
                         </div>
                       </td>
                       <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>

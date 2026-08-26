@@ -225,7 +225,7 @@ export default function BookingsPage() {
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                                 isProf ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'
                               }`}>
-                                {isProf ? 'CarsWise' : 'Particular'}
+                                {isProf ? 'PopCar' : 'Particular'}
                               </span>
                               <span className="text-slate-300 text-xs">{isExpanded ? '▾' : '▸'}</span>
                             </div>

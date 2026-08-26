@@ -49,7 +49,7 @@ const PAGE_SECTION_LABELS: Record<string, string> = {
   userProfile:                'Mi Perfil',
   plans:                      'Planes',
   contact:                    'Contacto',
-  aboutCarswise:              'Sobre CarsWise',
+  aboutCarswise:              'Sobre PopCar',
   // Marketplace VO
   portalVo:                   'Marketplace VO',
   portalVoDetail:             'Ficha de oferta VO',

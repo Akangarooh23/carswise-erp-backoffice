@@ -59,31 +59,53 @@ body {
 :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
 
 /* Table */
-.erp-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+/* ── Tablas ───────────────────────────────────────────────────────────────
+   Una linea por fila. Antes cada coche ocupaba tres porque el titulo se
+   partia, y con 4.362 vehiculos eso es ver seis donde caben veinte.
+
+   Lo que no cabe se corta con puntos suspensivos; el texto entero va en el
+   `title` de la celda, para poder leerlo sin abrir nada. Las pocas celdas
+   que necesiten varias lineas llevan `celda-libre`. */
+.erp-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
 .erp-table th {
-  padding: 0.625rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.06em;
+  color: #96968F;
+  background: #F5F5F4;
+  border-bottom: 1px solid #E4E4DF;
   white-space: nowrap;
 }
 .erp-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+  padding: 0.4375rem 0.75rem;
+  border-bottom: 1px solid #F1EFE7;
+  color: #111111;
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
 }
-.erp-table tr:hover td { background: #f8fafc; }
+.erp-table td.celda-libre {
+  white-space: normal;
+  overflow: visible;
+  max-width: none;
+}
+/* Los numeros alineados a la derecha se leen de un vistazo, y con cifras de
+   ancho fijo las columnas de precio y kilometros se comparan solas. */
+.erp-table td.num, .erp-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.erp-table tr:hover td { background: #FFFDF5; }
 .erp-table tr:last-child td { border-bottom: none; }
-/* Cabecera fija (sticky) al hacer scroll dentro del contenedor de la tabla */
+/* Cabecera fija al hacer scroll dentro del contenedor de la tabla */
 .erp-table thead { position: sticky; top: 0; z-index: 20; }
-.erp-table thead td { background: #f8fafc; }
-.erp-table thead th { box-shadow: inset 0 -1px 0 #e2e8f0; }
+.erp-table thead td { background: #F5F5F4; }
+.erp-table thead th { box-shadow: inset 0 -1px 0 #E4E4DF; }
 
 /* Transition utility */
 .fade-in { animation: fadeIn 0.15s ease; }

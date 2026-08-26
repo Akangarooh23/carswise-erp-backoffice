@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
             🔑
           </div>
           <h1 className="text-white text-xl font-bold">Nueva contraseña</h1>
-          <p className="text-slate-400 text-sm mt-1">CarsWise ERP</p>
+          <p className="text-brand-300 text-sm mt-1">PopCar ERP</p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-2xl">

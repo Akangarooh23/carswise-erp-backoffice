@@ -68,7 +68,7 @@ export default function AppLayout() {
               <rect x="2" y="14" width="16" height="2" rx="1" />
             </svg>
           </button>
-          <span className="text-sm font-bold text-slate-800">🚗 CarsWise</span>
+          <span className="text-sm font-bold text-brand-600"><span className="text-acento-texto">Pop</span>Car</span>
         </div>
 
         <div className="max-w-[1400px] mx-auto p-4 md:p-6 fade-in">

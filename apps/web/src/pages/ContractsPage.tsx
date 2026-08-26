@@ -34,7 +34,7 @@ interface Stats {
 }
 
 function fmtPortal(portal: string | null): string {
-  if (!portal) return 'CarsWise';
+  if (!portal) return 'PopCar';
   if (portal === 'marketplace-vo-compra') return 'Marketplace';
   if (portal === 'marketplace-vo-renting') return 'Marketplace';
   return portal.charAt(0).toUpperCase() + portal.slice(1).replace(/-/g, ' ');

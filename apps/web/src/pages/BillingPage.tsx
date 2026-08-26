@@ -129,7 +129,7 @@ export default function BillingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Facturación clientes"
-        subtitle="Suscripciones cobradas por CarsWise · Ventas y rentings gestionados por el proveedor"
+        subtitle="Suscripciones cobradas por PopCar · Ventas y rentings gestionados por el proveedor"
       />
 
       {/* Summary */}
