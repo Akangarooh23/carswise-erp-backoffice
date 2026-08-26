@@ -67,7 +67,7 @@ function fmtEur(n: number | null | undefined) {
 
 const STATUS_BADGE: Record<string, string> = {
   pending:         'bg-yellow-100 text-yellow-700',
-  sent:            'bg-blue-100 text-blue-700',
+  sent:            'bg-acento-tenue text-acento-texto',
   pending_payment: 'bg-orange-100 text-orange-700',
   paid:            'bg-emerald-100 text-emerald-700',
   cancelled:       'bg-red-100 text-red-600',
@@ -314,7 +314,7 @@ export default function ProviderBillingPage() {
         </div>
         {tab === 'recibidas' && (
           <button onClick={() => { setRecvModal(true); setRecvProvider(''); setRecvVehicle(''); setRecvAmount(''); setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null); }}
-            className="ml-auto px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+            className="ml-auto px-4 py-2 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700">
             + Registrar factura recibida
           </button>
         )}
@@ -376,7 +376,7 @@ export default function ProviderBillingPage() {
                       <td>
                         <button
                           onClick={() => { setCommModal(p); setCommMode('percent'); setCommPct(''); setCommFixed(''); }}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-1 hover:bg-blue-50 whitespace-nowrap">
+                          className="text-xs font-medium text-acento-texto hover:text-acento-texto border border-acento rounded px-3 py-1 hover:bg-acento-tenue whitespace-nowrap">
                           Crear factura
                         </button>
                       </td>
@@ -425,7 +425,7 @@ export default function ProviderBillingPage() {
                             await load(page);
                           }}
                           disabled={downloadingId === inv.id}
-                          className="mt-0.5 text-[10px] text-blue-600 hover:underline disabled:opacity-50">
+                          className="mt-0.5 text-[10px] text-acento-texto hover:underline disabled:opacity-50">
                           {downloadingId === inv.id ? 'Generando…' : '↓ Descargar PDF'}
                         </button>
                       </td>
@@ -456,7 +456,7 @@ export default function ProviderBillingPage() {
                         <div className="flex gap-1">
                           {inv.status === 'pending' && (
                             <button onClick={() => markAsSent(inv.id)} disabled={markingId === inv.id}
-                              className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 whitespace-nowrap disabled:opacity-50">
+                              className="text-xs text-acento-texto hover:text-acento-texto border border-acento rounded px-2 py-1 hover:bg-acento-tenue whitespace-nowrap disabled:opacity-50">
                               {markingId === inv.id ? '…' : 'Marcar enviada'}
                             </button>
                           )}
@@ -493,7 +493,7 @@ export default function ProviderBillingPage() {
             <div className="py-16 flex flex-col items-center gap-3 text-slate-400">
               <p className="text-sm">No hay facturas recibidas registradas</p>
               <button onClick={() => setRecvModal(true)}
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50">
+                className="text-sm font-medium text-acento-texto hover:text-acento-texto border border-acento rounded-lg px-4 py-2 hover:bg-acento-tenue">
                 + Registrar primera factura
               </button>
             </div>
@@ -529,7 +529,7 @@ export default function ProviderBillingPage() {
                         {r.pdf_url ? (
                           <div className="flex items-center gap-1">
                             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                              className="text-xs text-acento-texto hover:underline whitespace-nowrap">
                               📄 Ver PDF
                             </a>
                             <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
@@ -578,7 +578,7 @@ export default function ProviderBillingPage() {
               {(['percent', 'fixed'] as const).map(m => (
                 <button key={m} onClick={() => setCommMode(m)}
                   className={`flex-1 py-2 rounded-lg text-sm border font-medium ${
-                    commMode === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    commMode === m ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}>
                   {m === 'percent' ? '% Porcentaje' : '€ Importe fijo'}
                 </button>
@@ -625,7 +625,7 @@ export default function ProviderBillingPage() {
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setCommModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
               <button onClick={createCommission} disabled={creatingComm || (commMode === 'percent' ? !commPct : !commFixed)}
-                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
                 {creatingComm ? 'Creando…' : 'Crear factura'}
               </button>
             </div>
@@ -680,7 +680,7 @@ export default function ProviderBillingPage() {
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">PDF de la factura</label>
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
-              recvPdfFile ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+              recvPdfFile ? 'border-acento bg-acento-tenue' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setRecvPdfFile(e.target.files?.[0] ?? null)} />
@@ -693,7 +693,7 @@ export default function ProviderBillingPage() {
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={() => setRecvModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
             <button onClick={createReceivedInvoice} disabled={savingRecv || !recvProvider || !recvAmount}
-              className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+              className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
               {savingRecv ? 'Guardando…' : 'Registrar factura'}
             </button>
           </div>
@@ -715,7 +715,7 @@ export default function ProviderBillingPage() {
               </div>
             )}
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
-              pdfFile ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+              pdfFile ? 'border-acento bg-acento-tenue' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
@@ -725,7 +725,7 @@ export default function ProviderBillingPage() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setPdfModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
               <button onClick={attachPdf} disabled={uploadingPdf || !pdfFile}
-                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
                 {uploadingPdf ? 'Subiendo…' : 'Subir PDF'}
               </button>
             </div>
@@ -766,7 +766,7 @@ export default function ProviderBillingPage() {
               <strong>{recvMarkModal.id}</strong> — {recvMarkModal.provider_name}<br />
               <span className="text-xs text-slate-400">{recvMarkModal.vehicle_title || ''} · {fmtEur(recvMarkModal.invoice_amount)}</span>
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+            <div className="bg-acento-tenue border border-acento rounded-lg px-3 py-2 text-xs text-acento-texto">
               Confirma que has realizado el pago al proveedor por este importe.
             </div>
             <textarea value={recvMarkNotes} onChange={e => setRecvMarkNotes(e.target.value)}

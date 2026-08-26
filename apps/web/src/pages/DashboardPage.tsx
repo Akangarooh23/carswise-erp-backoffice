@@ -96,7 +96,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
             <h3 className="font-semibold text-slate-800 text-sm">Tickets recientes</h3>
-            <Link to="/tickets" className="text-blue-600 hover:text-blue-700 text-xs font-medium">Ver todos →</Link>
+            <Link to="/tickets" className="text-acento-texto hover:text-brand-600 text-xs font-medium">Ver todos →</Link>
           </div>
           {stats.recentTickets.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin tickets</p>
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                 {stats.recentTickets.map((t) => (
                   <tr key={t.id}>
                     <td>
-                      <Link to={`/tickets/${t.id}`} className="text-blue-600 hover:underline text-sm font-medium">
+                      <Link to={`/tickets/${t.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                         {t.title}
                       </Link>
                       <p className="text-xs text-slate-400 mt-0.5">{fmtDate(t.created_at)}</p>
@@ -125,7 +125,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
             <h3 className="font-semibold text-slate-800 text-sm">Próximas citas</h3>
-            <Link to="/appointments" className="text-blue-600 hover:text-blue-700 text-xs font-medium">Ver todas →</Link>
+            <Link to="/appointments" className="text-acento-texto hover:text-brand-600 text-xs font-medium">Ver todas →</Link>
           </div>
           {stats.upcomingAppointments.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin citas próximas</p>

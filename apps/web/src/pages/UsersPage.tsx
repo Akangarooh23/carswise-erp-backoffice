@@ -47,11 +47,11 @@ export default function UsersPage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar por nombre, email…" className="w-72" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
         <select value={plan} onChange={(e) => setPlan(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{PLAN_LABELS[p]}</option>)}
         </select>
       </div>
@@ -90,7 +90,7 @@ export default function UsersPage() {
                     <td className="text-xs text-slate-400">{fmtDate(u.created_at)}</td>
                     <td>
                       <Link to={`/users/${u.id}`}
-                        className="text-blue-600 hover:text-blue-700 text-xs font-medium">
+                        className="text-acento-texto hover:text-brand-600 text-xs font-medium">
                         Ver →
                       </Link>
                     </td>

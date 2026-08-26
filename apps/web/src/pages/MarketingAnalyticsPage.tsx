@@ -91,7 +91,7 @@ export default function MarketingAnalyticsPage() {
             {DAY_OPTIONS.map((d) => (
               <button key={d} onClick={() => setDays(d)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  days === d ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  days === d ? 'bg-brand-600 text-white border-brand-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}>
                 {d}d
               </button>
@@ -140,7 +140,7 @@ export default function MarketingAnalyticsPage() {
                         <div className="flex items-center gap-4 text-xs text-slate-500">
                           <span>{row.total} reg.</span>
                           <span className="text-emerald-600 font-medium">{pct(row.mkt_email, row.total)} mkt</span>
-                          <span className="text-blue-600 font-medium">{pct(row.legal, row.total)} T&C</span>
+                          <span className="text-acento-texto font-medium">{pct(row.legal, row.total)} T&C</span>
                         </div>
                       </div>
                       <Bar value={row.total} max={data.bySource[0].total} color={sourceColor(row.source)} />
@@ -206,7 +206,7 @@ export default function MarketingAnalyticsPage() {
                         </td>
                         <td className="text-xs text-slate-500 capitalize">{row.medium || '–'}</td>
                         <td className="text-right font-semibold text-slate-800">{row.total}</td>
-                        <td className="text-right text-xs text-blue-600">{row.legal} <span className="text-slate-400">({pct(row.legal, row.total)})</span></td>
+                        <td className="text-right text-xs text-acento-texto">{row.legal} <span className="text-slate-400">({pct(row.legal, row.total)})</span></td>
                         <td className="text-right text-xs text-emerald-600">{row.mkt_email} <span className="text-slate-400">({pct(row.mkt_email, row.total)})</span></td>
                         <td className="text-right">
                           <span className={`text-xs font-semibold ${
@@ -246,7 +246,7 @@ export default function MarketingAnalyticsPage() {
                               {label}: {total}
                             </div>
                             <div
-                              className="w-full rounded-t bg-blue-500 hover:bg-blue-400 transition-colors cursor-default"
+                              className="w-full rounded-t bg-acento-tenue0 hover:bg-acento-oscuro transition-colors cursor-default"
                               style={{ height: `${h}%` }}
                             />
                           </div>

@@ -65,7 +65,7 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar usuario, taller…" className="w-72" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           <option value="">Todos los estados</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}</option>
@@ -99,7 +99,7 @@ export default function AppointmentsPage() {
                     <td><StatusBadge status={a.status} /></td>
                     <td>
                       <button onClick={() => openDetail(a)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                        className="text-xs text-acento-texto hover:text-brand-600 font-medium">
                         Gestionar
                       </button>
                     </td>
@@ -126,7 +126,7 @@ export default function AppointmentsPage() {
                 {STATUS_OPTIONS.map((s) => (
                   <button key={s} onClick={() => setNewStatus(s)}
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                      newStatus === s ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      newStatus === s ? 'bg-brand-600 text-white border-brand-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                     }`}>
                     {s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
                   </button>
@@ -136,14 +136,14 @@ export default function AppointmentsPage() {
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas internas</label>
               <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none" />
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
                 Cancelar
               </button>
               <button onClick={saveUpdate} disabled={saving}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

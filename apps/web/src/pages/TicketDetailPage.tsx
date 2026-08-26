@@ -77,7 +77,7 @@ export default function TicketDetailPage() {
                 <button key={s} onClick={() => updateStatus(s)} disabled={saving || ticket.status === s}
                   className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${
                     ticket.status === s
-                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      ? 'bg-acento-tenue text-acento-texto font-medium'
                       : 'text-slate-500 hover:bg-slate-50 disabled:opacity-40'
                   }`}>
                   {STATUS_LABELS[s]}
@@ -89,7 +89,7 @@ export default function TicketDetailPage() {
           <div className="mt-4 pt-4 border-t border-slate-100">
             <p className="text-xs text-slate-500 font-medium mb-1.5">Asignado a</p>
             <input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="Email del agente"
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
           </div>
         </Card>
 
@@ -101,7 +101,7 @@ export default function TicketDetailPage() {
             {ticket.user_name && (
               <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
                 <span className="text-xs text-slate-400">Usuario:</span>
-                <Link to={`/users/${ticket.user_id}`} className="text-xs text-blue-600 hover:underline">
+                <Link to={`/users/${ticket.user_id}`} className="text-xs text-acento-texto hover:underline">
                   {ticket.user_name} ({ticket.user_email})
                 </Link>
               </div>
@@ -134,10 +134,10 @@ export default function TicketDetailPage() {
             <div className="border-t border-slate-100 pt-4">
               <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)}
                 placeholder="Añadir nota o comentario…"
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none" />
               <div className="flex justify-end mt-2">
                 <button onClick={addNote} disabled={saving || !note.trim()}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                  className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
                   {saving ? 'Guardando…' : 'Añadir nota'}
                 </button>
               </div>

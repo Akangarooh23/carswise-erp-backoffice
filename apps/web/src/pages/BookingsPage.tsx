@@ -103,7 +103,7 @@ export default function BookingsPage() {
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Hoy', value: todayCount, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+          { label: 'Hoy', value: todayCount, color: 'text-acento-texto', bg: 'bg-acento-tenue', border: 'border-acento-tenue' },
           { label: 'Esta semana', value: weekCount, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
           { label: range === 'all' ? 'Total' : 'Período', value: bookings.length, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-100' },
         ].map((s) => (
@@ -131,7 +131,7 @@ export default function BookingsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar comprador, vehículo…"
-          className="flex-1 min-w-[200px] px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-[200px] px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
         />
         <button
           onClick={load}
@@ -166,7 +166,7 @@ export default function BookingsPage() {
               <div className="flex items-center gap-3 mb-3">
                 <div
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                    isToday(day) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                    isToday(day) ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
                   }`}
                 >
                   {isToday(day) ? '● HOY' : fmtDate(day + 'T12:00:00')}
@@ -191,7 +191,7 @@ export default function BookingsPage() {
                     >
                       {/* Left accent bar */}
                       <div className="flex">
-                        <div className={`w-1 shrink-0 ${isProf ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                        <div className={`w-1 shrink-0 ${isProf ? 'bg-acento-tenue0' : 'bg-slate-300'}`} />
                         <div className="flex-1">
                           {/* Main row */}
                           <div className="flex items-center gap-4 px-4 py-3">
@@ -223,7 +223,7 @@ export default function BookingsPage() {
                             {/* Type badge */}
                             <div className="shrink-0 flex items-center gap-2">
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                                isProf ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                isProf ? 'bg-acento-tenue text-acento-texto' : 'bg-slate-100 text-slate-600'
                               }`}>
                                 {isProf ? 'PopCar' : 'Particular'}
                               </span>
@@ -269,7 +269,7 @@ export default function BookingsPage() {
                                 <a
                                   href={`mailto:${b.buyer_email}?subject=Tu visita al ${b.vehicle_title || 'vehículo'}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                                  className="px-3 py-1.5 text-xs font-bold text-acento-texto bg-acento-tenue border border-acento rounded-lg hover:bg-acento-tenue transition-colors"
                                 >
                                   ✉ Contactar
                                 </a>

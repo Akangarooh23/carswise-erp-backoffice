@@ -62,7 +62,7 @@ const FUNNEL_EVENT_LABELS: Record<string, string> = {
 };
 const FUNNEL_EVENT_COLORS: Record<string, string> = {
   landing:          'bg-slate-100 text-slate-500',
-  marketplace_view: 'bg-blue-50 text-blue-700',
+  marketplace_view: 'bg-acento-tenue text-acento-texto',
   offer_view:       'bg-violet-50 text-violet-700',
   register:         'bg-emerald-50 text-emerald-700',
   lead_request:     'bg-amber-50 text-amber-700',
@@ -178,16 +178,16 @@ export default function UserDetailPage() {
               <h3 className="font-semibold text-slate-800 text-sm">Perfil</h3>
               {user.client_type === 'business'
                 ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Empresa</span>
-                : <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">Particular</span>
+                : <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-acento-tenue text-acento-texto border border-acento-tenue">Particular</span>
               }
             </div>
             {!editMode ? (
-              <button onClick={startEdit} className="text-xs text-blue-600 hover:underline">Editar</button>
+              <button onClick={startEdit} className="text-xs text-acento-texto hover:underline">Editar</button>
             ) : (
               <div className="flex gap-2">
                 <button onClick={() => setEditMode(false)} className="text-xs text-slate-500 hover:underline">Cancelar</button>
                 <button onClick={saveProfile} disabled={savingProfile}
-                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                  className="text-xs bg-brand-600 text-white px-3 py-1 rounded-lg hover:bg-brand-700 disabled:opacity-60">
                   {savingProfile ? 'Guardando…' : 'Guardar'}
                 </button>
               </div>
@@ -213,7 +213,7 @@ export default function UserDetailPage() {
                 <div key={label} className="flex items-center justify-between gap-3">
                   <span className="text-slate-500 w-24 shrink-0">{label}</span>
                   <input value={val} onChange={e => set(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
                 </div>
               ))}
               <div className="flex items-center justify-between gap-3">
@@ -240,25 +240,25 @@ export default function UserDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500 w-28 shrink-0">NIF / CIF</span>
                 <input value={editTaxId} onChange={e => setEditTaxId(e.target.value)}
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-start justify-between gap-3">
                 <span className="text-slate-500 w-28 shrink-0 pt-1">Dirección</span>
                 <input value={editStreet} onChange={e => setEditStreet(e.target.value)}
                   placeholder="Calle, número, piso"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500 w-28 shrink-0">Código postal</span>
                 <input value={editPostal} onChange={e => setEditPostal(e.target.value)}
                   placeholder="28001"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500 w-28 shrink-0">Provincia</span>
                 <input value={editProvince} onChange={e => setEditProvince(e.target.value)}
                   placeholder="Madrid"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
             </div>
           )}
@@ -303,7 +303,7 @@ export default function UserDetailPage() {
                     onClick={() => updatePlan(p)}
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
                       user.plan_type === p
-                        ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium'
+                        ? 'bg-acento-tenue border-acento text-acento-texto font-medium'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-500'
                     }`}>
                     {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -348,7 +348,7 @@ export default function UserDetailPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Solicitudes <span className="text-slate-400 font-normal">({(user.leads ?? []).length})</span>
           </h3>
-          <Link to={`/leads?q=${encodeURIComponent(user.email)}`} className="text-blue-600 text-xs">Ver en leads →</Link>
+          <Link to={`/leads?q=${encodeURIComponent(user.email)}`} className="text-acento-texto text-xs">Ver en leads →</Link>
         </div>
         {(user.leads ?? []).length === 0 ? (
           <p className="text-slate-400 text-sm text-center py-8">Sin solicitudes</p>
@@ -361,7 +361,7 @@ export default function UserDetailPage() {
                   <td className="text-xs capitalize text-slate-600">{l.lead_type === 'visit' ? 'Visita' : l.lead_type === 'info' ? 'Info' : 'Pregunta'}</td>
                   <td className="text-sm text-slate-700 max-w-[200px] truncate">
                     {l.vehicle_url
-                      ? <a href={l.vehicle_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{l.vehicle_title || '–'}</a>
+                      ? <a href={l.vehicle_url} target="_blank" rel="noreferrer" className="text-acento-texto hover:underline">{l.vehicle_title || '–'}</a>
                       : (l.vehicle_title || '–')}
                   </td>
                   <td className="text-xs text-slate-500">
@@ -384,7 +384,7 @@ export default function UserDetailPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Tickets <span className="text-slate-400 font-normal">({user.tickets.length})</span>
           </h3>
-          <Link to={`/tickets?user=${id}`} className="text-blue-600 text-xs">Ver en tickets →</Link>
+          <Link to={`/tickets?user=${id}`} className="text-acento-texto text-xs">Ver en tickets →</Link>
         </div>
         {user.tickets.length === 0 ? (
           <p className="text-slate-400 text-sm text-center py-8">Sin tickets</p>
@@ -395,7 +395,7 @@ export default function UserDetailPage() {
               {user.tickets.map((t) => (
                 <tr key={t.id}>
                   <td>
-                    <Link to={`/tickets/${t.id}`} className="text-blue-600 hover:underline text-sm font-medium">
+                    <Link to={`/tickets/${t.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                       {t.title}
                     </Link>
                   </td>
@@ -416,7 +416,7 @@ export default function UserDetailPage() {
           <h3 className="font-semibold text-slate-800 text-sm">
             Actividad marketing <span className="text-slate-400 font-normal">({(user.funnelEvents ?? []).length})</span>
           </h3>
-          <Link to={`/funnel`} className="text-blue-600 text-xs">Ver funnel →</Link>
+          <Link to={`/funnel`} className="text-acento-texto text-xs">Ver funnel →</Link>
         </div>
         {(user.funnelEvents ?? []).length === 0 ? (
           <p className="text-slate-400 text-sm text-center py-8">Sin actividad registrada</p>

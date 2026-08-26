@@ -202,7 +202,7 @@ export default function ConsentimientosPage() {
               onClick={() => handleFilter(key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 filter === key
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-brand-600 text-white border-brand-600'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -243,7 +243,7 @@ export default function ConsentimientosPage() {
                       <td>
                         <Link
                           to={`/users/${r.id}`}
-                          className="text-blue-600 hover:underline font-medium text-sm"
+                          className="text-acento-texto hover:underline font-medium text-sm"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {[r.name, r.apellidos].filter(Boolean).join(' ') || r.email}

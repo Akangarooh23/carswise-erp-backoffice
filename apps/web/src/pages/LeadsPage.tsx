@@ -100,7 +100,7 @@ const EVENT_LABELS: Record<string, string> = {
 };
 const EVENT_COLORS: Record<string, string> = {
   landing:          'bg-slate-100 text-slate-600',
-  marketplace_view: 'bg-blue-50 text-blue-700',
+  marketplace_view: 'bg-acento-tenue text-acento-texto',
   offer_view:       'bg-violet-50 text-violet-700',
   register:         'bg-emerald-50 text-emerald-700',
   lead_request:     'bg-amber-50 text-amber-700',
@@ -113,14 +113,14 @@ const TYPE_LABELS: Record<string, string> = {
   renting:  '🔑 Oferta de renting',
 };
 const TYPE_COLORS: Record<string, string> = {
-  info:     'bg-blue-100 text-blue-700',
+  info:     'bg-acento-tenue text-acento-texto',
   visit:    'bg-emerald-100 text-emerald-700',
   question: 'bg-violet-100 text-violet-700',
   renting:  'bg-emerald-100 text-emerald-800',
 };
 const STATUS_COLORS: Record<string, string> = {
   Pendiente:              'bg-amber-100 text-amber-700',
-  Contactado:             'bg-blue-100 text-blue-700',
+  Contactado:             'bg-acento-tenue text-acento-texto',
   'En proceso':           'bg-violet-100 text-violet-700',
   'Cita confirmada':      'bg-green-100 text-green-700',
   'Visita realizada':     'bg-teal-100 text-teal-700',
@@ -172,14 +172,14 @@ const REPLY_TEMPLATES = [
 function getModalidad(portal: string | undefined): { label: string; color: string } | null {
   if (!portal || !portal.startsWith('marketplace-vo')) return null;
   if (portal === 'marketplace-vo-renting') return { label: 'Renting', color: 'bg-emerald-100 text-emerald-700' };
-  return { label: 'Compra', color: 'bg-blue-100 text-blue-700' };
+  return { label: 'Compra', color: 'bg-acento-tenue text-acento-texto' };
 }
 
 function formatOrigen(portal: string | undefined): { label: string; color: string } {
   if (!portal) return { label: '–', color: 'bg-slate-100 text-slate-500' };
-  if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-blue-100 text-blue-700' };
+  if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-acento-tenue text-acento-texto' };
   if (portal === 'marketplace-vo-renting') return { label: 'Marketplace · Renting', color: 'bg-emerald-100 text-emerald-700' };
-  if (portal.startsWith('marketplace-vo')) return { label: 'Marketplace VO',        color: 'bg-blue-50 text-blue-600' };
+  if (portal.startsWith('marketplace-vo')) return { label: 'Marketplace VO',        color: 'bg-acento-tenue text-acento-texto' };
   const name = portal.charAt(0).toUpperCase() + portal.slice(1);
   return { label: `Portal: ${name}`, color: 'bg-violet-100 text-violet-700' };
 }
@@ -586,7 +586,7 @@ export default function LeadsPage() {
               {[
                 { label: 'Total',        value: leadStats.total,     color: 'bg-slate-50 border-slate-200' },
                 { label: 'Pendientes',   value: leadStats.pending,   color: 'bg-amber-50 border-amber-200' },
-                { label: 'Esta semana',  value: leadStats.new_7d,    color: 'bg-blue-50 border-blue-200' },
+                { label: 'Esta semana',  value: leadStats.new_7d,    color: 'bg-acento-tenue border-acento' },
                 { label: 'Contactados',  value: leadStats.contacted, color: 'bg-sky-50 border-sky-200' },
                 { label: 'Resueltos',    value: leadStats.resolved,  color: 'bg-green-50 border-green-200' },
               ].map((s) => (
@@ -841,7 +841,7 @@ export default function LeadsPage() {
           </div>
 
           {/* Explanation banner */}
-          <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
+          <div className="mb-5 bg-acento-tenue border border-acento rounded-xl px-4 py-3 text-xs text-acento-texto leading-relaxed">
             {callType === 'registered_no_lead' ? (
               <><strong>¿Qué es esto?</strong> Usuarios que crearon una cuenta pero nunca hicieron ninguna solicitud.
               Son leads cálidos: ya confiaron lo suficiente para registrarse.
@@ -929,7 +929,7 @@ export default function LeadsPage() {
                           className={`${isResolved ? 'opacity-50' : ''} hover:bg-slate-50 transition-colors cursor-pointer`}>
                           <td className="px-4 py-3">
                             {item.user_email ? (
-                              <span className="text-blue-700 font-medium text-xs">{item.user_email}</span>
+                              <span className="text-acento-texto font-medium text-xs">{item.user_email}</span>
                             ) : (
                               <span className="text-slate-400 font-mono text-xs">{item.anon_id.slice(0, 20)}…</span>
                             )}
@@ -1156,8 +1156,8 @@ export default function LeadsPage() {
             </div>
 
             {selected.appointment_type === 'visit' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-blue-700">📅 Datos de la cita</p>
+              <div className="bg-acento-tenue border border-acento rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-acento-texto">📅 Datos de la cita</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">Fecha</label>

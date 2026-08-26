@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
           <div className="text-4xl">⚠️</div>
           <p className="text-slate-700 font-semibold">Enlace inválido</p>
           <p className="text-slate-500 text-sm">El enlace de recuperación no es válido.</p>
-          <Link to="/forgot-password" className="block text-sm text-blue-600 hover:underline">
+          <Link to="/forgot-password" className="block text-sm text-acento-texto hover:underline">
             Solicitar un nuevo enlace
           </Link>
         </div>
@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white text-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
             🔑
           </div>
           <h1 className="text-white text-xl font-bold">Nueva contraseña</h1>
@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
               <p className="text-slate-500 text-sm">
                 Tu contraseña ha sido cambiada correctamente. Redirigiendo al inicio de sesión…
               </p>
-              <Link to="/login" className="block text-sm text-blue-600 hover:underline">
+              <Link to="/login" className="block text-sm text-acento-texto hover:underline">
                 Ir al inicio de sesión ahora
               </Link>
             </div>
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
                 />
               </div>
               <div>
@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Repite la contraseña"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
                 />
               </div>
 
@@ -125,7 +125,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors"
+                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 {loading ? 'Guardando…' : 'Establecer nueva contraseña'}
               </button>

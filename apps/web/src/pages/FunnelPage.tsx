@@ -95,12 +95,12 @@ const PAGE_SECTION_LABELS: Record<string, string> = {
 };
 const EVENT_COLORS: Record<string, string> = {
   landing: 'bg-slate-100 text-slate-600', page_view: 'bg-sky-50 text-sky-700',
-  marketplace_view: 'bg-blue-50 text-blue-700',
+  marketplace_view: 'bg-acento-tenue text-acento-texto',
   offer_view: 'bg-violet-50 text-violet-700', register: 'bg-emerald-50 text-emerald-700',
   lead_request: 'bg-amber-50 text-amber-700', identify: 'bg-slate-50 text-slate-500',
   login: 'bg-teal-50 text-teal-700',
 };
-const FUNNEL_COLORS = ['bg-slate-400', 'bg-blue-400', 'bg-violet-400', 'bg-emerald-400', 'bg-amber-400'];
+const FUNNEL_COLORS = ['bg-slate-400', 'bg-acento-oscuro', 'bg-violet-400', 'bg-emerald-400', 'bg-amber-400'];
 const DATE_SHORTCUTS = [{ label: 'Hoy', daysAgo: 0 }, { label: 'Ayer', daysAgo: 1 }, { label: 'Anteayer', daysAgo: 2 }];
 const DAYS_OPTIONS = [7, 14, 30, 60, 90];
 const DAYS_LABELS: Record<number, string> = { 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
@@ -277,7 +277,7 @@ function DrillSessions({ url }: { url: string }) {
               <tr key={s.anon_id}>
                 <td className="text-xs max-w-[180px] truncate">
                   {s.user_email
-                    ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                    ? <span className="text-acento-texto font-medium">{s.user_email}</span>
                     : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
                 </td>
                 <td>
@@ -943,7 +943,7 @@ export default function FunnelPage() {
                               <td className="text-sm font-medium">
                                 <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>
                                 {row.offer_url
-                                  ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="truncate max-w-xs text-blue-600 hover:text-blue-800 hover:underline">{row.offer_title || row.offer_id}</a>
+                                  ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="truncate max-w-xs text-acento-texto hover:text-acento-texto hover:underline">{row.offer_title || row.offer_id}</a>
                                   : <span className="truncate max-w-xs">{row.offer_title || row.offer_id}</span>}
                               </td>
                               <td className="text-right text-sm text-slate-600">{row.views}</td>
@@ -1017,7 +1017,7 @@ export default function FunnelPage() {
                           <td className="text-xs max-w-[160px] truncate">
                             <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
                             {s.user_email
-                              ? <span className="text-blue-600 font-medium">{s.user_email}</span>
+                              ? <span className="text-acento-texto font-medium">{s.user_email}</span>
                               : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
                           </td>
                           <td>
@@ -1034,7 +1034,7 @@ export default function FunnelPage() {
                           <td className="text-center">{s.did_register ? <span className="text-emerald-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
                           <td className="text-center">{s.did_lead ? <span className="text-amber-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
                           <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
-                          <td><button onClick={(e) => { e.stopPropagation(); goToEventsForSession(s.anon_id); }} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Ver eventos →</button></td>
+                          <td><button onClick={(e) => { e.stopPropagation(); goToEventsForSession(s.anon_id); }} className="text-xs text-acento-texto hover:underline whitespace-nowrap">Ver eventos →</button></td>
                         </tr>
                         {open && (
                           <tr key={`${s.anon_id}-d`}>
@@ -1205,9 +1205,9 @@ export default function FunnelPage() {
                 Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
               </h3>
               {filterAnonId && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-acento-tenue text-acento-texto border border-acento">
                   Sesión: <span className="font-mono">{filterAnonId.slice(0, 14)}…</span>
-                  <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-blue-900 ml-0.5">×</button>
+                  <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-acento-texto ml-0.5">×</button>
                 </span>
               )}
             </div>
@@ -1250,7 +1250,7 @@ export default function FunnelPage() {
                           </td>
                           <td className="text-xs text-slate-600 max-w-[160px] truncate">
                             {e.user_email || (
-                              <button onClick={(ev) => { ev.stopPropagation(); setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-slate-400 font-mono hover:text-blue-600 hover:underline">
+                              <button onClick={(ev) => { ev.stopPropagation(); setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-slate-400 font-mono hover:text-brand-600 hover:underline">
                                 {e.anon_id.slice(0, 18)}…
                               </button>
                             )}
@@ -1260,7 +1260,7 @@ export default function FunnelPage() {
                           <td className="text-xs text-slate-500 max-w-[160px] truncate">
                             {e.offer_title
                               ? e.offer_id
-                                ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-blue-600 hover:text-blue-800 hover:underline">{e.offer_title}</a>
+                                ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
                                 : e.offer_title
                               : <span className="text-slate-300">–</span>}
                           </td>
@@ -1279,7 +1279,7 @@ export default function FunnelPage() {
                                 { label: 'Sección',       value: e.section || '–' },
                                 { label: 'Oferta',        value: e.offer_title || '–' },
                                 { label: 'ID oferta',     value: e.offer_id ? <span className="font-mono text-[10px]">{e.offer_id}</span> : '–' },
-                                { label: 'Landing URL',   value: e.landing_url ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-blue-600 hover:underline break-all">{e.landing_url}</a> : '–' },
+                                { label: 'Landing URL',   value: e.landing_url ? <a href={e.landing_url} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:underline break-all">{e.landing_url}</a> : '–' },
                                 { label: 'Fecha',         value: fmtDate(e.created_at) },
                               ]} />
                             </td>

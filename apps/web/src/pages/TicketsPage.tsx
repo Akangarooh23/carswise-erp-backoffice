@@ -59,7 +59,7 @@ export default function TicketsPage() {
         subtitle={`${total.toLocaleString('es-ES')} tickets`}
         actions={
           <button onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors">
             + Nuevo ticket
           </button>
         }
@@ -68,14 +68,14 @@ export default function TicketsPage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar título, usuario…" className="w-72" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           <option value="">Todos los estados</option>
           {['open','in_progress','waiting_customer','resolved','closed'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
           ))}
         </select>
         <select value={priority} onChange={(e) => setPriority(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           <option value="">Todas las prioridades</option>
           {['urgent','high','medium','low'].map((p) => (
             <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
@@ -98,7 +98,7 @@ export default function TicketsPage() {
                 {tickets.map((t) => (
                   <tr key={t.id}>
                     <td>
-                      <Link to={`/tickets/${t.id}`} className="text-blue-600 hover:underline text-sm font-medium">
+                      <Link to={`/tickets/${t.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                         {t.title}
                       </Link>
                       {t.assigned_to && <p className="text-xs text-slate-400 mt-0.5">→ {t.assigned_to}</p>}
@@ -112,7 +112,7 @@ export default function TicketsPage() {
                     <td><StatusBadge status={t.status} /></td>
                     <td className="text-xs text-slate-400">{fmtDate(t.created_at)}</td>
                     <td>
-                      <Link to={`/tickets/${t.id}`} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                      <Link to={`/tickets/${t.id}`} className="text-xs text-acento-texto hover:text-brand-600 font-medium">
                         Abrir →
                       </Link>
                     </td>
@@ -131,30 +131,30 @@ export default function TicketsPage() {
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">ID de usuario *</label>
             <input value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} placeholder="UUID o email del usuario"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Título *</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Descripción *</label>
             <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Canal</label>
               <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento">
                 {['web','phone','email','whatsapp'].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Prioridad</label>
               <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento">
                 {['low','medium','high','urgent'].map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
@@ -165,7 +165,7 @@ export default function TicketsPage() {
               Cancelar
             </button>
             <button onClick={createTicket} disabled={creating}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+              className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
               {creating ? 'Creando…' : 'Crear ticket'}
             </button>
           </div>

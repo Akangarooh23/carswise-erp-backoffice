@@ -39,19 +39,19 @@ function fmtEur(n: number | null) {
 }
 
 const TYPE_BADGE: Record<string, string> = {
-  suscripcion: 'bg-blue-50 text-blue-700',
+  suscripcion: 'bg-acento-tenue text-acento-texto',
   venta:       'bg-emerald-50 text-emerald-700',
   renting:     'bg-violet-50 text-violet-700',
   tasacion:    'bg-amber-50 text-amber-700',
 };
 const TYPE_LABEL: Record<string, string> = {
-  suscripcion: 'Suscripción', venta: 'Venta', renting: 'Renting', tasacion: 'Tasación',
+  suscripcion: 'Suscripción', venta: 'Venta', renting: 'Renting', tasacion: 'Informe de mercado',
 };
 const STATUS_BADGE: Record<string, string> = {
   Pagada:     'bg-emerald-100 text-emerald-700',
   Pendiente:  'bg-yellow-100 text-yellow-700',
   Completada: 'bg-emerald-100 text-emerald-700',
-  active:     'bg-blue-100 text-blue-700',
+  active:     'bg-acento-tenue text-acento-texto',
   completed:  'bg-slate-100 text-slate-500',
   cancelled:  'bg-red-100 text-red-600',
 };
@@ -61,7 +61,7 @@ type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = {
   all:         'Todo',
   suscripcion: 'Suscripciones',
-  tasacion:    'Tasaciones',
+  tasacion:    'Informes de mercado',
   venta:       'Ventas vehículos',
   renting:     'Contratos renting',
   free:        'Usuarios free',
@@ -186,7 +186,7 @@ export default function BillingPage() {
                     {freeUsers.map((u) => (
                       <tr key={u.id}>
                         <td>
-                          <Link to={`/users/${u.id}`} className="text-blue-600 hover:underline text-sm font-medium">
+                          <Link to={`/users/${u.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                             {u.name} {u.apellidos || ''}
                           </Link>
                           <p className="text-xs text-slate-400">{u.email}</p>
@@ -269,7 +269,7 @@ export default function BillingPage() {
                                     catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                     setDownloadingId(null);
                                   }}
-                                  className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                                  className="text-xs text-acento-texto hover:underline disabled:opacity-50 whitespace-nowrap">
                                   {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Descargar'}
                                 </button>
                                 {/* Enviar y descargar */}
@@ -307,7 +307,7 @@ export default function BillingPage() {
                                 catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
                                 setDownloadingId(null);
                               }}
-                              className="text-xs text-blue-600 hover:underline disabled:opacity-50 whitespace-nowrap">
+                              className="text-xs text-acento-texto hover:underline disabled:opacity-50 whitespace-nowrap">
                               {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar'}
                             </button>
                           ) : inv.type === 'tasacion' ? (
@@ -317,7 +317,7 @@ export default function BillingPage() {
                                   href={inv.pdf_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                                  className="text-xs text-acento-texto hover:underline whitespace-nowrap">
                                   ↓ {inv.id.slice(-6).toUpperCase()}
                                 </a>
                                 {inv.cw_sent_at && (

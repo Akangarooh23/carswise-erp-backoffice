@@ -54,7 +54,7 @@ type TypeFilter = typeof TYPE_FILTER[number];
 
 const STATUS_BADGE: Record<string, string> = {
   completada:  'bg-emerald-100 text-emerald-700',
-  active:      'bg-blue-100 text-blue-700',
+  active:      'bg-acento-tenue text-acento-texto',
   completed:   'bg-slate-100 text-slate-600',
   cancelled:   'bg-red-100 text-red-600',
 };
@@ -115,8 +115,8 @@ export default function ContractsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {[
             { label: 'Compras totales',      value: stats.total_compras,         color: 'text-emerald-700' },
-            { label: 'Contratos renting',    value: stats.total_rentings,        color: 'text-blue-700' },
-            { label: 'Rentings activos',     value: stats.rentings_activos,      color: 'text-blue-600' },
+            { label: 'Contratos renting',    value: stats.total_rentings,        color: 'text-acento-texto' },
+            { label: 'Rentings activos',     value: stats.rentings_activos,      color: 'text-acento-texto' },
             { label: 'Rentings finalizados', value: stats.rentings_completados,  color: 'text-slate-500' },
             { label: 'MRR renting',          value: fmtEur(stats.mrr),          color: 'text-violet-700', isStr: true },
           ].map(({ label, value, color, isStr }) => (
@@ -184,7 +184,7 @@ export default function ContractsPage() {
                       <td className="text-sm text-slate-700 max-w-[180px] truncate">{c.vehicle_title || '–'}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          c.type === 'compra' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+                          c.type === 'compra' ? 'bg-emerald-50 text-emerald-700' : 'bg-acento-tenue text-acento-texto'
                         }`}>
                           {c.type === 'compra' ? 'Compra' : 'Renting'}
                         </span>

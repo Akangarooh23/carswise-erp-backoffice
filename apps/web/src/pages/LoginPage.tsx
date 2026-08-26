@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white text-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
             🚗
           </div>
           <h1 className="text-white text-xl font-bold"><span className="text-acento">Pop</span>Car ERP</h1>
@@ -58,7 +58,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@carswise.es"
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
             />
           </div>
           <div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
             />
           </div>
 
@@ -81,13 +81,13 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             {loading ? 'Entrando…' : 'Iniciar sesión'}
           </button>
 
           <div className="text-center">
-            <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-blue-600 transition-colors">
+            <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-brand-600 transition-colors">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>

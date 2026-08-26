@@ -54,7 +54,7 @@ const EMPTY_RENTING_FORM: Partial<VoOffer> = {
   carswise_fee: 400,
 };
 
-const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento';
 const LABEL_CLS = 'block text-xs font-medium text-slate-600 mb-1';
 const FUELS = ['Gasolina','Diésel','Híbrido','Híbrido enchufable','Eléctrico','GLP','Gas Natural','Otros'];
 
@@ -341,7 +341,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
         {(form.image_urls?.length ?? 0) < 10 && (
           <button type="button"
             onClick={() => setForm((f) => ({ ...f, image_urls: [...(f.image_urls ?? ['']), ''] }))}
-            className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+            className="text-xs text-acento-texto hover:text-brand-600 font-medium">
             + Añadir foto
           </button>
         )}
@@ -392,7 +392,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                     <tr>
                       <th className="text-left p-1.5 text-slate-500 font-medium">Plazo</th>
                       {RENTING_KM_OPTIONS.map(km => (
-                        <th key={km} className={`text-center p-1.5 font-medium whitespace-nowrap ${km === 15000 ? 'text-blue-600' : 'text-slate-500'}`}>
+                        <th key={km} className={`text-center p-1.5 font-medium whitespace-nowrap ${km === 15000 ? 'text-acento-texto' : 'text-slate-500'}`}>
                           {(km / 1000).toFixed(0)}.000 km
                         </th>
                       ))}
@@ -408,10 +408,10 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                           {RENTING_KM_OPTIONS.map((km, ki) => {
                             const isStd = km === 15000;
                             return (
-                              <td key={km} className={`p-1 ${isStd ? 'bg-blue-50' : ''}`}>
+                              <td key={km} className={`p-1 ${isStd ? 'bg-acento-tenue' : ''}`}>
                                 <input
                                   type="number"
-                                  className={`w-full px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${isStd ? 'border-blue-300 font-semibold' : 'border-slate-200'}`}
+                                  className={`w-full px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-1 focus:ring-acento ${isStd ? 'border-acento font-semibold' : 'border-slate-200'}`}
                                   value={row[ki] ?? ''}
                                   onChange={(e) => {
                                     const val = e.target.value === '' ? null : Number(e.target.value);
@@ -504,7 +504,7 @@ function VisitsPanel({
               <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Fecha</label>
               <input type="date" min={todayStr()} value={slotForm.date}
                 onChange={(e) => onFormChange({ ...slotForm, date: e.target.value })}
-                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-acento" />
             </div>
             <div>
               <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Desde</label>
@@ -531,10 +531,10 @@ function VisitsPanel({
           <div className="space-y-1">
             {data.slots.length === 0 && <p className="text-xs text-slate-400">Sin franjas configuradas.</p>}
             {data.slots.map((s: any) => (
-              <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-slate-100'}`}>
+              <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-acento-tenue border border-acento-tenue' : 'bg-white border border-slate-100'}`}>
                 <span className="text-[10px]">{s.status === 'booked' ? '🔵' : '🟢'}</span>
                 <span className="flex-1 font-medium text-slate-700">{fmtVDate(s.starts_at)} · {fmtVTime(s.starts_at)}–{fmtVTime(s.ends_at)}</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${s.status === 'booked' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${s.status === 'booked' ? 'bg-acento-tenue text-acento-texto' : 'bg-emerald-100 text-emerald-700'}`}>
                   {s.status === 'booked' ? 'Reservada' : 'Libre'}
                 </span>
                 {s.status === 'available' && (
@@ -1467,7 +1467,7 @@ export default function MarketplacePage() {
               📤 Exportar Excel
             </button>
             <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_FORM); }}
-              className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              className="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700">
               + Añadir vehículo
             </button>
           </div>
@@ -1493,7 +1493,7 @@ export default function MarketplacePage() {
               {verifyRunning ? 'Lanzando…' : '🔄 Verificar todas'}
             </button>
             <button onClick={descargarInforme} disabled={reportLoading}
-              className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+              className="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
               {reportLoading ? 'Generando…' : '📄 Descargar informe PDF'}
             </button>
           </div>
@@ -1518,12 +1518,12 @@ export default function MarketplacePage() {
         {(tab === 'vo' || tab === 'renting') && (
           <>
             <select value={brand} onChange={(e) => setBrand(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Todas las marcas</option>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
             <select value={statusFilter} onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               {STATUS_FILTERS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </>
@@ -1531,7 +1531,7 @@ export default function MarketplacePage() {
         {tab === 'offers' && (
           <>
             <select value={portalFilter} onChange={(e) => setPortalFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Todos los portales</option>
               <option value="autoscout24">AutoScout24</option>
               <option value="autocasion">Autocasión</option>
@@ -1543,7 +1543,7 @@ export default function MarketplacePage() {
               <option value="wallapop">Wallapop</option>
             </select>
             <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Particulares y profesionales</option>
               <option value="particular">Solo particulares</option>
               <option value="profesional">Solo profesionales</option>
@@ -1563,10 +1563,10 @@ export default function MarketplacePage() {
             <>
               {/* Active column filters summary */}
               {Object.values(colF).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-blue-50">
-                  <span className="text-xs text-blue-600 font-medium">{displayItems.length} de {items.length} resultados</span>
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-acento-tenue">
+                  <span className="text-xs text-acento-texto font-medium">{displayItems.length} de {items.length} resultados</span>
                   <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMin:'', priceMax:'', salePriceMin:'', salePriceMax:'', estado:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
-                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros de columna</button>
+                    className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros de columna</button>
                 </div>
               )}
               <div className="overflow-auto max-h-[72vh]">
@@ -1603,7 +1603,7 @@ export default function MarketplacePage() {
                         className="cursor-pointer select-none whitespace-nowrap group">
                         <span className="flex items-center gap-1">
                           {label}
-                          <span className={`text-xs transition-colors ${sortCol === key ? 'text-blue-500' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                          <span className={`text-xs transition-colors ${sortCol === key ? 'text-acento-texto' : 'text-slate-300 group-hover:text-slate-400'}`}>
                             {sortCol === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
                           </span>
                         </span>
@@ -1755,7 +1755,7 @@ export default function MarketplacePage() {
                   {displayItems.map((item) => (
                     <>
                     <tr key={item.id} onClick={() => openEdit(item)}
-                      className={`cursor-pointer hover:bg-blue-50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50' : ''}`}>
+                      className={`cursor-pointer hover:bg-acento-tenue transition-colors ${selectedIds.has(item.id) ? 'bg-acento-tenue' : ''}`}>
                       <td className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox"
                           checked={selectedIds.has(item.id)}
@@ -1842,7 +1842,7 @@ export default function MarketplacePage() {
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1 items-center">
                           <button onClick={() => openEdit(item)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
+                            className="text-xs text-acento-texto hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-acento-tenue">
                             Editar
                           </button>
                           <button
@@ -1984,7 +1984,7 @@ export default function MarketplacePage() {
                 <tbody>
                   {displayRentingItems.map((item) => (
                     <tr key={item.id} onClick={() => openEdit(item)}
-                      className="cursor-pointer hover:bg-blue-50 transition-colors">
+                      className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
@@ -2016,7 +2016,7 @@ export default function MarketplacePage() {
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1 items-center">
                           <button onClick={() => openEdit(item)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
+                            className="text-xs text-acento-texto hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-acento-tenue">
                             Editar
                           </button>
                           <button onClick={() => toggleActive(item)}
@@ -2121,7 +2121,7 @@ export default function MarketplacePage() {
                   {displayPartItems.map((item) => (
                     <>
                     <tr key={item.id} onClick={() => openPartEdit(item)}
-                      className="cursor-pointer hover:bg-blue-50 transition-colors">
+                      className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <p className="font-medium text-slate-800 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
                         {item.year ? <p className="text-xs text-slate-400">{item.year}{item.fuel ? ` · ${item.fuel}` : ''}{item.cv ? ` · ${item.cv} CV` : ''}</p> : null}
@@ -2144,7 +2144,7 @@ export default function MarketplacePage() {
                         <div className="flex gap-1.5 items-center">
                           <button
                             onClick={() => openPartEdit(item)}
-                            className="px-2 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100"
+                            className="px-2 py-1 rounded text-xs font-semibold bg-acento-tenue text-acento-texto border border-acento hover:bg-acento-tenue"
                           >
                             Editar
                           </button>
@@ -2198,10 +2198,10 @@ export default function MarketplacePage() {
           ) : (
             <>
               {Object.values(colFOffers).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
-                  <span className="text-xs text-blue-600 font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-acento-tenue">
+                  <span className="text-xs text-acento-texto font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
                   <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', estado:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'', province:'', city:'' })}
-                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
+                    className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros</button>
                 </div>
               )}
               <div className="overflow-auto max-h-[72vh]">
@@ -2383,7 +2383,7 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayPortalItems.map((item: any) => (
-                    <tr key={item.id} onClick={() => openPortalEdit(item)} className="cursor-pointer hover:bg-blue-50 transition-colors">
+                    <tr key={item.id} onClick={() => openPortalEdit(item)} className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
@@ -2453,7 +2453,7 @@ export default function MarketplacePage() {
                       <td>
                         {(item as any).url
                           ? <a href={(item as any).url} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:underline"
+                              className="text-xs text-acento-texto hover:underline"
                               onClick={e => e.stopPropagation()}>Ver ↗</a>
                           : <span className="text-slate-300">–</span>}
                       </td>
@@ -2471,10 +2471,10 @@ export default function MarketplacePage() {
           ) : (
             <>
               {Object.values(colFConc).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-blue-50">
-                  <span className="text-xs text-blue-600 font-medium">{displayConcItems.length} de {items.length} resultados</span>
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-acento-tenue">
+                  <span className="text-xs text-acento-texto font-medium">{displayConcItems.length} de {items.length} resultados</span>
                   <button onClick={() => setColFConc({ brand:'', marca:'', modelo:'', version:'', sellerType:'', seller:'', priceMax:'', kmMax:'', year:'' })}
-                    className="text-xs text-blue-500 hover:text-blue-700 underline">Limpiar filtros</button>
+                    className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros</button>
                 </div>
               )}
               <div className="overflow-auto max-h-[72vh]">
@@ -2554,7 +2554,7 @@ export default function MarketplacePage() {
                 <tbody>
                   {displayConcItems.map((item) => (
                     <tr key={item.id} onClick={() => openEdit(item)}
-                      className="cursor-pointer hover:bg-blue-50 transition-colors">
+                      className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
                           {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
@@ -2581,7 +2581,7 @@ export default function MarketplacePage() {
                       <td className="text-sm text-slate-500">{item.location || '–'}</td>
                       <td onClick={(e) => e.stopPropagation()}>
                         {item.source_url
-                          ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
+                          ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-acento-texto hover:underline">Ver</a>
                           : <span className="text-slate-300">–</span>}
                       </td>
                     </tr>
@@ -2662,7 +2662,7 @@ export default function MarketplacePage() {
                                     )}
                                     {u.status === 'available' && (
                                       <button onClick={() => changeUnitStatus(u.id, 'reserved')}
-                                        className="text-xs text-blue-600 hover:bg-blue-50 px-1.5 py-0.5 rounded">Reservar</button>
+                                        className="text-xs text-acento-texto hover:bg-acento-tenue px-1.5 py-0.5 rounded">Reservar</button>
                                     )}
                                     {u.status === 'reserved' && (
                                       <button onClick={() => changeUnitStatus(u.id, 'rented')}
@@ -2715,7 +2715,7 @@ export default function MarketplacePage() {
                 Cerrar
               </button>
               <button onClick={saveEdit} disabled={saving}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
                 {saving ? 'Guardando…' : 'Guardar cambios'}
               </button>
             </div>
@@ -2731,7 +2731,7 @@ export default function MarketplacePage() {
             Cancelar
           </button>
           <button onClick={saveCreate} disabled={creating || !createForm.title || !createForm.brand || !createForm.model}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+            className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
             {creating ? 'Creando…' : 'Crear vehículo'}
           </button>
         </div>
@@ -2819,7 +2819,7 @@ export default function MarketplacePage() {
 
             {imageUrls.length < 10 && (
               <button type="button" onClick={() => setImageUrls([...imageUrls, ''])}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                className="text-xs text-acento-texto hover:text-brand-600 font-medium">
                 + Añadir foto
               </button>
             )}
@@ -2828,7 +2828,7 @@ export default function MarketplacePage() {
                 Cancelar
               </button>
               <button onClick={saveImages} disabled={savingImages}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
                 {savingImages ? 'Guardando…' : 'Guardar imágenes'}
               </button>
             </div>
@@ -2851,7 +2851,7 @@ export default function MarketplacePage() {
               </div>
               {portalEditOffer.url && (
                 <a href={portalEditOffer.url} target="_blank" rel="noopener noreferrer"
-                  className="ml-auto text-xs text-blue-600 hover:underline shrink-0">Ver original ↗</a>
+                  className="ml-auto text-xs text-acento-texto hover:underline shrink-0">Ver original ↗</a>
               )}
             </div>
 
@@ -3069,7 +3069,7 @@ export default function MarketplacePage() {
                 ))}
                 {(portalEditForm.image_urls?.length ?? 0) < 15 && (
                   <button type="button" onClick={() => setPortalEditForm(f => ({...f, image_urls: [...(f.image_urls ?? ['']), '']}))}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Añadir foto</button>
+                    className="text-xs text-acento-texto hover:text-brand-600 font-medium">+ Añadir foto</button>
                 )}
               </div>
               {/* Estado / Tipo de listado */}
@@ -3106,7 +3106,7 @@ export default function MarketplacePage() {
                 Cerrar
               </button>
               <button onClick={savePortalEdit} disabled={savingPortal}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
                 {savingPortal ? 'Guardando…' : 'Guardar cambios'}
               </button>
             </div>
@@ -3187,7 +3187,7 @@ export default function MarketplacePage() {
             {savePartOk && <p className="text-xs text-green-600 font-medium">✓ Guardado correctamente</p>}
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button onClick={() => setParticEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cerrar</button>
-              <button onClick={savePartEdit} disabled={savingPartic} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">{savingPartic ? 'Guardando…' : 'Guardar cambios'}</button>
+              <button onClick={savePartEdit} disabled={savingPartic} className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">{savingPartic ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
           </div>
         )}
@@ -3200,7 +3200,7 @@ export default function MarketplacePage() {
             Descarga la plantilla, rellena los datos en Excel y sube el fichero .xlsx. Máximo 500 filas.
           </p>
           <button onClick={downloadTemplate}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            className="text-sm text-acento-texto hover:text-brand-600 font-medium">
             📄 Descargar plantilla Excel
           </button>
 
@@ -3261,7 +3261,7 @@ export default function MarketplacePage() {
               Cerrar
             </button>
             <button onClick={doImport} disabled={importing || importRows.length === 0}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+              className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">
               {importing ? 'Importando…' : `Importar ${importRows.length} vehículos`}
             </button>
           </div>

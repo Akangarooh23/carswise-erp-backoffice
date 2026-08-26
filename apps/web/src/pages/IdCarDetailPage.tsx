@@ -343,13 +343,13 @@ export default function IdCarDetailPage() {
             <h3 className="font-semibold text-slate-800 text-sm">Datos del Vehículo</h3>
             {!editing ? (
               <button type="button" onClick={startEditing}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                className="text-xs text-acento-texto hover:text-acento-texto font-medium">Editar</button>
             ) : (
               <div className="flex gap-2">
                 <button type="button" onClick={() => { setEditing(false); setSaveMsg(null); }}
                   className="text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
                 <button type="button" onClick={saveVehicle} disabled={saving}
-                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  className="text-xs bg-brand-600 text-white px-3 py-1 rounded-md hover:bg-brand-700 disabled:opacity-50">
                   {saving ? 'Guardando…' : 'Guardar'}
                 </button>
               </div>
@@ -409,7 +409,7 @@ export default function IdCarDetailPage() {
                     type={type}
                     value={editForm[key] ?? ''}
                     onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-acento"
                   />
                 </div>
               ))}
@@ -419,13 +419,13 @@ export default function IdCarDetailPage() {
                   rows={3}
                   value={editForm['notes'] ?? ''}
                   onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                  className="w-full border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-acento resize-none"
                 />
               </div>
             </div>
           )}
           <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">
-            Propietario: <Link to={`/users/${vehicle.user_id}`} className="text-blue-600 hover:underline">{vehicle.owner_name ?? vehicle.user_id}</Link>
+            Propietario: <Link to={`/users/${vehicle.user_id}`} className="text-acento-texto hover:underline">{vehicle.owner_name ?? vehicle.user_id}</Link>
           </div>
         </Card>
 
@@ -446,7 +446,7 @@ export default function IdCarDetailPage() {
               type="file"
               accept="image/*"
               multiple
-              className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+              className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-acento-tenue file:text-acento-texto hover:file:bg-acento-tenue cursor-pointer"
               onChange={(e) => {
                 const fs = Array.from(e.target.files ?? []);
                 const tooBig = fs.filter((f) => f.size > 10 * 1024 * 1024);
@@ -462,7 +462,7 @@ export default function IdCarDetailPage() {
                 type="button"
                 onClick={() => handleUpload('photo')}
                 disabled={!!uploadingType}
-                className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                className="px-3 py-1 text-xs font-semibold bg-brand-600 text-white rounded-md hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap"
               >
                 {uploadingType === 'photo' ? 'Subiendo…' : `↑ Subir ${pendingFiles['photo']?.length} foto${(pendingFiles['photo']?.length ?? 0) > 1 ? 's' : ''}`}
               </button>
@@ -583,7 +583,7 @@ export default function IdCarDetailPage() {
                         <span className="text-xs text-slate-400 shrink-0">{fmtDate(f.created_at)}</span>
                         {f.file_url ? (
                           <a href={f.file_url} target="_blank" rel="noreferrer"
-                            className="text-xs text-blue-600 hover:underline shrink-0">Ver →</a>
+                            className="text-xs text-acento-texto hover:underline shrink-0">Ver →</a>
                         ) : null}
                         <button
                           type="button"
@@ -618,7 +618,7 @@ export default function IdCarDetailPage() {
                       type="button"
                       onClick={() => handleUpload(key)}
                       disabled={!!uploadingType}
-                      className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                      className="px-3 py-1 text-xs font-semibold bg-brand-600 text-white rounded-md hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap"
                     >
                       {isUploading ? 'Subiendo…' : `↑ Subir ${pending.length} archivo${pending.length > 1 ? 's' : ''}`}
                     </button>
@@ -652,13 +652,13 @@ export default function IdCarDetailPage() {
               value={publishPrice}
               onChange={(e) => setPublishPrice(e.target.value)}
               placeholder="Ej: 12500"
-              className="w-40 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-40 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
             />
           </div>
           <button
             onClick={handlePublish}
             disabled={publishing}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {publishing ? 'Publicando…' : '🚀 Publicar en Marketplace'}
           </button>
