@@ -1,18 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50:  #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
+  /* ── La paleta de PopCar ─────────────────────────────────────────────
+     Negro, amarillo y blanco. Los tres oficiales; el resto, derivados.
 
-  --color-sidebar:        #0f172a;
-  --color-sidebar-hover:  #1e293b;
-  --color-sidebar-active: #1e40af;
-  --color-sidebar-border: #1e293b;
+     `brand` es el negro y no el amarillo a proposito: bg-brand-600 se usa
+     siete veces y las siete llevan texto blanco encima. Un amarillo ahi
+     dejaria siete botones ilegibles. El negro con blanco encima se lee
+     perfecto y es igual de PopCar.
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+     El amarillo va de acento, y siempre con negro encima: es la regla de
+     la marca —relleno, o sobre negro, nunca texto pequeño sobre blanco. */
+
+  --color-brand-50:  #F5F5F4;
+  --color-brand-100: #E4E4DF;
+  --color-brand-200: #C9C7C0;
+  --color-brand-300: #96968F;
+  --color-brand-400: #5E5E59;
+  --color-brand-500: #2A2A28;
+  --color-brand-600: #111111;   /* Pop Black · con texto blanco encima */
+  --color-brand-700: #050505;
+
+  --color-acento:        #FFC400;   /* Pop Yellow · relleno, negro encima */
+  --color-acento-oscuro: #E6B000;
+  --color-acento-tenue:  #FFF6D9;
+  --color-acento-texto:  #6B5200;   /* el amarillo llevado a texto legible */
+
+  /* El lateral: negro de marca. El activo, amarillo con letra negra, que es
+     el par de maximo contraste de la paleta. */
+  --color-sidebar:        #111111;
+  --color-sidebar-hover:  #262626;
+  --color-sidebar-active: #FFC400;
+  --color-sidebar-border: #2A2A28;
+
+  /* Las mismas dos fuentes que la web, para que ERP y producto se
+     reconozcan como la misma casa. */
+  --font-sans:    'Nunito Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Nunito Sans', sans-serif;
 }
 
 * { box-sizing: border-box; }

@@ -1,30 +1,31 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/auth.js';
 import type { Role } from '../../types/index.js';
+import Icono, { type NombreIcono } from '../ui/Icono.js';
 
 interface NavItem {
   to: string;
   label: string;
-  icon: string;
+  icon: NombreIcono;
   roles: Role[];
 }
 
 const NAV: NavItem[] = [
-  { to: '/dashboard',    label: 'Dashboard',    icon: '⊞',  roles: ['admin','support','operations','sales'] },
-  { to: '/users',        label: 'Usuarios',     icon: '👤', roles: ['admin','support','operations','sales'] },
-  { to: '/marketplace',  label: 'Marketplace',  icon: '🚗', roles: ['admin','support','operations','sales'] },
-  { to: '/bookings',     label: 'Agenda',       icon: '📅', roles: ['admin','support','operations','sales'] },
-  { to: '/appointments', label: 'Citas Mant.',   icon: '🛠️', roles: ['admin','support','operations','sales'] },
-  { to: '/tickets',      label: 'Tickets',      icon: '🎫', roles: ['admin','support','operations','sales'] },
-  { to: '/idcars',       label: 'IDCars',       icon: '🔑', roles: ['admin','support','operations'] },
-  { to: '/leads',        label: 'Leads',        icon: '📩', roles: ['admin','support','operations','sales'] },
-  { to: '/contracts',    label: 'Contratos',    icon: '📄', roles: ['admin','support','operations','sales'] },
-  { to: '/funnel',            label: 'Funnel',          icon: '📊', roles: ['admin','sales','operations'] },
-  { to: '/marketing-analytics', label: 'Analítica UTM',  icon: '📈', roles: ['admin','sales','operations'] },
-  { to: '/workshops',    label: 'Talleres',     icon: '🔧', roles: ['admin','operations'] },
-  { to: '/billing',          label: 'Facturación clientes',    icon: '💳', roles: ['admin','operations'] },
-  { to: '/provider-billing', label: 'Facturación proveedores', icon: '🏢', roles: ['admin','operations'] },
-  { to: '/consentimientos',  label: 'Consentimientos', icon: '📋', roles: ['admin','operations','support'] },
+  { to: '/dashboard',    label: 'Dashboard',    icon: 'panel',  roles: ['admin','support','operations','sales'] },
+  { to: '/users',        label: 'Usuarios',     icon: 'usuarios', roles: ['admin','support','operations','sales'] },
+  { to: '/marketplace',  label: 'Marketplace',  icon: 'coche', roles: ['admin','support','operations','sales'] },
+  { to: '/bookings',     label: 'Agenda',       icon: 'calendario', roles: ['admin','support','operations','sales'] },
+  { to: '/appointments', label: 'Citas Mant.',   icon: 'llave-inglesa', roles: ['admin','support','operations','sales'] },
+  { to: '/tickets',      label: 'Tickets',      icon: 'ticket', roles: ['admin','support','operations','sales'] },
+  { to: '/idcars',       label: 'IDCars',       icon: 'llave', roles: ['admin','support','operations'] },
+  { to: '/leads',        label: 'Leads',        icon: 'megafono', roles: ['admin','support','operations','sales'] },
+  { to: '/contracts',    label: 'Contratos',    icon: 'documento', roles: ['admin','support','operations','sales'] },
+  { to: '/funnel',            label: 'Funnel',          icon: 'embudo', roles: ['admin','sales','operations'] },
+  { to: '/marketing-analytics', label: 'Analítica UTM',  icon: 'grafico', roles: ['admin','sales','operations'] },
+  { to: '/workshops',    label: 'Talleres',     icon: 'taller', roles: ['admin','operations'] },
+  { to: '/billing',          label: 'Facturación clientes',    icon: 'tarjeta', roles: ['admin','operations'] },
+  { to: '/provider-billing', label: 'Facturación proveedores', icon: 'edificio', roles: ['admin','operations'] },
+  { to: '/consentimientos',  label: 'Consentimientos', icon: 'escudo', roles: ['admin','operations','support'] },
 ];
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -69,7 +70,7 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
         <div className="flex items-center gap-2">
           <span className="text-xl">🚗</span>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">CarsWise</p>
+            <p className="text-white font-bold text-sm leading-tight">PopCar</p>
             <p className="text-slate-400 text-[11px]">ERP Backoffice</p>
           </div>
         </div>
@@ -99,7 +100,7 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
               }`
             }
           >
-            <span className="text-base leading-none">{item.icon}</span>
+            <Icono nombre={item.icon} tam={18} className="shrink-0" />
             <span className="flex-1">{item.label}</span>
             {item.to === '/leads' && pendingLeads > 0 && (
               <span className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">

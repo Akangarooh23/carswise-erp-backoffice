@@ -132,7 +132,7 @@ export default function IdCarDetailPage() {
       year:               String(vehicle.year         ?? ''),
       plate:              vehicle.plate               ?? '',
       fuel:               vehicle.fuel                ?? '',
-      mileage:            String(vehicle.km           ?? ''),
+      mileage:            String(vehicle.mileage_km   ?? ''),
       color:              vehicle.color               ?? '',
       body_type:          vehicle.body_type           ?? '',
       transmission_type:  vehicle.transmission_type   ?? '',
@@ -149,7 +149,7 @@ export default function IdCarDetailPage() {
     setSaveMsg(null);
     const r = await api.patch(`/idcars/${id}`, editForm).catch(() => ({ ok: false } as { ok: false }));
     if (r.ok) {
-      setVehicle((v) => v ? { ...v, ...editForm, km: Number(editForm.mileage) || v.km, year: Number(editForm.year) || v.year } : v);
+      setVehicle((v) => v ? { ...v, ...editForm, mileage_km: Number(editForm.mileage) || v.mileage_km, year: Number(editForm.year) || v.year } : v);
       setSaveMsg({ ok: true, text: 'Datos guardados correctamente' });
       setEditing(false);
     } else {
@@ -370,7 +370,7 @@ export default function IdCarDetailPage() {
                   ['Año',          vehicle.year],
                   ['Matrícula',    vehicle.plate],
                   ['Combustible',  vehicle.fuel],
-                  ['Kilometraje',  vehicle.km ? `${vehicle.km.toLocaleString('es-ES')} km` : undefined],
+                  ['Kilometraje',  vehicle.mileage_km ? `${Number(vehicle.mileage_km).toLocaleString('es-ES')} km` : undefined],
                   ['Color',        vehicle.color],
                   ['Carrocería',   vehicle.body_type],
                   ['Transmisión',  vehicle.transmission_type],
