@@ -63,7 +63,7 @@ ticketsRouter.get('/tickets/:id', requireRole(['admin', 'support', 'operations',
   try {
     const [ticket, events] = await Promise.all([
       query(
-        `SELECT t.*, u.name AS user_name, u.email AS user_email, u.plan_type AS user_plan
+        `SELECT t.*, u.name AS user_name, u.email AS user_email, u.plan_id AS user_plan
          FROM erp_tickets t
          LEFT JOIN moveadvisor_users u ON u.id::text = t.user_id
          WHERE t.id = $1`,

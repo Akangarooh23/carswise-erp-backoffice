@@ -6,3 +6,8 @@ build
 coverage
 .DS_Store
 .vercel
+
+# Herramienta de revision visual: lleva credenciales dentro y hace capturas
+# del ERP con datos reales de clientes. Ninguna de las dos cosas va al repo.
+recorre-erp.js
+capturas-erp/

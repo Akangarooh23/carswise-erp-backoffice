@@ -15,11 +15,11 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           COUNT(*) FILTER (WHERE eu.status = 'at_risk')::int                              AS at_risk,
           COUNT(*) FILTER (WHERE eu.status = 'blocked')::int                              AS blocked,
           COUNT(*) FILTER (WHERE mu.created_at >= NOW() - INTERVAL '30 days')::int        AS new_30d,
-          COUNT(*) FILTER (WHERE mu.plan_type = 'plus')::int                              AS plus,
-          COUNT(*) FILTER (WHERE mu.plan_type = 'premium')::int                           AS premium
+          COUNT(*) FILTER (WHERE mu.plan_id = 'plus')::int                              AS plus,
+          COUNT(*) FILTER (WHERE mu.plan_id = 'premium')::int                           AS premium
         FROM moveadvisor_users mu
         LEFT JOIN erp_users eu ON eu.email = mu.email
-      `).catch(() => ({ rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0, plus: 0, premium: 0 }] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0, plus: 0, premium: 0 }] }; }),
 
       // Ticket stats
       query(`
@@ -32,7 +32,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           COUNT(*) FILTER (WHERE priority = 'urgent')::int                          AS urgent,
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int      AS new_7d
         FROM erp_tickets
-      `).catch(() => ({ rows: [{ total: 0, open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, urgent: 0, new_7d: 0 }] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, urgent: 0, new_7d: 0 }] }; }),
 
       // Appointment stats
       query(`
@@ -44,7 +44,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           COUNT(*) FILTER (WHERE status = 'cancelled')::int                         AS cancelled,
           COUNT(*) FILTER (WHERE scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '7 days')::int AS upcoming_7d
         FROM erp_appointments
-      `).catch(() => ({ rows: [{ total: 0, scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, upcoming_7d: 0 }] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, upcoming_7d: 0 }] }; }),
 
       // Marketplace stats
       query(`
@@ -55,7 +55,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           MIN(price)::int                                                            AS min_price,
           MAX(price)::int                                                            AS max_price
         FROM moveadvisor_marketplace_vo_offers
-      `).catch(() => ({ rows: [{ total: 0, active: 0, avg_price: 0, min_price: 0, max_price: 0 }] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, active: 0, avg_price: 0, min_price: 0, max_price: 0 }] }; }),
 
       // Leads stats
       query(`
@@ -67,7 +67,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           COUNT(*) FILTER (WHERE status IN ('Reagendar solicitado'))::int                       AS reschedule,
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int                 AS new_7d
         FROM moveadvisor_market_leads
-      `).catch(() => ({ rows: [{ total: 0, pending: 0, contacted: 0, resolved: 0, reschedule: 0, new_7d: 0 }] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, pending: 0, contacted: 0, resolved: 0, reschedule: 0, new_7d: 0 }] }; }),
 
       // Recent tickets
       query(`
@@ -75,7 +75,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         FROM erp_tickets
         ORDER BY created_at DESC
         LIMIT 5
-      `).catch(() => ({ rows: [] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [] }; }),
 
       // Upcoming appointments
       query(`
@@ -86,7 +86,7 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         WHERE a.scheduled_at >= NOW()
         ORDER BY a.scheduled_at ASC
         LIMIT 5
-      `).catch(() => ({ rows: [] })),
+      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [] }; }),
     ]);
 
     res.json({

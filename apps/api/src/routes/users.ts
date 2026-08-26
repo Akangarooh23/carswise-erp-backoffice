@@ -233,7 +233,7 @@ usersRouter.patch(
     }
     try {
       await query(
-        `UPDATE moveadvisor_users SET plan_type = $1, plan_updated_at = NOW() WHERE id = $2`,
+        `UPDATE moveadvisor_users SET plan_id = $1, plan_updated_at = NOW() WHERE id = $2`,
         [plan, req.params.id]
       );
       res.json({ ok: true });
