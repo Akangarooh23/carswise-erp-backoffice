@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage.js';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordPage from './pages/ResetPasswordPage.js';
 
+const EstiloPage = lazy(() => import('./pages/EstiloPage.js'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage.js'));
 const UsersPage         = lazy(() => import('./pages/UsersPage.js'));
 const UserDetailPage    = lazy(() => import('./pages/UserDetailPage.js'));
@@ -54,6 +55,9 @@ export const router = createBrowserRouter([
       { path: 'leads',             element: <Suspense fallback={<Loader />}><LeadsPage /></Suspense> },
       { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
       { path: 'consentimientos',      element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
+      // La guia de estilo. Sin enlace en el menu: es para quien construye, no
+      // para quien trabaja.
+      { path: 'estilo', element: <Suspense fallback={<Loader />}><EstiloPage /></Suspense> },
       { path: 'marketing-analytics', element: <Suspense fallback={<Loader />}><MarketingAnalyticsPage /></Suspense> },
       { path: 'contracts',          element: <Suspense fallback={<Loader />}><ContractsPage /></Suspense> },
       { path: 'provider-billing',   element: <Suspense fallback={<Loader />}><ProviderBillingPage /></Suspense> },

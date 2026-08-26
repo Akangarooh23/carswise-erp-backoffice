@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config.js';
+import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { usersRouter } from './routes/users.js';
@@ -28,6 +29,9 @@ export function createApp() {
   app.use(express.json({ limit: '4mb' }));
   app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
+  // Estaba escrito en routes/health.ts y no lo enganchaba nadie: cualquier
+  // vigilancia apuntada ahi daba la API por caida.
+  app.use('/api', healthRouter);
   app.use('/api', authRouter);
   app.use('/api', dashboardRouter);
   app.use('/api', usersRouter);

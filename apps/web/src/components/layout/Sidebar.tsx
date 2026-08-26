@@ -68,10 +68,15 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
       {/* Logo + mobile close button */}
       <div className="px-5 pt-6 pb-5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🚗</span>
-          <div>
-            <p className="text-white font-bold text-sm leading-tight">PopCar</p>
-            <p className="text-slate-400 text-[11px]">ERP Backoffice</p>
+          {/* La marca es tipografica: «Pop» amarillo, «Car» blanco. No hace
+              falta imagen, escala sola y no se ve borrosa en ninguna pantalla. */}
+          <div className="leading-none">
+            <p className="font-extrabold text-[19px] tracking-tight">
+              <span className="text-acento">Pop</span><span className="text-white">Car</span>
+            </p>
+            <p className="text-brand-300 text-[10.5px] font-semibold tracking-[0.12em] uppercase mt-1">
+              Backoffice
+            </p>
           </div>
         </div>
         <button

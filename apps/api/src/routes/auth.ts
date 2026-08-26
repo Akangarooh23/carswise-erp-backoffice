@@ -106,7 +106,7 @@ interface StaffUser { email: string; password: string; role: Role; name: string 
 
 function getStaffUsers(): StaffUser[] {
   return [
-    { email: 'admin@carswise.es',   password: config.ERP_ADMIN_PASSWORD,   role: 'admin',      name: 'Admin CarsWise' },
+    { email: 'admin@carswise.es',   password: config.ERP_ADMIN_PASSWORD,   role: 'admin',      name: 'Admin PopCar' },
     { email: 'support@carswise.es', password: config.ERP_SUPPORT_PASSWORD, role: 'support',    name: 'Soporte' },
     { email: 'ops@carswise.es',     password: config.ERP_OPS_PASSWORD,     role: 'operations', name: 'Operaciones' },
     { email: 'sales@carswise.es',   password: config.ERP_SALES_PASSWORD,   role: 'sales',      name: 'Comercial' },

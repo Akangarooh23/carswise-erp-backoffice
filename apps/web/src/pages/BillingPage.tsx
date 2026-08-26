@@ -135,12 +135,12 @@ export default function BillingPage() {
       {/* Summary */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <StatCard label="Free"               value={summary.free_count}    icon="🆓" />
-          <StatCard label="Plus"               value={summary.plus_count}    icon="⭐" color="blue" />
-          <StatCard label="Premium"            value={summary.premium_count} icon="💎" color="purple" />
-          <StatCard label="Trials activos"     value={summary.active_trials} icon="⏳" color="yellow" />
-          <StatCard label="Trials expirados"   value={summary.expired_trials} icon="❌" color="red" />
-          <StatCard label="Nuevos pagos (30d)" value={summary.new_paid_30d}  icon="💳" color="green" />
+          <StatCard label="Free"               value={summary.free_count}    icon="usuarios" />
+          <StatCard label="Plus"               value={summary.plus_count}    icon="estrella" color="neutro" />
+          <StatCard label="Premium"            value={summary.premium_count} icon="diamante" color="neutro" />
+          <StatCard label="Trials activos"     value={summary.active_trials} icon="reloj" color="espera" />
+          <StatCard label="Trials expirados"   value={summary.expired_trials} icon="aviso" color="urgente" />
+          <StatCard label="Nuevos pagos (30d)" value={summary.new_paid_30d}  icon="tarjeta" color="bien" />
         </div>
       )}
 
