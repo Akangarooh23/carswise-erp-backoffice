@@ -23,6 +23,7 @@ import { contractsRouter } from './routes/contracts.js';
 import { providerBillingRouter } from './routes/provider-billing.js';
 import { invoiceDownloadRouter } from './routes/invoice-download.js';
 import { visitsRouter } from './routes/visits.js';
+import { apuntaCambios } from './middleware/auditoria.js';
 
 export function createApp() {
   const app = express();
@@ -31,6 +32,10 @@ export function createApp() {
   app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '4mb' }));
   app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+  // Todo lo que cambia datos deja rastro. Va antes de las rutas para que
+  // cubra también las que se escriban mañana.
+  app.use('/api', apuntaCambios());
 
   // Estaba escrito en routes/health.ts y no lo enganchaba nadie: cualquier
   // vigilancia apuntada ahi daba la API por caida.

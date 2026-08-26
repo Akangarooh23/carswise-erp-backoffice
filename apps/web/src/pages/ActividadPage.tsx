@@ -25,16 +25,58 @@ interface Apunte {
   created_at: string;
 }
 
+/** El icono se elige por lo que se hizo; si no, por dónde se hizo. */
 const ICONO: Record<string, NombreIcono> = {
   alta: 'equipo', desactivar: 'aviso', reactivar: 'comprobado',
   cambiar_rol: 'escudo', cambiar_clave: 'llave', cambiar_plan: 'tarjeta',
+  cambiar_estado: 'lapiz', servicio: 'servicio',
+  crear: 'documento', editar: 'lapiz', borrar: 'aviso',
+  bulk: 'tabla', notify: 'sobre', publish: 'megafono', state: 'lapiz',
+  units: 'coche', run: 'refrescar',
 };
 
+/** Cómo se dice cada acción dentro de una frase. */
 const TEXTO: Record<string, string> = {
   alta: 'dio de alta a', desactivar: 'dio de baja a', reactivar: 'reactivó a',
   cambiar_rol: 'cambió el rol de', cambiar_clave: 'cambió la contraseña de',
   cambiar_plan: 'cambió el plan de',
+  crear: 'creó', editar: 'editó', borrar: 'borró',
+  bulk: 'cambió en bloque', notify: 'avisó al cliente de', publish: 'publicó',
+  units: 'añadió una unidad a', run: 'lanzó',
+  cambiar_estado: 'cambió el estado de', state: 'cambió el estado de',
 };
+
+/**
+ * De `api.marketplace.vo` a «un vehículo del marketplace».
+ *
+ * Lo que guarda el registro es la dirección de la API, que es exacta y no se
+ * queda vieja. Pero en pantalla hay que leerlo, no descifrarlo.
+ */
+const RECURSO: Record<string, string> = {
+  'marketplace.vo':            'un vehículo del marketplace',
+  'marketplace.vo.units':      'las unidades de un vehículo',
+  'marketplace.vo.bulk':       'varios vehículos',
+  'marketplace.vo.bulk-with-units': 'una importación de Excel',
+  'marketplace.offers':        'una oferta de portal',
+  'marketplace.particulares':  'un vehículo de particular',
+  'marketplace.vo.units.':     'una unidad',
+  'leads':                     'un lead',
+  'idcars':                    'un IDCar',
+  'contracts':                 'un contrato',
+  'tickets':                   'un ticket',
+  'visits':                    'una visita',
+  'appointments':              'una cita',
+  'workshops':                 'un taller',
+  'users':                     'un usuario',
+  'personal':                  'el personal',
+  'provider-billing':          'una factura de proveedor',
+  'invoices':                  'una factura',
+  'funnel':                    'el embudo',
+};
+
+function nombreRecurso(r: string): string {
+  return RECURSO[r] ?? r.replace(/^api\./, '').replace(/\./g, ' › ');
+}
 
 function cuando(s: string) {
   const d = new Date(s);
@@ -96,7 +138,7 @@ export default function ActividadPage() {
                   <b className="font-semibold">{a.actor}</b>{' '}
                   {TEXTO[a.action] ?? a.action.replace(/_/g, ' ')}{' '}
                   <span className="text-brand-400">
-                    {(a.payload as { email?: string } | null)?.email ?? a.resource}
+                    {(a.payload as { email?: string } | null)?.email ?? nombreRecurso(a.resource)}
                   </span>
                   {a.action === 'cambiar_rol' && (a.payload as { de?: string; a?: string } | null)?.a && (
                     <span className="text-brand-400">
@@ -106,6 +148,7 @@ export default function ActividadPage() {
                 </p>
                 <p className="text-[11.5px] text-brand-300 mt-0.5">
                   {cuando(a.created_at)}
+                  {a.resource_id && <span className="font-mono"> · {a.resource_id}</span>}
                   {a.ip && <span className="font-mono"> · {a.ip}</span>}
                 </p>
               </div>

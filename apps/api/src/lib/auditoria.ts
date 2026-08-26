@@ -54,9 +54,25 @@ export interface Apunte {
 }
 
 /**
+ * ¿Ya anotó algo este manejador por su cuenta?
+ *
+ * Lo usa el middleware para no duplicar: cuando una ruta registra a mano sabe
+ * más de lo que se puede deducir desde fuera —de qué rol a qué rol, qué plan
+ * cambió— y ese apunte es mejor que el genérico.
+ */
+export function marcaAnotado(req: Request | undefined): void {
+  if (req) (req as { auditado?: boolean }).auditado = true;
+}
+
+export function yaAnotado(req: Request | undefined): boolean {
+  return Boolean((req as { auditado?: boolean } | undefined)?.auditado);
+}
+
+/**
  * Deja constancia. Nunca lanza: si el registro falla, la operación sigue.
  */
 export async function registrar(req: Request | undefined, apunte: Apunte): Promise<void> {
+  marcaAnotado(req);
   const actor = (req as { actor?: { sub?: string } } | undefined)?.actor?.sub ?? 'desconocido';
   try {
     await query(
