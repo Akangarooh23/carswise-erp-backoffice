@@ -113,7 +113,7 @@ export default function VehicleFormFields({ form, setForm, idPrefix, onSetPrimar
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL_CLS}>Vendedor</label>
-          <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="CarsWise" />
+          <input className={INPUT_CLS} value={form.seller ?? ''} onChange={onText('seller')} placeholder="PopCar" />
         </div>
         <div>
           <label className={LABEL_CLS}>Tipo de vendedor</label>

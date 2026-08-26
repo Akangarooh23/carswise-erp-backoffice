@@ -363,7 +363,7 @@ export default function LeadsPage() {
     if (res.ok) {
       const rows = res.data as unknown as Lead[];
       const e = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const header = ['Fecha', 'Email', 'Vehículo', 'Tipo', 'Origen', 'Estado', 'Contacto', 'Teléfono', 'Cuándo', 'Respuesta CarsWise'].join(',');
+      const header = ['Fecha', 'Email', 'Vehículo', 'Tipo', 'Origen', 'Estado', 'Contacto', 'Teléfono', 'Cuándo', 'Respuesta PopCar'].join(',');
       const lines = rows.map((r) => [
         e(r.created_at ? new Date(r.created_at).toLocaleDateString('es-ES') : ''),
         e(r.user_email),

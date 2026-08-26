@@ -167,7 +167,7 @@ export default function BillingPage() {
 
         {(tab === 'venta' || tab === 'renting') && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-            Precio facturado = 0 € — estos importes los cobra el proveedor directamente al cliente. CarsWise actúa como intermediario.
+            Precio facturado = 0 € — estos importes los cobra el proveedor directamente al cliente. PopCar actúa como intermediario.
           </p>
         )}
 
