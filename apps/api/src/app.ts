@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config.js';
 import { healthRouter } from './routes/health.js';
+import { personalRouter } from './routes/personal.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { usersRouter } from './routes/users.js';
@@ -32,6 +33,7 @@ export function createApp() {
   // Estaba escrito en routes/health.ts y no lo enganchaba nadie: cualquier
   // vigilancia apuntada ahi daba la API por caida.
   app.use('/api', healthRouter);
+  app.use('/api', personalRouter);
   app.use('/api', authRouter);
   app.use('/api', dashboardRouter);
   app.use('/api', usersRouter);

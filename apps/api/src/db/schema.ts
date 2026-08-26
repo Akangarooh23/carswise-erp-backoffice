@@ -109,6 +109,30 @@ export async function ensureSchema() {
     )
   `);
 
+  // ── El personal del ERP ────────────────────────────────────────────────
+  //
+  // Hasta ahora habia cuatro cuentas escritas en el codigo, una por area, con
+  // la contrasena en una variable de entorno. Tres personas en Operaciones
+  // compartian cuenta: el registro de actividad solo podia decir «ops», nunca
+  // quien, y dar de baja a alguien obligaba a cambiarle la clave a su equipo.
+  //
+  // Ojo: erp_users NO es esta tabla. Esa refleja clientes —se cruza con
+  // moveadvisor_users por email— y el parecido del nombre despista.
+  await query(`
+    CREATE TABLE IF NOT EXISTS erp_staff (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email         TEXT UNIQUE NOT NULL,
+      nombre        TEXT NOT NULL,
+      rol           TEXT NOT NULL,
+      activo        BOOLEAN NOT NULL DEFAULT TRUE,
+      creado_por    TEXT,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_login_at TIMESTAMPTZ
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_erp_staff_email ON erp_staff(lower(email))`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS erp_staff_passwords (
       email         TEXT PRIMARY KEY,

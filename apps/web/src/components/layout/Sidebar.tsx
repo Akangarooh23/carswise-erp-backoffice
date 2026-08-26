@@ -26,6 +26,8 @@ const NAV: NavItem[] = [
   { to: '/billing',          label: 'Facturación clientes',    icon: 'tarjeta', roles: ['admin','operations'] },
   { to: '/provider-billing', label: 'Facturación proveedores', icon: 'edificio', roles: ['admin','operations'] },
   { to: '/consentimientos',  label: 'Consentimientos', icon: 'escudo', roles: ['admin','operations','support'] },
+  { to: '/equipo',       label: 'Equipo',        icon: 'equipo', roles: ['admin'] },
+  { to: '/actividad',    label: 'Actividad',     icon: 'historial', roles: ['admin'] },
 ];
 
 const ROLE_LABELS: Record<Role, string> = {

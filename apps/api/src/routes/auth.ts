@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import * as personal from '../lib/personal.js';
+import { registrar } from '../lib/auditoria.js';
 import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 import rateLimit from 'express-rate-limit';
@@ -121,30 +123,40 @@ authRouter.post('/auth/login', loginLimiter, async (req, res) => {
   }
 
   const { email, password } = parsed.data;
-  const staffUser = getStaffUsers().find((u) => u.email === email.toLowerCase());
 
-  if (!staffUser) {
+  // Primero el personal dado de alta; si no esta, las cuatro cuentas de
+  // arranque, que siguen valiendo para no quedarse fuera del backoffice.
+  const persona = await personal.buscar(email);
+
+  if (!persona) {
     res.status(401).json({ ok: false, error: 'invalid_credentials' });
     return;
   }
+  if (!persona.activo) {
+    // Se distingue de credenciales malas a proposito: a quien han dado de
+    // baja hay que decirle que su cuenta existe pero esta desactivada, no
+    // dejarle peleandose con la contrasena.
+    res.status(403).json({ ok: false, error: 'cuenta_desactivada' });
+    return;
+  }
 
-  // Check DB-stored password first (set via password reset), fall back to env var
+  // La contrasena guardada manda sobre la de la variable de entorno: es la
+  // que se cambia desde «he olvidado mi contrasena».
   let authenticated = false;
-  try {
-    const dbPw = await query('SELECT password_hash FROM erp_staff_passwords WHERE email = $1', [staffUser.email]);
-    if (dbPw.rows.length) {
-      authenticated = await verifyPassword(password, dbPw.rows[0].password_hash);
-    } else {
-      authenticated = staffUser.password === password;
-    }
-  } catch {
-    authenticated = staffUser.password === password;
+  const guardada = await personal.claveGuardada(persona.email);
+  if (guardada) {
+    authenticated = await personal.comprobar(password, guardada);
+  } else if (persona.clave) {
+    authenticated = persona.clave === password;
   }
 
   if (!authenticated) {
     res.status(401).json({ ok: false, error: 'invalid_credentials' });
     return;
   }
+
+  await personal.anotarAcceso(persona.email);
+  const staffUser = { email: persona.email, role: persona.rol, name: persona.nombre };
 
   const token = jwt.sign(
     { sub: staffUser.email, role: staffUser.role, name: staffUser.name },
