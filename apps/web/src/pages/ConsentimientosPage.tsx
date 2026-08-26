@@ -40,8 +40,8 @@ function fmtDate(s: string | null) {
 function FieldAlways({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className={`text-xs ${value ? 'text-slate-700' : 'text-slate-400'} break-all`}>{value || '–'}</p>
+      <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className={`text-xs ${value ? 'text-brand-500' : 'text-brand-300'} break-all`}>{value || '–'}</p>
     </div>
   );
 }
@@ -49,10 +49,10 @@ function FieldAlways({ label, value }: { label: string; value?: string | null })
 function ConsentBadge({ value, label }: { value: string | null; label: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${value ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+      <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${value ? 'bg-emerald-400' : 'bg-brand-300'}`} />
       <div>
-        <p className="text-xs font-medium text-slate-600">{label}</p>
-        <p className={`text-xs ${value ? 'text-emerald-700' : 'text-slate-400'}`}>
+        <p className="text-xs font-medium text-brand-400">{label}</p>
+        <p className={`text-xs ${value ? 'text-emerald-700' : 'text-brand-300'}`}>
           {value ? fmtDate(value) : 'No aceptado'}
         </p>
       </div>
@@ -64,8 +64,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-xs text-slate-700 break-all">{value}</p>
+      <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-xs text-brand-500 break-all">{value}</p>
     </div>
   );
 }
@@ -73,12 +73,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function ExpandedRow({ row }: { row: ConsentRow }) {
   return (
     <tr>
-      <td colSpan={8} className="bg-slate-50 px-5 py-4 border-b border-slate-200">
+      <td colSpan={8} className="bg-brand-50 px-5 py-4 border-b border-brand-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
           {/* Consentimientos */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Consentimientos</p>
+            <p className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Consentimientos</p>
             <ConsentBadge value={row.consent_legal_at}            label="T&C y Política de Privacidad" />
             <ConsentBadge value={row.consent_marketing_email_at}  label="Marketing email" />
             <ConsentBadge value={row.consent_marketing_sms_at}    label="Marketing SMS" />
@@ -86,21 +86,21 @@ function ExpandedRow({ row }: { row: ConsentRow }) {
             <ConsentBadge value={row.consent_thirdparty_sms_at}   label="Terceros SMS (Experian)" />
 
             {row.consents_reviewed_at && (
-              <div className="pt-2 border-t border-slate-200">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Revisión realizada</p>
-                <p className="text-xs text-slate-600">{fmtDate(row.consents_reviewed_at)}</p>
+              <div className="pt-2 border-t border-brand-200">
+                <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-1">Revisión realizada</p>
+                <p className="text-xs text-brand-400">{fmtDate(row.consents_reviewed_at)}</p>
               </div>
             )}
 
-            <div className="pt-2 border-t border-slate-200">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Fecha de registro</p>
-              <p className="text-xs text-slate-700">{fmtDate(row.created_at) ?? '–'}</p>
+            <div className="pt-2 border-t border-brand-200">
+              <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-1">Fecha de registro</p>
+              <p className="text-xs text-brand-500">{fmtDate(row.created_at) ?? '–'}</p>
             </div>
           </div>
 
           {/* Origen */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Origen del registro</p>
+            <p className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Origen del registro</p>
             <FieldAlways label="IP de registro"  value={row.registration_ip} />
             <FieldAlways label="Idioma"          value={row.language} />
             <FieldAlways label="UTM Source"      value={row.utm_source} />
@@ -113,16 +113,16 @@ function ExpandedRow({ row }: { row: ConsentRow }) {
 
           {/* Tracking / afiliación */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Afiliación y dispositivo</p>
+            <p className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Afiliación y dispositivo</p>
 
             {row.affiliate_data && Object.keys(row.affiliate_data).length > 0 ? (
               <div>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Datos de afiliación</p>
-                <div className="space-y-1 bg-white rounded p-2 border border-slate-200">
+                <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-1">Datos de afiliación</p>
+                <div className="space-y-1 bg-white rounded p-2 border border-brand-200">
                   {Object.entries(row.affiliate_data).map(([k, v]) => (
                     <div key={k} className="flex gap-2 text-xs">
-                      <span className="text-slate-400 shrink-0">{k}:</span>
-                      <span className="text-slate-700 font-mono break-all">{String(v)}</span>
+                      <span className="text-brand-300 shrink-0">{k}:</span>
+                      <span className="text-brand-500 font-mono break-all">{String(v)}</span>
                     </div>
                   ))}
                 </div>
@@ -132,8 +132,8 @@ function ExpandedRow({ row }: { row: ConsentRow }) {
             )}
 
             <div>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">User Agent</p>
-              <p className={`text-[11px] leading-relaxed break-words ${row.registration_ua ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-1">User Agent</p>
+              <p className={`text-[11px] leading-relaxed break-words ${row.registration_ua ? 'text-brand-400' : 'text-brand-300'}`}>
                 {row.registration_ua || '–'}
               </p>
             </div>
@@ -203,7 +203,7 @@ export default function ConsentimientosPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 filter === key
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  : 'border-brand-200 text-brand-400 hover:bg-brand-50'
               }`}
             >
               {label}
@@ -212,11 +212,11 @@ export default function ConsentimientosPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
         {loading ? (
-          <p className="text-center text-slate-400 text-sm py-16">Cargando…</p>
+          <p className="text-center text-brand-300 text-sm py-16">Cargando…</p>
         ) : rows.length === 0 ? (
-          <p className="text-center text-slate-400 text-sm py-16">Sin resultados</p>
+          <p className="text-center text-brand-300 text-sm py-16">Sin resultados</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="erp-table">
@@ -237,7 +237,7 @@ export default function ConsentimientosPage() {
                   <>
                     <tr
                       key={r.id}
-                      className={`cursor-pointer hover:bg-slate-50 transition-colors ${expanded === r.id ? 'bg-slate-50' : ''}`}
+                      className={`cursor-pointer hover:bg-brand-50 transition-colors ${expanded === r.id ? 'bg-brand-50' : ''}`}
                       onClick={() => toggleRow(r.id)}
                     >
                       <td>
@@ -248,9 +248,9 @@ export default function ConsentimientosPage() {
                         >
                           {[r.name, r.apellidos].filter(Boolean).join(' ') || r.email}
                         </Link>
-                        <div className="text-xs text-slate-400">{r.email}</div>
+                        <div className="text-xs text-brand-300">{r.email}</div>
                       </td>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">
+                      <td className="text-xs text-brand-400 whitespace-nowrap">
                         {fmtDate(r.created_at) ?? '–'}
                       </td>
                       {[
@@ -261,11 +261,11 @@ export default function ConsentimientosPage() {
                         r.consent_thirdparty_sms_at,
                       ].map((val, i) => (
                         <td key={i} className="text-center">
-                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${val ? 'bg-emerald-400' : 'bg-slate-200'}`}
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${val ? 'bg-emerald-400' : 'bg-brand-200'}`}
                             title={val ? (fmtDate(val) ?? '') : 'No aceptado'} />
                         </td>
                       ))}
-                      <td className="text-slate-400 text-xs pr-4">
+                      <td className="text-brand-300 text-xs pr-4">
                         {expanded === r.id ? '▲' : '▼'}
                       </td>
                     </tr>

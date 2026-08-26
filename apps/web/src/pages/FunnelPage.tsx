@@ -94,13 +94,13 @@ const PAGE_SECTION_LABELS: Record<string, string> = {
   experianTerms:              'Condiciones Experian',
 };
 const EVENT_COLORS: Record<string, string> = {
-  landing: 'bg-slate-100 text-slate-600', page_view: 'bg-sky-50 text-sky-700',
+  landing: 'bg-brand-100 text-brand-400', page_view: 'bg-brand-50 text-brand-500',
   marketplace_view: 'bg-acento-tenue text-acento-texto',
-  offer_view: 'bg-violet-50 text-violet-700', register: 'bg-emerald-50 text-emerald-700',
-  lead_request: 'bg-amber-50 text-amber-700', identify: 'bg-slate-50 text-slate-500',
-  login: 'bg-teal-50 text-teal-700',
+  offer_view: 'bg-acento-tenue text-acento-texto', register: 'bg-emerald-50 text-emerald-700',
+  lead_request: 'bg-amber-50 text-amber-700', identify: 'bg-brand-50 text-brand-400',
+  login: 'bg-brand-50 text-brand-500',
 };
-const FUNNEL_COLORS = ['bg-slate-400', 'bg-acento-oscuro', 'bg-violet-400', 'bg-emerald-400', 'bg-amber-400'];
+const FUNNEL_COLORS = ['bg-brand-300', 'bg-acento-oscuro', 'bg-brand-300', 'bg-emerald-400', 'bg-amber-400'];
 const DATE_SHORTCUTS = [{ label: 'Hoy', daysAgo: 0 }, { label: 'Ayer', daysAgo: 1 }, { label: 'Anteayer', daysAgo: 2 }];
 const DAYS_OPTIONS = [7, 14, 30, 60, 90];
 const DAYS_LABELS: Record<number, string> = { 7: '7d', 14: '14d', 30: '30d', 60: '60d', 90: '90d' };
@@ -185,12 +185,12 @@ function SortTh({ col, label, sort, onSort, right = false }: {
   return (
     <th
       onClick={() => onSort(col)}
-      className="cursor-pointer select-none hover:bg-slate-100 transition-colors"
+      className="cursor-pointer select-none hover:bg-brand-100 transition-colors"
       style={right ? { textAlign: 'right' } : undefined}
     >
       {right ? (
         <span className="inline-flex items-center gap-1">
-          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-slate-300'}`}>
+          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-brand-300'}`}>
             {active ? (sort!.dir === 'asc' ? '↑' : '↓') : '↕'}
           </span>
           {label}
@@ -198,7 +198,7 @@ function SortTh({ col, label, sort, onSort, right = false }: {
       ) : (
         <span className="inline-flex items-center gap-1">
           {label}
-          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-slate-300'}`}>
+          <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-brand-300'}`}>
             {active ? (sort!.dir === 'asc' ? '↑' : '↓') : '↕'}
           </span>
         </span>
@@ -209,10 +209,10 @@ function SortTh({ col, label, sort, onSort, right = false }: {
 
 function FilterBar({ children, onClear }: { children: React.ReactNode; onClear?: () => void }) {
   return (
-    <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-2">
+    <div className="px-4 py-2 border-b border-brand-100 bg-brand-50 flex flex-wrap items-center gap-2">
       {children}
       {onClear && (
-        <button onClick={onClear} className="ml-auto text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded border border-slate-200 hover:bg-white">
+        <button onClick={onClear} className="ml-auto text-xs text-brand-300 hover:text-brand-400 px-2 py-1 rounded border border-brand-200 hover:bg-white">
           × Limpiar
         </button>
       )}
@@ -227,7 +227,7 @@ function FilterInput({ placeholder, value, onChange }: { placeholder: string; va
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-44 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500"
+      className="text-xs border border-brand-200 rounded-lg px-2.5 py-1.5 w-44 bg-white text-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
     />
   );
 }
@@ -240,7 +240,7 @@ function FilterSelect({ value, onChange, options, placeholder }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500"
+      className="text-xs border border-brand-200 rounded-lg px-2 py-1.5 bg-white text-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
     >
       <option value="">{placeholder}</option>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -258,12 +258,12 @@ function DrillSessions({ url }: { url: string }) {
       .then((r) => { if (r.ok) { setRows(r.data); setTotal(r.meta?.total ?? 0); } })
       .finally(() => setLoading(false));
   }, [url]);
-  if (loading) return <div className="px-6 py-4 text-xs text-slate-400">Cargando…</div>;
-  if (!rows.length) return <div className="px-6 py-4 text-xs text-slate-400">Sin sesiones para este filtro</div>;
+  if (loading) return <div className="px-6 py-4 text-xs text-brand-300">Cargando…</div>;
+  if (!rows.length) return <div className="px-6 py-4 text-xs text-brand-300">Sin sesiones para este filtro</div>;
   return (
-    <div className="bg-slate-50 border-t border-slate-200">
+    <div className="bg-brand-50 border-t border-brand-200">
       {total > rows.length && (
-        <div className="px-6 pt-3 text-[11px] text-slate-400">Mostrando {rows.length} de {total} sesiones</div>
+        <div className="px-6 pt-3 text-[11px] text-brand-300">Mostrando {rows.length} de {total} sesiones</div>
       )}
       <div className="overflow-x-auto">
         <table className="erp-table w-full">
@@ -278,20 +278,20 @@ function DrillSessions({ url }: { url: string }) {
                 <td className="text-xs max-w-[180px] truncate">
                   {s.user_email
                     ? <span className="text-acento-texto font-medium">{s.user_email}</span>
-                    : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
+                    : <span className="text-brand-300 font-mono">{s.anon_id.slice(0, 16)}…</span>}
                 </td>
                 <td>
                   <div className="flex gap-1 flex-wrap">
                     {(s.events as string[]).map((ev, i) => (
-                      <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                      <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-brand-100 text-brand-400'}`}>
                         {EVENT_LABELS[ev] ?? ev}
                       </span>
                     ))}
                   </div>
                 </td>
-                <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
-                <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
-                <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                <td className="text-xs text-brand-400">{s.utm_source || '–'}</td>
+                <td className="text-xs text-brand-400 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                <td className="text-xs text-brand-300 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
               </tr>
             ))}
           </tbody>
@@ -311,12 +311,12 @@ function DrillEvents({ url, title }: { url: string; title?: string }) {
       .then((r) => { if (r.ok) { setRows(r.data); setTotal(r.meta?.total ?? 0); } })
       .finally(() => setLoading(false));
   }, [url]);
-  if (loading) return <div className="px-6 py-4 text-xs text-slate-400">Cargando…</div>;
-  if (!rows.length) return <div className="px-6 py-4 text-xs text-slate-400">{title ? `Sin ${title}` : 'Sin eventos'}</div>;
+  if (loading) return <div className="px-6 py-4 text-xs text-brand-300">Cargando…</div>;
+  if (!rows.length) return <div className="px-6 py-4 text-xs text-brand-300">{title ? `Sin ${title}` : 'Sin eventos'}</div>;
   return (
-    <div className="bg-slate-50 border-t border-slate-200">
+    <div className="bg-brand-50 border-t border-brand-200">
       {total > rows.length && (
-        <div className="px-6 pt-3 text-[11px] text-slate-400">Mostrando {rows.length} de {total} eventos</div>
+        <div className="px-6 pt-3 text-[11px] text-brand-300">Mostrando {rows.length} de {total} eventos</div>
       )}
       <div className="overflow-x-auto">
         <table className="erp-table w-full">
@@ -327,18 +327,18 @@ function DrillEvents({ url, title }: { url: string; title?: string }) {
             {rows.map((e) => (
               <tr key={e.id}>
                 <td>
-                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-brand-100 text-brand-400'}`}>
                     {e.event_type === 'page_view' && e.section
                       ? (PAGE_SECTION_LABELS[e.section] ?? e.section)
                       : (EVENT_LABELS[e.event_type] ?? e.event_type)}
                   </span>
                 </td>
-                <td className="text-xs text-slate-600 max-w-[160px] truncate">
-                  {e.user_email || <span className="font-mono text-slate-400">{e.anon_id.slice(0, 16)}…</span>}
+                <td className="text-xs text-brand-400 max-w-[160px] truncate">
+                  {e.user_email || <span className="font-mono text-brand-300">{e.anon_id.slice(0, 16)}…</span>}
                 </td>
-                <td className="text-xs text-slate-500 max-w-[160px] truncate">{e.offer_title || '–'}</td>
-                <td className="text-xs text-slate-500">{e.utm_source || '–'}</td>
-                <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
+                <td className="text-xs text-brand-400 max-w-[160px] truncate">{e.offer_title || '–'}</td>
+                <td className="text-xs text-brand-400">{e.utm_source || '–'}</td>
+                <td className="text-xs text-brand-300 whitespace-nowrap">{fmtDate(e.created_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -350,11 +350,11 @@ function DrillEvents({ url, title }: { url: string; title?: string }) {
 
 function DetailGrid({ items }: { items: Array<{ label: string; value: React.ReactNode }> }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-3 px-6 py-4 bg-brand-50 border-t border-brand-200">
       {items.map(({ label, value }) => (
         <div key={label}>
-          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{label}</div>
-          <div className="text-xs text-slate-700 break-all">{value ?? <span className="text-slate-300">–</span>}</div>
+          <div className="text-[10px] font-semibold text-brand-300 uppercase tracking-wider mb-0.5">{label}</div>
+          <div className="text-xs text-brand-500 break-all">{value ?? <span className="text-brand-300">–</span>}</div>
         </div>
       ))}
     </div>
@@ -632,24 +632,24 @@ export default function FunnelPage() {
             <div className="relative">
               <input type="text" placeholder="Filtrar por usuario (email)…" value={globalUser}
                 onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
-                className="text-xs border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
-              {globalUser && <button onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">×</button>}
+                className="text-xs border border-brand-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-brand-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-brand-300 text-xs">🔍</span>
+              {globalUser && <button onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-300 hover:text-brand-400 text-xs">×</button>}
             </div>
             <div className="flex items-center gap-1">
               {DATE_SHORTCUTS.map(({ label, daysAgo }) => {
                 const date = getLocalDate(daysAgo);
                 return (
                   <button key={label} onClick={() => { setSelectedDate(date); setSessPage(1); setEvtPage(1); }}
-                    className={`px-3 py-1 text-xs rounded-lg border transition-colors ${selectedDate === date ? 'bg-brand-600 border-brand-600 text-white font-medium' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    className={`px-3 py-1 text-xs rounded-lg border transition-colors ${selectedDate === date ? 'bg-brand-600 border-brand-600 text-white font-medium' : 'border-brand-200 text-brand-400 hover:bg-brand-50'}`}>
                     {label}
                   </button>
                 );
               })}
-              <span className="text-slate-200 text-xs px-0.5">|</span>
+              <span className="text-brand-200 text-xs px-0.5">|</span>
               {DAYS_OPTIONS.map((d) => (
                 <button key={d} onClick={() => { setSelectedDate(''); setDays(d); setSessPage(1); setEvtPage(1); }}
-                  className={`px-3 py-1 text-xs rounded-lg border transition-colors ${!selectedDate && days === d ? 'bg-brand-600 border-brand-600 text-white font-medium' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                  className={`px-3 py-1 text-xs rounded-lg border transition-colors ${!selectedDate && days === d ? 'bg-brand-600 border-brand-600 text-white font-medium' : 'border-brand-200 text-brand-400 hover:bg-brand-50'}`}>
                   {DAYS_LABELS[d]}
                 </button>
               ))}
@@ -659,11 +659,11 @@ export default function FunnelPage() {
       />
 
       {/* Sub-tab navigation */}
-      <div className="flex gap-0.5 border-b border-slate-200 overflow-x-auto">
+      <div className="flex gap-0.5 border-b border-brand-200 overflow-x-auto">
         {FUNNEL_TABS.map(({ key, label }) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
-              activeTab === key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+              activeTab === key ? 'border-brand-600 text-brand-700' : 'border-transparent text-brand-400 hover:text-brand-500'
             }`}>
             {label}
           </button>
@@ -672,12 +672,12 @@ export default function FunnelPage() {
 
       {/* ── RESUMEN ── */}
       {activeTab === 'resumen' && (
-        statsLoading ? <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        statsLoading ? <div className="text-brand-300 text-sm text-center py-16">Cargando…</div>
         : !stats ? <div className="text-red-500 text-sm text-center py-16">Error al cargar los datos</div>
         : (
           <Card>
-            <h3 className="font-semibold text-slate-800 text-sm mb-4">
-              Embudo de conversión <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+            <h3 className="font-semibold text-brand-600 text-sm mb-4">
+              Embudo de conversión <span className="text-brand-300 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
             </h3>
             <div className="space-y-2.5">
               {stats.funnel.map((step, i) => {
@@ -685,12 +685,12 @@ export default function FunnelPage() {
                 const barW = step.count ? Math.round((step.count / maxCount) * 100) : 0;
                 return (
                   <div key={step.step} className="flex items-center gap-3">
-                    <div className="w-36 shrink-0 text-right text-xs text-slate-500">{step.label}</div>
-                    <div className="flex-1 h-7 bg-slate-100 rounded-lg overflow-hidden relative">
+                    <div className="w-36 shrink-0 text-right text-xs text-brand-400">{step.label}</div>
+                    <div className="flex-1 h-7 bg-brand-100 rounded-lg overflow-hidden relative">
                       <div className={`h-full rounded-lg transition-all ${FUNNEL_COLORS[i]}`} style={{ width: `${barW}%` }} />
-                      <span className="absolute inset-0 flex items-center px-3 text-xs font-semibold text-slate-700">
+                      <span className="absolute inset-0 flex items-center px-3 text-xs font-semibold text-brand-500">
                         {step.count.toLocaleString('es-ES')}
-                        {prev !== null && <span className="ml-2 font-normal text-slate-400">({pct(step.count, prev)} del paso anterior)</span>}
+                        {prev !== null && <span className="ml-2 font-normal text-brand-300">({pct(step.count, prev)} del paso anterior)</span>}
                       </span>
                     </div>
                   </div>
@@ -704,21 +704,21 @@ export default function FunnelPage() {
       {/* ── DESGLOSE DIARIO ── */}
       {activeTab === 'diario' && (
         <Card padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800 text-sm">
-              Desglose diario <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+          <div className="px-5 py-3 border-b border-brand-100">
+            <h3 className="font-semibold text-brand-600 text-sm">
+              Desglose diario <span className="text-brand-300 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
             </h3>
           </div>
           <FilterBar onClear={dailyOnlyActive || dailySort ? () => { setDailyOnlyActive(false); setDailySort(null); } : undefined}>
-            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-brand-400 cursor-pointer select-none">
               <input type="checkbox" checked={dailyOnlyActive} onChange={(e) => setDailyOnlyActive(e.target.checked)}
-                className="rounded border-slate-300" />
+                className="rounded border-brand-300" />
               Solo días con actividad
             </label>
-            <span className="text-xs text-slate-400 ml-2">· Haz clic en los encabezados para ordenar</span>
+            <span className="text-xs text-brand-300 ml-2">· Haz clic en los encabezados para ordenar</span>
           </FilterBar>
-          {dailyLoading ? <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
-          : filteredDaily.length === 0 ? <p className="text-slate-400 text-sm text-center py-12">Sin datos aún</p>
+          {dailyLoading ? <div className="text-brand-300 text-sm text-center py-12">Cargando…</div>
+          : filteredDaily.length === 0 ? <p className="text-brand-300 text-sm text-center py-12">Sin datos aún</p>
           : (
             <div className="overflow-x-auto">
               <table className="erp-table w-full">
@@ -740,16 +740,16 @@ export default function FunnelPage() {
                     const label = new Date(dayKey + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
                     return (
                       <>
-                        <tr key={dayKey} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandDaily, setExpandDaily, dayKey)}>
-                          <td className="text-xs font-medium text-slate-700 whitespace-nowrap">
-                            <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{label}
+                        <tr key={dayKey} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandDaily, setExpandDaily, dayKey)}>
+                          <td className="text-xs font-medium text-brand-500 whitespace-nowrap">
+                            <span className="text-brand-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{label}
                           </td>
-                          <td className="text-right text-sm text-slate-600">{row.landings || '–'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.page_views || '–'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.marketplace_views || '–'}</td>
-                          <td className="text-right text-sm text-slate-600">{row.offer_views || '–'}</td>
-                          <td className="text-right">{row.registers > 0 ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
-                          <td className="text-right">{row.leads > 0 ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span> : <span className="text-slate-300 text-sm">–</span>}</td>
+                          <td className="text-right text-sm text-brand-400">{row.landings || '–'}</td>
+                          <td className="text-right text-sm text-brand-400">{row.page_views || '–'}</td>
+                          <td className="text-right text-sm text-brand-400">{row.marketplace_views || '–'}</td>
+                          <td className="text-right text-sm text-brand-400">{row.offer_views || '–'}</td>
+                          <td className="text-right">{row.registers > 0 ? <span className="text-emerald-700 font-semibold text-sm">{row.registers}</span> : <span className="text-brand-300 text-sm">–</span>}</td>
+                          <td className="text-right">{row.leads > 0 ? <span className="text-amber-700 font-semibold text-sm">{row.leads}</span> : <span className="text-brand-300 text-sm">–</span>}</td>
                         </tr>
                         {open && (
                           <tr key={`${dayKey}-d`}>
@@ -770,20 +770,20 @@ export default function FunnelPage() {
 
       {/* ── UTM SOURCE ── */}
       {activeTab === 'fuentes' && (
-        statsLoading ? <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        statsLoading ? <div className="text-brand-300 text-sm text-center py-16">Cargando…</div>
         : !stats ? null : (
           <Card padding={false}>
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">
-                Por fuente (UTM Source) <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">
+                Por fuente (UTM Source) <span className="text-brand-300 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
               </h3>
             </div>
             <FilterBar onClear={utmSrcQ || utmSrcSort ? () => { setUtmSrcQ(''); setUtmSrcSort(null); } : undefined}>
               <FilterInput placeholder="Buscar fuente…" value={utmSrcQ} onChange={setUtmSrcQ} />
-              <span className="text-xs text-slate-400">· Haz clic en los encabezados para ordenar</span>
+              <span className="text-xs text-brand-300">· Haz clic en los encabezados para ordenar</span>
             </FilterBar>
             {filteredSources.length === 0
-              ? <p className="text-slate-400 text-sm text-center py-12">Sin resultados</p>
+              ? <p className="text-brand-300 text-sm text-center py-12">Sin resultados</p>
               : (
                 <div className="overflow-x-auto">
                   <table className="erp-table w-full">
@@ -802,14 +802,14 @@ export default function FunnelPage() {
                         const open = expandSrc === key;
                         return (
                           <>
-                            <tr key={key} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandSrc, setExpandSrc, key)}>
+                            <tr key={key} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandSrc, setExpandSrc, key)}>
                               <td className="font-medium text-sm">
-                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{key}
+                                <span className="text-brand-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{key}
                               </td>
-                              <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                              <td className="text-right text-sm text-slate-600">{row.registers}</td>
-                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                              <td className="text-right text-sm text-slate-500">{pct(row.leads, row.sessions)}</td>
+                              <td className="text-right text-sm text-brand-400">{row.sessions.toLocaleString('es-ES')}</td>
+                              <td className="text-right text-sm text-brand-400">{row.registers}</td>
+                              <td className="text-right text-sm text-brand-400">{row.leads}</td>
+                              <td className="text-right text-sm text-brand-400">{pct(row.leads, row.sessions)}</td>
                             </tr>
                             {open && (
                               <tr key={`${key}-d`}>
@@ -831,12 +831,12 @@ export default function FunnelPage() {
 
       {/* ── UTM CAMPAIGN ── */}
       {activeTab === 'campanas' && (
-        statsLoading ? <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        statsLoading ? <div className="text-brand-300 text-sm text-center py-16">Cargando…</div>
         : !stats ? null : (
           <Card padding={false}>
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">
-                Por campaña (UTM Campaign) <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">
+                Por campaña (UTM Campaign) <span className="text-brand-300 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
               </h3>
             </div>
             <FilterBar onClear={campQ || campMedium || campSrcQ || campSort ? () => { setCampQ(''); setCampMedium(''); setCampSrcQ(''); setCampSort(null); } : undefined}>
@@ -846,10 +846,10 @@ export default function FunnelPage() {
                 <FilterSelect value={campMedium} onChange={setCampMedium} placeholder="Todos los medios"
                   options={campMediumOptions} />
               )}
-              <span className="text-xs text-slate-400">· Haz clic en los encabezados para ordenar</span>
+              <span className="text-xs text-brand-300">· Haz clic en los encabezados para ordenar</span>
             </FilterBar>
             {filteredCampaigns.length === 0
-              ? <p className="text-slate-400 text-sm text-center py-12">Sin resultados</p>
+              ? <p className="text-brand-300 text-sm text-center py-12">Sin resultados</p>
               : (
                 <div className="overflow-x-auto">
                   <table className="erp-table w-full">
@@ -869,15 +869,15 @@ export default function FunnelPage() {
                         const open = expandCamp === key;
                         return (
                           <>
-                            <tr key={key} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandCamp, setExpandCamp, key)}>
+                            <tr key={key} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandCamp, setExpandCamp, key)}>
                               <td className="text-sm font-medium max-w-[200px] truncate">
-                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{row.campaign}
+                                <span className="text-brand-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>{row.campaign}
                               </td>
-                              <td className="text-sm text-slate-500 capitalize">{row.medium || '–'}</td>
-                              <td className="text-sm text-slate-500">{row.source || '–'}</td>
-                              <td className="text-right text-sm text-slate-600">{row.sessions.toLocaleString('es-ES')}</td>
-                              <td className="text-right text-sm text-slate-600">{row.registers}</td>
-                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
+                              <td className="text-sm text-brand-400 capitalize">{row.medium || '–'}</td>
+                              <td className="text-sm text-brand-400">{row.source || '–'}</td>
+                              <td className="text-right text-sm text-brand-400">{row.sessions.toLocaleString('es-ES')}</td>
+                              <td className="text-right text-sm text-brand-400">{row.registers}</td>
+                              <td className="text-right text-sm text-brand-400">{row.leads}</td>
                             </tr>
                             {open && (
                               <tr key={`${key}-d`}>
@@ -899,30 +899,30 @@ export default function FunnelPage() {
 
       {/* ── OFERTAS MÁS VISTAS ── */}
       {activeTab === 'ofertas' && (
-        statsLoading ? <div className="text-slate-400 text-sm text-center py-16">Cargando…</div>
+        statsLoading ? <div className="text-brand-300 text-sm text-center py-16">Cargando…</div>
         : !stats ? null : (
           <Card padding={false}>
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">
-                Ofertas más vistas <span className="text-slate-400 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">
+                Ofertas más vistas <span className="text-brand-300 font-normal text-xs">· {periodLabel(selectedDate, days)}</span>
               </h3>
             </div>
             <FilterBar onClear={offerQ || offerMinViews || offerMinLeads || offerSort ? () => { setOfferQ(''); setOfferMinViews(''); setOfferMinLeads(''); setOfferSort(null); } : undefined}>
               <FilterInput placeholder="Buscar vehículo…" value={offerQ} onChange={setOfferQ} />
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-500">Vistas ≥</span>
+                <span className="text-xs text-brand-400">Vistas ≥</span>
                 <input type="number" min="0" value={offerMinViews} onChange={(e) => setOfferMinViews(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 w-16 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="text-xs border border-brand-200 rounded-lg px-2 py-1.5 w-16 bg-white text-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-500">Leads ≥</span>
+                <span className="text-xs text-brand-400">Leads ≥</span>
                 <input type="number" min="0" value={offerMinLeads} onChange={(e) => setOfferMinLeads(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 w-16 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="text-xs border border-brand-200 rounded-lg px-2 py-1.5 w-16 bg-white text-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
-              <span className="text-xs text-slate-400">· Haz clic en los encabezados para ordenar</span>
+              <span className="text-xs text-brand-300">· Haz clic en los encabezados para ordenar</span>
             </FilterBar>
             {filteredOffers.length === 0
-              ? <p className="text-slate-400 text-sm text-center py-12">Sin resultados</p>
+              ? <p className="text-brand-300 text-sm text-center py-12">Sin resultados</p>
               : (
                 <div className="overflow-x-auto">
                   <table className="erp-table w-full">
@@ -939,16 +939,16 @@ export default function FunnelPage() {
                         const open = expandOffer === row.offer_id;
                         return (
                           <>
-                            <tr key={row.offer_id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandOffer, setExpandOffer, row.offer_id)}>
+                            <tr key={row.offer_id} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandOffer, setExpandOffer, row.offer_id)}>
                               <td className="text-sm font-medium">
-                                <span className="text-slate-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>
+                                <span className="text-brand-300 mr-1.5 select-none">{open ? '▾' : '▸'}</span>
                                 {row.offer_url
                                   ? <a href={row.offer_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="truncate max-w-xs text-acento-texto hover:text-acento-texto hover:underline">{row.offer_title || row.offer_id}</a>
                                   : <span className="truncate max-w-xs">{row.offer_title || row.offer_id}</span>}
                               </td>
-                              <td className="text-right text-sm text-slate-600">{row.views}</td>
-                              <td className="text-right text-sm text-slate-600">{row.leads}</td>
-                              <td className="text-right text-sm text-slate-500">{pct(row.leads, row.views)}</td>
+                              <td className="text-right text-sm text-brand-400">{row.views}</td>
+                              <td className="text-right text-sm text-brand-400">{row.leads}</td>
+                              <td className="text-right text-sm text-brand-400">{pct(row.leads, row.views)}</td>
                             </tr>
                             {open && (
                               <tr key={`${row.offer_id}-d`}>
@@ -971,12 +971,12 @@ export default function FunnelPage() {
       {/* ── POR SESIÓN / USUARIO ── */}
       {activeTab === 'sesiones' && (
         <Card padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-semibold text-slate-800 text-sm">
-              Por sesión / usuario <span className="text-slate-400 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
+          <div className="px-5 py-3 border-b border-brand-100 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-semibold text-brand-600 text-sm">
+              Por sesión / usuario <span className="text-brand-300 font-normal">({sessTotal.toLocaleString('es-ES')})</span>
             </h3>
             <button onClick={exportSessions} disabled={exporting === 'sessions'}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-brand-200 rounded-lg text-brand-400 hover:bg-brand-50 disabled:opacity-50 transition-colors">
               {exporting === 'sessions' ? '…' : '↓'} Exportar Excel
             </button>
           </div>
@@ -997,8 +997,8 @@ export default function FunnelPage() {
                 { value: 'none',          label: 'Sin convertir' },
               ]} />
           </FilterBar>
-          {sessLoading ? <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
-          : filteredSessions.length === 0 ? <p className="text-slate-400 text-sm text-center py-12">Sin sesiones registradas aún</p>
+          {sessLoading ? <div className="text-brand-300 text-sm text-center py-12">Cargando…</div>
+          : filteredSessions.length === 0 ? <p className="text-brand-300 text-sm text-center py-12">Sin sesiones registradas aún</p>
           : (
             <div className="overflow-x-auto">
               <table className="erp-table">
@@ -1013,27 +1013,27 @@ export default function FunnelPage() {
                     const open = expandSess === s.anon_id;
                     return (
                       <>
-                        <tr key={s.anon_id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandSess, setExpandSess, s.anon_id)}>
+                        <tr key={s.anon_id} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandSess, setExpandSess, s.anon_id)}>
                           <td className="text-xs max-w-[160px] truncate">
-                            <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
+                            <span className="text-brand-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
                             {s.user_email
                               ? <span className="text-acento-texto font-medium">{s.user_email}</span>
-                              : <span className="text-slate-400 font-mono">{s.anon_id.slice(0, 16)}…</span>}
+                              : <span className="text-brand-300 font-mono">{s.anon_id.slice(0, 16)}…</span>}
                           </td>
                           <td>
                             <div className="flex items-center gap-1 flex-wrap">
                               {(s.events as string[]).map((ev, i) => (
-                                <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-slate-100 text-slate-600'}`}>
+                                <span key={i} className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${EVENT_COLORS[ev] ?? 'bg-brand-100 text-brand-400'}`}>
                                   {EVENT_LABELS[ev] ?? ev}
                                 </span>
                               ))}
                             </div>
                           </td>
-                          <td className="text-xs text-slate-500">{s.utm_source || '–'}</td>
-                          <td className="text-xs text-slate-500 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
-                          <td className="text-center">{s.did_register ? <span className="text-emerald-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
-                          <td className="text-center">{s.did_lead ? <span className="text-amber-600 text-xs font-semibold">✓</span> : <span className="text-slate-300 text-xs">–</span>}</td>
-                          <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
+                          <td className="text-xs text-brand-400">{s.utm_source || '–'}</td>
+                          <td className="text-xs text-brand-400 max-w-[140px] truncate">{s.utm_campaign || '–'}</td>
+                          <td className="text-center">{s.did_register ? <span className="text-emerald-600 text-xs font-semibold">✓</span> : <span className="text-brand-300 text-xs">–</span>}</td>
+                          <td className="text-center">{s.did_lead ? <span className="text-amber-600 text-xs font-semibold">✓</span> : <span className="text-brand-300 text-xs">–</span>}</td>
+                          <td className="text-xs text-brand-300 whitespace-nowrap">{fmtDate(s.first_seen)}</td>
                           <td><button onClick={(e) => { e.stopPropagation(); goToEventsForSession(s.anon_id); }} className="text-xs text-acento-texto hover:underline whitespace-nowrap">Ver eventos →</button></td>
                         </tr>
                         {open && (
@@ -1051,11 +1051,11 @@ export default function FunnelPage() {
             </div>
           )}
           {sessTotal > 50 && (
-            <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Pág. {sessPage} · {Math.ceil(sessTotal / 50)} páginas</span>
+            <div className="px-5 py-3 border-t border-brand-100 flex items-center justify-between">
+              <span className="text-xs text-brand-300">Pág. {sessPage} · {Math.ceil(sessTotal / 50)} páginas</span>
               <div className="flex gap-2">
-                <button disabled={sessPage <= 1} onClick={() => setSessPage((p) => p - 1)} className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">← Anterior</button>
-                <button disabled={sessPage >= Math.ceil(sessTotal / 50)} onClick={() => setSessPage((p) => p + 1)} className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">Siguiente →</button>
+                <button disabled={sessPage <= 1} onClick={() => setSessPage((p) => p - 1)} className="px-3 py-1 text-xs border border-brand-200 rounded-lg disabled:opacity-40 hover:bg-brand-50">← Anterior</button>
+                <button disabled={sessPage >= Math.ceil(sessTotal / 50)} onClick={() => setSessPage((p) => p + 1)} className="px-3 py-1 text-xs border border-brand-200 rounded-lg disabled:opacity-40 hover:bg-brand-50">Siguiente →</button>
               </div>
             </div>
           )}
@@ -1066,11 +1066,11 @@ export default function FunnelPage() {
       {activeTab === 'generador' && (
         <div className="space-y-5">
           <Card>
-            <h3 className="font-semibold text-slate-800 text-sm mb-4">Generador de links con UTM</h3>
+            <h3 className="font-semibold text-brand-600 text-sm mb-4">Generador de links con UTM</h3>
 
             {/* Presets de canal */}
             <div className="mb-5">
-              <p className="text-xs text-slate-500 mb-2 font-medium">Canal rápido</p>
+              <p className="text-xs text-brand-400 mb-2 font-medium">Canal rápido</p>
               <div className="flex flex-wrap gap-2">
                 {UTM_PRESETS.map((p) => (
                   <button
@@ -1079,7 +1079,7 @@ export default function FunnelPage() {
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-medium ${
                       utmSource === p.source && utmMedium === p.medium
                         ? 'bg-brand-600 border-brand-600 text-white'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        : 'border-brand-200 text-brand-400 hover:bg-brand-50'
                     }`}>
                     {p.label}
                   </button>
@@ -1090,13 +1090,13 @@ export default function FunnelPage() {
             {/* Campos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">URL base <span className="text-red-400">*</span></label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">URL base <span className="text-red-400">*</span></label>
                 <input
                   type="text"
                   value={utmBase}
                   onChange={(e) => setUtmBase(e.target.value)}
                   placeholder="https://www.carswiseai.com/marketplace-vo/..."
-                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
+                  className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                 />
                 <div className="flex gap-2 mt-1.5 flex-wrap">
                   {[
@@ -1113,53 +1113,53 @@ export default function FunnelPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">utm_source <span className="text-slate-400">(canal)</span></label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">utm_source <span className="text-brand-300">(canal)</span></label>
                 <input type="text" value={utmSource} onChange={(e) => setUtmSource(e.target.value)}
                   placeholder="instagram, google, email…"
-                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">utm_medium <span className="text-slate-400">(tipo)</span></label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">utm_medium <span className="text-brand-300">(tipo)</span></label>
                 <input type="text" value={utmMedium} onChange={(e) => setUtmMedium(e.target.value)}
                   placeholder="social, email, cpc…"
-                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">utm_campaign <span className="text-slate-400">(nombre campaña)</span></label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">utm_campaign <span className="text-brand-300">(nombre campaña)</span></label>
                 <input type="text" value={utmCampaign} onChange={(e) => setUtmCampaign(e.target.value)}
                   placeholder="junio-renting, black-friday…"
-                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">utm_content <span className="text-slate-400">(opcional · variante)</span></label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">utm_content <span className="text-brand-300">(opcional · variante)</span></label>
                 <input type="text" value={utmContent} onChange={(e) => setUtmContent(e.target.value)}
                   placeholder="stories, post, boton…"
-                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
             </div>
 
             {/* Link generado */}
             {generatedUrl ? (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Link generado</p>
+                  <p className="text-[11px] font-semibold text-brand-300 uppercase tracking-wide mb-1.5">Link generado</p>
                   <button
                     onClick={copyUrl}
                     className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium border transition-colors ${
                       utmCopied
                         ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                        : 'bg-white border-brand-200 text-brand-400 hover:bg-brand-100'
                     }`}>
                     {utmCopied ? '✓ Copiado' : 'Copiar'}
                   </button>
                 </div>
-                <p className="text-xs text-slate-700 font-mono break-all leading-relaxed">{generatedUrl}</p>
+                <p className="text-xs text-brand-500 font-mono break-all leading-relaxed">{generatedUrl}</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-400">
+              <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50 p-6 text-center text-xs text-brand-300">
                 Rellena al menos la URL base y utm_source para generar el link
               </div>
             )}
@@ -1167,8 +1167,8 @@ export default function FunnelPage() {
 
           {/* Tabla de parámetros */}
           <Card padding={false}>
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">Referencia de parámetros UTM</h3>
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">Referencia de parámetros UTM</h3>
             </div>
             <table className="erp-table w-full">
               <thead>
@@ -1185,9 +1185,9 @@ export default function FunnelPage() {
                   { param: 'utm_term',   desc: 'Palabra clave (Google Ads)', ex: 'coche-segunda-mano-madrid' },
                 ].map((r) => (
                   <tr key={r.param}>
-                    <td><code className="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{r.param}</code></td>
-                    <td className="text-slate-600">{r.desc}</td>
-                    <td className="text-slate-400 font-mono text-[11px]">{r.ex}</td>
+                    <td><code className="text-[11px] bg-brand-100 px-1.5 py-0.5 rounded text-brand-500">{r.param}</code></td>
+                    <td className="text-brand-400">{r.desc}</td>
+                    <td className="text-brand-300 font-mono text-[11px]">{r.ex}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1199,10 +1199,10 @@ export default function FunnelPage() {
       {/* ── EVENTOS RECIENTES ── */}
       {activeTab === 'eventos' && (
         <Card padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+          <div className="px-5 py-3 border-b border-brand-100 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-slate-800 text-sm">
-                Eventos recientes <span className="text-slate-400 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
+              <h3 className="font-semibold text-brand-600 text-sm">
+                Eventos recientes <span className="text-brand-300 font-normal">({evtTotal.toLocaleString('es-ES')})</span>
               </h3>
               {filterAnonId && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-acento-tenue text-acento-texto border border-acento">
@@ -1212,7 +1212,7 @@ export default function FunnelPage() {
               )}
             </div>
             <button onClick={exportEvents} disabled={exporting === 'events'}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-brand-200 rounded-lg text-brand-400 hover:bg-brand-50 disabled:opacity-50 transition-colors">
               {exporting === 'events' ? '…' : '↓'} Exportar Excel
             </button>
           </div>
@@ -1228,8 +1228,8 @@ export default function FunnelPage() {
                 { value: 'whatsapp', label: 'WhatsApp' }, { value: 'direct', label: 'Directo' },
               ]} />
           </FilterBar>
-          {evtLoading ? <div className="text-slate-400 text-sm text-center py-12">Cargando…</div>
-          : filteredEvents.length === 0 ? <p className="text-slate-400 text-sm text-center py-12">Sin eventos registrados aún</p>
+          {evtLoading ? <div className="text-brand-300 text-sm text-center py-12">Cargando…</div>
+          : filteredEvents.length === 0 ? <p className="text-brand-300 text-sm text-center py-12">Sin eventos registrados aún</p>
           : (
             <div className="overflow-x-auto">
               <table className="erp-table">
@@ -1241,36 +1241,36 @@ export default function FunnelPage() {
                     const open = expandEvt === e.id;
                     return (
                       <>
-                        <tr key={e.id} className="cursor-pointer hover:bg-slate-50" onClick={() => xpand(expandEvt, setExpandEvt, e.id)}>
+                        <tr key={e.id} className="cursor-pointer hover:bg-brand-50" onClick={() => xpand(expandEvt, setExpandEvt, e.id)}>
                           <td>
-                            <span className="text-slate-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
-                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                            <span className="text-brand-300 mr-1 select-none">{open ? '▾' : '▸'}</span>
+                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-brand-100 text-brand-400'}`}>
                               {e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)}
                             </span>
                           </td>
-                          <td className="text-xs text-slate-600 max-w-[160px] truncate">
+                          <td className="text-xs text-brand-400 max-w-[160px] truncate">
                             {e.user_email || (
-                              <button onClick={(ev) => { ev.stopPropagation(); setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-slate-400 font-mono hover:text-brand-600 hover:underline">
+                              <button onClick={(ev) => { ev.stopPropagation(); setFilterAnonId(e.anon_id); setEvtPage(1); }} className="text-brand-300 font-mono hover:text-brand-600 hover:underline">
                                 {e.anon_id.slice(0, 18)}…
                               </button>
                             )}
                           </td>
-                          <td className="text-xs text-slate-500">{e.utm_source || <span className="text-slate-300">–</span>}</td>
-                          <td className="text-xs text-slate-500 max-w-[140px] truncate">{e.utm_campaign || <span className="text-slate-300">–</span>}</td>
-                          <td className="text-xs text-slate-500 max-w-[160px] truncate">
+                          <td className="text-xs text-brand-400">{e.utm_source || <span className="text-brand-300">–</span>}</td>
+                          <td className="text-xs text-brand-400 max-w-[140px] truncate">{e.utm_campaign || <span className="text-brand-300">–</span>}</td>
+                          <td className="text-xs text-brand-400 max-w-[160px] truncate">
                             {e.offer_title
                               ? e.offer_id
                                 ? <a href={`https://www.carswiseai.com/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
                                 : e.offer_title
-                              : <span className="text-slate-300">–</span>}
+                              : <span className="text-brand-300">–</span>}
                           </td>
-                          <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(e.created_at)}</td>
+                          <td className="text-xs text-brand-300 whitespace-nowrap">{fmtDate(e.created_at)}</td>
                         </tr>
                         {open && (
                           <tr key={`${e.id}-d`}>
                             <td colSpan={6} className="p-0">
                               <DetailGrid items={[
-                                { label: 'Tipo evento',   value: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-600'}`}>{e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)}</span> },
+                                { label: 'Tipo evento',   value: <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${EVENT_COLORS[e.event_type] ?? 'bg-brand-100 text-brand-400'}`}>{e.event_type === 'page_view' && e.section ? (PAGE_SECTION_LABELS[e.section] ?? e.section) : (EVENT_LABELS[e.event_type] ?? e.event_type)}</span> },
                                 { label: 'Email',         value: e.user_email || '–' },
                                 { label: 'ID sesión',     value: <span className="font-mono text-[10px]">{e.anon_id}</span> },
                                 { label: 'Fuente',        value: e.utm_source || '–' },
@@ -1293,11 +1293,11 @@ export default function FunnelPage() {
             </div>
           )}
           {evtTotal > 50 && (
-            <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Pág. {evtPage} · {Math.ceil(evtTotal / 50)} páginas</span>
+            <div className="px-5 py-3 border-t border-brand-100 flex items-center justify-between">
+              <span className="text-xs text-brand-300">Pág. {evtPage} · {Math.ceil(evtTotal / 50)} páginas</span>
               <div className="flex gap-2">
-                <button disabled={evtPage <= 1} onClick={() => setEvtPage((p) => p - 1)} className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">← Anterior</button>
-                <button disabled={evtPage >= Math.ceil(evtTotal / 50)} onClick={() => setEvtPage((p) => p + 1)} className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">Siguiente →</button>
+                <button disabled={evtPage <= 1} onClick={() => setEvtPage((p) => p - 1)} className="px-3 py-1 text-xs border border-brand-200 rounded-lg disabled:opacity-40 hover:bg-brand-50">← Anterior</button>
+                <button disabled={evtPage >= Math.ceil(evtTotal / 50)} onClick={() => setEvtPage((p) => p + 1)} className="px-3 py-1 text-xs border border-brand-200 rounded-lg disabled:opacity-40 hover:bg-brand-50">Siguiente →</button>
               </div>
             </div>
           )}

@@ -308,7 +308,7 @@ export default function IdCarDetailPage() {
     setPublishing(false);
   }
 
-  if (loading) return <div className="text-slate-400 text-sm p-6">Cargando…</div>;
+  if (loading) return <div className="text-brand-300 text-sm p-6">Cargando…</div>;
   if (!vehicle) return <div className="text-red-500 text-sm p-6">Vehículo no encontrado</div>;
 
   const photos    = files.filter((f) => f.file_type === 'photo' && (f.file_url || f.file_content_base64));
@@ -333,21 +333,21 @@ export default function IdCarDetailPage() {
       <PageHeader
         title={vehicleTitle}
         subtitle={vehicle.owner_email ?? vehicle.user_id}
-        actions={<Link to="/idcars" className="text-sm text-slate-500 hover:text-slate-700">← Volver</Link>}
+        actions={<Link to="/idcars" className="text-sm text-brand-400 hover:text-brand-500">← Volver</Link>}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Vehicle info */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800 text-sm">Datos del Vehículo</h3>
+            <h3 className="font-semibold text-brand-600 text-sm">Datos del Vehículo</h3>
             {!editing ? (
               <button type="button" onClick={startEditing}
                 className="text-xs text-acento-texto hover:text-acento-texto font-medium">Editar</button>
             ) : (
               <div className="flex gap-2">
                 <button type="button" onClick={() => { setEditing(false); setSaveMsg(null); }}
-                  className="text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
+                  className="text-xs text-brand-400 hover:text-brand-500">Cancelar</button>
                 <button type="button" onClick={saveVehicle} disabled={saving}
                   className="text-xs bg-brand-600 text-white px-3 py-1 rounded-md hover:bg-brand-700 disabled:opacity-50">
                   {saving ? 'Guardando…' : 'Guardar'}
@@ -378,13 +378,13 @@ export default function IdCarDetailPage() {
                   ['Precio',       vehicle.price ? `${Number(vehicle.price).toLocaleString('es-ES')} €` : undefined],
                 ].filter(([, v]) => v).map(([label, val]) => (
                   <div key={label as string} className="flex justify-between gap-2">
-                    <dt className="text-slate-500 shrink-0">{label}</dt>
-                    <dd className="text-slate-700 text-right">{String(val)}</dd>
+                    <dt className="text-brand-400 shrink-0">{label}</dt>
+                    <dd className="text-brand-500 text-right">{String(val)}</dd>
                   </div>
                 ))}
               </dl>
               {vehicle.notes && (
-                <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 whitespace-pre-wrap">{vehicle.notes}</p>
+                <p className="mt-3 pt-3 border-t border-brand-100 text-xs text-brand-400 whitespace-pre-wrap">{vehicle.notes}</p>
               )}
             </>
           ) : (
@@ -404,35 +404,35 @@ export default function IdCarDetailPage() {
                 ['Precio (€)',   'price',             'number'],
               ] as [string, string, string][]).map(([label, key, type]) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="text-slate-500 w-28 shrink-0 text-xs">{label}</label>
+                  <label className="text-brand-400 w-28 shrink-0 text-xs">{label}</label>
                   <input
                     type={type}
                     value={editForm[key] ?? ''}
                     onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-acento"
+                    className="flex-1 border border-brand-200 rounded-md px-2 py-1 text-sm text-brand-500 focus:outline-none focus:ring-1 focus:ring-acento"
                   />
                 </div>
               ))}
               <div>
-                <label className="text-slate-500 text-xs block mb-1">Notas</label>
+                <label className="text-brand-400 text-xs block mb-1">Notas</label>
                 <textarea
                   rows={3}
                   value={editForm['notes'] ?? ''}
                   onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-acento resize-none"
+                  className="w-full border border-brand-200 rounded-md px-2 py-1 text-sm text-brand-500 focus:outline-none focus:ring-1 focus:ring-acento resize-none"
                 />
               </div>
             </div>
           )}
-          <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">
+          <div className="mt-3 pt-3 border-t border-brand-100 text-xs text-brand-300">
             Propietario: <Link to={`/users/${vehicle.user_id}`} className="text-acento-texto hover:underline">{vehicle.owner_name ?? vehicle.user_id}</Link>
           </div>
         </Card>
 
         {/* Photos */}
         <Card className="lg:col-span-2" padding={false}>
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-            <h3 className="font-semibold text-slate-800 text-sm">Fotos <span className="text-slate-400 font-normal">({photos.length})</span></h3>
+          <div className="px-5 py-3 border-b border-brand-100 flex items-center justify-between gap-2 flex-wrap">
+            <h3 className="font-semibold text-brand-600 text-sm">Fotos <span className="text-brand-300 font-normal">({photos.length})</span></h3>
             {primaryMsg && (
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${primaryMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                 {primaryMsg.text}
@@ -440,13 +440,13 @@ export default function IdCarDetailPage() {
             )}
           </div>
           {/* Photo upload — always visible */}
-          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3">
+          <div className="px-5 py-3 border-b border-brand-100 flex flex-wrap items-center gap-3">
             <input
               ref={(el) => { inputRefs.current['photo'] = el; }}
               type="file"
               accept="image/*"
               multiple
-              className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-acento-tenue file:text-acento-texto hover:file:bg-acento-tenue cursor-pointer"
+              className="text-xs text-brand-400 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-acento-tenue file:text-acento-texto hover:file:bg-acento-tenue cursor-pointer"
               onChange={(e) => {
                 const fs = Array.from(e.target.files ?? []);
                 const tooBig = fs.filter((f) => f.size > 10 * 1024 * 1024);
@@ -456,7 +456,7 @@ export default function IdCarDetailPage() {
                 setPendingFiles((p) => ({ ...p, photo: valid }));
               }}
             />
-            <span className="text-xs text-slate-400">máx. 10 MB · JPG, PNG, WEBP</span>
+            <span className="text-xs text-brand-300">máx. 10 MB · JPG, PNG, WEBP</span>
             {(pendingFiles['photo'] ?? []).length > 0 && (
               <button
                 type="button"
@@ -475,10 +475,10 @@ export default function IdCarDetailPage() {
           </div>
 
           {photos.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-10">Sin fotos · Sube imágenes arriba</p>
+            <p className="text-brand-300 text-sm text-center py-10">Sin fotos · Sube imágenes arriba</p>
           ) : (
             <>
-              <p className="px-4 pt-3 text-xs text-slate-400">Haz clic para ampliar · Arrastra para reordenar · La primera foto es la principal</p>
+              <p className="px-4 pt-3 text-xs text-brand-300">Haz clic para ampliar · Arrastra para reordenar · La primera foto es la principal</p>
               <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {photos.map((f, photoIdx) => {
                   const photoSrc = resolveFileUrl(f);
@@ -496,7 +496,7 @@ export default function IdCarDetailPage() {
                       setDragOverPhotoId(null);
                     }}
                     onDragEnd={() => { draggingPhotoId.current = null; setDragOverPhotoId(null); }}
-                    className="relative group rounded-lg overflow-hidden border aspect-square bg-slate-50 transition-all cursor-grab active:cursor-grabbing"
+                    className="relative group rounded-lg overflow-hidden border aspect-square bg-brand-50 transition-all cursor-grab active:cursor-grabbing"
                     style={{
                       borderColor: photoIdx === 0 ? '#f59e0b' : isDraggingOver ? '#3b82f6' : undefined,
                       borderWidth: (photoIdx === 0 || isDraggingOver) ? 2 : 1,
@@ -529,7 +529,7 @@ export default function IdCarDetailPage() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleMakePrimaryAndFirst(f, photoSrc); }}
                         disabled={settingPrimary}
-                        className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
+                        className="absolute top-1.5 left-1.5 z-10 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 whitespace-nowrap"
                       >
                         ⭐ Principal
                       </button>
@@ -556,10 +556,10 @@ export default function IdCarDetailPage() {
 
       {/* Documents & file upload — one section per category */}
       <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800 text-sm">Documentos</h3>
+        <div className="px-5 py-3 border-b border-brand-100">
+          <h3 className="font-semibold text-brand-600 text-sm">Documentos</h3>
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-brand-100">
           {UPLOAD_SECTIONS.filter((s) => s.key !== 'photo').map(({ key, label, accept, maxMB, multiple }) => {
             const existing   = files.filter((f) => f.file_type === key);
             const pending    = pendingFiles[key] ?? [];
@@ -568,19 +568,19 @@ export default function IdCarDetailPage() {
             return (
               <div key={key} className="px-5 py-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-slate-700">{label}</span>
-                  <span className="text-xs text-slate-400">máx. {maxMB} MB</span>
+                  <span className="text-sm font-medium text-brand-500">{label}</span>
+                  <span className="text-xs text-brand-300">máx. {maxMB} MB</span>
                 </div>
 
                 {/* Existing files for this type */}
                 {existing.length > 0 && (
                   <div className="mb-3 space-y-1.5">
                     {existing.map((f) => (
-                      <div key={f.id} className="flex items-center gap-2 bg-slate-50 rounded-md px-3 py-2">
+                      <div key={f.id} className="flex items-center gap-2 bg-brand-50 rounded-md px-3 py-2">
                         <span className="text-sm">{fileIcon(f)}</span>
-                        <span className="text-xs text-slate-700 flex-1 truncate" title={f.file_name}>{f.file_name}</span>
-                        <span className="text-xs text-slate-400 shrink-0">{fmtBytes(f.file_size)}</span>
-                        <span className="text-xs text-slate-400 shrink-0">{fmtDate(f.created_at)}</span>
+                        <span className="text-xs text-brand-500 flex-1 truncate" title={f.file_name}>{f.file_name}</span>
+                        <span className="text-xs text-brand-300 shrink-0">{fmtBytes(f.file_size)}</span>
+                        <span className="text-xs text-brand-300 shrink-0">{fmtDate(f.created_at)}</span>
                         {f.file_url ? (
                           <a href={f.file_url} target="_blank" rel="noreferrer"
                             className="text-xs text-acento-texto hover:underline shrink-0">Ver →</a>
@@ -603,7 +603,7 @@ export default function IdCarDetailPage() {
                     type="file"
                     accept={accept}
                     multiple={multiple}
-                    className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer"
+                    className="text-xs text-brand-400 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-brand-100 file:text-brand-400 hover:file:bg-brand-200 cursor-pointer"
                     onChange={(e) => {
                       const fs = Array.from(e.target.files ?? []);
                       const tooBig = fs.filter((f) => f.size > maxMB * 1024 * 1024);
@@ -637,14 +637,14 @@ export default function IdCarDetailPage() {
 
       {/* Publish to Marketplace */}
       <Card>
-        <h3 className="font-semibold text-slate-800 text-sm mb-4">Publicar en Marketplace</h3>
-        <p className="text-xs text-slate-500 mb-3">
+        <h3 className="font-semibold text-brand-600 text-sm mb-4">Publicar en Marketplace</h3>
+        <p className="text-xs text-brand-400 mb-3">
           Esto crea o actualiza la oferta en el marketplace de vehículos de ocasión con los datos de este IDCar.
           El tipo de vendedor se marcará como <strong>particular</strong>.
         </p>
         <div className="flex items-end gap-3 flex-wrap">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Precio de venta (€)</label>
+            <label className="block text-xs font-medium text-brand-400 mb-1">Precio de venta (€)</label>
             <input
               type="number"
               min="0"
@@ -652,7 +652,7 @@ export default function IdCarDetailPage() {
               value={publishPrice}
               onChange={(e) => setPublishPrice(e.target.value)}
               placeholder="Ej: 12500"
-              className="w-40 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
+              className="w-40 px-3 py-1.5 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
             />
           </div>
           <button

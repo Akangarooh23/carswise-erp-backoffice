@@ -54,8 +54,8 @@ const EMPTY_RENTING_FORM: Partial<VoOffer> = {
   carswise_fee: 400,
 };
 
-const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento';
-const LABEL_CLS = 'block text-xs font-medium text-slate-600 mb-1';
+const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento';
+const LABEL_CLS = 'block text-xs font-medium text-brand-400 mb-1';
 const FUELS = ['Gasolina','Diésel','Híbrido','Híbrido enchufable','Eléctrico','GLP','Gas Natural','Otros'];
 
 // ── Renting price grid helpers ────────────────────────────────────────────────
@@ -287,7 +287,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
         {(form.image_urls ?? []).filter(u => u.trim()).length > 0 && (
           <div className="grid grid-cols-4 gap-2 mb-3">
             {(form.image_urls ?? []).filter(u => u.trim()).map((url, idx) => (
-              <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-slate-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-slate-300'}`}>
+              <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-brand-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-brand-300'}`}>
                 <img
                   src={url}
                   alt=""
@@ -307,7 +307,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                       setForm(f => ({ ...f, image_urls: newUrls, image_url: newUrls[0] ?? '' }));
                       onSetPrimary?.(newUrls);
                     }}
-                    className="absolute top-1 left-1 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
+                    className="absolute top-1 left-1 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
                   >
                     ⭐ Principal
                   </button>
@@ -319,7 +319,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
 
         {(form.image_urls?.length ? form.image_urls : ['']).map((url, idx) => (
           <div key={idx} className="flex gap-2 mb-2 items-center">
-            <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
+            <span className="text-xs text-brand-300 w-4 shrink-0">{idx + 1}</span>
             <input
               className={INPUT_CLS}
               value={url}
@@ -365,34 +365,34 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
         </div>
         <div className="flex items-center gap-2 pt-5">
           <input type="checkbox" id={`${idPrefix}-gs`} checked={form.has_guarantee_seal ?? false} onChange={onBool('has_guarantee_seal')} className="rounded" />
-          <label htmlFor={`${idPrefix}-gs`} className="text-sm text-slate-700">Sello garantía</label>
+          <label htmlFor={`${idPrefix}-gs`} className="text-sm text-brand-500">Sello garantía</label>
         </div>
       </div>
       {/* Modalidad */}
-      <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
-        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Modalidad de venta</p>
+      <div className="border border-brand-200 rounded-xl p-4 space-y-3 bg-brand-50">
+        <p className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Modalidad de venta</p>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <input type="checkbox" id={`${idPrefix}-purchase`} checked={form.available_for_purchase ?? true} onChange={onBool('available_for_purchase')} className="rounded" />
-            <label htmlFor={`${idPrefix}-purchase`} className="text-sm font-medium text-slate-700">Disponible para compra</label>
+            <label htmlFor={`${idPrefix}-purchase`} className="text-sm font-medium text-brand-500">Disponible para compra</label>
           </div>
           {(form.available_for_purchase ?? true) && (
-            <p className="ml-6 text-xs text-slate-400">El precio de compra se indica en el campo "Precio (€)" de arriba.</p>
+            <p className="ml-6 text-xs text-brand-300">El precio de compra se indica en el campo "Precio (€)" de arriba.</p>
           )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id={`${idPrefix}-renting`} checked={form.renting_available ?? false} onChange={onBool('renting_available')} className="rounded" />
-            <label htmlFor={`${idPrefix}-renting`} className="text-sm font-medium text-slate-700">Disponible para renting</label>
+            <label htmlFor={`${idPrefix}-renting`} className="text-sm font-medium text-brand-500">Disponible para renting</label>
           </div>
           {form.renting_available && (
             <div className="ml-6 space-y-3">
-              <p className="text-xs text-slate-400">Cuota mensual (€/mes) por plazo y km/año. La columna 15.000 km se usa como precio de referencia en el listado.</p>
+              <p className="text-xs text-brand-300">Cuota mensual (€/mes) por plazo y km/año. La columna 15.000 km se usa como precio de referencia en el listado.</p>
               <div className="overflow-x-auto">
                 <table className="text-xs w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left p-1.5 text-slate-500 font-medium">Plazo</th>
+                      <th className="text-left p-1.5 text-brand-400 font-medium">Plazo</th>
                       {RENTING_KM_OPTIONS.map(km => (
-                        <th key={km} className={`text-center p-1.5 font-medium whitespace-nowrap ${km === 15000 ? 'text-acento-texto' : 'text-slate-500'}`}>
+                        <th key={km} className={`text-center p-1.5 font-medium whitespace-nowrap ${km === 15000 ? 'text-acento-texto' : 'text-brand-400'}`}>
                           {(km / 1000).toFixed(0)}.000 km
                         </th>
                       ))}
@@ -403,15 +403,15 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                       const prices = getRentingPrices(form);
                       const row = (prices[dur] as (number | null)[] | null) ?? new Array(RENTING_KM_OPTIONS.length).fill(null);
                       return (
-                        <tr key={dur} className="border-t border-slate-100">
-                          <td className="p-1.5 font-semibold text-slate-600 whitespace-nowrap">{dur.replace('m', ' meses')}</td>
+                        <tr key={dur} className="border-t border-brand-100">
+                          <td className="p-1.5 font-semibold text-brand-400 whitespace-nowrap">{dur.replace('m', ' meses')}</td>
                           {RENTING_KM_OPTIONS.map((km, ki) => {
                             const isStd = km === 15000;
                             return (
                               <td key={km} className={`p-1 ${isStd ? 'bg-acento-tenue' : ''}`}>
                                 <input
                                   type="number"
-                                  className={`w-full px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-1 focus:ring-acento ${isStd ? 'border-acento font-semibold' : 'border-slate-200'}`}
+                                  className={`w-full px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-1 focus:ring-acento ${isStd ? 'border-acento font-semibold' : 'border-brand-200'}`}
                                   value={row[ki] ?? ''}
                                   onChange={(e) => {
                                     const val = e.target.value === '' ? null : Number(e.target.value);
@@ -437,8 +437,8 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
                   </tbody>
                 </table>
               </div>
-              <div className="border-t border-slate-100 pt-3">
-                <label className={LABEL_CLS}>Fee PopCar (€) <span className="text-slate-400 font-normal">— importe que CarsWise factura al proveedor por cada contrato de renting firmado</span></label>
+              <div className="border-t border-brand-100 pt-3">
+                <label className={LABEL_CLS}>Fee PopCar (€) <span className="text-brand-300 font-normal">— importe que CarsWise factura al proveedor por cada contrato de renting firmado</span></label>
                 <input
                   type="number"
                   className={`${INPUT_CLS} max-w-[180px]`}
@@ -456,7 +456,7 @@ function VehicleFormFields({ form, setForm, idPrefix, onSetPrimary }: FormFields
 
       <div className="flex items-center gap-2">
         <input type="checkbox" id={`${idPrefix}-active`} checked={form.is_active ?? true} onChange={onBool('is_active')} className="rounded" />
-        <label htmlFor={`${idPrefix}-active`} className="text-sm font-medium text-slate-700">Publicado en marketplace</label>
+        <label htmlFor={`${idPrefix}-active`} className="text-sm font-medium text-brand-500">Publicado en marketplace</label>
       </div>
     </div>
   );
@@ -487,41 +487,41 @@ function VisitsPanel({
   onAdd: () => void; adding: boolean; msg: string | null;
   onRemoveSlot: (id: string) => void; onCancelBooking: (id: string) => void;
 }) {
-  if (data.loading) return <div className="p-4 text-xs text-slate-400">Cargando…</div>;
+  if (data.loading) return <div className="p-4 text-xs text-brand-300">Cargando…</div>;
   return (
-    <div className="p-4 bg-slate-50 border-t border-slate-100">
+    <div className="p-4 bg-brand-50 border-t border-brand-100">
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Disponibilidad y citas</span>
-        <span className="text-[10px] font-mono text-slate-400 bg-slate-200 rounded px-1.5 py-0.5">{offerId}</span>
+        <span className="text-xs font-bold text-brand-400 uppercase tracking-wide">Disponibilidad y citas</span>
+        <span className="text-[10px] font-mono text-brand-300 bg-brand-200 rounded px-1.5 py-0.5">{offerId}</span>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ── Slots ── */}
         <div>
-          <p className="text-xs font-semibold text-slate-600 mb-2">Franjas horarias</p>
+          <p className="text-xs font-semibold text-brand-400 mb-2">Franjas horarias</p>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <div>
-              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Fecha</label>
+              <label className="block text-[10px] text-brand-300 font-medium mb-0.5">Fecha</label>
               <input type="date" min={todayStr()} value={slotForm.date}
                 onChange={(e) => onFormChange({ ...slotForm, date: e.target.value })}
-                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-acento" />
+                className="px-2 py-1 text-xs border border-brand-200 rounded-md focus:outline-none focus:ring-1 focus:ring-acento" />
             </div>
             <div>
-              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Desde</label>
+              <label className="block text-[10px] text-brand-300 font-medium mb-0.5">Desde</label>
               <select value={slotForm.timeStart} onChange={(e) => onFormChange({ ...slotForm, timeStart: e.target.value })}
-                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none">
+                className="px-2 py-1 text-xs border border-brand-200 rounded-md focus:outline-none">
                 {V_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] text-slate-400 font-medium mb-0.5">Hasta</label>
+              <label className="block text-[10px] text-brand-300 font-medium mb-0.5">Hasta</label>
               <select value={slotForm.timeEnd} onChange={(e) => onFormChange({ ...slotForm, timeEnd: e.target.value })}
-                className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none">
+                className="px-2 py-1 text-xs border border-brand-200 rounded-md focus:outline-none">
                 {V_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <button onClick={onAdd} disabled={adding}
-              className="px-3 py-1 text-xs font-semibold bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50 whitespace-nowrap">
+              className="px-3 py-1 text-xs font-semibold bg-brand-600 text-white rounded-md hover:bg-brand-500 disabled:opacity-50 whitespace-nowrap">
               {adding ? 'Añadiendo…' : '+ Añadir'}
             </button>
           </div>
@@ -529,16 +529,16 @@ function VisitsPanel({
             <div className={`text-xs mb-2 px-2 py-1 rounded ${msg.startsWith('✓') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{msg}</div>
           )}
           <div className="space-y-1">
-            {data.slots.length === 0 && <p className="text-xs text-slate-400">Sin franjas configuradas.</p>}
+            {data.slots.length === 0 && <p className="text-xs text-brand-300">Sin franjas configuradas.</p>}
             {data.slots.map((s: any) => (
-              <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-acento-tenue border border-acento-tenue' : 'bg-white border border-slate-100'}`}>
+              <div key={s.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${s.status === 'booked' ? 'bg-acento-tenue border border-acento-tenue' : 'bg-white border border-brand-100'}`}>
                 <span className="text-[10px]">{s.status === 'booked' ? '🔵' : '🟢'}</span>
-                <span className="flex-1 font-medium text-slate-700">{fmtVDate(s.starts_at)} · {fmtVTime(s.starts_at)}–{fmtVTime(s.ends_at)}</span>
+                <span className="flex-1 font-medium text-brand-500">{fmtVDate(s.starts_at)} · {fmtVTime(s.starts_at)}–{fmtVTime(s.ends_at)}</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${s.status === 'booked' ? 'bg-acento-tenue text-acento-texto' : 'bg-emerald-100 text-emerald-700'}`}>
                   {s.status === 'booked' ? 'Reservada' : 'Libre'}
                 </span>
                 {s.status === 'available' && (
-                  <button onClick={() => onRemoveSlot(s.id)} className="text-slate-300 hover:text-red-500 font-bold text-sm leading-none">✕</button>
+                  <button onClick={() => onRemoveSlot(s.id)} className="text-brand-300 hover:text-red-500 font-bold text-sm leading-none">✕</button>
                 )}
               </div>
             ))}
@@ -547,18 +547,18 @@ function VisitsPanel({
 
         {/* ── Bookings ── */}
         <div>
-          <p className="text-xs font-semibold text-slate-600 mb-2">Citas confirmadas ({data.bookings.length})</p>
+          <p className="text-xs font-semibold text-brand-400 mb-2">Citas confirmadas ({data.bookings.length})</p>
           {data.bookings.length === 0 ? (
-            <p className="text-xs text-slate-400">Sin citas.</p>
+            <p className="text-xs text-brand-300">Sin citas.</p>
           ) : (
             <div className="space-y-1.5">
               {data.bookings.map((b: any) => (
-                <div key={b.id} className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-white border border-slate-100 text-xs">
+                <div key={b.id} className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-white border border-brand-100 text-xs">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-slate-800">{fmtVDate(b.starts_at)} · {fmtVTime(b.starts_at)}</div>
-                    <div className="text-slate-600 truncate">{b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}</div>
-                    <div className="text-slate-400 text-[10px] truncate">{b.buyer_email}</div>
-                    {b.notes && <div className="text-slate-400 truncate italic">{b.notes}</div>}
+                    <div className="font-semibold text-brand-600">{fmtVDate(b.starts_at)} · {fmtVTime(b.starts_at)}</div>
+                    <div className="text-brand-400 truncate">{b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}</div>
+                    <div className="text-brand-300 text-[10px] truncate">{b.buyer_email}</div>
+                    {b.notes && <div className="text-brand-300 truncate italic">{b.notes}</div>}
                   </div>
                   <button onClick={() => onCancelBooking(b.id)}
                     className="text-[10px] text-red-500 hover:text-red-700 font-medium shrink-0 px-1.5 py-0.5 rounded hover:bg-red-50">
@@ -1455,15 +1455,15 @@ export default function MarketplacePage() {
         actions={tab === 'vo' ? (
           <div className="flex gap-2 flex-wrap">
             <button onClick={downloadTemplate}
-              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
               📄 Plantilla Excel
             </button>
             <button onClick={() => { setShowImport(true); setImportResult(null); setImportRows([]); setImportFileName(''); }}
-              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
               📥 Importar Excel
             </button>
             <button onClick={doExport}
-              className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              className="px-3 py-2 text-xs font-medium text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
               📤 Exportar Excel
             </button>
             <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_FORM); }}
@@ -1473,17 +1473,17 @@ export default function MarketplacePage() {
           </div>
         ) : tab === 'renting' ? (
           <button onClick={() => { setShowCreate(true); setCreateForm(EMPTY_RENTING_FORM); }}
-            className="px-4 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            className="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700">
             + Añadir oferta renting
           </button>
         ) : tab === 'offers' ? (
           <div className="flex items-center gap-3">
             {verifiable > 0 && (
-              <span className="text-xs text-slate-500 whitespace-nowrap">
+              <span className="text-xs text-brand-400 whitespace-nowrap">
                 Verificadas hoy:{' '}
                 <b className={
                   verifiedToday / verifiable >= 0.9 ? 'text-emerald-600'
-                  : verifiedToday / verifiable >= 0.4 ? 'text-amber-600' : 'text-slate-700'
+                  : verifiedToday / verifiable >= 0.4 ? 'text-amber-600' : 'text-brand-500'
                 }>{verifiedToday.toLocaleString('es-ES')}</b>
                 {' / '}{verifiable.toLocaleString('es-ES')} ({Math.round((verifiedToday / verifiable) * 100)}%)
               </span>
@@ -1501,11 +1501,11 @@ export default function MarketplacePage() {
       />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit mb-5">
+      <div className="flex gap-1 bg-brand-100 rounded-lg p-1 w-fit mb-5">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === t.key ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+              tab === t.key ? 'bg-white shadow-sm text-brand-600' : 'text-brand-400 hover:text-brand-500'
             }`}>
             {t.label}
           </button>
@@ -1518,12 +1518,12 @@ export default function MarketplacePage() {
         {(tab === 'vo' || tab === 'renting') && (
           <>
             <select value={brand} onChange={(e) => setBrand(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Todas las marcas</option>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
             <select value={statusFilter} onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               {STATUS_FILTERS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </>
@@ -1531,7 +1531,7 @@ export default function MarketplacePage() {
         {tab === 'offers' && (
           <>
             <select value={portalFilter} onChange={(e) => setPortalFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Todos los portales</option>
               <option value="autoscout24">AutoScout24</option>
               <option value="autocasion">Autocasión</option>
@@ -1543,7 +1543,7 @@ export default function MarketplacePage() {
               <option value="wallapop">Wallapop</option>
             </select>
             <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
               <option value="">Particulares y profesionales</option>
               <option value="particular">Solo particulares</option>
               <option value="profesional">Solo profesionales</option>
@@ -1553,17 +1553,17 @@ export default function MarketplacePage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : tab === 'vo' ? (
           items.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Sin resultados</div>
+            <div className="text-center py-12 text-brand-300 text-sm">Sin resultados</div>
           ) : (
             <>
               {/* Active column filters summary */}
               {Object.values(colF).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-acento-tenue">
+                <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 flex-wrap bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{displayItems.length} de {items.length} resultados</span>
                   <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMin:'', priceMax:'', salePriceMin:'', salePriceMax:'', estado:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros de columna</button>
@@ -1603,7 +1603,7 @@ export default function MarketplacePage() {
                         className="cursor-pointer select-none whitespace-nowrap group">
                         <span className="flex items-center gap-1">
                           {label}
-                          <span className={`text-xs transition-colors ${sortCol === key ? 'text-acento-texto' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                          <span className={`text-xs transition-colors ${sortCol === key ? 'text-acento-texto' : 'text-brand-300 group-hover:text-brand-300'}`}>
                             {sortCol === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
                           </span>
                         </span>
@@ -1612,12 +1612,12 @@ export default function MarketplacePage() {
                     <th></th>
                   </tr>
                   {/* ── Row 2: column filters ── */}
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-brand-50 border-b border-brand-100">
                     {/* Checkbox (alineación) */}
                     <td className="w-10 px-3"></td>
                     {/* Vehículo */}
                     <td className="px-3 py-1.5">
-                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                      <label className="flex items-center gap-1 text-xs text-brand-400 whitespace-nowrap cursor-pointer">
                         <input type="checkbox" checked={!!colF.noImage}
                           onChange={e => setCol('noImage', e.target.checked ? 'yes' : '')} />
                         Sin imagen
@@ -1626,7 +1626,7 @@ export default function MarketplacePage() {
                     {/* Marca */}
                     <td className="px-3 py-1.5">
                       <select value={colF.brand} onChange={e => setCol('brand', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
                         <option value="__empty__">(Vacío)</option>
                         {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
@@ -1635,33 +1635,33 @@ export default function MarketplacePage() {
                     {/* Modelo */}
                     <td className="px-3 py-1.5">
                       <input value={colF.model} onChange={e => setCol('model', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1"
                         placeholder="Modelo…" />
                     </td>
                     {/* Versión */}
                     <td className="px-3 py-1.5">
                       <input value={colF.version} onChange={e => setCol('version', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1"
                         placeholder="Versión…" />
                     </td>
                     {/* P. Compra (rango mín–máx) */}
                     <td className="px-3 py-1.5">
                       <div className="flex gap-1 items-center">
                         <input type="number" value={colF.priceMin} onChange={e => setCol('priceMin', e.target.value)}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
-                        <span className="text-slate-300 text-xs">–</span>
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-brand-300 text-xs">–</span>
                         <input type="number" value={colF.priceMax} onChange={e => setCol('priceMax', e.target.value)}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Máx" />
                       </div>
                     </td>
                     {/* P. Venta (rango mín–máx) */}
                     <td className="px-3 py-1.5">
                       <div className="flex gap-1 items-center">
                         <input type="number" value={colF.salePriceMin} onChange={e => setCol('salePriceMin', e.target.value)}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
-                        <span className="text-slate-300 text-xs">–</span>
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-brand-300 text-xs">–</span>
                         <input type="number" value={colF.salePriceMax} onChange={e => setCol('salePriceMax', e.target.value)}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Máx" />
                       </div>
                     </td>
                     {/* Km */}
@@ -1669,7 +1669,7 @@ export default function MarketplacePage() {
                     {/* Año */}
                     <td className="px-3 py-1.5">
                       <select value={colF.year} onChange={e => setCol('year', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -1678,7 +1678,7 @@ export default function MarketplacePage() {
                     {/* Combustible */}
                     <td className="px-3 py-1.5">
                       <select value={colF.fuel} onChange={e => setCol('fuel', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {fuelOptions.map(f => <option key={f} value={f}>{f}</option>)}
@@ -1687,7 +1687,7 @@ export default function MarketplacePage() {
                     {/* Cambio */}
                     <td className="px-3 py-1.5">
                       <select value={colF.transmission} onChange={e => setCol('transmission', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         <option value="manual">Manual</option>
@@ -1697,7 +1697,7 @@ export default function MarketplacePage() {
                     {/* Color */}
                     <td className="px-3 py-1.5">
                       <select value={colF.color} onChange={e => setCol('color', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1706,7 +1706,7 @@ export default function MarketplacePage() {
                     {/* Cilindrada */}
                     <td className="px-3 py-1.5">
                       <select value={colF.cc} onChange={e => setCol('cc', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
                         <option value="__empty__">(Vacío)</option>
                         {[900,1200,1600,2000,3000].map(v => <option key={v} value={v}>≥ {v} cc</option>)}
@@ -1715,7 +1715,7 @@ export default function MarketplacePage() {
                     {/* Modalidad */}
                     <td className="px-3 py-1.5">
                       <select value={colF.modality} onChange={e => setCol('modality', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="compra">Solo compra</option>
                         <option value="renting">Solo renting</option>
@@ -1724,7 +1724,7 @@ export default function MarketplacePage() {
                     </td>
                     {/* Unidades */}
                     <td className="px-3 py-1.5">
-                      <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                      <label className="flex items-center gap-1 text-xs text-brand-400 whitespace-nowrap cursor-pointer">
                         <input type="checkbox" checked={colF.units === 'stock'}
                           onChange={e => setCol('units', e.target.checked ? 'stock' : '')} />
                         Stock
@@ -1733,7 +1733,7 @@ export default function MarketplacePage() {
                     {/* Vendedor */}
                     <td className="px-3 py-1.5">
                       <select value={colF.seller} onChange={e => setCol('seller', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {sellerOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1742,7 +1742,7 @@ export default function MarketplacePage() {
                     {/* Estado */}
                     <td className="px-3 py-1.5">
                       <select value={colF.estado} onChange={e => setCol('estado', e.target.value)}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="active">Activa</option>
                         <option value="inactive">Inactiva</option>
@@ -1770,9 +1770,9 @@ export default function MarketplacePage() {
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
-                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-brand-100 shrink-0" />
                           ) : (
-                            <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
+                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg">🚗</div>
                           )}
                           <div>
                             {/* El titulo no se pinta: es marca + modelo + version,
@@ -1781,22 +1781,22 @@ export default function MarketplacePage() {
                                 la foto, para poder leerlo entero al pasar por encima. */}
                             <p className="text-[13px] text-brand-500">{item.location || '–'}</p>
                             {item.internal_location && (
-                              <p className="text-[10px] font-mono text-slate-300 leading-tight">{item.internal_location}</p>
+                              <p className="text-[10px] font-mono text-brand-300 leading-tight">{item.internal_location}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="text-sm font-medium text-slate-700 whitespace-nowrap">{item.brand}</td>
-                      <td className="text-sm text-slate-500">{item.model}</td>
-                      <td className="text-sm text-slate-400">{item.version || '–'}</td>
-                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm font-medium text-brand-500 whitespace-nowrap">{item.brand}</td>
+                      <td className="text-sm text-brand-400">{item.model}</td>
+                      <td className="text-sm text-brand-300">{item.version || '–'}</td>
+                      <td className="font-semibold text-brand-600 text-sm">{fmtPrice(item.price)}</td>
                       <td className="font-semibold text-emerald-700 text-sm">{item.sale_price != null ? fmtPrice(item.sale_price) : '—'}</td>
-                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
-                      <td className="text-sm text-slate-500">{item.year}</td>
-                      <td className="text-sm text-slate-500">{item.fuel || '–'}</td>
-                      <td className="text-sm text-slate-500">{item.transmission || '–'}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.color || '–'}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{(item as any).displacement ? `${(item as any).displacement} cc` : '–'}</td>
+                      <td className="text-sm text-brand-400">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-brand-400">{item.year}</td>
+                      <td className="text-sm text-brand-400">{item.fuel || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.transmission || '–'}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.color || '–'}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{(item as any).displacement ? `${(item as any).displacement} cc` : '–'}</td>
                       {/* Modalidad — columna separada */}
                       <td>
                         <div className="flex gap-1 flex-wrap">
@@ -1812,17 +1812,17 @@ export default function MarketplacePage() {
                               {item.units_available ?? 0} disp. / {item.total_units ?? 0}
                             </span>
                             {item.available_colors?.length ? (
-                              <span className="text-[10px] text-slate-400 leading-tight">{item.available_colors.join(', ')}</span>
+                              <span className="text-[10px] text-brand-300 leading-tight">{item.available_colors.join(', ')}</span>
                             ) : null}
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-500">1</span>
+                          <span className="text-xs text-brand-400">1</span>
                         )}
                       </td>
                       {/* Vendedor */}
                       <td>
                         <div className="flex flex-col gap-1">
-                          <span className="text-xs text-slate-600">{item.seller || '–'}</span>
+                          <span className="text-xs text-brand-400">{item.seller || '–'}</span>
                           {item.seller_type && (
                             <Badge variant={item.seller_type === 'professional' ? 'blue' : item.seller_type === 'concesionario' ? 'orange' : item.seller_type === 'importador' ? 'purple' : 'slate'}>
                               {item.seller_type === 'professional' ? 'Profesional' : item.seller_type === 'concesionario' ? 'Concesionario' : item.seller_type === 'importador' ? 'Importador' : 'Particular'}
@@ -1848,7 +1848,7 @@ export default function MarketplacePage() {
                           <button
                             onClick={() => { setImageEditOffer(item); setImageUrls(item.image_urls?.length ? item.image_urls : ['']); }}
                             title="Editar imágenes"
-                            className={`text-xs font-medium px-2 py-1 rounded ${!item.image_url && !(item.image_urls?.length) ? 'text-orange-500 hover:bg-orange-50' : 'text-violet-500 hover:bg-violet-50'}`}>
+                            className={`text-xs font-medium px-2 py-1 rounded ${!item.image_url && !(item.image_urls?.length) ? 'text-orange-500 hover:bg-orange-50' : 'text-brand-400 hover:bg-acento-tenue'}`}>
                             🖼️
                           </button>
                           <button onClick={() => toggleActive(item)}
@@ -1862,7 +1862,7 @@ export default function MarketplacePage() {
                             Eliminar
                           </button>
                           <button onClick={() => openVisitsPanel(item.id)}
-                            className={`text-xs font-medium px-2 py-1 rounded ${expandedVisits === item.id ? 'bg-indigo-100 text-indigo-700' : 'text-indigo-500 hover:bg-indigo-50'}`}>
+                            className={`text-xs font-medium px-2 py-1 rounded ${expandedVisits === item.id ? 'bg-brand-100 text-brand-500' : 'text-brand-400 hover:bg-brand-50'}`}>
                             🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
                           </button>
                         </div>
@@ -1891,13 +1891,13 @@ export default function MarketplacePage() {
               </table>
               </div>
               {displayItems.length === 0 && (
-                <div className="text-center py-8 text-slate-400 text-sm">Sin resultados con los filtros actuales</div>
+                <div className="text-center py-8 text-brand-300 text-sm">Sin resultados con los filtros actuales</div>
               )}
             </>
           )
         ) : tab === 'renting' ? (
           rentingItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
+            <div className="text-center py-12 text-brand-300 text-sm">
               No hay ofertas de renting. Pulsa "+ Añadir oferta renting" para crear la primera.
             </div>
           ) : (
@@ -1919,43 +1919,43 @@ export default function MarketplacePage() {
                     <th>Estado</th>
                     <th></th>
                   </tr>
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-brand-50 border-b border-brand-100">
                     {/* Vehículo (título) */}
                     <td className="px-3 py-1.5">
                       <input value={colFRenting.title} onChange={e => setColFRenting(f => ({...f, title: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Título…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Título…" />
                     </td>
                     {/* Marca */}
                     <td className="px-3 py-1.5">
                       <input value={colFRenting.brand} onChange={e => setColFRenting(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Marca…" />
                     </td>
                     {/* Modelo */}
                     <td className="px-3 py-1.5">
                       <input value={colFRenting.model} onChange={e => setColFRenting(f => ({...f, model: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     {/* Versión */}
                     <td className="px-3 py-1.5">
                       <input value={colFRenting.version} onChange={e => setColFRenting(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     {/* Año (rango) */}
                     <td className="px-3 py-1.5">
                       <div className="flex gap-1 items-center">
                         <input type="number" value={colFRenting.yearMin} onChange={e => setColFRenting(f => ({...f, yearMin: e.target.value}))}
-                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Desde" />
+                          className="w-14 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Desde" />
                         <input type="number" value={colFRenting.yearMax} onChange={e => setColFRenting(f => ({...f, yearMax: e.target.value}))}
-                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Hasta" />
+                          className="w-14 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Hasta" />
                       </div>
                     </td>
                     {/* Km/año (rango) */}
                     <td className="px-3 py-1.5">
                       <div className="flex gap-1 items-center">
                         <input type="number" value={colFRenting.kmMin} onChange={e => setColFRenting(f => ({...f, kmMin: e.target.value}))}
-                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                          className="w-14 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Mín" />
                         <input type="number" value={colFRenting.kmMax} onChange={e => setColFRenting(f => ({...f, kmMax: e.target.value}))}
-                          className="w-14 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                          className="w-14 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Máx" />
                       </div>
                     </td>
                     {/* 12 / 24 / 36 / 48 / 60 meses (rango €/mes) */}
@@ -1963,16 +1963,16 @@ export default function MarketplacePage() {
                       <td key={kMin} className="px-3 py-1.5">
                         <div className="flex gap-1 items-center">
                           <input type="number" value={colFRenting[kMin]} onChange={e => setColFRenting(f => ({...f, [kMin]: e.target.value}))}
-                            className="w-12 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
+                            className="w-12 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Mín" />
                           <input type="number" value={colFRenting[kMax]} onChange={e => setColFRenting(f => ({...f, [kMax]: e.target.value}))}
-                            className="w-12 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                            className="w-12 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Máx" />
                         </div>
                       </td>
                     ))}
                     {/* Estado */}
                     <td className="px-3 py-1.5">
                       <select value={colFRenting.status} onChange={e => setColFRenting(f => ({...f, status: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="active">Publicado</option>
                         <option value="inactive">Despublicado</option>
@@ -1988,9 +1988,9 @@ export default function MarketplacePage() {
                       <td>
                         <div className="flex items-center gap-3">
                           {(item.image_url || item.image_urls?.[0]) ? (
-                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-slate-100 shrink-0" />
+                            <img src={item.image_url || item.image_urls?.[0]} alt="" title={item.title} referrerPolicy="no-referrer" className="w-14 h-10 object-cover rounded-md bg-brand-100 shrink-0" />
                           ) : (
-                            <div className="w-14 h-10 bg-slate-100 rounded-md shrink-0 flex items-center justify-center text-slate-300 text-lg">🚗</div>
+                            <div className="w-14 h-10 bg-brand-100 rounded-md shrink-0 flex items-center justify-center text-brand-300 text-lg">🚗</div>
                           )}
                             {/* El titulo no se pinta: es marca + modelo + version,
                                 que ya tienen columna propia y filtro. Repetirlo
@@ -1998,16 +1998,16 @@ export default function MarketplacePage() {
                                 la foto, para poder leerlo entero al pasar por encima. */}
                         </div>
                       </td>
-                      <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 max-w-[200px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500">{item.year}</td>
-                      <td className="text-sm text-slate-500">{item.renting_km_year ? `${(item.renting_km_year as number).toLocaleString('es-ES')} km` : '–'}</td>
-                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_12m as number | null)}</td>
-                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_24m as number | null)}</td>
-                      <td className="text-sm font-semibold text-purple-700">{fmtCuota(item.renting_36m as number | null)}</td>
-                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_48m as number | null)}</td>
-                      <td className="text-sm text-slate-600">{fmtCuota(item.renting_60m as number | null)}</td>
+                      <td className="text-sm text-brand-500 font-medium whitespace-nowrap">{item.brand || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.model || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 max-w-[200px] truncate" title={item.version || ''}>{item.version || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400">{item.year}</td>
+                      <td className="text-sm text-brand-400">{item.renting_km_year ? `${(item.renting_km_year as number).toLocaleString('es-ES')} km` : '–'}</td>
+                      <td className="text-sm text-brand-400">{fmtCuota(item.renting_12m as number | null)}</td>
+                      <td className="text-sm text-brand-400">{fmtCuota(item.renting_24m as number | null)}</td>
+                      <td className="text-sm font-semibold text-brand-500">{fmtCuota(item.renting_36m as number | null)}</td>
+                      <td className="text-sm text-brand-400">{fmtCuota(item.renting_48m as number | null)}</td>
+                      <td className="text-sm text-brand-400">{fmtCuota(item.renting_60m as number | null)}</td>
                       <td>
                         <Badge variant={item.is_active ? 'green' : 'slate'}>
                           {item.is_active ? 'Publicado' : 'Despublicado'}
@@ -2039,7 +2039,7 @@ export default function MarketplacePage() {
           )
         ) : tab === 'particulares' ? (
           particularsItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
+            <div className="text-center py-12 text-brand-300 text-sm">
               Ningún usuario ha publicado su vehículo todavía.<br />
               <span className="text-xs">Aparecerán aquí cuando marquen su IDCar como "En venta" desde su panel.</span>
             </div>
@@ -2052,39 +2052,39 @@ export default function MarketplacePage() {
                     <th>Vehículo</th><th>Marca</th><th>Modelo</th><th>Versión</th><th>Cliente</th><th>Precio</th><th>Km</th>
                     <th>Año</th><th>Combustible</th><th>Ubicación</th><th>Matrícula</th><th>Acciones</th>
                   </tr>
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-brand-50 border-b border-brand-100">
                     <td className="px-3 py-1.5">
                       <input value={colFPart.brand} onChange={e => setColFPart(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.marca} onChange={e => setColFPart(f => ({...f, marca: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Marca…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.modelo} onChange={e => setColFPart(f => ({...f, modelo: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.version} onChange={e => setColFPart(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.client} onChange={e => setColFPart(f => ({...f, client: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Cliente/email…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Cliente/email…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <div className="flex gap-1 items-center">
                         <input type="number" value={colFPart.priceMin} onChange={e => setColFPart(f => ({...f, priceMin: e.target.value}))}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Mín" />
-                        <span className="text-slate-300 text-xs">–</span>
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Mín" />
+                        <span className="text-brand-300 text-xs">–</span>
                         <input type="number" value={colFPart.priceMax} onChange={e => setColFPart(f => ({...f, priceMax: e.target.value}))}
-                          className="w-16 text-xs border border-slate-200 rounded px-1 py-1" placeholder="Máx" />
+                          className="w-16 text-xs border border-brand-200 rounded px-1 py-1" placeholder="Máx" />
                       </div>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFPart.kmMax} onChange={e => setColFPart(f => ({...f, kmMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {[500,1000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
@@ -2092,7 +2092,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFPart.year} onChange={e => setColFPart(f => ({...f, year: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {partFilterOpts.years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -2100,7 +2100,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFPart.fuel} onChange={e => setColFPart(f => ({...f, fuel: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {partFilterOpts.fuels.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -2108,11 +2108,11 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.location} onChange={e => setColFPart(f => ({...f, location: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Ubicación…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Ubicación…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFPart.plate} onChange={e => setColFPart(f => ({...f, plate: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Matrícula…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Matrícula…" />
                     </td>
                     <td></td>
                   </tr>
@@ -2123,23 +2123,23 @@ export default function MarketplacePage() {
                     <tr key={item.id} onClick={() => openPartEdit(item)}
                       className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
-                        <p className="font-medium text-slate-800 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
-                        {item.year ? <p className="text-xs text-slate-400">{item.year}{item.fuel ? ` · ${item.fuel}` : ''}{item.cv ? ` · ${item.cv} CV` : ''}</p> : null}
+                        <p className="font-medium text-brand-600 text-sm">{[item.brand, item.model, item.version].filter(Boolean).join(' ') || item.title}</p>
+                        {item.year ? <p className="text-xs text-brand-300">{item.year}{item.fuel ? ` · ${item.fuel}` : ''}{item.cv ? ` · ${item.cv} CV` : ''}</p> : null}
                       </td>
-                      <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 max-w-[200px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-brand-500 font-medium whitespace-nowrap">{item.brand || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.model || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 max-w-[200px] truncate" title={item.version || ''}>{item.version || <span className="text-brand-300">–</span>}</td>
                       <td>
-                        <p className="text-sm font-medium text-slate-700">{item.owner_name || item.user_email}</p>
-                        <p className="text-xs text-slate-400">{item.user_email}</p>
-                        {item.owner_phone ? <p className="text-xs text-slate-400">{item.owner_phone}</p> : null}
+                        <p className="text-sm font-medium text-brand-500">{item.owner_name || item.user_email}</p>
+                        <p className="text-xs text-brand-300">{item.user_email}</p>
+                        {item.owner_phone ? <p className="text-xs text-brand-300">{item.owner_phone}</p> : null}
                       </td>
-                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
-                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
-                      <td className="text-sm text-slate-500">{item.year || '–'}</td>
-                      <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
-                      <td className="text-sm text-slate-500">{item.vehicle_location || '–'}</td>
-                      <td className="text-sm text-slate-500">{item.plate || '–'}</td>
+                      <td className="font-semibold text-brand-600 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm text-brand-400">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-brand-400">{item.year || '–'}</td>
+                      <td className="text-sm text-brand-400 capitalize">{item.fuel || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.vehicle_location || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.plate || '–'}</td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1.5 items-center">
                           <button
@@ -2156,7 +2156,7 @@ export default function MarketplacePage() {
                           </button>
                           <button
                             onClick={() => openVisitsPanel(item.id)}
-                            className={`px-2 py-1 rounded text-xs font-semibold border ${expandedVisits === item.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                            className={`px-2 py-1 rounded text-xs font-semibold border ${expandedVisits === item.id ? 'bg-brand-100 text-brand-500 border-brand-200' : 'bg-brand-50 text-brand-400 border-brand-200 hover:bg-brand-100'}`}
                           >
                             🗓 {visitData[item.id] ? `(${visitData[item.id].bookings.length})` : 'Citas'}
                           </button>
@@ -2190,7 +2190,7 @@ export default function MarketplacePage() {
           )
         ) : (tab === 'offers' || tab === 'exportacion') ? (
           portalItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
+            <div className="text-center py-12 text-brand-300 text-sm">
               {tab === 'exportacion'
                 ? 'Sin coches de importación (DE) todavía. Aparecerán aquí cuando corra el scraper AutoScout24-DE.'
                 : 'Sin resultados'}
@@ -2198,7 +2198,7 @@ export default function MarketplacePage() {
           ) : (
             <>
               {Object.values(colFOffers).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-acento-tenue">
+                <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
                   <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', estado:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'', province:'', city:'' })}
                     className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros</button>
@@ -2208,27 +2208,27 @@ export default function MarketplacePage() {
               <table className="erp-table w-full">
                 <thead>
                   <tr><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Estado</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Provincia</th><th>Ciudad</th><th>Enlace</th></tr>
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-brand-50 border-b border-brand-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
                     {tab === 'exportacion' && <><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td></>}
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.marca} onChange={e => setColFOffers(f => ({...f, marca: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Marca…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.modelo} onChange={e => setColFOffers(f => ({...f, modelo: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.version} onChange={e => setColFOffers(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.portal} onChange={e => setColFOffers(f => ({...f, portal: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.portals.map((p) => <option key={p} value={p}>{PORTAL_LABEL[p] ?? p}</option>)}
@@ -2236,7 +2236,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.estado} onChange={e => setColFOffers(f => ({...f, estado: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
                         <option value="active">Activas</option>
                         <option value="inactive">Inactivas</option>
@@ -2244,7 +2244,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.sellerType} onChange={e => setColFOffers(f => ({...f, sellerType: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         <option value="particular">Particular</option>
@@ -2255,7 +2255,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.priceMax} onChange={e => setColFOffers(f => ({...f, priceMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
                         {[500,1000,10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
@@ -2263,7 +2263,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.kmMax} onChange={e => setColFOffers(f => ({...f, kmMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {[500,1000,10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
@@ -2271,7 +2271,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.year} onChange={e => setColFOffers(f => ({...f, year: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -2279,7 +2279,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.fuel} onChange={e => setColFOffers(f => ({...f, fuel: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.fuels.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -2287,84 +2287,84 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.color} onChange={e => setColFOffers(f => ({...f, color: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.colors.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.body} onChange={e => setColFOffers(f => ({...f, body: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.bodyTypes.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.trans} onChange={e => setColFOffers(f => ({...f, trans: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.transmissions.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.cvMin} onChange={e => setColFOffers(f => ({...f, cvMin: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
                         {[60,90,110,130,150,190,250,350].map(v => <option key={v} value={v}>≥ {v} CV</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.doors} onChange={e => setColFOffers(f => ({...f, doors: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {[2,3,4,5].map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.seats} onChange={e => setColFOffers(f => ({...f, seats: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {[2,4,5,6,7,9].map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.ccMin} onChange={e => setColFOffers(f => ({...f, ccMin: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {[900,1200,1600,2000,3000].map(v => <option key={v} value={v}>≥ {v} cc</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.co2Max} onChange={e => setColFOffers(f => ({...f, co2Max: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
                         {[90,100,120,140,160,200].map(v => <option key={v} value={v}>≤ {v} g/km</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.etiq} onChange={e => setColFOffers(f => ({...f, etiq: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {['0 Emisiones','ECO','C','B'].map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.trac} onChange={e => setColFOffers(f => ({...f, trac: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option><option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.tractions.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.consMax} onChange={e => setColFOffers(f => ({...f, consMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option><option value="__empty__">(Vacío)</option>
                         {[4,5,6,7,8,10].map(v => <option key={v} value={v}>≤ {v} l</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.province} onChange={e => setColFOffers(f => ({...f, province: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.provinces.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -2372,7 +2372,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFOffers.city} onChange={e => setColFOffers(f => ({...f, city: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todas</option>
                         <option value="__empty__">(Vacío)</option>
                         {portalFilterOpts.cities.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -2386,10 +2386,10 @@ export default function MarketplacePage() {
                     <tr key={item.id} onClick={() => openPortalEdit(item)} className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
-                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
+                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-brand-100 shrink-0" />}
                           <div>
-                            <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                            <p className="text-xs text-slate-400">{item.brand} {item.model}</p>
+                            <p className="font-medium text-brand-600 text-sm">{item.title}</p>
+                            <p className="text-xs text-brand-300">{item.brand} {item.model}</p>
                           </div>
                         </div>
                       </td>
@@ -2398,7 +2398,7 @@ export default function MarketplacePage() {
                           <button onClick={() => toggleImportPublish(item)}
                             className={`text-xs font-semibold px-2 py-1 rounded whitespace-nowrap ${item.import_published
                               ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                              : 'bg-brand-100 text-brand-400 hover:bg-brand-200'}`}>
                             {item.import_published ? '✓ Publicado' : 'Publicar'}
                           </button>
                         </td>
@@ -2406,16 +2406,16 @@ export default function MarketplacePage() {
                           {item.import_margin != null
                             ? <span className={item.import_margin >= 1500 ? 'text-emerald-700' : item.import_margin > 0 ? 'text-amber-600' : 'text-red-500'}>
                                 {item.import_margin > 0 ? '+' : ''}{Number(item.import_margin).toLocaleString('es-ES')} €
-                                {item.import_margin_pct != null && <span className="text-slate-400 font-normal"> ({Math.round(item.import_margin_pct * 100)}%)</span>}
+                                {item.import_margin_pct != null && <span className="text-brand-300 font-normal"> ({Math.round(item.import_margin_pct * 100)}%)</span>}
                               </span>
-                            : <span className="text-slate-300">–</span>}
+                            : <span className="text-brand-300">–</span>}
                         </td>
-                        <td className="text-sm text-slate-500 whitespace-nowrap">{item.market_price_es != null ? `${Number(item.market_price_es).toLocaleString('es-ES')} €` : '–'}</td>
-                        <td className="text-sm text-slate-400">{item.import_comps ?? '–'}</td>
+                        <td className="text-sm text-brand-400 whitespace-nowrap">{item.market_price_es != null ? `${Number(item.market_price_es).toLocaleString('es-ES')} €` : '–'}</td>
+                        <td className="text-sm text-brand-300">{item.import_comps ?? '–'}</td>
                       </>}
-                      <td className="text-sm text-slate-700 font-medium whitespace-nowrap">{item.brand || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-600 whitespace-nowrap">{item.model || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 max-w-[220px] truncate" title={item.version || ''}>{item.version || <span className="text-slate-300">–</span>}</td>
+                      <td className="text-sm text-brand-500 font-medium whitespace-nowrap">{item.brand || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.model || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 max-w-[220px] truncate" title={item.version || ''}>{item.version || <span className="text-brand-300">–</span>}</td>
                       <td><Badge variant="blue">{item.portal}</Badge></td>
                       <td>
                         {item.is_active === false
@@ -2426,36 +2426,36 @@ export default function MarketplacePage() {
                         {item.seller_type === 'particular'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Particular</span>
                           : item.seller_type === 'professional'
-                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">Profesional</span>
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-brand-100 text-brand-400">Profesional</span>
                           : item.seller_type === 'concesionario'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">Concesionario</span>
                           : item.seller_type === 'importador'
-                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Importador</span>
-                          : <span className="text-slate-300">–</span>}
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-brand-100 text-brand-500">Importador</span>
+                          : <span className="text-brand-300">–</span>}
                       </td>
-                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.price)}</td>
-                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
-                      <td className="text-sm text-slate-500">{item.year}</td>
-                      <td className="text-sm text-slate-500 capitalize">{item.fuel || '–'}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.color || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.body_type || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 capitalize whitespace-nowrap">{item.transmission || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.power_cv ? `${item.power_cv} CV` : <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 text-center">{item.doors || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 text-center">{item.seats || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.displacement ? `${item.displacement} cc` : <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.co2 ? `${item.co2} g` : <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.environmental_label || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.traction || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.consumption ? `${item.consumption} l` : <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.province || item.location || <span className="text-slate-300">–</span>}</td>
-                      <td className="text-sm text-slate-500 whitespace-nowrap">{item.city || <span className="text-slate-300">–</span>}</td>
+                      <td className="font-semibold text-brand-600 text-sm">{fmtPrice(item.price)}</td>
+                      <td className="text-sm text-brand-400">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-brand-400">{item.year}</td>
+                      <td className="text-sm text-brand-400 capitalize">{item.fuel || '–'}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.color || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.body_type || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 capitalize whitespace-nowrap">{item.transmission || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.power_cv ? `${item.power_cv} CV` : <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 text-center">{item.doors || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 text-center">{item.seats || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.displacement ? `${item.displacement} cc` : <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.co2 ? `${item.co2} g` : <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.environmental_label || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.traction || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.consumption ? `${item.consumption} l` : <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.province || item.location || <span className="text-brand-300">–</span>}</td>
+                      <td className="text-sm text-brand-400 whitespace-nowrap">{item.city || <span className="text-brand-300">–</span>}</td>
                       <td>
                         {(item as any).url
                           ? <a href={(item as any).url} target="_blank" rel="noopener noreferrer"
                               className="text-xs text-acento-texto hover:underline"
                               onClick={e => e.stopPropagation()}>Ver ↗</a>
-                          : <span className="text-slate-300">–</span>}
+                          : <span className="text-brand-300">–</span>}
                       </td>
                     </tr>
                   ))}
@@ -2467,11 +2467,11 @@ export default function MarketplacePage() {
           )
         ) : tab === 'concesionarios' ? (
           items.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Sin vehículos de concesionarios</div>
+            <div className="text-center py-12 text-brand-300 text-sm">Sin vehículos de concesionarios</div>
           ) : (
             <>
               {Object.values(colFConc).some(Boolean) && (
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-acento-tenue">
+                <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{displayConcItems.length} de {items.length} resultados</span>
                   <button onClick={() => setColFConc({ brand:'', marca:'', modelo:'', version:'', sellerType:'', seller:'', priceMax:'', kmMax:'', year:'' })}
                     className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros</button>
@@ -2493,26 +2493,26 @@ export default function MarketplacePage() {
                     <th>Ubicación</th>
                     <th>Enlace</th>
                   </tr>
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-brand-50 border-b border-brand-100">
                     <td className="px-3 py-1.5">
                       <input value={colFConc.brand} onChange={e => setColFConc(f => ({...f, brand: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Buscar…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFConc.marca} onChange={e => setColFConc(f => ({...f, marca: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Marca…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Marca…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFConc.modelo} onChange={e => setColFConc(f => ({...f, modelo: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Modelo…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Modelo…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFConc.version} onChange={e => setColFConc(f => ({...f, version: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Versión…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Versión…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.sellerType} onChange={e => setColFConc(f => ({...f, sellerType: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         <option value="concesionario">Concesionario</option>
@@ -2521,11 +2521,11 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <input value={colFConc.seller} onChange={e => setColFConc(f => ({...f, seller: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1" placeholder="Concesionario…" />
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Concesionario…" />
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.priceMax} onChange={e => setColFConc(f => ({...f, priceMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Cualquier precio</option>
                         <option value="__empty__">(Vacío)</option>
                         {[500,1000,10000,15000,20000,30000,40000,60000,100000].map(p => <option key={p} value={p}>≤ {p.toLocaleString('es-ES')} €</option>)}
@@ -2533,7 +2533,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.kmMax} onChange={e => setColFConc(f => ({...f, kmMax: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {[500,1000,10000,30000,50000,80000,120000,200000].map(k => <option key={k} value={k}>≤ {k.toLocaleString('es-ES')} km</option>)}
@@ -2541,7 +2541,7 @@ export default function MarketplacePage() {
                     </td>
                     <td className="px-3 py-1.5">
                       <select value={colFConc.year} onChange={e => setColFConc(f => ({...f, year: e.target.value}))}
-                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                        className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
                         {concYearOpts.map((y:any) => <option key={y} value={y}>{y}</option>)}
@@ -2557,32 +2557,32 @@ export default function MarketplacePage() {
                       className="cursor-pointer hover:bg-acento-tenue transition-colors">
                       <td>
                         <div className="flex items-center gap-3">
-                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-slate-100 shrink-0" />}
+                          {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-brand-100 shrink-0" />}
                           <div>
-                            <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                            <p className="text-xs text-slate-400">{item.brand} {item.model}{item.version ? ` · ${item.version}` : ''}</p>
+                            <p className="font-medium text-brand-600 text-sm">{item.title}</p>
+                            <p className="text-xs text-brand-300">{item.brand} {item.model}{item.version ? ` · ${item.version}` : ''}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="text-sm text-slate-600">{item.brand || '–'}</td>
-                      <td className="text-sm text-slate-600">{item.model || '–'}</td>
-                      <td className="text-sm text-slate-500 max-w-[180px] truncate" title={item.version || ''}>{item.version || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.brand || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.model || '–'}</td>
+                      <td className="text-sm text-brand-400 max-w-[180px] truncate" title={item.version || ''}>{item.version || '–'}</td>
                       <td>
                         {item.seller_type === 'concesionario'
                           ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">Concesionario</span>
                           : item.seller_type === 'importador'
-                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Importador</span>
-                          : <span className="text-slate-300">–</span>}
+                          ? <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-brand-100 text-brand-500">Importador</span>
+                          : <span className="text-brand-300">–</span>}
                       </td>
-                      <td className="text-sm text-slate-600">{item.seller || '–'}</td>
-                      <td className="font-semibold text-slate-800 text-sm">{fmtPrice(item.sale_price ?? item.price)}</td>
-                      <td className="text-sm text-slate-500">{fmtKm(item.mileage)}</td>
-                      <td className="text-sm text-slate-500">{item.year || '–'}</td>
-                      <td className="text-sm text-slate-500">{item.location || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.seller || '–'}</td>
+                      <td className="font-semibold text-brand-600 text-sm">{fmtPrice(item.sale_price ?? item.price)}</td>
+                      <td className="text-sm text-brand-400">{fmtKm(item.mileage)}</td>
+                      <td className="text-sm text-brand-400">{item.year || '–'}</td>
+                      <td className="text-sm text-brand-400">{item.location || '–'}</td>
                       <td onClick={(e) => e.stopPropagation()}>
                         {item.source_url
                           ? <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-acento-texto hover:underline">Ver</a>
-                          : <span className="text-slate-300">–</span>}
+                          : <span className="text-brand-300">–</span>}
                       </td>
                     </tr>
                   ))}
@@ -2615,28 +2615,28 @@ export default function MarketplacePage() {
             )}
 
             {/* Units panel */}
-            <div className="mt-6 border-t border-slate-100 pt-5">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">
+            <div className="mt-6 border-t border-brand-100 pt-5">
+              <p className="text-xs font-semibold text-brand-400 uppercase tracking-wide mb-3">
                 Unidades en stock
                 {units.length > 0 && (
-                  <span className="ml-2 font-normal normal-case text-slate-400">
+                  <span className="ml-2 font-normal normal-case text-brand-300">
                     {units.filter(u => u.status === 'available').length} disponibles · {units.length} total
                   </span>
                 )}
               </p>
 
               {loadingUnits ? (
-                <p className="text-sm text-slate-400">Cargando unidades…</p>
+                <p className="text-sm text-brand-300">Cargando unidades…</p>
               ) : (
                 <>
                   {units.length > 0 && (
                     <div className="overflow-x-auto mb-4">
                       <table className="w-full text-xs border-collapse">
                         <thead>
-                          <tr className="bg-slate-50">
-                            <th className="text-left p-2 font-medium text-slate-500">Color</th>
-                            <th className="text-left p-2 font-medium text-slate-500">Km</th>
-                            <th className="text-left p-2 font-medium text-slate-500">Estado</th>
+                          <tr className="bg-brand-50">
+                            <th className="text-left p-2 font-medium text-brand-400">Color</th>
+                            <th className="text-left p-2 font-medium text-brand-400">Km</th>
+                            <th className="text-left p-2 font-medium text-brand-400">Estado</th>
                             <th className="p-2"></th>
                           </tr>
                         </thead>
@@ -2650,9 +2650,9 @@ export default function MarketplacePage() {
                             };
                             const s = statusMap[u.status] ?? statusMap.available;
                             return (
-                              <tr key={u.id} className="border-t border-slate-100">
-                                <td className="p-2 font-medium text-slate-700">{u.color || '—'}</td>
-                                <td className="p-2 text-slate-500">{u.mileage.toLocaleString('es-ES')} km</td>
+                              <tr key={u.id} className="border-t border-brand-100">
+                                <td className="p-2 font-medium text-brand-500">{u.color || '—'}</td>
+                                <td className="p-2 text-brand-400">{u.mileage.toLocaleString('es-ES')} km</td>
                                 <td className="p-2"><Badge variant={s.variant}>{s.label}</Badge></td>
                                 <td className="p-2">
                                   <div className="flex gap-1 flex-wrap justify-end">
@@ -2666,11 +2666,11 @@ export default function MarketplacePage() {
                                     )}
                                     {u.status === 'reserved' && (
                                       <button onClick={() => changeUnitStatus(u.id, 'rented')}
-                                        className="text-xs text-purple-600 hover:bg-purple-50 px-1.5 py-0.5 rounded">Rentar</button>
+                                        className="text-xs text-brand-500 hover:bg-brand-50 px-1.5 py-0.5 rounded">Rentar</button>
                                     )}
                                     {u.status === 'rented' && (
                                       <button onClick={() => changeUnitStatus(u.id, 'returned')}
-                                        className="text-xs text-slate-600 hover:bg-slate-50 px-1.5 py-0.5 rounded">Devolver</button>
+                                        className="text-xs text-brand-400 hover:bg-brand-50 px-1.5 py-0.5 rounded">Devolver</button>
                                     )}
                                     <button onClick={() => deleteUnit(u.id)}
                                       className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-1.5 py-0.5 rounded">✕</button>
@@ -2710,8 +2710,8 @@ export default function MarketplacePage() {
             {saveError && (
               <pre className="mt-3 text-xs text-red-600 bg-red-50 rounded-lg p-3 overflow-auto max-h-40">{saveError}</pre>
             )}
-            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-100">
-              <button onClick={() => setEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-brand-100">
+              <button onClick={() => setEditOffer(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cerrar
               </button>
               <button onClick={saveEdit} disabled={saving}
@@ -2726,8 +2726,8 @@ export default function MarketplacePage() {
       {/* ── Create modal ────────────────────────────────────────────────────── */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Añadir vehículo" size="lg">
         <VehicleFormFields form={createForm} setForm={setCreateForm} idPrefix="create" />
-        <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
-          <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+        <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-brand-100">
+          <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
             Cancelar
           </button>
           <button onClick={saveCreate} disabled={creating || !createForm.title || !createForm.brand || !createForm.model}
@@ -2741,11 +2741,11 @@ export default function MarketplacePage() {
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Eliminar vehículo" size="sm">
         {deleteTarget && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               ¿Seguro que quieres eliminar <strong>{deleteTarget.title}</strong>? Esta acción no se puede deshacer.
             </p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cancelar
               </button>
               <button onClick={doDelete} disabled={deleting}
@@ -2761,13 +2761,13 @@ export default function MarketplacePage() {
       <Modal open={!!imageEditOffer} onClose={() => setImageEditOffer(null)} title="Editar imágenes" size="md">
         {imageEditOffer && (
           <div className="space-y-4">
-            <p className="text-sm font-medium text-slate-700">{imageEditOffer.title}</p>
+            <p className="text-sm font-medium text-brand-500">{imageEditOffer.title}</p>
 
             {/* Thumbnail grid */}
             {imageUrls.filter(u => u.trim()).length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {imageUrls.filter(u => u.trim()).map((url, idx) => (
-                  <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-slate-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-slate-300'}`}>
+                  <div key={url + idx} className={`relative group aspect-square rounded-lg overflow-hidden bg-brand-100 border-2 transition-colors ${idx === 0 ? 'border-amber-400' : 'border-transparent hover:border-brand-300'}`}>
                     <img
                       src={url}
                       alt=""
@@ -2783,7 +2783,7 @@ export default function MarketplacePage() {
                       <button
                         type="button"
                         onClick={() => setImageUrls(prev => [url, ...prev.filter(u => u !== url)])}
-                        className="absolute top-1 left-1 bg-white/90 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
+                        className="absolute top-1 left-1 bg-white/90 text-brand-400 text-[9px] font-medium px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-50 hover:text-amber-700 whitespace-nowrap"
                       >
                         ⭐ Hacer principal
                       </button>
@@ -2802,7 +2802,7 @@ export default function MarketplacePage() {
             <div className="space-y-2">
               {imageUrls.map((url, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
-                  <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
+                  <span className="text-xs text-brand-300 w-4 shrink-0">{idx + 1}</span>
                   <input
                     className={INPUT_CLS}
                     value={url}
@@ -2823,8 +2823,8 @@ export default function MarketplacePage() {
                 + Añadir foto
               </button>
             )}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <button onClick={() => setImageEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
+              <button onClick={() => setImageEditOffer(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cancelar
               </button>
               <button onClick={saveImages} disabled={savingImages}
@@ -2841,13 +2841,13 @@ export default function MarketplacePage() {
         {portalEditOffer && (
           <div className="space-y-5">
             {/* Preview strip */}
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg">
               {portalEditOffer.image_url && (
                 <img src={portalEditOffer.image_url} alt="" className="w-16 h-12 object-cover rounded-md shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="font-medium text-slate-800 text-sm truncate">{portalEditOffer.title}</p>
-                <p className="text-xs text-slate-400">{portalEditOffer.portal} · {portalEditOffer.id}{portalDetailLoading ? ' · cargando ficha…' : ''}</p>
+                <p className="font-medium text-brand-600 text-sm truncate">{portalEditOffer.title}</p>
+                <p className="text-xs text-brand-300">{portalEditOffer.portal} · {portalEditOffer.id}{portalDetailLoading ? ' · cargando ficha…' : ''}</p>
               </div>
               {portalEditOffer.url && (
                 <a href={portalEditOffer.url} target="_blank" rel="noopener noreferrer"
@@ -2859,61 +2859,61 @@ export default function MarketplacePage() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               {/* Row 1 */}
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Título</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Título</label>
                 <input value={portalEditForm.title ?? ''} onChange={e => setPortalEditForm(f => ({...f, title: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Brand / Model / Version */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Marca</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Marca</label>
                 <input value={portalEditForm.brand ?? ''} onChange={e => setPortalEditForm(f => ({...f, brand: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Modelo</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Modelo</label>
                 <input value={portalEditForm.model ?? ''} onChange={e => setPortalEditForm(f => ({...f, model: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Versión</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Versión</label>
                 <input value={portalEditForm.version ?? ''} onChange={e => setPortalEditForm(f => ({...f, version: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: 1.5 TDI 115 CV DSG" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: 1.5 TDI 115 CV DSG" />
               </div>
               {/* Numeric row */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Año</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Año</label>
                 <input type="number" value={portalEditForm.year ?? ''} onChange={e => setPortalEditForm(f => ({...f, year: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Precio (€)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Precio (€)</label>
                 <input type="number" value={portalEditForm.price ?? ''} onChange={e => setPortalEditForm(f => ({...f, price: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Kilómetros</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Kilómetros</label>
                 <input type="number" value={portalEditForm.mileage ?? ''} onChange={e => setPortalEditForm(f => ({...f, mileage: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">CV</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">CV</label>
                 <input type="number" value={portalEditForm.power_cv ?? ''} onChange={e => setPortalEditForm(f => ({...f, power_cv: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Fuel / Transmission */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Combustible</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Combustible</label>
                 <select value={portalEditForm.fuel ?? ''} onChange={e => setPortalEditForm(f => ({...f, fuel: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','Gas'].map(v =>
                     <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Cambio</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Cambio</label>
                 <select value={portalEditForm.transmission ?? ''} onChange={e => setPortalEditForm(f => ({...f, transmission: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   <option value="Manual">Manual</option>
                   <option value="Automatica">Automática</option>
@@ -2921,92 +2921,92 @@ export default function MarketplacePage() {
               </div>
               {/* Body / Color / Doors / Seats */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Carrocería</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Carrocería</label>
                 <select value={portalEditForm.body_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, body_type: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['SUV','Berlina','Compacto','Familiar','Monovolumen','Coupé','Cabrio','Furgoneta','Pick Up'].map(v =>
                     <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Color</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Color</label>
                 <input value={portalEditForm.color ?? ''} onChange={e => setPortalEditForm(f => ({...f, color: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Blanco" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="Blanco" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Puertas</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Puertas</label>
                 <input type="number" value={portalEditForm.doors ?? ''} onChange={e => setPortalEditForm(f => ({...f, doors: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Plazas</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Plazas</label>
                 <input type="number" value={portalEditForm.seats ?? ''} onChange={e => setPortalEditForm(f => ({...f, seats: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* CO2 / Warranty */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">CO₂ (g/km)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">CO₂ (g/km)</label>
                 <input type="number" value={portalEditForm.co2 ?? ''} onChange={e => setPortalEditForm(f => ({...f, co2: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Garantía (meses)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Garantía (meses)</label>
                 <input type="number" value={portalEditForm.warranty_months ?? ''} onChange={e => setPortalEditForm(f => ({...f, warranty_months: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Potencia kW / Etiqueta DGT / Tracción */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Potencia (kW)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Potencia (kW)</label>
                 <input type="number" value={portalEditForm.power_kw ?? ''} onChange={e => setPortalEditForm(f => ({...f, power_kw: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Etiqueta DGT</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Etiqueta DGT</label>
                 <select value={portalEditForm.environmental_label ?? ''} onChange={e => setPortalEditForm(f => ({...f, environmental_label: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['0 Emisiones','ECO','C','B'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Tracción</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Tracción</label>
                 <select value={portalEditForm.traction ?? ''} onChange={e => setPortalEditForm(f => ({...f, traction: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['Delantera','Trasera','4x4'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Cilindrada (cc)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Cilindrada (cc)</label>
                 <input type="number" value={portalEditForm.displacement ?? ''} onChange={e => setPortalEditForm(f => ({...f, displacement: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="1968" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="1968" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Consumo (l/100 km)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Consumo (l/100 km)</label>
                 <input type="number" step="0.1" value={portalEditForm.consumption ?? ''} onChange={e => setPortalEditForm(f => ({...f, consumption: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="5.2" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="5.2" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Próxima ITV</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Próxima ITV</label>
                 <input value={portalEditForm.next_itv ?? ''} onChange={e => setPortalEditForm(f => ({...f, next_itv: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="MM/AAAA" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="MM/AAAA" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Cuota mensual (€)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Cuota mensual (€)</label>
                 <input type="number" value={portalEditForm.monthly_price ?? ''} onChange={e => setPortalEditForm(f => ({...f, monthly_price: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Precio financiado (€)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Precio financiado (€)</label>
                 <input type="number" value={portalEditForm.finance_price ?? ''} onChange={e => setPortalEditForm(f => ({...f, finance_price: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Seller */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Tipo vendedor</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Tipo vendedor</label>
                 <select value={portalEditForm.seller_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, seller_type: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   <option value="particular">Particular</option>
                   <option value="professional">Profesional</option>
@@ -3015,51 +3015,51 @@ export default function MarketplacePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Vendedor / Concesionario</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Vendedor / Concesionario</label>
                 <input value={portalEditForm.dealer_name ?? ''} onChange={e => setPortalEditForm(f => ({...f, dealer_name: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Location */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Provincia</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Provincia</label>
                 <input value={portalEditForm.province ?? ''} onChange={e => setPortalEditForm(f => ({...f, province: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Madrid" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="Madrid" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Ciudad</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Ciudad</label>
                 <input value={portalEditForm.city ?? ''} onChange={e => setPortalEditForm(f => ({...f, city: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación (texto libre)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Ubicación (texto libre)</label>
                 <input value={portalEditForm.location ?? ''} onChange={e => setPortalEditForm(f => ({...f, location: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               {/* Portal / Source URL */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Portal</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Portal</label>
                 <select value={portalEditForm.portal ?? ''} onChange={e => setPortalEditForm(f => ({...f, portal: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['autohero','autoscout24','cochescom','cochesnet','flexicar','milanuncios','wallapop'].map(v =>
                     <option key={v} value={v}>{PORTAL_LABEL[v] ?? v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">URL anuncio</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">URL anuncio</label>
                 <input value={portalEditForm.url ?? ''} onChange={e => setPortalEditForm(f => ({...f, url: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="https://…" />
               </div>
               {/* Galería de fotos */}
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Fotos (galería) — la 1ª es la principal</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Fotos (galería) — la 1ª es la principal</label>
                 {(portalEditForm.image_urls?.length ? portalEditForm.image_urls : ['']).map((url: string, idx: number) => (
                   <div key={idx} className="flex gap-2 mb-2 items-center">
-                    <span className="text-xs text-slate-400 w-4 shrink-0">{idx + 1}</span>
-                    {url ? <img src={url} alt="" className="w-10 h-7 object-cover rounded bg-slate-100 shrink-0" /> : <span className="w-10 h-7 shrink-0" />}
+                    <span className="text-xs text-brand-300 w-4 shrink-0">{idx + 1}</span>
+                    {url ? <img src={url} alt="" className="w-10 h-7 object-cover rounded bg-brand-100 shrink-0" /> : <span className="w-10 h-7 shrink-0" />}
                     <input value={url}
                       onChange={e => setPortalEditForm(f => { const next = [...(f.image_urls ?? [''])]; next[idx] = e.target.value; return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm"
                       placeholder={idx === 0 ? 'https://… (principal)' : `https://… (foto ${idx + 1})`} />
                     {(portalEditForm.image_urls?.length ?? 0) > 1 && (
                       <button type="button" onClick={() => setPortalEditForm(f => { const next = (f.image_urls ?? []).filter((_: string, i: number) => i !== idx); return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
@@ -3074,20 +3074,20 @@ export default function MarketplacePage() {
               </div>
               {/* Estado / Tipo de listado */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Estado</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Estado</label>
                 <select
                   value={portalEditForm.is_active === true ? 'true' : portalEditForm.is_active === false ? 'false' : ''}
                   onChange={e => setPortalEditForm(f => ({...f, is_active: e.target.value === '' ? null : e.target.value === 'true'}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   <option value="true">Activa</option>
                   <option value="false">Inactiva</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Tipo de listado</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Tipo de listado</label>
                 <select value={portalEditForm.listing_type ?? ''} onChange={e => setPortalEditForm(f => ({...f, listing_type: e.target.value}))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['compra','renting'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
@@ -3100,9 +3100,9 @@ export default function MarketplacePage() {
             {savePortalOk && (
               <p className="text-xs text-green-600 font-medium">✓ Guardado correctamente</p>
             )}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
               <button onClick={() => setPortalEditOffer(null)}
-                className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cerrar
               </button>
               <button onClick={savePortalEdit} disabled={savingPortal}
@@ -3118,75 +3118,75 @@ export default function MarketplacePage() {
       <Modal open={!!particEditOffer} onClose={() => setParticEditOffer(null)} title="Editar vehículo (particular)" size="lg">
         {particEditOffer && (
           <div className="space-y-5">
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="font-medium text-slate-800 text-sm">{[particEditOffer.brand, particEditOffer.model, particEditOffer.version].filter(Boolean).join(' ') || particEditOffer.title}</p>
-              <p className="text-xs text-slate-400">{particEditOffer.owner_name || particEditOffer.user_email} · {particEditOffer.id}</p>
+            <div className="p-3 bg-brand-50 rounded-lg">
+              <p className="font-medium text-brand-600 text-sm">{[particEditOffer.brand, particEditOffer.model, particEditOffer.version].filter(Boolean).join(' ') || particEditOffer.title}</p>
+              <p className="text-xs text-brand-300">{particEditOffer.owner_name || particEditOffer.user_email} · {particEditOffer.id}</p>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Título</label>
-                <input value={particEditForm.title ?? ''} onChange={e => setParticEditForm(f => ({...f, title: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Título</label>
+                <input value={particEditForm.title ?? ''} onChange={e => setParticEditForm(f => ({...f, title: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Marca</label>
-                <input value={particEditForm.brand ?? ''} onChange={e => setParticEditForm(f => ({...f, brand: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Marca</label>
+                <input value={particEditForm.brand ?? ''} onChange={e => setParticEditForm(f => ({...f, brand: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Modelo</label>
-                <input value={particEditForm.model ?? ''} onChange={e => setParticEditForm(f => ({...f, model: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Modelo</label>
+                <input value={particEditForm.model ?? ''} onChange={e => setParticEditForm(f => ({...f, model: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Versión</label>
-                <input value={particEditForm.version ?? ''} onChange={e => setParticEditForm(f => ({...f, version: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Versión</label>
+                <input value={particEditForm.version ?? ''} onChange={e => setParticEditForm(f => ({...f, version: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Año</label>
-                <input value={particEditForm.year ?? ''} onChange={e => setParticEditForm(f => ({...f, year: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Año</label>
+                <input value={particEditForm.year ?? ''} onChange={e => setParticEditForm(f => ({...f, year: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Kilómetros</label>
-                <input value={particEditForm.mileage ?? ''} onChange={e => setParticEditForm(f => ({...f, mileage: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Kilómetros</label>
+                <input value={particEditForm.mileage ?? ''} onChange={e => setParticEditForm(f => ({...f, mileage: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Precio (€)</label>
-                <input value={particEditForm.price ?? ''} onChange={e => setParticEditForm(f => ({...f, price: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Precio (€)</label>
+                <input value={particEditForm.price ?? ''} onChange={e => setParticEditForm(f => ({...f, price: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">CV</label>
-                <input value={particEditForm.cv ?? ''} onChange={e => setParticEditForm(f => ({...f, cv: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">CV</label>
+                <input value={particEditForm.cv ?? ''} onChange={e => setParticEditForm(f => ({...f, cv: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Combustible</label>
-                <select value={particEditForm.fuel ?? ''} onChange={e => setParticEditForm(f => ({...f, fuel: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                <label className="block text-xs font-medium text-brand-400 mb-1">Combustible</label>
+                <select value={particEditForm.fuel ?? ''} onChange={e => setParticEditForm(f => ({...f, fuel: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white">
                   <option value="">–</option>
                   {['Gasolina','Diesel','Eléctrico','Híbrido','Híbrido enchufable','Gas'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Cambio</label>
-                <input value={particEditForm.transmission_type ?? ''} onChange={e => setParticEditForm(f => ({...f, transmission_type: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Manual / Automático" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Cambio</label>
+                <input value={particEditForm.transmission_type ?? ''} onChange={e => setParticEditForm(f => ({...f, transmission_type: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="Manual / Automático" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Color</label>
-                <input value={particEditForm.color ?? ''} onChange={e => setParticEditForm(f => ({...f, color: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Color</label>
+                <input value={particEditForm.color ?? ''} onChange={e => setParticEditForm(f => ({...f, color: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Matrícula</label>
-                <input value={particEditForm.plate ?? ''} onChange={e => setParticEditForm(f => ({...f, plate: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Matrícula</label>
+                <input value={particEditForm.plate ?? ''} onChange={e => setParticEditForm(f => ({...f, plate: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Ubicación</label>
-                <input value={particEditForm.vehicle_location ?? ''} onChange={e => setParticEditForm(f => ({...f, vehicle_location: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Ubicación</label>
+                <input value={particEditForm.vehicle_location ?? ''} onChange={e => setParticEditForm(f => ({...f, vehicle_location: e.target.value}))} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Notas</label>
-                <textarea value={particEditForm.notes ?? ''} onChange={e => setParticEditForm(f => ({...f, notes: e.target.value}))} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium text-brand-400 mb-1">Notas</label>
+                <textarea value={particEditForm.notes ?? ''} onChange={e => setParticEditForm(f => ({...f, notes: e.target.value}))} rows={2} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
             {savePartError && <pre className="text-xs text-red-600 bg-red-50 rounded-lg p-3 overflow-auto max-h-32">{savePartError}</pre>}
             {savePartOk && <p className="text-xs text-green-600 font-medium">✓ Guardado correctamente</p>}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <button onClick={() => setParticEditOffer(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cerrar</button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
+              <button onClick={() => setParticEditOffer(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cerrar</button>
               <button onClick={savePartEdit} disabled={savingPartic} className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-60">{savingPartic ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
           </div>
@@ -3196,7 +3196,7 @@ export default function MarketplacePage() {
       {/* ── Import CSV modal ────────────────────────────────────────────────── */}
       <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar vehículos desde Excel" size="lg">
         <div className="space-y-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-brand-400">
             Descarga la plantilla, rellena los datos en Excel y sube el fichero .xlsx. Máximo 500 filas.
           </p>
           <button onClick={downloadTemplate}
@@ -3204,39 +3204,39 @@ export default function MarketplacePage() {
             📄 Descargar plantilla Excel
           </button>
 
-          <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center">
+          <div className="border-2 border-dashed border-brand-200 rounded-xl p-6 text-center">
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" id="xlsx-upload" />
             <label htmlFor="xlsx-upload" className="cursor-pointer block">
               <div className="text-3xl mb-2">📥</div>
-              <p className="text-sm font-medium text-slate-700">
+              <p className="text-sm font-medium text-brand-500">
                 {importFileName || 'Haz clic para seleccionar el fichero Excel'}
               </p>
-              <p className="text-xs text-slate-400 mt-1">Archivos .xlsx o .xls</p>
+              <p className="text-xs text-brand-300 mt-1">Archivos .xlsx o .xls</p>
             </label>
           </div>
 
           {importRows.length > 0 && (
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-slate-700 mb-2">{importRows.length} filas detectadas — vista previa:</p>
+            <div className="bg-brand-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-brand-500 mb-2">{importRows.length} filas detectadas — vista previa:</p>
               <div className="overflow-x-auto">
                 <table className="text-xs w-full">
                   <thead>
-                    <tr className="text-slate-500">
+                    <tr className="text-brand-400">
                       {Object.keys(importRows[0]).slice(0, 6).map((h) => <th key={h} className="text-left px-2 py-1">{h}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {importRows.slice(0, 3).map((row, i) => (
-                      <tr key={i} className="border-t border-slate-100">
+                      <tr key={i} className="border-t border-brand-100">
                         {Object.values(row).slice(0, 6).map((v, j) => (
-                          <td key={j} className="px-2 py-1 text-slate-600 max-w-[120px] truncate">{v}</td>
+                          <td key={j} className="px-2 py-1 text-brand-400 max-w-[120px] truncate">{v}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              {importRows.length > 3 && <p className="text-xs text-slate-400 mt-1">…y {importRows.length - 3} filas más</p>}
+              {importRows.length > 3 && <p className="text-xs text-brand-300 mt-1">…y {importRows.length - 3} filas más</p>}
             </div>
           )}
 
@@ -3257,7 +3257,7 @@ export default function MarketplacePage() {
           )}
 
           <div className="flex justify-end gap-3">
-            <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+            <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
               Cerrar
             </button>
             <button onClick={doImport} disabled={importing || importRows.length === 0}
@@ -3270,17 +3270,17 @@ export default function MarketplacePage() {
 
       {/* ── Bulk action bar ── */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white rounded-xl px-5 py-3 flex items-center gap-4 shadow-2xl">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-brand-600 text-white rounded-xl px-5 py-3 flex items-center gap-4 shadow-2xl">
           <span className="text-sm font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}</span>
           <button onClick={() => bulkAction('activate')} disabled={bulking}
             className="px-3 py-1.5 text-xs bg-green-500 hover:bg-green-400 rounded-lg font-medium disabled:opacity-60">
             ✓ Activar
           </button>
           <button onClick={() => bulkAction('deactivate')} disabled={bulking}
-            className="px-3 py-1.5 text-xs bg-slate-600 hover:bg-slate-500 rounded-lg font-medium disabled:opacity-60">
+            className="px-3 py-1.5 text-xs bg-brand-400 hover:bg-brand-400 rounded-lg font-medium disabled:opacity-60">
             Desactivar
           </button>
-          <button onClick={() => setSelectedIds(new Set())} className="text-slate-400 hover:text-white text-xs ml-1">
+          <button onClick={() => setSelectedIds(new Set())} className="text-brand-300 hover:text-white text-xs ml-1">
             ✕
           </button>
         </div>

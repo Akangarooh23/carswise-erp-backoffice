@@ -55,7 +55,7 @@ type TypeFilter = typeof TYPE_FILTER[number];
 const STATUS_BADGE: Record<string, string> = {
   completada:  'bg-emerald-100 text-emerald-700',
   active:      'bg-acento-tenue text-acento-texto',
-  completed:   'bg-slate-100 text-slate-600',
+  completed:   'bg-brand-100 text-brand-400',
   cancelled:   'bg-red-100 text-red-600',
 };
 const STATUS_LABEL: Record<string, string> = {
@@ -117,11 +117,11 @@ export default function ContractsPage() {
             { label: 'Compras totales',      value: stats.total_compras,         color: 'text-emerald-700' },
             { label: 'Contratos renting',    value: stats.total_rentings,        color: 'text-acento-texto' },
             { label: 'Rentings activos',     value: stats.rentings_activos,      color: 'text-acento-texto' },
-            { label: 'Rentings finalizados', value: stats.rentings_completados,  color: 'text-slate-500' },
-            { label: 'MRR renting',          value: fmtEur(stats.mrr),          color: 'text-violet-700', isStr: true },
+            { label: 'Rentings finalizados', value: stats.rentings_completados,  color: 'text-brand-400' },
+            { label: 'MRR renting',          value: fmtEur(stats.mrr),          color: 'text-acento-texto', isStr: true },
           ].map(({ label, value, color, isStr }) => (
-            <div key={label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-slate-500 mb-1">{label}</p>
+            <div key={label} className="bg-white border border-brand-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-brand-400 mb-1">{label}</p>
               <p className={`text-2xl font-bold ${color}`}>{isStr ? value : value.toLocaleString('es-ES')}</p>
             </div>
           ))}
@@ -142,18 +142,18 @@ export default function ContractsPage() {
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
               typeFilter === val
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                : 'bg-white text-brand-400 border-brand-200 hover:bg-brand-50'
             }`}>
             {label}
           </button>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : contracts.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Sin contratos registrados aún</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Sin contratos registrados aún</div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -175,13 +175,13 @@ export default function ContractsPage() {
                 <tbody>
                   {contracts.map((c) => (
                     <tr key={c.id}>
-                      <td className="font-mono text-xs text-slate-500">{c.id}</td>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(c.date)}</td>
+                      <td className="font-mono text-xs text-brand-400">{c.id}</td>
+                      <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(c.date)}</td>
                       <td>
-                        <p className="text-sm font-medium text-slate-800">{c.contact_name || '–'}</p>
-                        <p className="text-xs text-slate-400">{c.user_email}</p>
+                        <p className="text-sm font-medium text-brand-600">{c.contact_name || '–'}</p>
+                        <p className="text-xs text-brand-300">{c.user_email}</p>
                       </td>
-                      <td className="text-sm text-slate-700 max-w-[180px] truncate">{c.vehicle_title || '–'}</td>
+                      <td className="text-sm text-brand-500 max-w-[180px] truncate">{c.vehicle_title || '–'}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                           c.type === 'compra' ? 'bg-emerald-50 text-emerald-700' : 'bg-acento-tenue text-acento-texto'
@@ -192,13 +192,13 @@ export default function ContractsPage() {
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
                           !c.portal || c.portal.startsWith('marketplace')
-                            ? 'bg-violet-50 text-violet-700'
+                            ? 'bg-acento-tenue text-acento-texto'
                             : 'bg-orange-50 text-orange-700'
                         }`}>
                           {fmtPortal(c.portal)}
                         </span>
                       </td>
-                      <td className="text-xs text-slate-500">
+                      <td className="text-xs text-brand-400">
                         {c.type === 'renting' ? (
                           <span>
                             {c.color}{c.quantity && c.quantity > 1 ? ` ×${c.quantity}` : ''} · {c.duration_months}m
@@ -207,20 +207,20 @@ export default function ContractsPage() {
                           </span>
                         ) : (c.detail || '–')}
                       </td>
-                      <td className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                      <td className="text-sm font-semibold text-brand-500 whitespace-nowrap">
                         {c.type === 'renting' && c.monthly_price
-                          ? <>{fmtEur(c.monthly_price)}<span className="text-xs font-normal text-slate-400">/mes</span></>
+                          ? <>{fmtEur(c.monthly_price)}<span className="text-xs font-normal text-brand-300">/mes</span></>
                           : c.amount ? fmtEur(c.amount) : '–'}
                       </td>
                       <td>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[c.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[c.status] ?? 'bg-brand-100 text-brand-400'}`}>
                           {STATUS_LABEL[c.status] ?? c.status}
                         </span>
                       </td>
                       <td>
                         {c.type === 'renting' && c.status === 'active' && (
                           <button onClick={() => setCloseModal(c)}
-                            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded px-2 py-1 hover:bg-slate-50">
+                            className="text-xs text-brand-400 hover:text-brand-600 border border-brand-200 rounded px-2 py-1 hover:bg-brand-50">
                             Cerrar contrato
                           </button>
                         )}
@@ -239,20 +239,20 @@ export default function ContractsPage() {
       <Modal open={!!closeModal} onClose={() => setCloseModal(null)} title="Cerrar contrato de renting">
         {closeModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{closeModal.vehicle_title}</strong> — {closeModal.contact_name}
               <br />
-              <span className="text-xs text-slate-400">Contrato {closeModal.id} · Fin previsto {fmtDate(closeModal.end_date)}</span>
+              <span className="text-xs text-brand-300">Contrato {closeModal.id} · Fin previsto {fmtDate(closeModal.end_date)}</span>
             </p>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Estado final</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Estado final</label>
               <div className="flex gap-2">
                 {(['completed', 'cancelled'] as const).map((s) => (
                   <button key={s} type="button" onClick={() => setCloseStatus(s)}
                     className={`px-4 py-2 rounded-lg text-sm border font-medium ${
                       closeStatus === s
                         ? s === 'completed' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-red-500 text-white border-red-500'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white text-brand-400 border-brand-200 hover:bg-brand-50'
                     }`}>
                     {s === 'completed' ? '✓ Finalizado (devuelto)' : '✗ Cancelado'}
                   </button>
@@ -260,13 +260,13 @@ export default function ContractsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Notas internas (opcional)</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Notas internas (opcional)</label>
               <textarea value={closeNotes} onChange={e => setCloseNotes(e.target.value)}
-                rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                rows={2} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Ej: devolución sin incidencias, km finales 32.450…" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setCloseModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setCloseModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               <button onClick={handleCloseContract} disabled={closing}
                 className={`px-4 py-2 text-sm rounded-lg font-medium text-white disabled:opacity-60 ${
                   closeStatus === 'completed' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'

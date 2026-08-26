@@ -90,7 +90,7 @@ const TYPE_LABEL: Record<string, string> = {
   portal_commission:  'Comisión portal',
 };
 const TYPE_BADGE: Record<string, string> = {
-  renting_fee:       'bg-violet-50 text-violet-700',
+  renting_fee:       'bg-acento-tenue text-acento-texto',
   portal_commission: 'bg-orange-50 text-orange-700',
 };
 
@@ -289,11 +289,11 @@ export default function ProviderBillingPage() {
             { label: 'Cobradas',          value: fmtEur(summary.paid_amount),     color: 'text-emerald-700' },
             { label: 'Nº pendientes',     value: summary.pending_count,           color: 'text-yellow-600' },
             { label: 'Nº cobradas',       value: summary.paid_count,              color: 'text-emerald-700' },
-            { label: 'Fees renting',      value: summary.renting_count,           color: 'text-violet-700' },
+            { label: 'Fees renting',      value: summary.renting_count,           color: 'text-acento-texto' },
             { label: 'Comisiones portal', value: summary.commission_count,        color: 'text-orange-600' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-slate-500 mb-1">{label}</p>
+            <div key={label} className="bg-white border border-brand-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-brand-400 mb-1">{label}</p>
               <p className={`text-xl font-bold ${color}`}>{typeof value === 'number' ? value.toLocaleString('es-ES') : value}</p>
             </div>
           ))}
@@ -302,11 +302,11 @@ export default function ProviderBillingPage() {
 
       {/* Tabs + action */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 bg-brand-100 rounded-lg p-1 w-fit">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                tab === t ? 'bg-white shadow-sm text-brand-600' : 'text-brand-400 hover:text-brand-500'
               }`}>
               {t === 'emitidas' ? 'Emitidas a proveedores' : 'Recibidas de proveedores'}
             </button>
@@ -325,13 +325,13 @@ export default function ProviderBillingPage() {
         <>
           <div className="flex flex-wrap gap-3 mb-4 items-center">
             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none">
               <option value="all">Todos los tipos</option>
               <option value="renting_fee">Fee renting</option>
               <option value="portal_commission">Comisión portal</option>
             </select>
             <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none">
+              className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none">
               <option value="">Todos los estados</option>
               <option value="pending">Pendientes</option>
               <option value="paid">Cobradas</option>
@@ -361,18 +361,18 @@ export default function ProviderBillingPage() {
                 <tbody>
                   {pending.map(p => (
                     <tr key={p.id}>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(p.date)}</td>
-                      <td className="text-sm text-slate-700">{p.vehicle_title}</td>
+                      <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(p.date)}</td>
+                      <td className="text-sm text-brand-500">{p.vehicle_title}</td>
                       <td>
                         <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700">
                           {p.portal ? p.portal.charAt(0).toUpperCase() + p.portal.slice(1) : 'Externo'}
                         </span>
                       </td>
                       <td>
-                        <p className="text-sm text-slate-700">{p.contact_name}</p>
-                        <p className="text-xs text-slate-400">{p.user_email}</p>
+                        <p className="text-sm text-brand-500">{p.contact_name}</p>
+                        <p className="text-xs text-brand-300">{p.user_email}</p>
                       </td>
-                      <td className="text-sm font-semibold text-slate-700">{fmtEur(p.sale_price)}</td>
+                      <td className="text-sm font-semibold text-brand-500">{fmtEur(p.sale_price)}</td>
                       <td>
                         <button
                           onClick={() => { setCommModal(p); setCommMode('percent'); setCommPct(''); setCommFixed(''); }}
@@ -389,12 +389,12 @@ export default function ProviderBillingPage() {
         </>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : tab === 'emitidas' ? (
           invoices.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Sin facturas emitidas</div>
+            <div className="text-center py-12 text-brand-300 text-sm">Sin facturas emitidas</div>
           ) : (
             <>
               <div className="overflow-x-auto"><table className="erp-table">
@@ -415,7 +415,7 @@ export default function ProviderBillingPage() {
                   {invoices.map(inv => (
                     <tr key={inv.id}>
                       <td>
-                        <p className="font-mono text-xs text-slate-500">{inv.id}</p>
+                        <p className="font-mono text-xs text-brand-400">{inv.id}</p>
                         <button
                           onClick={async () => {
                             setDownloadingId(inv.id);
@@ -429,23 +429,23 @@ export default function ProviderBillingPage() {
                           {downloadingId === inv.id ? 'Generando…' : '↓ Descargar PDF'}
                         </button>
                       </td>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(inv.issued_at)}</td>
+                      <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(inv.issued_at)}</td>
                       <td>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_BADGE[inv.type] ?? 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_BADGE[inv.type] ?? 'bg-brand-100 text-brand-400'}`}>
                           {TYPE_LABEL[inv.type] ?? inv.type}
                         </span>
                       </td>
-                      <td className="text-sm font-medium text-slate-700">{inv.provider_name || '–'}</td>
+                      <td className="text-sm font-medium text-brand-500">{inv.provider_name || '–'}</td>
                       <td>
-                        <p className="text-sm text-slate-700 truncate max-w-[180px]">{inv.vehicle_title}</p>
-                        <p className="text-xs text-slate-400">{inv.customer_name} · {inv.customer_email}</p>
+                        <p className="text-sm text-brand-500 truncate max-w-[180px]">{inv.vehicle_title}</p>
+                        <p className="text-xs text-brand-300">{inv.customer_name} · {inv.customer_email}</p>
                       </td>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">
+                      <td className="text-xs text-brand-400 whitespace-nowrap">
                         {inv.type === 'renting_fee'
-                          ? <>{fmtEur(inv.base_amount)}<span className="text-slate-400">/mes</span></>
+                          ? <>{fmtEur(inv.base_amount)}<span className="text-brand-300">/mes</span></>
                           : fmtEur(inv.base_amount)}
                       </td>
-                      <td className="text-sm font-bold text-slate-800 whitespace-nowrap">{fmtEur(inv.invoice_amount)}</td>
+                      <td className="text-sm font-bold text-brand-600 whitespace-nowrap">{fmtEur(inv.invoice_amount)}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[inv.status]}`}>
                           {STATUS_LABEL[inv.status]}
@@ -474,7 +474,7 @@ export default function ProviderBillingPage() {
                           )}
                           {inv.status === 'paid' && (
                             <button onClick={() => { setRectModal(inv); setRectReason(''); }}
-                              className="text-xs text-slate-400 hover:text-orange-600 border border-slate-200 rounded px-2 py-1 hover:bg-orange-50 whitespace-nowrap">
+                              className="text-xs text-brand-300 hover:text-orange-600 border border-brand-200 rounded px-2 py-1 hover:bg-orange-50 whitespace-nowrap">
                               Rectificar
                             </button>
                           )}
@@ -490,7 +490,7 @@ export default function ProviderBillingPage() {
         ) : (
           /* ── Recibidas de proveedores ── */
           received.length === 0 ? (
-            <div className="py-16 flex flex-col items-center gap-3 text-slate-400">
+            <div className="py-16 flex flex-col items-center gap-3 text-brand-300">
               <p className="text-sm">No hay facturas recibidas registradas</p>
               <button onClick={() => setRecvModal(true)}
                 className="text-sm font-medium text-acento-texto hover:text-acento-texto border border-acento rounded-lg px-4 py-2 hover:bg-acento-tenue">
@@ -515,11 +515,11 @@ export default function ProviderBillingPage() {
                 <tbody>
                   {received.map(r => (
                     <tr key={r.id}>
-                      <td className="font-mono text-xs text-slate-500">{r.id}</td>
-                      <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(r.invoice_date ?? r.issued_at)}</td>
-                      <td className="text-sm font-medium text-slate-700">{r.provider_name}</td>
-                      <td className="text-sm text-slate-600 max-w-[160px] truncate">{r.vehicle_title || '–'}</td>
-                      <td className="text-sm font-bold text-slate-800 whitespace-nowrap">{fmtEur(r.invoice_amount)}</td>
+                      <td className="font-mono text-xs text-brand-400">{r.id}</td>
+                      <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(r.invoice_date ?? r.issued_at)}</td>
+                      <td className="text-sm font-medium text-brand-500">{r.provider_name}</td>
+                      <td className="text-sm text-brand-400 max-w-[160px] truncate">{r.vehicle_title || '–'}</td>
+                      <td className="text-sm font-bold text-brand-600 whitespace-nowrap">{fmtEur(r.invoice_amount)}</td>
                       <td>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
                           {STATUS_LABEL_RECV[r.status] ?? r.status}
@@ -533,13 +533,13 @@ export default function ProviderBillingPage() {
                               📄 Ver PDF
                             </a>
                             <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
-                              className="text-xs text-slate-400 hover:text-slate-600 ml-1 whitespace-nowrap">
+                              className="text-xs text-brand-300 hover:text-brand-400 ml-1 whitespace-nowrap">
                               (reemplazar)
                             </button>
                           </div>
                         ) : (
                           <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
-                            className="text-xs text-slate-400 hover:text-slate-700 border border-dashed border-slate-300 rounded px-2 py-0.5 hover:bg-slate-50 whitespace-nowrap">
+                            className="text-xs text-brand-300 hover:text-brand-500 border border-dashed border-brand-300 rounded px-2 py-0.5 hover:bg-brand-50 whitespace-nowrap">
                             + Adjuntar factura PDF
                           </button>
                         )}
@@ -566,9 +566,9 @@ export default function ProviderBillingPage() {
       <Modal open={!!commModal} onClose={() => setCommModal(null)} title="Crear factura de comisión portal">
         {commModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{commModal.vehicle_title}</strong><br />
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-brand-300">
                 {commModal.contact_name} · {commModal.portal} · Precio venta: {fmtEur(commModal.sale_price)}
               </span>
             </p>
@@ -578,7 +578,7 @@ export default function ProviderBillingPage() {
               {(['percent', 'fixed'] as const).map(m => (
                 <button key={m} onClick={() => setCommMode(m)}
                   className={`flex-1 py-2 rounded-lg text-sm border font-medium ${
-                    commMode === m ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    commMode === m ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-brand-400 border-brand-200 hover:bg-brand-50'
                   }`}>
                   {m === 'percent' ? '% Porcentaje' : '€ Importe fijo'}
                 </button>
@@ -587,34 +587,34 @@ export default function ProviderBillingPage() {
 
             {commMode === 'percent' ? (
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Porcentaje sobre precio de venta</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Porcentaje sobre precio de venta</label>
                 <div className="flex items-center gap-2">
                   <input type="number" min="0" max="100" step="0.1"
                     value={commPct} onChange={e => setCommPct(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="flex-1 border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     placeholder="Ej: 1" autoFocus />
-                  <span className="text-slate-500 text-sm">%</span>
+                  <span className="text-brand-400 text-sm">%</span>
                 </div>
                 {commPct && commModal.sale_price && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-brand-400 mt-1">
                     = <strong>{fmtEur(Math.round(commModal.sale_price * Number(commPct) / 100 * 100) / 100)}</strong>
                   </p>
                 )}
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Importe a facturar (€)</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Importe a facturar (€)</label>
                 <input type="number" min="0" step="10"
                   value={commFixed} onChange={e => setCommFixed(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder="Ej: 200" autoFocus />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">IVA aplicable</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">IVA aplicable</label>
               <select value={String(commIva)} onChange={e => setCommIva(Number(e.target.value))}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <option value="0.21">21% (general)</option>
                 <option value="0.10">10% (reducido)</option>
                 <option value="0.04">4% (superreducido)</option>
@@ -623,7 +623,7 @@ export default function ProviderBillingPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setCommModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setCommModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               <button onClick={createCommission} disabled={creatingComm || (commMode === 'percent' ? !commPct : !commFixed)}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
                 {creatingComm ? 'Creando…' : 'Crear factura'}
@@ -637,40 +637,40 @@ export default function ProviderBillingPage() {
       <Modal open={recvModal} onClose={() => setRecvModal(false)} title="Registrar factura recibida de proveedor">
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Proveedor *</label>
+            <label className="block text-xs font-semibold text-brand-400 mb-1">Proveedor *</label>
             <input type="text" value={recvProvider} onChange={e => setRecvProvider(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Ej: Flexicar, AutoHero…" autoFocus />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Vehículo</label>
+            <label className="block text-xs font-semibold text-brand-400 mb-1">Vehículo</label>
             <input type="text" value={recvVehicle} onChange={e => setRecvVehicle(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Ej: Volkswagen T-Roc 2022" />
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Importe (€) *</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Importe (€) *</label>
               <input type="number" min="0" step="0.01" value={recvAmount} onChange={e => setRecvAmount(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="0.00" />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha factura</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Fecha factura</label>
               <input type="date" value={recvDate} onChange={e => setRecvDate(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Notas</label>
+            <label className="block text-xs font-semibold text-brand-400 mb-1">Notas</label>
             <textarea rows={2} value={recvNotes} onChange={e => setRecvNotes(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Número de factura del proveedor, observaciones…" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">IVA</label>
+            <label className="block text-xs font-semibold text-brand-400 mb-1">IVA</label>
             <select value={String(recvIva)} onChange={e => setRecvIva(Number(e.target.value))}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="0.21">21% (general)</option>
               <option value="0.10">10% (reducido)</option>
               <option value="0.04">4% (superreducido)</option>
@@ -678,20 +678,20 @@ export default function ProviderBillingPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">PDF de la factura</label>
+            <label className="block text-xs font-semibold text-brand-400 mb-1">PDF de la factura</label>
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
-              recvPdfFile ? 'border-acento bg-acento-tenue' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+              recvPdfFile ? 'border-acento bg-acento-tenue' : 'border-brand-200 hover:border-brand-300 bg-brand-50'
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setRecvPdfFile(e.target.files?.[0] ?? null)} />
               <span className="text-2xl">{recvPdfFile ? '📄' : '📁'}</span>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-brand-400">
                 {recvPdfFile ? recvPdfFile.name : 'Seleccionar PDF (opcional)'}
               </span>
             </label>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={() => setRecvModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+            <button onClick={() => setRecvModal(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
             <button onClick={createReceivedInvoice} disabled={savingRecv || !recvProvider || !recvAmount}
               className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
               {savingRecv ? 'Guardando…' : 'Registrar factura'}
@@ -704,9 +704,9 @@ export default function ProviderBillingPage() {
       <Modal open={!!pdfModal} onClose={() => setPdfModal(null)} title="Adjuntar PDF de factura">
         {pdfModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{pdfModal.id}</strong> — {pdfModal.provider_name}<br />
-              <span className="text-xs text-slate-400">{pdfModal.vehicle_title || ''} · {fmtEur(pdfModal.invoice_amount)}</span>
+              <span className="text-xs text-brand-300">{pdfModal.vehicle_title || ''} · {fmtEur(pdfModal.invoice_amount)}</span>
             </p>
             {pdfModal.pdf_url && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
@@ -715,15 +715,15 @@ export default function ProviderBillingPage() {
               </div>
             )}
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${
-              pdfFile ? 'border-acento bg-acento-tenue' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+              pdfFile ? 'border-acento bg-acento-tenue' : 'border-brand-200 hover:border-brand-300 bg-brand-50'
             }`}>
               <input type="file" accept=".pdf,.PDF" className="hidden"
                 onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
               <span className="text-2xl">{pdfFile ? '📄' : '📁'}</span>
-              <span className="text-sm text-slate-600">{pdfFile ? pdfFile.name : 'Seleccionar PDF'}</span>
+              <span className="text-sm text-brand-400">{pdfFile ? pdfFile.name : 'Seleccionar PDF'}</span>
             </label>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setPdfModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setPdfModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               <button onClick={attachPdf} disabled={uploadingPdf || !pdfFile}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
                 {uploadingPdf ? 'Subiendo…' : 'Subir PDF'}
@@ -738,15 +738,15 @@ export default function ProviderBillingPage() {
         title={markTarget === 'cancelled' ? 'Cancelar factura' : 'Marcar factura cobrada'}>
         {markModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{markModal.id}</strong> — {markModal.provider_name}<br />
-              <span className="text-xs text-slate-400">{markModal.vehicle_title} · {fmtEur(markModal.invoice_amount)}</span>
+              <span className="text-xs text-brand-300">{markModal.vehicle_title} · {fmtEur(markModal.invoice_amount)}</span>
             </p>
             <textarea value={markNotes} onChange={e => setMarkNotes(e.target.value)}
               rows={2} placeholder="Notas (opcional)"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setMarkModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Volver</button>
+              <button onClick={() => setMarkModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Volver</button>
               <button onClick={handleMark} disabled={marking}
                 className={`px-4 py-2 text-sm rounded-lg font-medium text-white disabled:opacity-60 ${
                   markTarget === 'cancelled' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'
@@ -762,18 +762,18 @@ export default function ProviderBillingPage() {
       <Modal open={!!recvMarkModal} onClose={() => setRecvMarkModal(null)} title="Marcar factura como pagada">
         {recvMarkModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{recvMarkModal.id}</strong> — {recvMarkModal.provider_name}<br />
-              <span className="text-xs text-slate-400">{recvMarkModal.vehicle_title || ''} · {fmtEur(recvMarkModal.invoice_amount)}</span>
+              <span className="text-xs text-brand-300">{recvMarkModal.vehicle_title || ''} · {fmtEur(recvMarkModal.invoice_amount)}</span>
             </p>
             <div className="bg-acento-tenue border border-acento rounded-lg px-3 py-2 text-xs text-acento-texto">
               Confirma que has realizado el pago al proveedor por este importe.
             </div>
             <textarea value={recvMarkNotes} onChange={e => setRecvMarkNotes(e.target.value)}
               rows={2} placeholder="Notas (referencia pago, fecha transferencia…)"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setRecvMarkModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Volver</button>
+              <button onClick={() => setRecvMarkModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Volver</button>
               <button onClick={handleRecvMark} disabled={recvMarking}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60">
                 {recvMarking ? 'Guardando…' : 'Confirmar pago'}
@@ -791,13 +791,13 @@ export default function ProviderBillingPage() {
               Se creará una factura rectificativa (serie RECT) por <strong>-{fmtEur(rectModal.invoice_amount)}</strong> que anula la factura <strong>{rectModal.id}</strong>.
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Motivo de la rectificación</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Motivo de la rectificación</label>
               <textarea value={rectReason} onChange={e => setRectReason(e.target.value)}
                 rows={2} placeholder="Error en importe, anulación del contrato…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setRectModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setRectModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               <button onClick={handleRectify} disabled={rectifying}
                 className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60">
                 {rectifying ? 'Creando…' : 'Crear rectificativa'}

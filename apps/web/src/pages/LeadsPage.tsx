@@ -99,9 +99,9 @@ const EVENT_LABELS: Record<string, string> = {
   lead_request:     'Solicitud',
 };
 const EVENT_COLORS: Record<string, string> = {
-  landing:          'bg-slate-100 text-slate-600',
+  landing:          'bg-brand-100 text-brand-400',
   marketplace_view: 'bg-acento-tenue text-acento-texto',
-  offer_view:       'bg-violet-50 text-violet-700',
+  offer_view:       'bg-acento-tenue text-acento-texto',
   register:         'bg-emerald-50 text-emerald-700',
   lead_request:     'bg-amber-50 text-amber-700',
 };
@@ -115,19 +115,19 @@ const TYPE_LABELS: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
   info:     'bg-acento-tenue text-acento-texto',
   visit:    'bg-emerald-100 text-emerald-700',
-  question: 'bg-violet-100 text-violet-700',
+  question: 'bg-acento-tenue text-acento-texto',
   renting:  'bg-emerald-100 text-emerald-800',
 };
 const STATUS_COLORS: Record<string, string> = {
   Pendiente:              'bg-amber-100 text-amber-700',
   Contactado:             'bg-acento-tenue text-acento-texto',
-  'En proceso':           'bg-violet-100 text-violet-700',
+  'En proceso':           'bg-acento-tenue text-acento-texto',
   'Cita confirmada':      'bg-green-100 text-green-700',
-  'Visita realizada':     'bg-teal-100 text-teal-700',
-  Interesado:             'bg-sky-100 text-sky-700',
+  'Visita realizada':     'bg-brand-100 text-brand-500',
+  Interesado:             'bg-brand-100 text-brand-500',
   Vendido:                'bg-emerald-100 text-emerald-700',
   Cerrado:                'bg-green-100 text-green-700',
-  Descartado:             'bg-slate-100 text-slate-500',
+  Descartado:             'bg-brand-100 text-brand-400',
   'Reagendar solicitado': 'bg-orange-100 text-orange-700',
   Cancelado:              'bg-red-100 text-red-700',
 };
@@ -150,7 +150,7 @@ const OUTREACH_COLORS: Record<string, string> = {
   pending:        'bg-amber-100 text-amber-700',
   no_answer:      'bg-orange-100 text-orange-700',
   called:         'bg-emerald-100 text-emerald-700',
-  not_interested: 'bg-slate-100 text-slate-500',
+  not_interested: 'bg-brand-100 text-brand-400',
 };
 const OUTREACH_LABELS: Record<string, string> = {
   pending:        'Por llamar',
@@ -176,12 +176,12 @@ function getModalidad(portal: string | undefined): { label: string; color: strin
 }
 
 function formatOrigen(portal: string | undefined): { label: string; color: string } {
-  if (!portal) return { label: '–', color: 'bg-slate-100 text-slate-500' };
+  if (!portal) return { label: '–', color: 'bg-brand-100 text-brand-400' };
   if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-acento-tenue text-acento-texto' };
   if (portal === 'marketplace-vo-renting') return { label: 'Marketplace · Renting', color: 'bg-emerald-100 text-emerald-700' };
   if (portal.startsWith('marketplace-vo')) return { label: 'Marketplace VO',        color: 'bg-acento-tenue text-acento-texto' };
   const name = portal.charAt(0).toUpperCase() + portal.slice(1);
-  return { label: `Portal: ${name}`, color: 'bg-violet-100 text-violet-700' };
+  return { label: `Portal: ${name}`, color: 'bg-acento-tenue text-acento-texto' };
 }
 
 function fmtDateTime(s: string) {
@@ -197,7 +197,7 @@ function getAge(dateStr: string): { label: string; color: string } {
   if (days > 0)   return { label: `hace ${days}d`,  color: 'text-red-600 bg-red-50 border-red-200' };
   if (hours >= 4) return { label: `hace ${hours}h`, color: 'text-red-600 bg-red-50 border-red-200' };
   if (hours >= 1) return { label: `hace ${hours}h`, color: 'text-amber-600 bg-amber-50 border-amber-200' };
-  return { label: `hace ${mins}m`, color: 'text-slate-500 bg-slate-50 border-slate-200' };
+  return { label: `hace ${mins}m`, color: 'text-brand-400 bg-brand-50 border-brand-200' };
 }
 
 // Calendar helpers
@@ -553,7 +553,7 @@ export default function LeadsPage() {
       <PageHeader title="Leads" subtitle="Solicitudes recibidas, calendario de citas y cola de llamadas proactivas" />
 
       {/* Tab switcher */}
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
+      <div className="flex gap-1 mb-6 border-b border-brand-200">
         {([
           { key: 'solicitudes',  label: 'Solicitudes',        badge: leadStats?.pending ?? null },
           { key: 'calendario',   label: 'Calendario de citas', badge: null },
@@ -565,7 +565,7 @@ export default function LeadsPage() {
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${
               activeTab === key
                 ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-brand-400 hover:text-brand-500'
             }`}
           >
             {label}
@@ -584,15 +584,15 @@ export default function LeadsPage() {
           {leadStats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               {[
-                { label: 'Total',        value: leadStats.total,     color: 'bg-slate-50 border-slate-200' },
+                { label: 'Total',        value: leadStats.total,     color: 'bg-brand-50 border-brand-200' },
                 { label: 'Pendientes',   value: leadStats.pending,   color: 'bg-amber-50 border-amber-200' },
                 { label: 'Esta semana',  value: leadStats.new_7d,    color: 'bg-acento-tenue border-acento' },
-                { label: 'Contactados',  value: leadStats.contacted, color: 'bg-sky-50 border-sky-200' },
+                { label: 'Contactados',  value: leadStats.contacted, color: 'bg-brand-50 border-brand-200' },
                 { label: 'Resueltos',    value: leadStats.resolved,  color: 'bg-green-50 border-green-200' },
               ].map((s) => (
                 <div key={s.label} className={`${s.color} border rounded-xl p-4`}>
-                  <p className="text-2xl font-bold text-slate-800">{s.value}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+                  <p className="text-2xl font-bold text-brand-600">{s.value}</p>
+                  <p className="text-xs text-brand-400 mt-0.5">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -604,15 +604,15 @@ export default function LeadsPage() {
               placeholder="Buscar por email, vehículo…"
               value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1); }}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="border border-brand-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              className="border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todos los estados</option>
               {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              className="border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todos los tipos</option>
               <option value="info">Solicitar info</option>
               <option value="visit">Agendar visita</option>
@@ -620,23 +620,23 @@ export default function LeadsPage() {
               <option value="renting">🔑 Oferta de renting</option>
             </select>
             <select value={filterOrigin} onChange={(e) => { setFilterOrigin(e.target.value); setPage(1); }}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              className="border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todos los orígenes</option>
               <option value="marketplace-vo-compra">Marketplace · Compra</option>
               <option value="marketplace-vo-renting">Marketplace · Renting</option>
               <option value="portales">Portales externos</option>
             </select>
             <button onClick={exportLeadsCsv} disabled={exporting}
-              className="ml-auto px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-60 whitespace-nowrap">
+              className="ml-auto px-3 py-2 text-xs border border-brand-200 rounded-lg text-brand-400 hover:bg-brand-50 disabled:opacity-60 whitespace-nowrap">
               {exporting ? 'Exportando…' : '↓ Exportar Excel'}
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
             {loading ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Cargando…</div>
+              <div className="p-12 text-center text-brand-300 text-sm">Cargando…</div>
             ) : leads.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-sm">No hay solicitudes todavía.</div>
+              <div className="p-12 text-center text-brand-300 text-sm">No hay solicitudes todavía.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="erp-table">
@@ -650,8 +650,8 @@ export default function LeadsPage() {
                       const isPending = lead.status === 'Pendiente';
                       const age = isPending ? getAge(lead.created_at) : null;
                       return (
-                        <tr key={lead.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openLead(lead)}>
-                          <td className="text-slate-500 text-xs whitespace-nowrap">
+                        <tr key={lead.id} className="cursor-pointer hover:bg-brand-50" onClick={() => openLead(lead)}>
+                          <td className="text-brand-400 text-xs whitespace-nowrap">
                             <div>{new Date(lead.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                             {age && (
                               <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${age.color}`}>
@@ -667,25 +667,25 @@ export default function LeadsPage() {
                           <td>
                             {(() => { const m = getModalidad(lead.meta?.portal); return m
                               ? <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>{m.label}</span>
-                              : <span className="text-slate-300 text-xs">–</span>;
+                              : <span className="text-brand-300 text-xs">–</span>;
                             })()}
                           </td>
                           <td>
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[lead.appointment_type] ?? 'bg-brand-100 text-brand-400'}`}>
                               {TYPE_LABELS[lead.appointment_type] ?? lead.appointment_type}
                             </span>
                           </td>
                           <td>
-                            <p className="font-medium text-slate-800 text-sm">{lead.meta?.name ?? '—'}</p>
-                            <p className="text-xs text-slate-500">{lead.user_email}</p>
-                            <p className="text-xs text-slate-400">{lead.meta?.phone ?? ''}</p>
+                            <p className="font-medium text-brand-600 text-sm">{lead.meta?.name ?? '—'}</p>
+                            <p className="text-xs text-brand-400">{lead.user_email}</p>
+                            <p className="text-xs text-brand-300">{lead.meta?.phone ?? ''}</p>
                           </td>
-                          <td className="text-sm text-slate-700 max-w-[220px] truncate">{lead.title}</td>
-                          <td className="text-xs text-slate-500">
+                          <td className="text-sm text-brand-500 max-w-[220px] truncate">{lead.title}</td>
+                          <td className="text-xs text-brand-400">
                             {lead.meta?.when ? (WHEN_LABELS[lead.meta.when] ?? lead.meta.when) : '—'}
                           </td>
                           <td>
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] ?? 'bg-brand-100 text-brand-400'}`}>
                               {lead.status}
                             </span>
                           </td>
@@ -713,12 +713,12 @@ export default function LeadsPage() {
           <div className="flex items-center justify-between mb-5">
             <button
               onClick={() => setWeekStart((d) => addDays(d, -7))}
-              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 text-sm border border-brand-200 rounded-lg hover:bg-brand-50 text-brand-400"
             >
               ← Semana anterior
             </button>
             <div className="text-center">
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-brand-500">
                 {weekDays[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
                 {' — '}
                 {weekDays[6].toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -734,14 +734,14 @@ export default function LeadsPage() {
             </div>
             <button
               onClick={() => setWeekStart((d) => addDays(d, 7))}
-              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 text-sm border border-brand-200 rounded-lg hover:bg-brand-50 text-brand-400"
             >
               Semana siguiente →
             </button>
           </div>
 
           {calendarLoading ? (
-            <div className="p-12 text-center text-slate-400 text-sm">Cargando citas…</div>
+            <div className="p-12 text-center text-brand-300 text-sm">Cargando citas…</div>
           ) : (
             <div className="grid grid-cols-7 gap-2">
               {weekDays.map((day, i) => {
@@ -754,17 +754,17 @@ export default function LeadsPage() {
                     className={`rounded-xl border min-h-[160px] ${
                       isToday
                         ? 'border-brand-400 bg-brand-50'
-                        : 'border-slate-200 bg-white'
+                        : 'border-brand-200 bg-white'
                     }`}
                   >
                     {/* Day header */}
                     <div className={`px-2 py-2 border-b text-center rounded-t-xl ${
-                      isToday ? 'border-brand-200 bg-brand-100' : 'border-slate-100 bg-slate-50'
+                      isToday ? 'border-brand-200 bg-brand-100' : 'border-brand-100 bg-brand-50'
                     }`}>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isToday ? 'text-brand-700' : 'text-slate-400'}`}>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isToday ? 'text-brand-700' : 'text-brand-300'}`}>
                         {DAY_LABELS[i]}
                       </p>
-                      <p className={`text-lg font-bold leading-tight ${isToday ? 'text-brand-700' : 'text-slate-700'}`}>
+                      <p className={`text-lg font-bold leading-tight ${isToday ? 'text-brand-700' : 'text-brand-500'}`}>
                         {day.getDate()}
                       </p>
                     </div>
@@ -772,7 +772,7 @@ export default function LeadsPage() {
                     {/* Appointments */}
                     <div className="p-1.5 space-y-1.5">
                       {dayLeads.length === 0 ? (
-                        <p className="text-[10px] text-slate-300 text-center py-3">Sin citas</p>
+                        <p className="text-[10px] text-brand-300 text-center py-3">Sin citas</p>
                       ) : (
                         dayLeads
                           .sort((a, b) => (a.meta?.appointment_time ?? '').localeCompare(b.meta?.appointment_time ?? ''))
@@ -787,10 +787,10 @@ export default function LeadsPage() {
                                   ⏰ {lead.meta.appointment_time}
                                 </p>
                               )}
-                              <p className="text-[11px] font-semibold text-slate-700 truncate leading-tight">
+                              <p className="text-[11px] font-semibold text-brand-500 truncate leading-tight">
                                 {lead.meta?.name ?? lead.user_email}
                               </p>
-                              <p className="text-[10px] text-slate-500 truncate leading-tight">
+                              <p className="text-[10px] text-brand-400 truncate leading-tight">
                                 {lead.title}
                               </p>
                               {lead.meta?.appointment_contact && (
@@ -809,7 +809,7 @@ export default function LeadsPage() {
           )}
 
           {/* Total citas semana */}
-          <p className="text-xs text-slate-400 mt-3 text-right">
+          <p className="text-xs text-brand-300 mt-3 text-right">
             {weekDays.reduce((acc, d) => acc + (calendarByDay[isoDate(d)]?.length ?? 0), 0)} cita{weekDays.reduce((acc, d) => acc + (calendarByDay[isoDate(d)]?.length ?? 0), 0) !== 1 ? 's' : ''} esta semana
             {' · '}
             <button onClick={loadCalendar} className="text-brand-600 hover:underline">Actualizar</button>
@@ -821,11 +821,11 @@ export default function LeadsPage() {
       {activeTab === 'llamadas' && (
         <>
           {/* Segment selector */}
-          <div className="flex gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+          <div className="flex gap-1 mb-5 bg-brand-100 rounded-lg p-1 w-fit">
             <button
               onClick={() => { setCallType('offer_no_lead'); setCallPage(1); }}
               className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                callType === 'offer_no_lead' ? 'bg-white shadow text-slate-700' : 'text-slate-500 hover:text-slate-700'
+                callType === 'offer_no_lead' ? 'bg-white shadow text-brand-500' : 'text-brand-400 hover:text-brand-500'
               }`}
             >
               Vieron oferta
@@ -833,7 +833,7 @@ export default function LeadsPage() {
             <button
               onClick={() => { setCallType('registered_no_lead'); setCallPage(1); }}
               className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                callType === 'registered_no_lead' ? 'bg-white shadow text-slate-700' : 'text-slate-500 hover:text-slate-700'
+                callType === 'registered_no_lead' ? 'bg-white shadow text-brand-500' : 'text-brand-400 hover:text-brand-500'
               }`}
             >
               Registrados inactivos
@@ -858,7 +858,7 @@ export default function LeadsPage() {
               {[
                 { label: 'Por llamar',        value: callStats?.pending   ?? '–', color: 'bg-amber-50 border-amber-200 text-amber-800' },
                 { label: 'No contesta',       value: callStats?.no_answer ?? '–', color: 'bg-orange-50 border-orange-200 text-orange-800' },
-                { label: 'Resueltos',         value: callStats?.resolved  ?? '–', color: 'bg-slate-50 border-slate-200 text-slate-600' },
+                { label: 'Resueltos',         value: callStats?.resolved  ?? '–', color: 'bg-brand-50 border-brand-200 text-brand-400' },
               ].map((s) => (
                 <div key={s.label} className={`${s.color} border rounded-xl px-4 py-3 min-w-[100px]`}>
                   <p className="text-2xl font-bold">{s.value}</p>
@@ -867,14 +867,14 @@ export default function LeadsPage() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-500">Período:</span>
+              <span className="text-xs text-brand-400">Período:</span>
               {[7, 14, 30, 60].map((d) => (
                 <button key={d}
                   onClick={() => { setCallDays(d); setCallPage(1); }}
                   className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                     callDays === d
                       ? 'bg-brand-600 border-brand-600 text-white font-medium'
-                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      : 'border-brand-200 text-brand-400 hover:bg-brand-50'
                   }`}>
                   {d}d
                 </button>
@@ -883,8 +883,8 @@ export default function LeadsPage() {
                 onClick={() => setShowResolved((v) => !v)}
                 className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                   showResolved
-                    ? 'bg-slate-600 border-slate-600 text-white'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    ? 'bg-brand-400 border-brand-400 text-white'
+                    : 'border-brand-200 text-brand-400 hover:bg-brand-50'
                 }`}>
                 {showResolved ? '✓ Mostrando todos' : 'Mostrar resueltos'}
               </button>
@@ -892,11 +892,11 @@ export default function LeadsPage() {
           </div>
 
           {/* Queue table */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
             {callLoading ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Cargando cola…</div>
+              <div className="p-12 text-center text-brand-300 text-sm">Cargando cola…</div>
             ) : visibleQueue.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-sm">
+              <div className="p-12 text-center text-brand-300 text-sm">
                 {showResolved
                   ? callType === 'registered_no_lead'
                     ? 'No hay registrados inactivos en este período.'
@@ -905,19 +905,19 @@ export default function LeadsPage() {
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-brand-50 border-b border-brand-200">
                   <tr>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Contacto</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide">Contacto</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide">
                       {callType === 'registered_no_lead' ? 'Actividad · contexto de llamada' : 'Oferta(s) vistas · contexto de llamada'}
                     </th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Última visita</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-24">Fuente</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-28">Estado</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide w-36">Última visita</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide w-24">Fuente</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide w-28">Estado</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-brand-400 uppercase tracking-wide">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-brand-100">
                   {visibleQueue.map((item) => {
                     const isExpanded     = expandedAnon === item.anon_id;
                     const isInfoExpanded = expandedInfoAnon === item.anon_id;
@@ -926,37 +926,37 @@ export default function LeadsPage() {
                       <>
                         <tr key={item.anon_id}
                           onClick={() => toggleInfoExpand(item)}
-                          className={`${isResolved ? 'opacity-50' : ''} hover:bg-slate-50 transition-colors cursor-pointer`}>
+                          className={`${isResolved ? 'opacity-50' : ''} hover:bg-brand-50 transition-colors cursor-pointer`}>
                           <td className="px-4 py-3">
                             {item.user_email ? (
                               <span className="text-acento-texto font-medium text-xs">{item.user_email}</span>
                             ) : (
-                              <span className="text-slate-400 font-mono text-xs">{item.anon_id.slice(0, 20)}…</span>
+                              <span className="text-brand-300 font-mono text-xs">{item.anon_id.slice(0, 20)}…</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
                             {(item.offers_viewed ?? []).length > 0 ? (
                               <div className="flex flex-wrap gap-1.5">
                                 {(item.offers_viewed ?? []).map((o, i) => (
-                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 border border-violet-200 text-violet-800 rounded text-xs font-medium max-w-[240px] truncate">
+                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-acento-tenue border border-acento text-acento-texto rounded text-xs font-medium max-w-[240px] truncate">
                                     🚗 {o.title}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 text-xs italic">
+                              <span className="text-brand-300 text-xs italic">
                                 {callType === 'registered_no_lead' ? 'Registrado · sin consultas de oferta' : 'Sin oferta registrada'}
                               </span>
                             )}
                             {item.outreach_notes && (
-                              <p className="text-xs text-slate-400 mt-1 italic">"{item.outreach_notes}"</p>
+                              <p className="text-xs text-brand-300 mt-1 italic">"{item.outreach_notes}"</p>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                          <td className="px-4 py-3 text-xs text-brand-400 whitespace-nowrap">
                             {fmtDateTime(item.last_seen)}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-500">
-                            {item.utm_source || <span className="text-slate-300">–</span>}
+                          <td className="px-4 py-3 text-xs text-brand-400">
+                            {item.utm_source || <span className="text-brand-300">–</span>}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${OUTREACH_COLORS[item.outreach_status]}`}>
@@ -968,7 +968,7 @@ export default function LeadsPage() {
                               <button
                                 onClick={() => doOutreach(item.anon_id, item.user_email, 'pending')}
                                 disabled={actionSaving}
-                                className="text-xs text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 disabled:opacity-40">
+                                className="text-xs text-brand-300 hover:text-brand-400 border border-brand-200 rounded-lg px-2.5 py-1 hover:bg-brand-50 disabled:opacity-40">
                                 ↩ Reabrir
                               </button>
                             ) : (
@@ -992,7 +992,7 @@ export default function LeadsPage() {
                                 <button
                                   onClick={() => doOutreach(item.anon_id, item.user_email, 'not_interested')}
                                   disabled={actionSaving}
-                                  className="text-xs text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 disabled:opacity-40">
+                                  className="text-xs text-brand-300 hover:text-brand-400 border border-brand-200 rounded-lg px-2.5 py-1 hover:bg-brand-50 disabled:opacity-40">
                                   × Descartar
                                 </button>
                               </div>
@@ -1001,43 +1001,43 @@ export default function LeadsPage() {
                         </tr>
                         {isInfoExpanded && (
                           <tr key={`${item.anon_id}-info`}>
-                            <td colSpan={6} className="px-5 py-4 bg-slate-50 border-b border-slate-200">
+                            <td colSpan={6} className="px-5 py-4 bg-brand-50 border-b border-brand-200">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div>
-                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Datos del contacto</p>
+                                  <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-2">Datos del contacto</p>
                                   <dl className="space-y-1.5">
                                     <div className="flex gap-2 text-xs">
-                                      <dt className="text-slate-400 w-24 shrink-0">Email</dt>
-                                      <dd className="text-slate-700 font-medium break-all">{item.user_email ?? <span className="font-mono text-slate-400">{item.anon_id}</span>}</dd>
+                                      <dt className="text-brand-300 w-24 shrink-0">Email</dt>
+                                      <dd className="text-brand-500 font-medium break-all">{item.user_email ?? <span className="font-mono text-brand-300">{item.anon_id}</span>}</dd>
                                     </div>
                                     <div className="flex gap-2 text-xs">
-                                      <dt className="text-slate-400 w-24 shrink-0">Primera visita</dt>
-                                      <dd className="text-slate-600">{fmtDateTime(item.first_seen)}</dd>
+                                      <dt className="text-brand-300 w-24 shrink-0">Primera visita</dt>
+                                      <dd className="text-brand-400">{fmtDateTime(item.first_seen)}</dd>
                                     </div>
                                     <div className="flex gap-2 text-xs">
-                                      <dt className="text-slate-400 w-24 shrink-0">Última visita</dt>
-                                      <dd className="text-slate-600">{fmtDateTime(item.last_seen)}</dd>
+                                      <dt className="text-brand-300 w-24 shrink-0">Última visita</dt>
+                                      <dd className="text-brand-400">{fmtDateTime(item.last_seen)}</dd>
                                     </div>
                                     <div className="flex gap-2 text-xs">
-                                      <dt className="text-slate-400 w-24 shrink-0">Fuente</dt>
-                                      <dd className="text-slate-600">{item.utm_source || '–'}</dd>
+                                      <dt className="text-brand-300 w-24 shrink-0">Fuente</dt>
+                                      <dd className="text-brand-400">{item.utm_source || '–'}</dd>
                                     </div>
                                     {item.utm_campaign && (
                                       <div className="flex gap-2 text-xs">
-                                        <dt className="text-slate-400 w-24 shrink-0">Campaña</dt>
-                                        <dd className="text-slate-600">{item.utm_campaign}</dd>
+                                        <dt className="text-brand-300 w-24 shrink-0">Campaña</dt>
+                                        <dd className="text-brand-400">{item.utm_campaign}</dd>
                                       </div>
                                     )}
                                   </dl>
                                   {(item.offers_viewed ?? []).length > 0 && (
                                     <div className="mt-3">
-                                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Oferta(s) de interés</p>
+                                      <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-1.5">Oferta(s) de interés</p>
                                       <div className="space-y-1">
                                         {(item.offers_viewed ?? []).map((o, i) => (
-                                          <div key={i} className="flex items-center gap-2 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5">
+                                          <div key={i} className="flex items-center gap-2 text-xs text-acento-texto bg-acento-tenue border border-acento rounded-lg px-2.5 py-1.5">
                                             🚗{' '}
                                             {o.url ? (
-                                              <a href={o.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-violet-600 truncate">
+                                              <a href={o.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-acento-texto truncate">
                                                 {o.title}
                                               </a>
                                             ) : (
@@ -1050,23 +1050,23 @@ export default function LeadsPage() {
                                   )}
                                 </div>
                                 <div>
-                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Actividad en la visita</p>
+                                  <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-2">Actividad en la visita</p>
                                   {eventsLoading === item.anon_id ? (
-                                    <p className="text-slate-400 text-xs">Cargando…</p>
+                                    <p className="text-brand-300 text-xs">Cargando…</p>
                                   ) : (anonEvents[item.anon_id] ?? []).length === 0 ? (
-                                    <p className="text-slate-400 text-xs italic">Sin eventos detallados registrados</p>
+                                    <p className="text-brand-300 text-xs italic">Sin eventos detallados registrados</p>
                                   ) : (
                                     <div className="space-y-1.5">
                                       {(anonEvents[item.anon_id] ?? []).map((ev) => (
                                         <div key={ev.id} className="flex items-start gap-2">
-                                          <span className="text-[10px] text-slate-400 whitespace-nowrap mt-0.5 w-10 shrink-0">
+                                          <span className="text-[10px] text-brand-300 whitespace-nowrap mt-0.5 w-10 shrink-0">
                                             {ev.created_at ? new Date(ev.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
                                           </span>
-                                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${EVENT_COLORS[ev.event_type] ?? 'bg-slate-100 text-slate-600'}`}>
+                                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${EVENT_COLORS[ev.event_type] ?? 'bg-brand-100 text-brand-400'}`}>
                                             {EVENT_LABELS[ev.event_type] ?? ev.event_type}
                                           </span>
                                           {ev.offer_title && (
-                                            <span className="text-xs text-slate-500 truncate max-w-[180px]">{ev.offer_title}</span>
+                                            <span className="text-xs text-brand-400 truncate max-w-[180px]">{ev.offer_title}</span>
                                           )}
                                         </div>
                                       ))}
@@ -1099,7 +1099,7 @@ export default function LeadsPage() {
                                   </button>
                                   <button
                                     onClick={() => { setExpandedAnon(null); setNoteText(''); }}
-                                    className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-white">
+                                    className="px-3 py-1.5 text-xs text-brand-400 border border-brand-200 rounded-lg hover:bg-white">
                                     Cancelar
                                   </button>
                                 </div>
@@ -1120,7 +1120,7 @@ export default function LeadsPage() {
             </div>
           )}
           {callTotal > 0 && (
-            <p className="text-xs text-slate-400 mt-2 text-right">
+            <p className="text-xs text-brand-300 mt-2 text-right">
               {callTotal} contacto{callTotal !== 1 ? 's' : ''} en total · últimos {callDays} días
             </p>
           )}
@@ -1132,25 +1132,25 @@ export default function LeadsPage() {
         <Modal open={true} title={`Lead: ${selected.meta?.name ?? selected.user_email}`} onClose={() => setSelected(null)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-slate-400 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-slate-100 text-slate-600'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>
-              <div><span className="text-slate-400 text-xs block">{selected.appointment_type === 'renting' ? 'Opción solicitada' : 'Cuándo'}</span><span className="font-medium">{selected.appointment_type === 'renting' ? (selected.meta?.when ?? '—') : (WHEN_LABELS[selected.meta?.when ?? ''] ?? selected.meta?.when ?? '—')}</span></div>
-              <div><span className="text-slate-400 text-xs block">Email</span><span className="font-medium">{selected.user_email}</span></div>
-              <div><span className="text-slate-400 text-xs block">Teléfono</span><span className="font-medium">{selected.meta?.phone ?? '—'}</span></div>
-              <div className="col-span-2"><span className="text-slate-400 text-xs block">Vehículo</span><span className="font-medium">{selected.title}</span></div>
+              <div><span className="text-brand-300 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-brand-100 text-brand-400'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>
+              <div><span className="text-brand-300 text-xs block">{selected.appointment_type === 'renting' ? 'Opción solicitada' : 'Cuándo'}</span><span className="font-medium">{selected.appointment_type === 'renting' ? (selected.meta?.when ?? '—') : (WHEN_LABELS[selected.meta?.when ?? ''] ?? selected.meta?.when ?? '—')}</span></div>
+              <div><span className="text-brand-300 text-xs block">Email</span><span className="font-medium">{selected.user_email}</span></div>
+              <div><span className="text-brand-300 text-xs block">Teléfono</span><span className="font-medium">{selected.meta?.phone ?? '—'}</span></div>
+              <div className="col-span-2"><span className="text-brand-300 text-xs block">Vehículo</span><span className="font-medium">{selected.title}</span></div>
               {selected.meta?.vehicle_url && (
-                <div className="col-span-2"><span className="text-slate-400 text-xs block">Enlace al anuncio</span><a href={selected.meta.vehicle_url} target="_blank" rel="noreferrer" className="text-brand-600 underline text-xs truncate block">{selected.meta.vehicle_url}</a></div>
+                <div className="col-span-2"><span className="text-brand-300 text-xs block">Enlace al anuncio</span><a href={selected.meta.vehicle_url} target="_blank" rel="noreferrer" className="text-brand-600 underline text-xs truncate block">{selected.meta.vehicle_url}</a></div>
               )}
               {selected.meta?.portal && (
-                <div><span className="text-slate-400 text-xs block">Portal</span><span className="font-medium capitalize">{selected.meta.portal}</span></div>
+                <div><span className="text-brand-300 text-xs block">Portal</span><span className="font-medium capitalize">{selected.meta.portal}</span></div>
               )}
-              <div><span className="text-slate-400 text-xs block">Recibido</span><span className="font-medium">{new Date(selected.created_at).toLocaleString('es-ES')}</span></div>
+              <div><span className="text-brand-300 text-xs block">Recibido</span><span className="font-medium">{new Date(selected.created_at).toLocaleString('es-ES')}</span></div>
             </div>
 
             {/* Status — filtered by lead type */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Estado</label>
+              <label className="block text-xs font-medium text-brand-400 mb-1">Estado</label>
               <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 {getAvailableStatuses(selected.appointment_type).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -1160,26 +1160,26 @@ export default function LeadsPage() {
                 <p className="text-xs font-semibold text-acento-texto">📅 Datos de la cita</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Fecha</label>
+                    <label className="block text-xs text-brand-400 mb-1">Fecha</label>
                     <input type="date" value={editApptDate} onChange={(e) => setEditApptDate(e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      className="w-full border border-brand-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Hora</label>
+                    <label className="block text-xs text-brand-400 mb-1">Hora</label>
                     <input type="time" value={editApptTime} onChange={(e) => setEditApptTime(e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      className="w-full border border-brand-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-slate-500 mb-1">Dirección</label>
+                    <label className="block text-xs text-brand-400 mb-1">Dirección</label>
                     <input type="text" value={editApptAddress} onChange={(e) => setEditApptAddress(e.target.value)}
                       placeholder="Calle, ciudad…"
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      className="w-full border border-brand-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-slate-500 mb-1">Persona de contacto (pregunta por…)</label>
+                    <label className="block text-xs text-brand-400 mb-1">Persona de contacto (pregunta por…)</label>
                     <input type="text" value={editApptContact} onChange={(e) => setEditApptContact(e.target.value)}
                       placeholder="Nombre del comercial o responsable"
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      className="w-full border border-brand-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   </div>
                 </div>
               </div>
@@ -1195,11 +1195,11 @@ export default function LeadsPage() {
                       <button key={i} type="button"
                         onClick={(e) => { e.stopPropagation(); setEditApptDate(p.date); setEditApptTime(p.time || ''); setEditStatus('Contactado'); }}
                         className={`w-full text-left text-sm px-3 py-2.5 border rounded-lg transition-colors flex justify-between items-center font-medium ${
-                          isSelected ? 'bg-green-100 border-green-400 text-green-800' : 'bg-white border-orange-300 hover:bg-orange-100 text-slate-700 cursor-pointer'
+                          isSelected ? 'bg-green-100 border-green-400 text-green-800' : 'bg-white border-orange-300 hover:bg-orange-100 text-brand-500 cursor-pointer'
                         }`}>
                         <span>
                           📅 {p.date ? new Date(p.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : p.date}
-                          {p.time && <span className="ml-2 text-slate-500">⏰ {p.time}</span>}
+                          {p.time && <span className="ml-2 text-brand-400">⏰ {p.time}</span>}
                         </span>
                         <span className={`text-xs font-semibold ml-2 shrink-0 ${isSelected ? 'text-green-700' : 'text-orange-600'}`}>
                           {isSelected ? '✓ Seleccionada' : 'Usar esta →'}
@@ -1214,14 +1214,14 @@ export default function LeadsPage() {
 
             {/* Reply templates */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Respuesta al cliente</label>
+              <label className="block text-xs font-medium text-brand-400 mb-1.5">Respuesta al cliente</label>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {REPLY_TEMPLATES.map((t) => (
                   <button
                     key={t.label}
                     type="button"
                     onClick={() => setEditResponse(t.text)}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors"
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-full border border-brand-200 bg-brand-50 text-brand-400 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors"
                   >
                     {t.label}
                   </button>
@@ -1229,30 +1229,30 @@ export default function LeadsPage() {
               </div>
               <textarea rows={3} value={editResponse} onChange={(e) => setEditResponse(e.target.value)}
                 placeholder="Mensaje que verá el cliente en su panel y recibirá por email…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Notas internas</label>
+              <label className="block text-xs font-medium text-brand-400 mb-1">Notas internas</label>
               <textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)}
                 placeholder="Notas privadas (no se envían al cliente)…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
             </div>
 
             {/* ── Historial de cambios ── */}
             {(historyLoading || history.length > 0) && (
-              <div className="border-t border-slate-100 pt-3">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Historial</p>
+              <div className="border-t border-brand-100 pt-3">
+                <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wide mb-2">Historial</p>
                 {historyLoading ? (
-                  <p className="text-xs text-slate-400">Cargando…</p>
+                  <p className="text-xs text-brand-300">Cargando…</p>
                 ) : (
                   <ol className="space-y-1">
                     {history.map((h) => (
-                      <li key={h.id} className="flex gap-2 text-xs text-slate-500">
-                        <span className="text-slate-300 whitespace-nowrap">
+                      <li key={h.id} className="flex gap-2 text-xs text-brand-400">
+                        <span className="text-brand-300 whitespace-nowrap">
                           {new Date(h.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <span className="font-medium text-slate-700">{h.operator}</span>
+                        <span className="font-medium text-brand-500">{h.operator}</span>
                         <span>
                           {h.field === 'status' ? <>cambió estado: <em>{h.old_value || '–'}</em> → <strong>{h.new_value}</strong></> :
                            h.field === 'erp_response' ? <>actualizó respuesta al cliente</> :
@@ -1267,12 +1267,12 @@ export default function LeadsPage() {
             )}
 
             {selected.notified_at && (
-              <p className="text-xs text-slate-400 text-right pt-1">
+              <p className="text-xs text-brand-300 text-right pt-1">
                 Último email enviado: {new Date(selected.notified_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
             <div className="flex justify-end gap-2 pt-2 flex-wrap">
-              <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               {/* Renting contract button — shown for any renting lead (marketplace or external portal) not yet closed */}
               {(selected.appointment_type === 'renting' || selected.meta?.portal === 'marketplace-vo-renting') &&
                selected.status !== 'Cerrado' && selected.status !== 'Descartado' && selected.status !== 'Cancelado' && (
@@ -1282,7 +1282,7 @@ export default function LeadsPage() {
                 </button>
               )}
               <button onClick={() => saveLead()} disabled={saving}
-                className="px-4 py-2 text-sm border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 rounded-lg disabled:opacity-60">
+                className="px-4 py-2 text-sm border border-brand-300 text-brand-500 bg-white hover:bg-brand-50 rounded-lg disabled:opacity-60">
                 {saving ? 'Guardando…' : 'Guardar borrador'}
               </button>
               <button onClick={notifyClient} disabled={notifying || saving}
@@ -1298,48 +1298,48 @@ export default function LeadsPage() {
       <Modal open={contractModal && !!selected} onClose={() => setContractModal(false)} title="Crear contrato de renting">
         {selected && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               <strong>{selected.title}</strong>
-              <span className="text-slate-400 ml-2">· {selected.meta?.name || selected.user_email}</span>
+              <span className="text-brand-300 ml-2">· {selected.meta?.name || selected.user_email}</span>
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Color</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Color</label>
                 <input value={contractColor} onChange={e => setContractColor(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Blanco" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Blanco" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Unidades</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Unidades</label>
                 <input type="number" min="1" max="50" value={contractQty} onChange={e => setContractQty(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Duración (meses) *</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Duración (meses) *</label>
                 <select value={contractDuration} onChange={e => setContractDuration(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm">
                   {[12, 24, 36, 48, 60].map(m => <option key={m} value={m}>{m} meses</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Km/año</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Km/año</label>
                 <select value={contractKm} onChange={e => setContractKm(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm">
                   {[10000, 15000, 20000, 25000, 30000].map(k => <option key={k} value={k}>{k.toLocaleString('es-ES')} km/año</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Precio €/mes *</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Precio €/mes *</label>
                 <input type="number" min="0" step="0.01" value={contractPrice} onChange={e => setContractPrice(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="278.00" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" placeholder="278.00" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha inicio *</label>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Fecha inicio *</label>
                 <input type="date" value={contractStart} onChange={e => setContractStart(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
             {contractDuration && contractPrice && (
-              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+              <p className="text-xs text-brand-400 bg-brand-50 rounded-lg px-3 py-2">
                 Valor total contrato: <strong>{(Number(contractDuration) * Number(contractPrice)).toLocaleString('es-ES', { minimumFractionDigits: 0 })} €</strong>
                 {' · '}Fin previsto: <strong>{(() => {
                   const d = new Date(contractStart); d.setMonth(d.getMonth() + Number(contractDuration));
@@ -1348,13 +1348,13 @@ export default function LeadsPage() {
               </p>
             )}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Notas internas</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Notas internas</label>
               <textarea value={contractNotes} onChange={e => setContractNotes(e.target.value)}
-                rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                rows={2} className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm"
                 placeholder="Condiciones especiales, unidad asignada, etc." />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setContractModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setContractModal(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Cancelar</button>
               <button onClick={createContract} disabled={creatingContract}
                 className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-60">
                 {creatingContract ? 'Creando…' : '✓ Formalizar contrato'}
@@ -1368,41 +1368,41 @@ export default function LeadsPage() {
       <Modal open={saleModal} onClose={() => setSaleModal(false)} title="Registrar precio de venta">
         {selected && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-brand-400">
               Vas a marcar <strong>{selected.title || selected.meta?.name}</strong> como <strong>Vendido</strong>.
               <br />
-              <span className="text-xs text-slate-400">Introduce el precio de venta para que aparezca en Contratos.</span>
+              <span className="text-xs text-brand-300">Introduce el precio de venta para que aparezca en Contratos.</span>
             </p>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Precio de venta (€)</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Precio de venta (€)</label>
               <input
                 type="number" min="0" step="100"
                 value={salePrice}
                 onChange={e => setSalePrice(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Ej: 18500"
                 autoFocus
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Notas de venta (opcional)</label>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">Notas de venta (opcional)</label>
               <textarea
                 value={saleNotes}
                 onChange={e => setSaleNotes(e.target.value)}
                 rows={2}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Ej: venta directa, financiado, sin extras…"
               />
             </div>
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={() => { setSaleModal(false); saveLead('0', ''); }}
-                className="text-xs text-slate-400 hover:text-slate-600 underline"
+                className="text-xs text-brand-300 hover:text-brand-400 underline"
               >
                 Guardar sin precio
               </button>
               <div className="flex gap-2">
-                <button onClick={() => setSaleModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                <button onClick={() => setSaleModal(false)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                   Cancelar
                 </button>
                 <button onClick={confirmSalePrice} disabled={savingSale}

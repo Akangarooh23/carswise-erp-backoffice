@@ -51,7 +51,7 @@ export default function AppLayout() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-brand-50">
       <PaletaComandos abierta={atajos.paleta} cerrar={atajos.cerrarPaleta} rol={user.role} />
       <AyudaAtajos abierta={atajos.ayuda} cerrar={atajos.cerrarAyuda} rol={user.role} />
       {sidebarOpen && (
@@ -65,10 +65,10 @@ export default function AppLayout() {
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Mobile top bar */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white md:hidden">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-brand-200 bg-white md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-lg text-brand-400 hover:bg-brand-100 transition-colors"
             aria-label="Abrir menú"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -87,11 +87,11 @@ export default function AppLayout() {
 
       {/* Toast notification */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-white border border-slate-200 shadow-xl rounded-xl px-4 py-3 text-sm font-medium text-slate-800">
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-white border border-brand-200 shadow-xl rounded-xl px-4 py-3 text-sm font-medium text-brand-600">
           <span>{toast}</span>
           <button
             onClick={() => setToast(null)}
-            className="text-slate-400 hover:text-slate-600 text-base leading-none"
+            className="text-brand-300 hover:text-brand-400 text-base leading-none"
           >
             ×
           </button>

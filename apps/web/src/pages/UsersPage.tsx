@@ -47,21 +47,21 @@ export default function UsersPage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar por nombre, email…" className="w-72" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+          className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
         <select value={plan} onChange={(e) => setPlan(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+          className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{PLAN_LABELS[p]}</option>)}
         </select>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : users.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">No se encontraron usuarios</div>
+          <div className="text-center py-12 text-brand-300 text-sm">No se encontraron usuarios</div>
         ) : (
           <>
             <div className="overflow-x-auto"><table className="erp-table">
@@ -80,14 +80,14 @@ export default function UsersPage() {
                 {users.map((u) => (
                   <tr key={u.id}>
                     <td>
-                      <p className="font-medium text-slate-800 text-sm">{u.name || '(sin nombre)'}</p>
-                      <p className="text-xs text-slate-400">{u.email}</p>
+                      <p className="font-medium text-brand-600 text-sm">{u.name || '(sin nombre)'}</p>
+                      <p className="text-xs text-brand-300">{u.email}</p>
                     </td>
                     <td><StatusBadge status={u.status} /></td>
                     <td><StatusBadge status={u.plan_type} /></td>
-                    <td className="text-sm text-slate-500">{u.appointment_count ?? 0}</td>
-                    <td className="text-sm text-slate-500">{u.ticket_count ?? 0}</td>
-                    <td className="text-xs text-slate-400">{fmtDate(u.created_at)}</td>
+                    <td className="text-sm text-brand-400">{u.appointment_count ?? 0}</td>
+                    <td className="text-sm text-brand-400">{u.ticket_count ?? 0}</td>
+                    <td className="text-xs text-brand-300">{fmtDate(u.created_at)}</td>
                     <td>
                       <Link to={`/users/${u.id}`}
                         className="text-acento-texto hover:text-brand-600 text-xs font-medium">

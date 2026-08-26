@@ -49,11 +49,11 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 shadow-2xl text-center max-w-sm w-full space-y-4">
           <div className="text-4xl">⚠️</div>
-          <p className="text-slate-700 font-semibold">Enlace inválido</p>
-          <p className="text-slate-500 text-sm">El enlace de recuperación no es válido.</p>
+          <p className="text-brand-500 font-semibold">Enlace inválido</p>
+          <p className="text-brand-400 text-sm">El enlace de recuperación no es válido.</p>
           <Link to="/forgot-password" className="block text-sm text-acento-texto hover:underline">
             Solicitar un nuevo enlace
           </Link>
@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white text-2xl mb-4 shadow-lg">
@@ -77,8 +77,8 @@ export default function ResetPasswordPage() {
           {done ? (
             <div className="text-center space-y-4">
               <div className="text-4xl">✅</div>
-              <p className="text-slate-700 font-semibold">Contraseña actualizada</p>
-              <p className="text-slate-500 text-sm">
+              <p className="text-brand-500 font-semibold">Contraseña actualizada</p>
+              <p className="text-brand-400 text-sm">
                 Tu contraseña ha sido cambiada correctamente. Redirigiendo al inicio de sesión…
               </p>
               <Link to="/login" className="block text-sm text-acento-texto hover:underline">
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-sm font-medium text-brand-500 mb-1.5">
                   Nueva contraseña
                 </label>
                 <input
@@ -99,11 +99,11 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-sm font-medium text-brand-500 mb-1.5">
                   Confirmar contraseña
                 </label>
                 <input
@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Repite la contraseña"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
                 />
               </div>
 

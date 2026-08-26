@@ -44,8 +44,8 @@
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: #f8fafc;
-  color: #0f172a;
+  background: #F7F7F3;
+  color: #111111;
   -webkit-font-smoothing: antialiased;
 }
 

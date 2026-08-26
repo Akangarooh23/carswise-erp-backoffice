@@ -43,10 +43,10 @@ function pct(num: number, den: number) {
 
 function KpiCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-3xl font-bold text-slate-800">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+    <div className="bg-white rounded-xl border border-brand-200 p-5">
+      <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-3xl font-bold text-brand-600">{value}</p>
+      {sub && <p className="text-xs text-brand-300 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -54,7 +54,7 @@ function KpiCard({ label, value, sub }: { label: string; value: string | number;
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {
   const w = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1">
+    <div className="w-full bg-brand-100 rounded-full h-1.5 mt-1">
       <div className="h-1.5 rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
     </div>
   );
@@ -91,7 +91,7 @@ export default function MarketingAnalyticsPage() {
             {DAY_OPTIONS.map((d) => (
               <button key={d} onClick={() => setDays(d)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  days === d ? 'bg-brand-600 text-white border-brand-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  days === d ? 'bg-brand-600 text-white border-brand-600' : 'border-brand-200 text-brand-400 hover:bg-brand-50'
                 }`}>
                 {d}d
               </button>
@@ -101,7 +101,7 @@ export default function MarketingAnalyticsPage() {
       />
 
       {loading ? (
-        <p className="text-center text-slate-400 text-sm py-20">Cargando…</p>
+        <p className="text-center text-brand-300 text-sm py-20">Cargando…</p>
       ) : !data ? (
         <p className="text-center text-red-400 text-sm py-20">Error al cargar datos</p>
       ) : (
@@ -122,22 +122,22 @@ export default function MarketingAnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Por fuente */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 text-sm">Registros por fuente (UTM Source)</h3>
+            <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-brand-100">
+                <h3 className="font-semibold text-brand-600 text-sm">Registros por fuente (UTM Source)</h3>
               </div>
               {data.bySource.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-10">Sin datos UTM en este período</p>
+                <p className="text-brand-300 text-sm text-center py-10">Sin datos UTM en este período</p>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-brand-100">
                   {data.bySource.map((row) => (
                     <div key={row.source} className="px-5 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: sourceColor(row.source) }} />
-                          <span className="text-sm font-medium text-slate-700 capitalize">{row.source}</span>
+                          <span className="text-sm font-medium text-brand-500 capitalize">{row.source}</span>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <div className="flex items-center gap-4 text-xs text-brand-400">
                           <span>{row.total} reg.</span>
                           <span className="text-emerald-600 font-medium">{pct(row.mkt_email, row.total)} mkt</span>
                           <span className="text-acento-texto font-medium">{pct(row.legal, row.total)} T&C</span>
@@ -151,19 +151,19 @@ export default function MarketingAnalyticsPage() {
             </div>
 
             {/* Por medio */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 text-sm">Registros por medio (UTM Medium)</h3>
+            <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-brand-100">
+                <h3 className="font-semibold text-brand-600 text-sm">Registros por medio (UTM Medium)</h3>
               </div>
               {data.byMedium.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-10">Sin datos UTM en este período</p>
+                <p className="text-brand-300 text-sm text-center py-10">Sin datos UTM en este período</p>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-brand-100">
                   {data.byMedium.map((row) => (
                     <div key={row.medium} className="px-5 py-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-slate-700 capitalize">{row.medium}</span>
-                        <span className="text-xs text-slate-500">{row.total} reg.</span>
+                        <span className="text-sm font-medium text-brand-500 capitalize">{row.medium}</span>
+                        <span className="text-xs text-brand-400">{row.total} reg.</span>
                       </div>
                       <Bar value={row.total} max={data.byMedium[0].total} color="#0ea5e9" />
                     </div>
@@ -174,12 +174,12 @@ export default function MarketingAnalyticsPage() {
           </div>
 
           {/* Por campaña */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">Registros por campaña (UTM Campaign)</h3>
+          <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">Registros por campaña (UTM Campaign)</h3>
             </div>
             {data.byCampaign.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-10">Sin datos de campaña en este período</p>
+              <p className="text-brand-300 text-sm text-center py-10">Sin datos de campaña en este período</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="erp-table">
@@ -197,20 +197,20 @@ export default function MarketingAnalyticsPage() {
                   <tbody>
                     {data.byCampaign.map((row, i) => (
                       <tr key={i}>
-                        <td className="font-medium text-slate-700">{row.campaign || '–'}</td>
+                        <td className="font-medium text-brand-500">{row.campaign || '–'}</td>
                         <td>
                           <span className="inline-flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full" style={{ background: sourceColor(row.source) }} />
-                            <span className="capitalize text-slate-600 text-xs">{row.source || '–'}</span>
+                            <span className="capitalize text-brand-400 text-xs">{row.source || '–'}</span>
                           </span>
                         </td>
-                        <td className="text-xs text-slate-500 capitalize">{row.medium || '–'}</td>
-                        <td className="text-right font-semibold text-slate-800">{row.total}</td>
-                        <td className="text-right text-xs text-acento-texto">{row.legal} <span className="text-slate-400">({pct(row.legal, row.total)})</span></td>
-                        <td className="text-right text-xs text-emerald-600">{row.mkt_email} <span className="text-slate-400">({pct(row.mkt_email, row.total)})</span></td>
+                        <td className="text-xs text-brand-400 capitalize">{row.medium || '–'}</td>
+                        <td className="text-right font-semibold text-brand-600">{row.total}</td>
+                        <td className="text-right text-xs text-acento-texto">{row.legal} <span className="text-brand-300">({pct(row.legal, row.total)})</span></td>
+                        <td className="text-right text-xs text-emerald-600">{row.mkt_email} <span className="text-brand-300">({pct(row.mkt_email, row.total)})</span></td>
                         <td className="text-right">
                           <span className={`text-xs font-semibold ${
-                            row.total > 0 && row.mkt_email / row.total > 0.5 ? 'text-emerald-600' : 'text-slate-500'
+                            row.total > 0 && row.mkt_email / row.total > 0.5 ? 'text-emerald-600' : 'text-brand-400'
                           }`}>
                             {pct(row.mkt_email, row.total)}
                           </span>
@@ -224,12 +224,12 @@ export default function MarketingAnalyticsPage() {
           </div>
 
           {/* Timeline */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800 text-sm">Registros diarios (últimos {days} días)</h3>
+          <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
+            <div className="px-5 py-3 border-b border-brand-100">
+              <h3 className="font-semibold text-brand-600 text-sm">Registros diarios (últimos {days} días)</h3>
             </div>
             {data.timeline.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-10">Sin registros en este período</p>
+              <p className="text-brand-300 text-sm text-center py-10">Sin registros en este período</p>
             ) : (
               <div className="px-5 py-4">
                 {(() => {
@@ -242,7 +242,7 @@ export default function MarketingAnalyticsPage() {
                         const label = new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
                         return (
                           <div key={date} className="flex-1 flex flex-col items-center gap-1 group relative">
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
                               {label}: {total}
                             </div>
                             <div
@@ -255,7 +255,7 @@ export default function MarketingAnalyticsPage() {
                     </div>
                   );
                 })()}
-                <div className="flex justify-between mt-2 text-[10px] text-slate-400">
+                <div className="flex justify-between mt-2 text-[10px] text-brand-300">
                   {(() => {
                     const byDate = timelineByDate(data.timeline);
                     const first = byDate[0]?.[0];

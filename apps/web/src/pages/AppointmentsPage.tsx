@@ -65,23 +65,23 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap gap-3 mb-5">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar usuario, taller…" className="w-72" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+          className="px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
           <option value="">Todos los estados</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}</option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-brand-400 cursor-pointer">
           <input type="checkbox" onChange={(e) => setStatus(e.target.checked ? 'scheduled' : '')} />
           Solo próximas
         </label>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Sin citas</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Sin citas</div>
         ) : (
           <>
             <div className="overflow-x-auto"><table className="erp-table">
@@ -91,11 +91,11 @@ export default function AppointmentsPage() {
               <tbody>
                 {items.map((a) => (
                   <tr key={a.id}>
-                    <td className="text-sm font-medium text-slate-700">{a.user_id}</td>
-                    <td className="text-sm text-slate-500">{TYPE_LABELS[a.type] ?? a.type}</td>
-                    <td className="text-sm text-slate-500">{a.workshop_name || a.workshop_name_resolved || '–'}</td>
-                    <td className="text-sm text-slate-500">{fmtDateTime(a.scheduled_at)}</td>
-                    <td className="text-sm text-slate-500">{a.agent || '–'}</td>
+                    <td className="text-sm font-medium text-brand-500">{a.user_id}</td>
+                    <td className="text-sm text-brand-400">{TYPE_LABELS[a.type] ?? a.type}</td>
+                    <td className="text-sm text-brand-400">{a.workshop_name || a.workshop_name_resolved || '–'}</td>
+                    <td className="text-sm text-brand-400">{fmtDateTime(a.scheduled_at)}</td>
+                    <td className="text-sm text-brand-400">{a.agent || '–'}</td>
                     <td><StatusBadge status={a.status} /></td>
                     <td>
                       <button onClick={() => openDetail(a)}
@@ -115,18 +115,18 @@ export default function AppointmentsPage() {
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Gestionar cita">
         {selected && (
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-lg p-3 text-sm">
-              <p className="font-medium text-slate-700">{TYPE_LABELS[selected.type]}</p>
-              <p className="text-slate-500 mt-1">{fmtDateTime(selected.scheduled_at)} · {selected.workshop_name || '–'}</p>
-              <p className="text-slate-400 text-xs mt-1">Usuario: {selected.user_id}</p>
+            <div className="bg-brand-50 rounded-lg p-3 text-sm">
+              <p className="font-medium text-brand-500">{TYPE_LABELS[selected.type]}</p>
+              <p className="text-brand-400 mt-1">{fmtDateTime(selected.scheduled_at)} · {selected.workshop_name || '–'}</p>
+              <p className="text-brand-300 text-xs mt-1">Usuario: {selected.user_id}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Estado</label>
+              <label className="block text-xs font-medium text-brand-400 mb-1.5">Estado</label>
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map((s) => (
                   <button key={s} onClick={() => setNewStatus(s)}
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                      newStatus === s ? 'bg-brand-600 text-white border-brand-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      newStatus === s ? 'bg-brand-600 text-white border-brand-600' : 'border-brand-200 text-brand-400 hover:bg-brand-50'
                     }`}>
                     {s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
                   </button>
@@ -134,12 +134,12 @@ export default function AppointmentsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas internas</label>
+              <label className="block text-xs font-medium text-brand-400 mb-1.5">Notas internas</label>
               <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none" />
+                className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none" />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              <button onClick={() => setSelected(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cancelar
               </button>
               <button onClick={saveUpdate} disabled={saving}

@@ -41,13 +41,13 @@ export default function IdCarsPage() {
         <SearchInput value={q} onChange={setQ} placeholder="Buscar marca, modelo, matrícula…" className="w-72" />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : idcars.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">
+          <div className="text-center py-12 text-brand-300 text-sm">
             Sin IDCars registrados
-            {!q && <p className="text-xs mt-1 text-slate-300">La tabla moveadvisor_user_vehicles puede no existir aún</p>}
+            {!q && <p className="text-xs mt-1 text-brand-300">La tabla moveadvisor_user_vehicles puede no existir aún</p>}
           </div>
         ) : (
           <>
@@ -69,19 +69,19 @@ export default function IdCarsPage() {
                           {v.owner_name}
                         </Link>
                       ) : (
-                        <span className="text-sm text-slate-500">{v.user_id}</span>
+                        <span className="text-sm text-brand-400">{v.user_id}</span>
                       )}
-                      {v.owner_email && <p className="text-xs text-slate-400">{v.owner_email}</p>}
+                      {v.owner_email && <p className="text-xs text-brand-300">{v.owner_email}</p>}
                     </td>
-                    <td className="text-sm text-slate-600 font-mono">{v.plate || '–'}</td>
+                    <td className="text-sm text-brand-400 font-mono">{v.plate || '–'}</td>
                     <td className="text-sm">
                       {v.fuel
                         ? <span>{FUEL_ICONS[v.fuel] ?? '🔧'} {v.fuel}</span>
-                        : <span className="text-slate-400">–</span>}
+                        : <span className="text-brand-300">–</span>}
                     </td>
-                    <td className="text-sm text-slate-500">{v.mileage_km ? `${Number(v.mileage_km).toLocaleString('es-ES')} km` : '–'}</td>
-                    <td className="text-sm text-slate-500">{v.year ?? '–'}</td>
-                    <td className="text-xs text-slate-400">{fmtDate(v.created_at)}</td>
+                    <td className="text-sm text-brand-400">{v.mileage_km ? `${Number(v.mileage_km).toLocaleString('es-ES')} km` : '–'}</td>
+                    <td className="text-sm text-brand-400">{v.year ?? '–'}</td>
+                    <td className="text-xs text-brand-300">{fmtDate(v.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

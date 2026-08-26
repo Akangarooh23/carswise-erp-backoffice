@@ -15,7 +15,7 @@ const PARTNER_LABELS: Record<string, string> = {
 const PARTNER_COLORS: Record<string, string> = {
   norauto: 'bg-orange-100 text-orange-700', midas: 'bg-yellow-100 text-yellow-700',
   carglass: 'bg-acento-tenue text-acento-texto', euromaster: 'bg-green-100 text-green-700',
-  kwik_fit: 'bg-purple-100 text-purple-700', independent: 'bg-slate-100 text-slate-600',
+  kwik_fit: 'bg-brand-100 text-brand-500', independent: 'bg-brand-100 text-brand-400',
 };
 const SOURCE_OPTIONS = ['osm', 'google', 'gencat', 'xunta', 'jcyl', 'here'];
 
@@ -84,7 +84,7 @@ function workshopToForm(w: WorkshopLocation): EditForm {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
-const fi = 'w-full px-1.5 py-1 text-[11px] border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-acento min-w-0';
+const fi = 'w-full px-1.5 py-1 text-[11px] border border-brand-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-acento min-w-0';
 const sel = fi + ' cursor-pointer';
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -197,18 +197,18 @@ export default function WorkshopsPage() {
         actions={
           hasAnyFilter ? (
             <button onClick={clearFilters}
-              className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">
+              className="px-3 py-1.5 text-xs text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
               ✕ Limpiar filtros
             </button>
           ) : undefined
         }
       />
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
         {loading && items.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+          <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
         ) : !loading && items.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">
+          <div className="text-center py-12 text-brand-300 text-sm">
             Sin resultados. <button onClick={clearFilters} className="text-acento-texto underline">Limpiar filtros</button>
           </div>
         ) : (
@@ -316,20 +316,20 @@ export default function WorkshopsPage() {
                 <tbody>
                   {items.map((w) => (
                     <tr key={w.id} className={loading ? 'opacity-50' : ''}>
-                      <td className="text-xs text-slate-400 font-mono">{w.id}</td>
-                      <td className="text-xs text-slate-400">{w.source ?? '–'}</td>
+                      <td className="text-xs text-brand-300 font-mono">{w.id}</td>
+                      <td className="text-xs text-brand-300">{w.source ?? '–'}</td>
                       <td>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PARTNER_COLORS[w.partner ?? 'independent'] ?? 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PARTNER_COLORS[w.partner ?? 'independent'] ?? 'bg-brand-100 text-brand-400'}`}>
                           {PARTNER_LABELS[w.partner ?? ''] ?? (w.partner ?? '–')}
                         </span>
                       </td>
-                      <td className="font-medium text-slate-700 max-w-[180px] truncate">{w.name}</td>
-                      <td className="text-sm text-slate-500 max-w-[160px] truncate">{w.address ?? '–'}</td>
-                      <td className="text-sm text-slate-500">{w.city ?? '–'}</td>
-                      <td className="text-sm text-slate-500">{w.province ?? '–'}</td>
-                      <td className="text-sm text-slate-400">{w.postcode ?? '–'}</td>
-                      <td className="text-sm text-slate-500">{w.phone ?? '–'}</td>
-                      <td className="text-sm text-slate-400">
+                      <td className="font-medium text-brand-500 max-w-[180px] truncate">{w.name}</td>
+                      <td className="text-sm text-brand-400 max-w-[160px] truncate">{w.address ?? '–'}</td>
+                      <td className="text-sm text-brand-400">{w.city ?? '–'}</td>
+                      <td className="text-sm text-brand-400">{w.province ?? '–'}</td>
+                      <td className="text-sm text-brand-300">{w.postcode ?? '–'}</td>
+                      <td className="text-sm text-brand-400">{w.phone ?? '–'}</td>
+                      <td className="text-sm text-brand-300">
                         {w.website ? (
                           <a href={w.website} target="_blank" rel="noopener noreferrer"
                             className="text-acento-texto hover:underline" onClick={(e) => e.stopPropagation()}>
@@ -340,7 +340,7 @@ export default function WorkshopsPage() {
                       <td className="text-center">
                         {w.business_hours
                           ? <span title={w.business_hours} className="text-green-600 text-xs font-semibold cursor-help">✓</span>
-                          : <span className="text-slate-300 text-xs">–</span>}
+                          : <span className="text-brand-300 text-xs">–</span>}
                       </td>
                       <td>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${w.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
@@ -368,9 +368,9 @@ export default function WorkshopsPage() {
         {form && (
           <div className="space-y-5">
             {/* Info strip */}
-            <div className="flex gap-4 text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2">
-              <span>ID: <strong className="text-slate-600">{selected?.id}</strong></span>
-              <span>Fuente: <strong className="text-slate-600">{selected?.source ?? '–'}</strong></span>
+            <div className="flex gap-4 text-xs text-brand-300 bg-brand-50 rounded-lg px-3 py-2">
+              <span>ID: <strong className="text-brand-400">{selected?.id}</strong></span>
+              <span>Fuente: <strong className="text-brand-400">{selected?.source ?? '–'}</strong></span>
               {selected?.rating != null && (
                 <span>⭐ {selected.rating.toFixed(1)} ({selected.rating_count?.toLocaleString('es-ES') ?? 0} reseñas)</span>
               )}
@@ -379,62 +379,62 @@ export default function WorkshopsPage() {
             {/* Basic fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Nombre *</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Nombre *</label>
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Dirección</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Dirección</label>
                 <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               {([['city','Ciudad'],['postcode','Código postal'],['province','Provincia'],['phone','Teléfono']] as [keyof EditForm, string][]).map(([key, label]) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+                  <label className="block text-xs font-medium text-brand-400 mb-1">{label}</label>
                   <input value={form[key] as string} onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                    className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
                 </div>
               ))}
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Web</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Web</label>
                 <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Latitud</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Latitud</label>
                 <input type="number" step="any" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Longitud</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Longitud</label>
                 <input type="number" step="any" value={form.lon} onChange={(e) => setForm({ ...form, lon: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Partner</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Partner</label>
                 <select value={form.partner} onChange={(e) => setForm({ ...form, partner: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-acento">
                   {PARTNER_OPTIONS.map((p) => <option key={p} value={p}>{PARTNER_LABELS[p]}</option>)}
                 </select>
               </div>
               <div className="flex items-center gap-3 pt-5">
                 <input type="checkbox" id="is_active" checked={form.is_active}
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="w-4 h-4 text-acento-texto rounded border-slate-300" />
-                <label htmlFor="is_active" className="text-sm font-medium text-slate-600">Taller activo</label>
+                  className="w-4 h-4 text-acento-texto rounded border-brand-300" />
+                <label htmlFor="is_active" className="text-sm font-medium text-brand-400">Taller activo</label>
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Tipos de servicio (separados por coma)</label>
+                <label className="block text-xs font-medium text-brand-400 mb-1">Tipos de servicio (separados por coma)</label>
                 <input value={form.service_types} onChange={(e) => setForm({ ...form, service_types: e.target.value })}
                   placeholder="car_repair, tyres, vehicle_inspection…"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
             </div>
 
             {/* Business hours */}
-            <div className="border border-slate-200 rounded-xl p-4">
+            <div className="border border-brand-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-slate-700">🕐 Horario comercial</span>
+                <span className="text-sm font-semibold text-brand-500">🕐 Horario comercial</span>
                 <button type="button" onClick={() => setForm({ ...form, hoursFreeMode: !form.hoursFreeMode })}
                   className="text-xs text-acento-texto hover:text-brand-600">
                   {form.hoursFreeMode ? 'Usar editor visual' : 'Edición libre'}
@@ -444,41 +444,41 @@ export default function WorkshopsPage() {
                 <textarea rows={3} value={form.hoursFreeText}
                   onChange={(e) => setForm({ ...form, hoursFreeText: e.target.value })}
                   placeholder="Ej: L-V: 09:00-14:00, 16:00-20:00 | Sáb: 09:00-14:00 | Dom: Cerrado"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none font-mono" />
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento resize-none font-mono" />
               ) : (
                 <div className="space-y-3">
                   {([['lv','Lunes a Viernes'],['sab','Sábado'],['dom','Domingo']] as [keyof StructuredHours, string][]).map(([day, label]) => (
                     <div key={day} className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-semibold text-slate-600 w-28 shrink-0">{label}</span>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="text-xs font-semibold text-brand-400 w-28 shrink-0">{label}</span>
+                      <label className="flex items-center gap-1.5 text-xs text-brand-400">
                         <input type="checkbox" checked={form.hours[day].closed}
                           onChange={(e) => setHoursDay(day, 'closed', e.target.checked)}
-                          className="w-3.5 h-3.5 rounded border-slate-300" />
+                          className="w-3.5 h-3.5 rounded border-brand-300" />
                         Cerrado
                       </label>
                       {!form.hours[day].closed && (
                         <>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400">Mañana</span>
+                            <span className="text-xs text-brand-300">Mañana</span>
                             <input value={form.hours[day].morning}
                               onChange={(e) => setHoursDay(day, 'morning', e.target.value)}
                               placeholder="09:00-14:00"
-                              className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-acento w-28" />
+                              className="px-2 py-1 text-xs border border-brand-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-acento w-28" />
                           </div>
                           {day !== 'dom' && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-slate-400">Tarde</span>
+                              <span className="text-xs text-brand-300">Tarde</span>
                               <input value={form.hours[day].afternoon}
                                 onChange={(e) => setHoursDay(day, 'afternoon', e.target.value)}
                                 placeholder="16:00-20:00"
-                                className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-acento w-28" />
+                                className="px-2 py-1 text-xs border border-brand-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-acento w-28" />
                             </div>
                           )}
                         </>
                       )}
                     </div>
                   ))}
-                  <div className="mt-2 px-2 py-1.5 bg-slate-50 rounded text-xs text-slate-400 font-mono">
+                  <div className="mt-2 px-2 py-1.5 bg-brand-50 rounded text-xs text-brand-300 font-mono">
                     {formatStructuredHours(form.hours)}
                   </div>
                 </div>
@@ -488,7 +488,7 @@ export default function WorkshopsPage() {
             {saveError && <p className="text-red-600 text-xs">{saveError}</p>}
             <div className="flex justify-end gap-3">
               <button onClick={closeModal}
-                className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
                 Cancelar
               </button>
               <button onClick={save} disabled={saving}

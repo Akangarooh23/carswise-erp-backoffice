@@ -36,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-600 via-brand-600 to-brand-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -44,13 +44,13 @@ export default function LoginPage() {
             🚗
           </div>
           <h1 className="text-white text-xl font-bold"><span className="text-acento">Pop</span>Car ERP</h1>
-          <p className="text-slate-400 text-sm mt-1">Backoffice interno</p>
+          <p className="text-brand-300 text-sm mt-1">Backoffice interno</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+            <label className="block text-sm font-medium text-brand-500 mb-1.5">Email</label>
             <input
               type="email"
               required
@@ -58,17 +58,17 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@carswise.es"
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Contraseña</label>
+            <label className="block text-sm font-medium text-brand-500 mb-1.5">Contraseña</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-brand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-acento focus:border-transparent"
             />
           </div>
 
@@ -87,13 +87,13 @@ export default function LoginPage() {
           </button>
 
           <div className="text-center">
-            <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-brand-600 transition-colors">
+            <Link to="/forgot-password" className="text-xs text-brand-300 hover:text-brand-600 transition-colors">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
         </form>
 
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-brand-400 text-xs mt-6">
           Solo acceso para personal interno de PopCar
         </p>
       </div>

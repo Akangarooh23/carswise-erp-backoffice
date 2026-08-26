@@ -61,9 +61,9 @@ const FUNNEL_EVENT_LABELS: Record<string, string> = {
   lead_request:     'Solicitud',
 };
 const FUNNEL_EVENT_COLORS: Record<string, string> = {
-  landing:          'bg-slate-100 text-slate-500',
+  landing:          'bg-brand-100 text-brand-400',
   marketplace_view: 'bg-acento-tenue text-acento-texto',
-  offer_view:       'bg-violet-50 text-violet-700',
+  offer_view:       'bg-acento-tenue text-acento-texto',
   register:         'bg-emerald-50 text-emerald-700',
   lead_request:     'bg-amber-50 text-amber-700',
 };
@@ -157,7 +157,7 @@ export default function UserDetailPage() {
     setSavingProfile(false);
   }
 
-  if (loading) return <div className="text-slate-400 text-sm">Cargando…</div>;
+  if (loading) return <div className="text-brand-300 text-sm">Cargando…</div>;
   if (!user)   return <div className="text-red-500 text-sm">Usuario no encontrado</div>;
 
   return (
@@ -166,7 +166,7 @@ export default function UserDetailPage() {
         title={[user.name, user.apellidos].filter(Boolean).join(' ') || user.email}
         subtitle={user.email}
         actions={
-          <Link to="/users" className="text-sm text-slate-500 hover:text-slate-700">← Volver</Link>
+          <Link to="/users" className="text-sm text-brand-400 hover:text-brand-500">← Volver</Link>
         }
       />
 
@@ -175,7 +175,7 @@ export default function UserDetailPage() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-slate-800 text-sm">Perfil</h3>
+              <h3 className="font-semibold text-brand-600 text-sm">Perfil</h3>
               {user.client_type === 'business'
                 ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Empresa</span>
                 : <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-acento-tenue text-acento-texto border border-acento-tenue">Particular</span>
@@ -185,7 +185,7 @@ export default function UserDetailPage() {
               <button onClick={startEdit} className="text-xs text-acento-texto hover:underline">Editar</button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => setEditMode(false)} className="text-xs text-slate-500 hover:underline">Cancelar</button>
+                <button onClick={() => setEditMode(false)} className="text-xs text-brand-400 hover:underline">Cancelar</button>
                 <button onClick={saveProfile} disabled={savingProfile}
                   className="text-xs bg-brand-600 text-white px-3 py-1 rounded-lg hover:bg-brand-700 disabled:opacity-60">
                   {savingProfile ? 'Guardando…' : 'Guardar'}
@@ -195,13 +195,13 @@ export default function UserDetailPage() {
           </div>
 
           {/* DATOS PERSONALES */}
-          <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mb-3">Datos personales</p>
+          <p className="text-[10px] font-semibold tracking-widest text-brand-300 uppercase mb-3">Datos personales</p>
           {!editMode ? (
             <dl className="space-y-2 text-sm mb-4">
-              <div className="flex justify-between"><dt className="text-slate-500">Nombre</dt><dd className="font-medium">{user.name || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Apellidos</dt><dd className="font-medium">{user.apellidos || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd className="font-medium text-xs">{user.email}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Teléfono</dt><dd className="font-medium">{user.phone || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Nombre</dt><dd className="font-medium">{user.name || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Apellidos</dt><dd className="font-medium">{user.apellidos || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Email</dt><dd className="font-medium text-xs">{user.email}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Teléfono</dt><dd className="font-medium">{user.phone || '–'}</dd></div>
             </dl>
           ) : (
             <div className="space-y-2 text-sm mb-4">
@@ -211,74 +211,74 @@ export default function UserDetailPage() {
                 { label: 'Teléfono', val: editPhone,      set: setEditPhone },
               ].map(({ label, val, set }) => (
                 <div key={label} className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500 w-24 shrink-0">{label}</span>
+                  <span className="text-brand-400 w-24 shrink-0">{label}</span>
                   <input value={val} onChange={e => set(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
+                    className="flex-1 border border-brand-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
                 </div>
               ))}
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500 w-24 shrink-0">Email</span>
-                <span className="flex-1 text-slate-400 text-sm">{user.email}</span>
+                <span className="text-brand-400 w-24 shrink-0">Email</span>
+                <span className="flex-1 text-brand-300 text-sm">{user.email}</span>
               </div>
             </div>
           )}
 
           {/* DATOS DE FACTURACIÓN */}
-          <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mt-5 mb-3">Datos de facturación</p>
+          <p className="text-[10px] font-semibold tracking-widest text-brand-300 uppercase mt-5 mb-3">Datos de facturación</p>
           {!editMode ? (
             <dl className="space-y-2 text-sm mb-4">
               {user.company_name && (
-                <div className="flex justify-between"><dt className="text-slate-500">Razón social</dt><dd className="font-medium">{user.company_name}</dd></div>
+                <div className="flex justify-between"><dt className="text-brand-400">Razón social</dt><dd className="font-medium">{user.company_name}</dd></div>
               )}
-              <div className="flex justify-between"><dt className="text-slate-500">NIF / CIF</dt><dd className="font-medium">{user.tax_id || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Dirección</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_street || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Código postal</dt><dd className="font-medium">{user.billing_postal_code || '–'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Provincia</dt><dd className="font-medium">{user.billing_province || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">NIF / CIF</dt><dd className="font-medium">{user.tax_id || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Dirección</dt><dd className="font-medium text-right max-w-[200px]">{user.billing_street || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Código postal</dt><dd className="font-medium">{user.billing_postal_code || '–'}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Provincia</dt><dd className="font-medium">{user.billing_province || '–'}</dd></div>
             </dl>
           ) : (
             <div className="space-y-2 text-sm mb-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500 w-28 shrink-0">NIF / CIF</span>
+                <span className="text-brand-400 w-28 shrink-0">NIF / CIF</span>
                 <input value={editTaxId} onChange={e => setEditTaxId(e.target.value)}
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="flex-1 border border-brand-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-start justify-between gap-3">
-                <span className="text-slate-500 w-28 shrink-0 pt-1">Dirección</span>
+                <span className="text-brand-400 w-28 shrink-0 pt-1">Dirección</span>
                 <input value={editStreet} onChange={e => setEditStreet(e.target.value)}
                   placeholder="Calle, número, piso"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="flex-1 border border-brand-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500 w-28 shrink-0">Código postal</span>
+                <span className="text-brand-400 w-28 shrink-0">Código postal</span>
                 <input value={editPostal} onChange={e => setEditPostal(e.target.value)}
                   placeholder="28001"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="flex-1 border border-brand-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500 w-28 shrink-0">Provincia</span>
+                <span className="text-brand-400 w-28 shrink-0">Provincia</span>
                 <input value={editProvince} onChange={e => setEditProvince(e.target.value)}
                   placeholder="Madrid"
-                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
+                  className="flex-1 border border-brand-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-acento" />
               </div>
             </div>
           )}
 
           {/* CUENTA */}
-          <div className="border-t border-slate-100 pt-3 mb-1">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Cuenta</p>
+          <div className="border-t border-brand-100 pt-3 mb-1">
+            <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-2">Cuenta</p>
             <dl className="space-y-2.5 text-sm">
-              <div className="flex justify-between"><dt className="text-slate-500">Estado</dt><dd><StatusBadge status={user.status} /></dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Plan</dt><dd><StatusBadge status={user.plan_type} /></dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Registro</dt><dd className="text-slate-700">{fmtDate(user.created_at)}</dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Estado</dt><dd><StatusBadge status={user.status} /></dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Plan</dt><dd><StatusBadge status={user.plan_type} /></dd></div>
+              <div className="flex justify-between"><dt className="text-brand-400">Registro</dt><dd className="text-brand-500">{fmtDate(user.created_at)}</dd></div>
               {user.trial_end && (
-                <div className="flex justify-between"><dt className="text-slate-500">Trial hasta</dt><dd className="text-slate-700">{fmtDate(user.trial_end)}</dd></div>
+                <div className="flex justify-between"><dt className="text-brand-400">Trial hasta</dt><dd className="text-brand-500">{fmtDate(user.trial_end)}</dd></div>
               )}
             </dl>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+          <div className="mt-4 pt-4 border-t border-brand-100 space-y-3">
             <div>
-              <p className="text-xs text-slate-500 mb-1.5 font-medium">Cambiar estado</p>
+              <p className="text-xs text-brand-400 mb-1.5 font-medium">Cambiar estado</p>
               <div className="flex gap-2 flex-wrap">
                 {(['active','at_risk','blocked'] as const).map((s) => (
                   <button key={s}
@@ -286,8 +286,8 @@ export default function UserDetailPage() {
                     onClick={() => updateStatus(s)}
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
                       user.status === s
-                        ? 'bg-slate-100 border-slate-200 text-slate-600 font-medium'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                        ? 'bg-brand-100 border-brand-200 text-brand-400 font-medium'
+                        : 'border-brand-200 hover:bg-brand-50 text-brand-400'
                     }`}>
                     {s === 'active' ? 'Activo' : s === 'at_risk' ? 'En riesgo' : 'Bloqueado'}
                   </button>
@@ -295,7 +295,7 @@ export default function UserDetailPage() {
               </div>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1.5 font-medium">Cambiar plan</p>
+              <p className="text-xs text-brand-400 mb-1.5 font-medium">Cambiar plan</p>
               <div className="flex gap-2 flex-wrap">
                 {(['free','plus','premium'] as const).map((p) => (
                   <button key={p}
@@ -304,7 +304,7 @@ export default function UserDetailPage() {
                     className={`px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
                       user.plan_type === p
                         ? 'bg-acento-tenue border-acento text-acento-texto font-medium'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                        : 'border-brand-200 hover:bg-brand-50 text-brand-400'
                     }`}>
                     {p.charAt(0).toUpperCase() + p.slice(1)}
                   </button>
@@ -316,13 +316,13 @@ export default function UserDetailPage() {
 
         {/* Appointments */}
         <Card padding={false} className="lg:col-span-2">
-          <div className="px-5 py-3 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800 text-sm">
-              Citas <span className="text-slate-400 font-normal">({user.appointments.length})</span>
+          <div className="px-5 py-3 border-b border-brand-100">
+            <h3 className="font-semibold text-brand-600 text-sm">
+              Citas <span className="text-brand-300 font-normal">({user.appointments.length})</span>
             </h3>
           </div>
           {user.appointments.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">Sin citas</p>
+            <p className="text-brand-300 text-sm text-center py-8">Sin citas</p>
           ) : (
             <div className="overflow-x-auto"><table className="erp-table">
               <thead><tr><th>Tipo</th><th>Taller</th><th>Fecha</th><th>Estado</th></tr></thead>
@@ -330,8 +330,8 @@ export default function UserDetailPage() {
                 {user.appointments.map((a) => (
                   <tr key={a.id}>
                     <td className="text-sm capitalize">{a.type.replace('_', ' ')}</td>
-                    <td className="text-sm text-slate-500">{a.workshop_name || '–'}</td>
-                    <td className="text-sm text-slate-500">{fmtDateTime(a.scheduled_at)}</td>
+                    <td className="text-sm text-brand-400">{a.workshop_name || '–'}</td>
+                    <td className="text-sm text-brand-400">{fmtDateTime(a.scheduled_at)}</td>
                     <td><StatusBadge status={a.status} /></td>
                   </tr>
                 ))}
@@ -344,33 +344,33 @@ export default function UserDetailPage() {
 
       {/* Leads / Solicitudes */}
       <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Solicitudes <span className="text-slate-400 font-normal">({(user.leads ?? []).length})</span>
+        <div className="px-5 py-3 border-b border-brand-100 flex items-center justify-between">
+          <h3 className="font-semibold text-brand-600 text-sm">
+            Solicitudes <span className="text-brand-300 font-normal">({(user.leads ?? []).length})</span>
           </h3>
           <Link to={`/leads?q=${encodeURIComponent(user.email)}`} className="text-acento-texto text-xs">Ver en leads →</Link>
         </div>
         {(user.leads ?? []).length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin solicitudes</p>
+          <p className="text-brand-300 text-sm text-center py-8">Sin solicitudes</p>
         ) : (
           <div className="overflow-x-auto"><table className="erp-table">
             <thead><tr><th>Tipo</th><th>Vehículo</th><th>Cita</th><th>Estado</th><th>Fecha</th></tr></thead>
             <tbody>
               {(user.leads ?? []).map((l) => (
                 <tr key={l.id}>
-                  <td className="text-xs capitalize text-slate-600">{l.lead_type === 'visit' ? 'Visita' : l.lead_type === 'info' ? 'Info' : 'Pregunta'}</td>
-                  <td className="text-sm text-slate-700 max-w-[200px] truncate">
+                  <td className="text-xs capitalize text-brand-400">{l.lead_type === 'visit' ? 'Visita' : l.lead_type === 'info' ? 'Info' : 'Pregunta'}</td>
+                  <td className="text-sm text-brand-500 max-w-[200px] truncate">
                     {l.vehicle_url
                       ? <a href={l.vehicle_url} target="_blank" rel="noreferrer" className="text-acento-texto hover:underline">{l.vehicle_title || '–'}</a>
                       : (l.vehicle_title || '–')}
                   </td>
-                  <td className="text-xs text-slate-500">
+                  <td className="text-xs text-brand-400">
                     {l.appointment_date ? (
                       <span>{new Date(l.appointment_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}{l.appointment_time ? ` ${l.appointment_time}` : ''}</span>
                     ) : '–'}
                   </td>
                   <td><StatusBadge status={l.status} /></td>
-                  <td className="text-xs text-slate-400">{fmtDate(l.created_at)}</td>
+                  <td className="text-xs text-brand-300">{fmtDate(l.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -380,14 +380,14 @@ export default function UserDetailPage() {
 
       {/* Tickets */}
       <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Tickets <span className="text-slate-400 font-normal">({user.tickets.length})</span>
+        <div className="px-5 py-3 border-b border-brand-100 flex items-center justify-between">
+          <h3 className="font-semibold text-brand-600 text-sm">
+            Tickets <span className="text-brand-300 font-normal">({user.tickets.length})</span>
           </h3>
           <Link to={`/tickets?user=${id}`} className="text-acento-texto text-xs">Ver en tickets →</Link>
         </div>
         {user.tickets.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin tickets</p>
+          <p className="text-brand-300 text-sm text-center py-8">Sin tickets</p>
         ) : (
           <div className="overflow-x-auto"><table className="erp-table">
             <thead><tr><th>Título</th><th>Canal</th><th>Prioridad</th><th>Estado</th><th>Fecha</th></tr></thead>
@@ -399,10 +399,10 @@ export default function UserDetailPage() {
                       {t.title}
                     </Link>
                   </td>
-                  <td className="text-sm text-slate-500 capitalize">{t.channel}</td>
-                  <td className="text-sm text-slate-500 capitalize">{t.priority}</td>
+                  <td className="text-sm text-brand-400 capitalize">{t.channel}</td>
+                  <td className="text-sm text-brand-400 capitalize">{t.priority}</td>
                   <td><StatusBadge status={t.status} /></td>
-                  <td className="text-xs text-slate-400">{fmtDate(t.created_at)}</td>
+                  <td className="text-xs text-brand-300">{fmtDate(t.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -412,14 +412,14 @@ export default function UserDetailPage() {
 
       {/* Actividad marketing / funnel */}
       <Card padding={false}>
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Actividad marketing <span className="text-slate-400 font-normal">({(user.funnelEvents ?? []).length})</span>
+        <div className="px-5 py-3 border-b border-brand-100 flex items-center justify-between">
+          <h3 className="font-semibold text-brand-600 text-sm">
+            Actividad marketing <span className="text-brand-300 font-normal">({(user.funnelEvents ?? []).length})</span>
           </h3>
           <Link to={`/funnel`} className="text-acento-texto text-xs">Ver funnel →</Link>
         </div>
         {(user.funnelEvents ?? []).length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">Sin actividad registrada</p>
+          <p className="text-brand-300 text-sm text-center py-8">Sin actividad registrada</p>
         ) : (
           <div className="overflow-x-auto"><table className="erp-table">
             <thead><tr><th>Evento</th><th>Fuente</th><th>Campaña</th><th>Oferta</th><th>Fecha</th></tr></thead>
@@ -427,14 +427,14 @@ export default function UserDetailPage() {
               {(user.funnelEvents ?? []).map((e) => (
                 <tr key={e.id}>
                   <td>
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${FUNNEL_EVENT_COLORS[e.event_type] ?? 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${FUNNEL_EVENT_COLORS[e.event_type] ?? 'bg-brand-100 text-brand-400'}`}>
                       {FUNNEL_EVENT_LABELS[e.event_type] ?? e.event_type}
                     </span>
                   </td>
-                  <td className="text-xs text-slate-500">{e.utm_source || '–'}</td>
-                  <td className="text-xs text-slate-500 max-w-[160px] truncate">{e.utm_campaign || '–'}</td>
-                  <td className="text-xs text-slate-500 max-w-[180px] truncate">{e.offer_title || '–'}</td>
-                  <td className="text-xs text-slate-400 whitespace-nowrap">{fmtDateTime(e.created_at)}</td>
+                  <td className="text-xs text-brand-400">{e.utm_source || '–'}</td>
+                  <td className="text-xs text-brand-400 max-w-[160px] truncate">{e.utm_campaign || '–'}</td>
+                  <td className="text-xs text-brand-400 max-w-[180px] truncate">{e.offer_title || '–'}</td>
+                  <td className="text-xs text-brand-300 whitespace-nowrap">{fmtDateTime(e.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -444,12 +444,12 @@ export default function UserDetailPage() {
 
       {/* Consentimientos */}
       <Card>
-        <h3 className="font-semibold text-slate-800 text-sm mb-4">Consentimientos</h3>
+        <h3 className="font-semibold text-brand-600 text-sm mb-4">Consentimientos</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Columna izquierda: consentimientos firmados */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Aceptaciones</p>
+            <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-3">Aceptaciones</p>
             <dl className="space-y-3">
               {[
                 { label: 'T&C y Política de Privacidad',  value: user.consent_legal_at },
@@ -459,17 +459,17 @@ export default function UserDetailPage() {
                 { label: 'Terceros SMS (Experian)',       value: user.consent_thirdparty_sms_at },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-start justify-between gap-3">
-                  <dt className="text-slate-500 text-xs leading-5">{label}</dt>
+                  <dt className="text-brand-400 text-xs leading-5">{label}</dt>
                   <dd className="flex items-center gap-1.5 shrink-0">
                     {value ? (
                       <>
                         <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
-                        <span className="text-xs text-slate-600 whitespace-nowrap">{fmtDateTime(value)}</span>
+                        <span className="text-xs text-brand-400 whitespace-nowrap">{fmtDateTime(value)}</span>
                       </>
                     ) : (
                       <>
-                        <span className="inline-block w-2 h-2 rounded-full bg-slate-300" />
-                        <span className="text-xs text-slate-400">No aceptado</span>
+                        <span className="inline-block w-2 h-2 rounded-full bg-brand-300" />
+                        <span className="text-xs text-brand-300">No aceptado</span>
                       </>
                     )}
                   </dd>
@@ -478,53 +478,53 @@ export default function UserDetailPage() {
             </dl>
 
             {user.consents_reviewed_at && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
+              <div className="mt-3 pt-3 border-t border-brand-100">
                 <div className="flex items-start justify-between gap-3">
-                  <dt className="text-slate-500 text-xs leading-5">Revisión de consentimientos</dt>
-                  <dd className="text-xs text-slate-600 whitespace-nowrap">{fmtDateTime(user.consents_reviewed_at)}</dd>
+                  <dt className="text-brand-400 text-xs leading-5">Revisión de consentimientos</dt>
+                  <dd className="text-xs text-brand-400 whitespace-nowrap">{fmtDateTime(user.consents_reviewed_at)}</dd>
                 </div>
               </div>
             )}
 
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Origen del registro</p>
+            <div className="mt-4 pt-4 border-t border-brand-100">
+              <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-3">Origen del registro</p>
               <dl className="space-y-2.5">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 text-xs">IP</dt>
-                  <dd className="text-slate-700 text-xs font-mono">{user.registration_ip || '–'}</dd>
+                  <dt className="text-brand-400 text-xs">IP</dt>
+                  <dd className="text-brand-500 text-xs font-mono">{user.registration_ip || '–'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 text-xs">Idioma</dt>
-                  <dd className="text-slate-700 text-xs">{user.language || '–'}</dd>
+                  <dt className="text-brand-400 text-xs">Idioma</dt>
+                  <dd className="text-brand-500 text-xs">{user.language || '–'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 text-xs">UTM Source</dt>
-                  <dd className="text-slate-700 text-xs">{user.utm_source || '–'}</dd>
+                  <dt className="text-brand-400 text-xs">UTM Source</dt>
+                  <dd className="text-brand-500 text-xs">{user.utm_source || '–'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 text-xs">UTM Medium</dt>
-                  <dd className="text-slate-700 text-xs">{user.utm_medium || '–'}</dd>
+                  <dt className="text-brand-400 text-xs">UTM Medium</dt>
+                  <dd className="text-brand-500 text-xs">{user.utm_medium || '–'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 text-xs">UTM Campaign</dt>
-                  <dd className="text-slate-700 text-xs">{user.utm_campaign || '–'}</dd>
+                  <dt className="text-brand-400 text-xs">UTM Campaign</dt>
+                  <dd className="text-brand-500 text-xs">{user.utm_campaign || '–'}</dd>
                 </div>
                 {user.utm_content && (
                   <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500 text-xs">UTM Content</dt>
-                    <dd className="text-slate-700 text-xs">{user.utm_content}</dd>
+                    <dt className="text-brand-400 text-xs">UTM Content</dt>
+                    <dd className="text-brand-500 text-xs">{user.utm_content}</dd>
                   </div>
                 )}
                 {user.referer && (
                   <div className="flex flex-col gap-1 pt-1">
-                    <dt className="text-slate-500 text-xs">Referer</dt>
-                    <dd className="text-slate-700 text-xs break-all bg-slate-50 rounded p-2 border border-slate-100">{user.referer}</dd>
+                    <dt className="text-brand-400 text-xs">Referer</dt>
+                    <dd className="text-brand-500 text-xs break-all bg-brand-50 rounded p-2 border border-brand-100">{user.referer}</dd>
                   </div>
                 )}
                 {user.landing_url && (
                   <div className="flex flex-col gap-1">
-                    <dt className="text-slate-500 text-xs">Landing URL</dt>
-                    <dd className="text-slate-700 text-xs break-all bg-slate-50 rounded p-2 border border-slate-100">{user.landing_url}</dd>
+                    <dt className="text-brand-400 text-xs">Landing URL</dt>
+                    <dd className="text-brand-500 text-xs break-all bg-brand-50 rounded p-2 border border-brand-100">{user.landing_url}</dd>
                   </div>
                 )}
               </dl>
@@ -533,19 +533,19 @@ export default function UserDetailPage() {
 
           {/* Columna derecha: user agent + affiliate data */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Dispositivo</p>
-            <p className="text-xs text-slate-500 leading-relaxed break-words bg-slate-50 rounded-lg p-3 border border-slate-100">
+            <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-3">Dispositivo</p>
+            <p className="text-xs text-brand-400 leading-relaxed break-words bg-brand-50 rounded-lg p-3 border border-brand-100">
               {user.registration_ua || '–'}
             </p>
 
             {user.affiliate_data && Object.keys(user.affiliate_data).length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Datos de afiliación</p>
-                <dl className="space-y-2 bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <p className="text-xs font-semibold text-brand-300 uppercase tracking-wide mb-3">Datos de afiliación</p>
+                <dl className="space-y-2 bg-brand-50 rounded-lg p-3 border border-brand-100">
                   {Object.entries(user.affiliate_data).map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-3">
-                      <dt className="text-slate-500 text-xs">{k}</dt>
-                      <dd className="text-slate-700 text-xs font-mono break-all">{String(v)}</dd>
+                      <dt className="text-brand-400 text-xs">{k}</dt>
+                      <dd className="text-brand-500 text-xs font-mono break-all">{String(v)}</dd>
                     </div>
                   ))}
                 </dl>

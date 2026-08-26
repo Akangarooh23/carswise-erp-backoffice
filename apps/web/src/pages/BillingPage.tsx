@@ -41,7 +41,7 @@ function fmtEur(n: number | null) {
 const TYPE_BADGE: Record<string, string> = {
   suscripcion: 'bg-acento-tenue text-acento-texto',
   venta:       'bg-emerald-50 text-emerald-700',
-  renting:     'bg-violet-50 text-violet-700',
+  renting:     'bg-acento-tenue text-acento-texto',
   tasacion:    'bg-amber-50 text-amber-700',
 };
 const TYPE_LABEL: Record<string, string> = {
@@ -52,7 +52,7 @@ const STATUS_BADGE: Record<string, string> = {
   Pendiente:  'bg-yellow-100 text-yellow-700',
   Completada: 'bg-emerald-100 text-emerald-700',
   active:     'bg-acento-tenue text-acento-texto',
-  completed:  'bg-slate-100 text-slate-500',
+  completed:  'bg-brand-100 text-brand-400',
   cancelled:  'bg-red-100 text-red-600',
 };
 
@@ -147,11 +147,11 @@ export default function BillingPage() {
       {/* Tabs */}
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit flex-wrap">
+          <div className="flex gap-1 bg-brand-100 rounded-lg p-1 w-fit flex-wrap">
             {TABS.map((t) => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  tab === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                  tab === t ? 'bg-white shadow-sm text-brand-600' : 'text-brand-400 hover:text-brand-500'
                 }`}>
                 {TAB_LABELS[t]}
               </button>
@@ -159,7 +159,7 @@ export default function BillingPage() {
           </div>
           {tab !== 'free' && invoices.length > 0 && (
             <button onClick={exportCsv}
-              className="ml-auto text-sm text-slate-600 border border-slate-200 rounded-lg px-4 py-1.5 hover:bg-slate-50">
+              className="ml-auto text-sm text-brand-400 border border-brand-200 rounded-lg px-4 py-1.5 hover:bg-brand-50">
               ↓ Exportar CSV
             </button>
           )}
@@ -171,13 +171,13 @@ export default function BillingPage() {
           </p>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-brand-200 shadow-sm overflow-hidden">
           {loading ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Cargando…</div>
+            <div className="text-center py-12 text-brand-300 text-sm">Cargando…</div>
           ) : tab === 'free' ? (
             /* ── Usuarios free ── */
             freeUsers.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">Sin usuarios free</div>
+              <div className="text-center py-12 text-brand-300 text-sm">Sin usuarios free</div>
             ) : (
               <>
                 <div className="overflow-x-auto"><table className="erp-table">
@@ -189,10 +189,10 @@ export default function BillingPage() {
                           <Link to={`/users/${u.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                             {u.name} {u.apellidos || ''}
                           </Link>
-                          <p className="text-xs text-slate-400">{u.email}</p>
+                          <p className="text-xs text-brand-300">{u.email}</p>
                         </td>
-                        <td><span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">Free · 0 €</span></td>
-                        <td className="text-sm text-slate-500">{fmtDate(u.created_at)}</td>
+                        <td><span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold bg-brand-100 text-brand-400">Free · 0 €</span></td>
+                        <td className="text-sm text-brand-400">{fmtDate(u.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -203,7 +203,7 @@ export default function BillingPage() {
           ) : (
             /* ── Invoices table (Todo / Suscripciones / Ventas / Renting) ── */
             invoices.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">Sin registros</div>
+              <div className="text-center py-12 text-brand-300 text-sm">Sin registros</div>
             ) : (
               <>
                 <div className="overflow-x-auto"><table className="erp-table">
@@ -227,31 +227,31 @@ export default function BillingPage() {
                   <tbody>
                     {invoices.map((inv) => (
                       <tr key={`${inv.type}-${inv.id}`}>
-                        <td className="text-xs text-slate-500 whitespace-nowrap">{fmtDate(inv.date)}</td>
+                        <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(inv.date)}</td>
                         {tab === 'all' && (
                           <td>
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_BADGE[inv.type] ?? 'bg-slate-100 text-slate-500'}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_BADGE[inv.type] ?? 'bg-brand-100 text-brand-400'}`}>
                               {TYPE_LABEL[inv.type] ?? inv.type}
                             </span>
                           </td>
                         )}
                         <td>
-                          <p className="text-sm font-medium text-slate-800">{inv.customer_name}</p>
-                          <p className="text-xs text-slate-400">{inv.customer_email}</p>
+                          <p className="text-sm font-medium text-brand-600">{inv.customer_name}</p>
+                          <p className="text-xs text-brand-300">{inv.customer_email}</p>
                         </td>
-                        <td className="text-xs text-slate-500 max-w-[220px] truncate">{inv.description}</td>
-                        <td className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                        <td className="text-xs text-brand-400 max-w-[220px] truncate">{inv.description}</td>
+                        <td className="text-sm font-semibold text-brand-500 whitespace-nowrap">
                           {inv.type === 'renting' && inv.precio != null
-                            ? <>{fmtEur(inv.precio)}<span className="text-xs font-normal text-slate-400">/mes</span></>
+                            ? <>{fmtEur(inv.precio)}<span className="text-xs font-normal text-brand-300">/mes</span></>
                             : fmtEur(inv.precio)}
                         </td>
                         <td className="text-sm font-semibold whitespace-nowrap">
                           {inv.precio_facturado > 0
                             ? <span className="text-emerald-700">{fmtEur(inv.precio_facturado)}</span>
-                            : <span className="text-slate-400">0,00 €</span>}
+                            : <span className="text-brand-300">0,00 €</span>}
                         </td>
                         <td>
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[inv.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[inv.status] ?? 'bg-brand-100 text-brand-400'}`}>
                             {inv.status}
                           </span>
                         </td>
@@ -327,25 +327,25 @@ export default function BillingPage() {
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-slate-400">{inv.cw_generated_at ? 'Sin URL' : '–'}</span>
+                              <span className="text-xs text-brand-300">{inv.cw_generated_at ? 'Sin URL' : '–'}</span>
                             )
                           ) : (
-                            <span className="text-xs text-slate-400">–</span>
+                            <span className="text-xs text-brand-300">–</span>
                           )}
                         </td>
-                        <td className="text-xs text-slate-500 whitespace-nowrap">{inv.cw_generated_at ? fmtDate(inv.cw_generated_at) : '–'}</td>
+                        <td className="text-xs text-brand-400 whitespace-nowrap">{inv.cw_generated_at ? fmtDate(inv.cw_generated_at) : '–'}</td>
                         <td className="text-xs whitespace-nowrap">
                           {inv.cw_sent_at
                             ? <span className="text-emerald-600 font-semibold">Sí</span>
-                            : <span className="text-slate-400">No</span>}
+                            : <span className="text-brand-300">No</span>}
                         </td>
-                        <td className="text-xs text-slate-500 whitespace-nowrap">{inv.cw_sent_at ? fmtDate(inv.cw_sent_at) : '–'}</td>
+                        <td className="text-xs text-brand-400 whitespace-nowrap">{inv.cw_sent_at ? fmtDate(inv.cw_sent_at) : '–'}</td>
                         <td className="text-xs whitespace-nowrap">
                           {inv.cw_paid_at || String(inv.status || '').toLowerCase() === 'paid'
                             ? <span className="text-emerald-600 font-semibold">Sí</span>
-                            : <span className="text-slate-400">No</span>}
+                            : <span className="text-brand-300">No</span>}
                         </td>
-                        <td className="text-xs text-slate-500 whitespace-nowrap">
+                        <td className="text-xs text-brand-400 whitespace-nowrap">
                           {inv.cw_paid_at ? fmtDate(inv.cw_paid_at) : String(inv.status || '').toLowerCase() === 'paid' ? fmtDate(inv.date) : '–'}
                         </td>
                       </tr>

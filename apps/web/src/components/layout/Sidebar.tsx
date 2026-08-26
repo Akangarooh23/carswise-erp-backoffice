@@ -39,7 +39,7 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: 'Admin', support: 'Soporte', operations: 'Operaciones', sales: 'Comercial',
 };
 const ROLE_COLORS: Record<Role, string> = {
-  admin: 'bg-red-500', support: 'bg-sky-500', operations: 'bg-violet-500', sales: 'bg-emerald-500',
+  admin: 'bg-red-500', support: 'bg-brand-500', operations: 'bg-acento-tenue0', sales: 'bg-emerald-500',
 };
 
 interface SidebarProps {
@@ -73,7 +73,7 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
       style={{ background: 'var(--color-sidebar)' }}
     >
       {/* Logo + mobile close button */}
-      <div className="px-5 pt-6 pb-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="px-5 pt-6 pb-5 border-b border-brand-600 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* La marca es tipografica: «Pop» amarillo, «Car» blanco. No hace
               falta imagen, escala sola y no se ve borrosa en ninguna pantalla. */}
@@ -88,7 +88,7 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
         </div>
         <button
           onClick={onClose}
-          className="md:hidden p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="md:hidden p-1 rounded text-brand-300 hover:text-white hover:bg-brand-600 transition-colors"
           aria-label="Cerrar menú"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -108,7 +108,7 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-brand-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  : 'text-brand-300 hover:bg-brand-600 hover:text-white'
               }`
             }
           >
@@ -124,19 +124,19 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
       </nav>
 
       {/* User */}
-      <div className="px-4 py-4 border-t border-slate-800">
+      <div className="px-4 py-4 border-t border-brand-600">
         <div className="flex items-center gap-3 mb-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${ROLE_COLORS[role]}`}>
             {user?.name?.[0]?.toUpperCase() ?? 'U'}
           </div>
           <div className="overflow-hidden">
             <p className="text-white text-xs font-medium truncate">{user?.name}</p>
-            <p className="text-slate-400 text-[11px]">{ROLE_LABELS[role]}</p>
+            <p className="text-brand-300 text-[11px]">{ROLE_LABELS[role]}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full text-left text-slate-400 hover:text-white text-xs px-2 py-1.5 rounded hover:bg-slate-800 transition-colors"
+          className="w-full text-left text-brand-300 hover:text-white text-xs px-2 py-1.5 rounded hover:bg-brand-600 transition-colors"
         >
           ↩ Cerrar sesión
         </button>

@@ -30,7 +30,7 @@ const ProviderBillingPage       = lazy(() => import('./pages/ProviderBillingPage
 const BookingsPage              = lazy(() => import('./pages/BookingsPage.js'));
 
 const Loader = () => (
-  <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
+  <div className="flex items-center justify-center h-64 text-brand-300 text-sm">
     Cargando…
   </div>
 );
