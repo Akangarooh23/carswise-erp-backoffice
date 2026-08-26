@@ -223,7 +223,7 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
 
   try {
     // ── 1. Subscription invoices ──
-    if (type === 'all' || type === 'suscripcion') {
+    if (type === 'all' || type === 'suscripcion' || type === 'tasacion') {
       const r = await query(`
         SELECT
           i.id, i.email, u.name, u.apellidos,
@@ -232,6 +232,7 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
           i.amount::numeric  AS precio_facturado,
           i.status,
           u.plan_id          AS plan,
+          i.description,
           i.cw_invoice_number,
           i.cw_sent_at,
           i.cw_generated_at,
@@ -242,12 +243,25 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
       `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
 
       for (const row of r.rows as Record<string, unknown>[]) {
+        // Suscripciones e informes de mercado comparten tabla y se distinguen
+        // por la descripción. Es la misma regla que aplica el listado: si las
+        // dos no coinciden, el fichero no dice lo que se ve en pantalla.
+        const dbDescription = String(row.description || '').trim();
+        const isTasacion    = /informe|tasaci/i.test(dbDescription);
+        const derivedType   = isTasacion ? 'tasacion' : 'suscripcion';
+        if (type === 'suscripcion' && isTasacion)  continue;
+        if (type === 'tasacion'    && !isTasacion) continue;
+        const planLabel    = String(row.plan || '');
+        const fallbackDesc = planLabel
+          ? `Plan ${planLabel.charAt(0).toUpperCase() + planLabel.slice(1)}`
+          : String(row.id || '');
+
         rows.push({
-          type: 'suscripcion',
+          type: derivedType,
           date: row.date,
           customer_name: [row.name, row.apellidos].filter(Boolean).join(' ') || row.email,
           customer_email: row.email,
-          description: `Plan ${String(row.plan || '').charAt(0).toUpperCase() + String(row.plan || '').slice(1)} · ${row.number}`,
+          description: dbDescription || fallbackDesc,
           precio: row.precio ? Number(row.precio) : 0,
           precio_facturado: row.precio_facturado ? Number(row.precio_facturado) : 0,
           status: row.status,
@@ -351,13 +365,15 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
 
     const header = [
       'Nº Factura', 'Fecha', 'Tipo', 'Cliente', 'Email',
-      'Descripción', 'Precio', 'Precio Facturado', 'IVA (21%)', 'Total con IVA', 'Estado',
+      'Descripción', 'Precio', 'Base imponible', 'IVA (21%)', 'Total facturado', 'Estado',
     ].map(escapeCSV).join(';');
 
     const csvRows = (rows as Array<Record<string, unknown>>).map(row => {
-      const precioFacturado = Number(row.precio_facturado) || 0;
-      const iva = precioFacturado * IVA_RATE;
-      const totalConIva = precioFacturado + iva;
+      // Lo guardado es lo que pagó el cliente, con el IVA dentro. La base sale
+      // de dividir, no de sumar: la factura en PDF hace exactamente esto.
+      const totalFacturado = Number(row.precio_facturado) || 0;
+      const base = Math.round((totalFacturado / (1 + IVA_RATE)) * 100) / 100;
+      const iva = Math.round((totalFacturado - base) * 100) / 100;
       const fecha = row.date ? new Date(String(row.date)).toLocaleDateString('es-ES') : '';
 
       return [
@@ -368,9 +384,9 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
         row.customer_email,
         row.description,
         toSpanishNumber(row.precio as number | null),
-        toSpanishNumber(precioFacturado),
+        toSpanishNumber(base),
         toSpanishNumber(iva),
-        toSpanishNumber(totalConIva),
+        toSpanishNumber(totalFacturado),
         row.status,
       ].map(escapeCSV).join(';');
     });
