@@ -31,16 +31,20 @@ const iconBg: Record<string, string> = {
 };
 
 export function StatCard({ label, value, sub, icon, color = 'neutro' }: StatCardProps) {
+  const esCero = value === 0 || value === '0' || value === '–';
   return (
     <Card>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-slate-500 font-medium">{label}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+          {/* Un cero no es una noticia. Se pinta apagado para que lo que si
+              tiene valor destaque solo, sin tener que leer las diecinueve
+              tarjetas una por una. */}
+          <p className={`text-2xl font-bold mt-1 tabular-nums ${esCero ? 'text-brand-200' : 'text-brand-600'}`}>{value}</p>
           {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
         </div>
         {icon && (
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg[color]}`}>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${esCero ? 'bg-brand-50 text-brand-200' : iconBg[color]}`}>
             <Icono nombre={icon} tam={17} />
           </div>
         )}

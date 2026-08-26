@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { StatCard } from '../components/ui/Card.js';
+import Atencion from '../components/ui/Atencion.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge.js';
 import type { DashboardStats } from '../types/index.js';
@@ -35,6 +36,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Dashboard" subtitle="Vista general del negocio" />
+
+      {/* Lo que espera a alguien, antes que nada. Si no hay nada, se dice. */}
+      <Atencion avisos={[
+        { etiqueta: 'tickets urgentes',   valor: stats.tickets?.urgent ?? 0,       a: '/tickets',      icono: 'aviso',      tono: 'urgente' },
+        { etiqueta: 'tickets abiertos',   valor: stats.tickets?.open ?? 0,         a: '/tickets',      icono: 'ticket' },
+        { etiqueta: 'leads pendientes',   valor: stats.leads?.pending ?? 0,        a: '/leads',        icono: 'megafono' },
+        { etiqueta: 'leads por reagendar', valor: stats.leads?.reschedule ?? 0,     a: '/leads',        icono: 'historial' },
+        { etiqueta: 'citas en 7 días',    valor: stats.appointments?.upcoming_7d ?? 0, a: '/appointments', icono: 'calendario' },
+        { etiqueta: 'usuarios en riesgo', valor: stats.users?.at_risk ?? 0,        a: '/users',        icono: 'usuarios',   tono: 'urgente' },
+      ]} />
 
       {/* Users */}
       <section>
