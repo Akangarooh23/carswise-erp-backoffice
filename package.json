@@ -12,7 +12,8 @@
     "build": "npm run build -w @carswise/web && npm run build -w @carswise/api",
     "start": "npm run start -w @carswise/api",
     "test": "tsx --test \"apps/api/src/**/*.test.ts\" \"apps/web/src/**/*.test.ts\"",
-    "test:facturacion": "node scripts/comprueba-facturacion.js"
+    "test:facturacion": "node scripts/comprueba-facturacion.js",
+    "test:datos": "node scripts/comprueba-datos.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

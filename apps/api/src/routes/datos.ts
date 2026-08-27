@@ -27,7 +27,7 @@ import { query } from '../db/pool.js';
 export const datosRouter = Router();
 
 /** Tablas que no se enseñan: son llaves, no datos. */
-const OCULTAS = new Set([
+export const OCULTAS = new Set([
   'erp_staff_passwords',      // hashes de contraseña
   'erp_refresh_tokens',       // sesiones vivas
   'erp_password_resets',      // códigos de recuperación en curso
@@ -35,7 +35,7 @@ const OCULTAS = new Set([
 ]);
 
 /** Columnas que nunca se devuelven, esté donde esté la tabla. */
-const COLUMNAS_OCULTAS = /(password|token|secret|_hash$|^hash$)/i;
+export const COLUMNAS_OCULTAS = /(password|token|secret|_hash$|^hash$)/i;
 
 const PUEDEN = ['admin', 'operations'] as const;
 

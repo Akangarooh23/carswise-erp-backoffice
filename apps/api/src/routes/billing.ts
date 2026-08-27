@@ -443,10 +443,6 @@ billingRouter.get('/billing/free-users', requireRole(['admin', 'operations']), a
   }
 });
 
-// Keep old endpoints for backwards compatibility
-billingRouter.get('/billing/subscribers', requireRole(['admin', 'operations']), async (_req, res) => {
-  res.redirect('/api/billing/invoices?type=suscripcion');
-});
-billingRouter.get('/billing/trials', requireRole(['admin', 'operations']), async (_req, res) => {
-  res.redirect('/api/billing/free-users');
-});
+// Aquí vivían /billing/subscribers y /billing/trials, que solo redirigían a
+// /billing/invoices y /billing/free-users. No las llamaba nadie —ni la web ni
+// PopCar— y una redirección que nadie sigue es una dirección más que mantener.
