@@ -29,7 +29,7 @@ interface Apunte {
 const ICONO: Record<string, NombreIcono> = {
   alta: 'equipo', desactivar: 'aviso', reactivar: 'comprobado',
   cambiar_rol: 'escudo', cambiar_clave: 'llave', cambiar_plan: 'tarjeta',
-  cambiar_estado: 'lapiz', servicio: 'servicio',
+  cambiar_estado: 'lapiz', servicio: 'servicio', correccion: 'documento',
   crear: 'documento', editar: 'lapiz', borrar: 'aviso',
   bulk: 'tabla', notify: 'sobre', publish: 'megafono', state: 'lapiz',
   units: 'coche', run: 'refrescar',
@@ -44,6 +44,9 @@ const TEXTO: Record<string, string> = {
   bulk: 'cambió en bloque', notify: 'avisó al cliente de', publish: 'publicó',
   units: 'añadió una unidad a', run: 'lanzó',
   cambiar_estado: 'cambió el estado de', state: 'cambió el estado de',
+  // Un apunte no se borra: se corrige con otro, como un asiento contable. Si se
+  // pudieran quitar las líneas incómodas, esto dejaría de probar nada.
+  correccion: 'anotó una corrección sobre',
 };
 
 /**
@@ -72,6 +75,7 @@ const RECURSO: Record<string, string> = {
   'provider-billing':          'una factura de proveedor',
   'invoices':                  'una factura',
   'funnel':                    'el embudo',
+  'auditoria':                 'este mismo registro',
 };
 
 function nombreRecurso(r: string): string {
@@ -146,6 +150,11 @@ export default function ActividadPage() {
                     </span>
                   )}
                 </p>
+                {(a.payload as { nota?: string } | null)?.nota && (
+                  <p className="text-[12.5px] text-brand-400 mt-1 leading-snug max-w-3xl">
+                    {(a.payload as { nota: string }).nota}
+                  </p>
+                )}
                 <p className="text-[11.5px] text-brand-300 mt-0.5">
                   {cuando(a.created_at)}
                   {a.resource_id && <span className="font-mono"> · {a.resource_id}</span>}
