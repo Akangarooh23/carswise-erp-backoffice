@@ -52,6 +52,21 @@ Dos tablas, ninguna de ellas la de leads:
 persona desde el ERP, `pending` si lo generó el sistema. Está explicado más
 abajo, en «Los horarios inventados».
 
+### Dónde sigue el cliente su cita
+
+**No en el panel.** «Solicitudes» del panel lee `/api/leads`, y una reserva del
+marketplace no es un lead: vive en otra tabla. Ahí no aparece, ni pendiente ni
+confirmada.
+
+La sigue desde el **enlace de su correo**, `/mi-cita?id=…&token=…`. Esa página es
+la suya: no pide contraseña —el testigo hace de llave— y desde ahí puede ver el
+estado, cambiar la hora o anular. El estado se ve como **Pendiente de confirmar**,
+**✓ Confirmada** o **Cancelada**.
+
+Si un cliente pregunta «no veo mi cita en mi cuenta», la respuesta es esa: está
+en el enlace del correo. Es consecuencia de los dos sistemas en paralelo, y
+mientras sigan separados no va a aparecer en el panel.
+
 ### Qué ve el cliente al terminar
 
 Si la reserva quedó **confirmada**, la pantalla dice «¡Visita confirmada!» y le
