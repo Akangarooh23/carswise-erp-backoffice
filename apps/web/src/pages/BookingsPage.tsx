@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
+import Boton from '../components/ui/Boton.js';
 
 type Booking = {
   id: string;
@@ -53,6 +54,9 @@ export default function BookingsPage() {
   const [search, setSearch]         = useState('');
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [cancelar, setCancelar] = useState<Booking | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,12 +74,23 @@ export default function BookingsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleCancel(b: Booking) {
-    if (!window.confirm(`¿Cancelar la visita de ${b.buyer_name || b.buyer_email}?`)) return;
+  async function confirmarCancelacion() {
+    if (!cancelar) return;
+    const b = cancelar;
     setCancelling(b.id);
-    await api.post(`/visit-bookings/${b.id}/cancel`, {});
-    setBookings((prev) => prev.filter((x) => x.id !== b.id));
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${b.id}/cancel`, { motivo });
     setCancelling(null);
+    setCancelar(null);
+    setMotivo('');
+    if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido cancelar la visita.' }); return; }
+    setBookings((prev) => prev.filter((x) => x.id !== b.id));
+    // Que el aviso saliera o no cambia lo que hay que hacer después, así que se
+    // dice; no se da por hecho que el cliente está enterado.
+    setResultado(
+      r.data?.avisado
+        ? { mal: false, texto: `Visita cancelada. ${b.buyer_name || 'El cliente'} ya lo sabe: le hemos escrito.` }
+        : { mal: true, texto: `Visita cancelada, pero no hemos podido avisar a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.` }
+    );
   }
 
   const filtered = bookings.filter((b) => {
@@ -100,6 +115,57 @@ export default function BookingsPage() {
         title="Agenda de visitas"
         subtitle="Gestión de citas confirmadas"
       />
+
+      {resultado && (
+        <div className={
+          'flex items-start gap-2.5 rounded-lg border px-4 py-2.5 text-[13px] ' +
+          (resultado.mal
+            ? 'border-red-200 bg-red-50 text-red-700'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-800')
+        } role={resultado.mal ? 'alert' : undefined}>
+          <span className="flex-1">{resultado.texto}</span>
+          <button onClick={() => setResultado(null)} className="font-bold shrink-0" aria-label="Cerrar">✕</button>
+        </div>
+      )}
+
+      {cancelar && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setCancelar(null)} role="dialog" aria-modal="true" aria-label="Cancelar visita">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Cancelar la visita</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                {cancelar.buyer_name || cancelar.buyer_email} · {cancelar.vehicle_title || cancelar.offer_id}
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <label className="block text-xs font-medium text-brand-500" htmlFor="motivo-cancelacion">
+                Motivo (se le cuenta al cliente)
+              </label>
+              <textarea
+                id="motivo-cancelacion"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                rows={3}
+                maxLength={300}
+                placeholder="El coche ya no está disponible, el taller cierra ese día…"
+                className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
+              />
+              <p className="text-[12px] text-brand-300">
+                Se le manda un correo avisándole, con un enlace para pedir otra hora. Si lo dejas
+                vacío se le avisa igual, solo que sin explicación.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setCancelar(null)}>Volver</Boton>
+              <Boton variante="peligro" cargando={cancelling === cancelar.id} onClick={confirmarCancelacion}>
+                Cancelar y avisar
+              </Boton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
@@ -270,7 +336,7 @@ export default function BookingsPage() {
                               </div>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleCancel(b); }}
+                                  onClick={(e) => { e.stopPropagation(); setCancelar(b); setMotivo(''); }}
                                   disabled={cancelling === b.id}
                                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
                                 >

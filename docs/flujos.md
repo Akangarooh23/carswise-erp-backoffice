@@ -69,7 +69,7 @@ visitas, que muestra los huecos y las reservas de ese coche en concreto.
 
 | Acción | Qué hace | Qué **no** hace |
 |---|---|---|
-| **Cancelar cita** | Marca la reserva como `cancelled` y devuelve el hueco a `available` | **No avisa al cliente** |
+| **Cancelar cita** | Marca la reserva como `cancelled`, devuelve el hueco a `available` y **escribe al cliente** con el motivo y un enlace para pedir otra hora | Avisar al concesionario |
 | **Contactar** | Abre el correo con el asunto puesto | Nada automático |
 | **Llamar** | Abre el teléfono | Nada automático |
 | **Añadir o quitar huecos** | Publica disponibilidad para esa oferta, con `source: 'erp'` | — |
@@ -102,19 +102,31 @@ inventarse ninguno.
 En la Agenda se distingue el origen: la reserva trae `slot_source`, que vale
 `auto` si el hueco se generó solo y `erp` si lo puso una persona.
 
-### Cancelar desde el ERP no avisa a nadie
+### Cancelar desde el ERP — resuelto
 
-La ruta de cancelar del ERP solo toca la base (`apps/api/src/routes/visits.ts:89`).
-Cuando el cliente cancela desde el enlace de su correo, PopCar sí manda los
-avisos; cuando cancela un trabajador desde la Agenda, **el cliente no se entera y
-se presenta igual**.
+Antes la ruta solo tocaba la base: el cliente no se enteraba y se presentaba
+igual. La única defensa era acordarse de escribirle, y esa es una instrucción
+que se incumple sola.
 
-**Mientras siga así:** después de cancelar, escribirle con el botón Contactar. No
-es opcional.
+Ahora, al cancelar, el ERP pide un motivo —opcional— y **le manda un correo al
+cliente** contándole qué visita se ha caído, por qué, y con un enlace para pedir
+otra hora en ese mismo anuncio.
 
-Tampoco hay reprogramar en el ERP. Existe en PopCar para el cliente
-(`rescheduleBooking`), pero desde el ERP solo se puede cancelar y que el cliente
-pida otra hora.
+Dos detalles que importan:
+
+- El correo sale **aunque haya un desvío de pruebas configurado**. Enterarse de
+  que tu cita se ha caído no puede depender de una variable de entorno.
+- Si el envío falla, **la cancelación se hace igual** —ya está hecha— pero la
+  pantalla lo dice: «cancelada, pero no hemos podido avisar, llámale». Una cita
+  cancelada de la que el cliente no se ha enterado no es lo mismo que una cita
+  cancelada, y quien la cancela tiene que poder distinguirlo sin ir a mirar
+  ningún registro.
+
+Sigue sin haber **reprogramar** en el ERP. Existe en PopCar para el cliente
+(`rescheduleBooking`), pero desde el ERP solo se puede cancelar; el enlace del
+correo es lo que le permite elegir otra hora.
+
+Y sigue sin avisarse al **concesionario**, ni al reservar ni al cancelar.
 
 ### Estas citas no generan recordatorio
 
