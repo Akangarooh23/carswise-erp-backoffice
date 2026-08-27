@@ -38,23 +38,39 @@ function rentingContractEmailHtml(data: {
   });
 }
 
+/** El prefijo de la serie de renting del año en curso. */
+export function prefijoContrato(anio = new Date().getFullYear()): string {
+  return `PC-RENT-${anio}-`;
+}
+
 /**
- * El siguiente numero de contrato: PC-RENT-2026-001.
+ * El identificador a partir del último número emitido.
  *
- * Se mira el ultimo sufijo emitido del año, no cuantos hay. Contando filas,
- * borrar un contrato hace que el siguiente repita un numero ya usado.
+ * Tres dígitos porque una serie anual de renting no llega a mil; si llegara,
+ * el número sigue creciendo y deja de ir alineado, que es mejor que repetirse.
+ */
+export function siguienteContrato(ultimo: number, anio?: number): string {
+  return prefijoContrato(anio) + String(ultimo + 1).padStart(3, '0');
+}
+
+/**
+ * El siguiente número de contrato: PC-RENT-2026-001.
+ *
+ * Se mira el último sufijo emitido del año, no cuántos hay. Contando filas,
+ * borrar un contrato hace que el siguiente repita un número ya usado.
+ *
+ * Solo se miran los que acaban en dígitos: un identificador escrito a mano
+ * que no siga el formato no puede tumbar la creación del siguiente.
  */
 async function generateContractId(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefijo = `PC-RENT-${year}-`;
+  const prefijo = prefijoContrato();
   const result = await query(
-    `SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '^.*-', ''), '')::int), 0) AS ultimo
+    `SELECT COALESCE(MAX(substring(id from '[0-9]+$')::int), 0) AS ultimo
        FROM moveadvisor_renting_contracts
-      WHERE id LIKE $1`,
+      WHERE id LIKE $1 AND id ~ '[0-9]+$'`,
     [`${prefijo}%`]
   );
-  const seq = Number((result.rows[0] as { ultimo: number }).ultimo) + 1;
-  return `${prefijo}${String(seq).padStart(3, '0')}`;
+  return siguienteContrato(Number((result.rows[0] as { ultimo: number }).ultimo));
 }
 
 // ── GET /contracts — unified list of purchases + renting contracts ─────────────
@@ -216,22 +232,32 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
     endDate.setMonth(endDate.getMonth() + Number(duration_months));
     const end_date = endDate.toISOString().slice(0, 10);
 
-    // Generate contract ID
-    const contractId = await generateContractId();
-
-    // Create the contract record
-    await query(
-      `INSERT INTO moveadvisor_renting_contracts
-         (id, lead_id, offer_id, user_email, contact_name, vehicle_title,
-          color, quantity, duration_months, km_year, monthly_price,
-          start_date, end_date, status, notes, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'active',$14,NOW(),NOW())`,
-      [
-        contractId, lead_id, lead.vehicle_id, lead.user_email, lead.contact_name, lead.vehicle_title,
-        color || null, Number(quantity), Number(duration_months), km_year ? Number(km_year) : null,
-        Number(monthly_price), start_date, end_date, notes || null,
-      ]
-    );
+    // Dos personas creando un contrato a la vez leen el mismo máximo y
+    // escriben el mismo número. La clave primaria impide que se guarden los
+    // dos —que es lo importante—, pero al segundo le saldría un error de base
+    // de datos en vez del contrato que pidió. Se vuelve a pedir número.
+    let contractId = '';
+    for (let intento = 0; intento < 3; intento++) {
+      contractId = await generateContractId();
+      try {
+        await query(
+          `INSERT INTO moveadvisor_renting_contracts
+             (id, lead_id, offer_id, user_email, contact_name, vehicle_title,
+              color, quantity, duration_months, km_year, monthly_price,
+              start_date, end_date, status, notes, created_at, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'active',$14,NOW(),NOW())`,
+          [
+            contractId, lead_id, lead.vehicle_id, lead.user_email, lead.contact_name, lead.vehicle_title,
+            color || null, Number(quantity), Number(duration_months), km_year ? Number(km_year) : null,
+            Number(monthly_price), start_date, end_date, notes || null,
+          ]
+        );
+        break;
+      } catch (e) {
+        const duplicado = (e as { code?: string }).code === '23505';
+        if (!duplicado || intento === 2) throw e;
+      }
+    }
 
     // Update lead status to Cerrado
     await query(
