@@ -61,6 +61,12 @@ workshopsRouter.get('/workshops/:id', requireRole(['admin', 'support', 'operatio
     }
     res.json({ ok: true, data: { ...workshop.rows[0], recent_appointments: appointments.rows } });
   } catch (err) {
+    // Un identificador con la forma equivocada no es un fallo del servidor:
+    // es que eso no existe.
+    if ((err as { code?: string }).code === '22P02') {
+      res.status(404).json({ ok: false, error: 'no_encontrado' });
+      return;
+    }
     res.status(500).json({ ok: false, error: 'workshop_get_failed', detail: (err as Error).message });
   }
 });

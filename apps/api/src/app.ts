@@ -77,6 +77,14 @@ export function createApp() {
       });
       return;
     }
+    // Un identificador con la forma equivocada en la dirección —texto donde
+    // Postgres espera un UUID o un número— tampoco es un fallo del servidor:
+    // es que eso no existe. Devolvía un 500 en tres pantallas.
+    if ((err as { code?: string }).code === '22P02') {
+      res.status(404).json({ ok: false, error: 'no_encontrado' });
+      return;
+    }
+
     console.error('[server] Unhandled error:', err.message);
     res.status(500).json({ ok: false, error: 'internal_error' });
   });

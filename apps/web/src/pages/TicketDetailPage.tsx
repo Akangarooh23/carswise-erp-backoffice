@@ -27,7 +27,7 @@ export default function TicketDetailPage() {
   function load() {
     if (!id) return;
     api.get<Ticket>(`/tickets/${id}`)
-      .then((r) => { if (r.ok) { setTicket(r.data); setAssignee(r.data.assigned_to ?? ''); } })
+      .then((r) => { if (r.ok) { setTicket(r.data); setAssignee(r.data.assignee ?? ''); } })
       .finally(() => setLoading(false));
   }
 
@@ -44,7 +44,7 @@ export default function TicketDetailPage() {
   async function addNote() {
     if (!note.trim() || !id) return;
     setSaving(true);
-    const r = await api.patch<Ticket>(`/tickets/${id}`, { note, assigned_to: assignee || undefined });
+    const r = await api.patch<Ticket>(`/tickets/${id}`, { note, assignee: assignee || undefined });
     if (r.ok) { setTicket(r.data); setNote(''); }
     setSaving(false);
   }

@@ -10,7 +10,7 @@ export async function ensureSchema() {
       channel     TEXT NOT NULL DEFAULT 'web',
       status      TEXT NOT NULL DEFAULT 'open',
       priority    TEXT NOT NULL DEFAULT 'normal',
-      assigned_to TEXT,
+      assignee TEXT NOT NULL DEFAULT 'unassigned',
       created_at  TIMESTAMPTZ DEFAULT NOW(),
       updated_at  TIMESTAMPTZ DEFAULT NOW()
     )

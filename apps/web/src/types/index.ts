@@ -165,7 +165,7 @@ export interface Ticket {
   channel: TicketChannel;
   status: TicketStatus;
   priority: TicketPriority;
-  assigned_to?: string;
+  assignee?: string;
   created_at: string;
   updated_at: string;
   events?: TicketEvent[];

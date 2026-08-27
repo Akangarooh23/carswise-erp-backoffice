@@ -101,7 +101,7 @@ export default function TicketsPage() {
                       <Link to={`/tickets/${t.id}`} className="text-acento-texto hover:underline text-sm font-medium">
                         {t.title}
                       </Link>
-                      {t.assigned_to && <p className="text-xs text-brand-300 mt-0.5">→ {t.assigned_to}</p>}
+                      {t.assignee && <p className="text-xs text-brand-300 mt-0.5">→ {t.assignee}</p>}
                     </td>
                     <td>
                       <p className="text-sm text-brand-500">{t.user_name || t.user_id}</p>

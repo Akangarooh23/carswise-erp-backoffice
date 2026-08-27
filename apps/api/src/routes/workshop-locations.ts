@@ -92,6 +92,12 @@ workshopLocationsRouter.get('/workshop-locations/:id', requireRole(['admin', 'su
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
+    // Un identificador con la forma equivocada no es un fallo del servidor:
+    // es que eso no existe.
+    if ((err as { code?: string }).code === '22P02') {
+      res.status(404).json({ ok: false, error: 'no_encontrado' });
+      return;
+    }
     res.status(500).json({ ok: false, error: 'workshop_location_get_failed', detail: (err as Error).message });
   }
 });

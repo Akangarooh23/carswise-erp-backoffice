@@ -15,7 +15,10 @@
     "test:facturacion": "node scripts/comprueba-facturacion.js",
     "test:datos": "node scripts/comprueba-datos.js",
     "test:contratos": "node scripts/comprueba-contratos.js",
-    "test:ficheros": "node scripts/comprueba-ficheros.js"
+    "test:ficheros": "node scripts/comprueba-ficheros.js",
+    "test:tickets": "node scripts/comprueba-tickets.js",
+    "test:rutas": "node scripts/comprueba-rutas.js",
+    "test:todo": "npm test && npm run test:rutas && npm run test:facturacion && npm run test:datos && npm run test:ficheros && npm run test:tickets && npm run test:contratos"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

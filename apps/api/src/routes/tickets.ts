@@ -9,7 +9,7 @@ ticketsRouter.get('/tickets', requireRole(['admin', 'support', 'operations', 'sa
   const q          = String(req.query.q          || '').trim();
   const status     = String(req.query.status     || '').trim();
   const priority   = String(req.query.priority   || '').trim();
-  const assignedTo = String(req.query.assigned_to || '').trim();
+  const assignedTo = String(req.query.assignee || '').trim();
   const page       = Math.max(1, Number(req.query.page) || 1);
   const limit      = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset     = (page - 1) * limit;
@@ -31,7 +31,7 @@ ticketsRouter.get('/tickets', requireRole(['admin', 'support', 'operations', 'sa
   }
   if (assignedTo) {
     values.push(assignedTo);
-    conditions.push(`t.assigned_to = $${values.length}`);
+    conditions.push(`t.assignee = $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -40,7 +40,7 @@ ticketsRouter.get('/tickets', requireRole(['admin', 'support', 'operations', 'sa
     const [rows, total] = await Promise.all([
       query(
         `SELECT t.id, t.user_id, t.title, t.description, t.channel, t.status,
-                t.priority, t.assigned_to, t.created_at, t.updated_at,
+                t.priority, t.assignee, t.created_at, t.updated_at,
                 u.name AS user_name, u.email AS user_email
          FROM erp_tickets t
          LEFT JOIN moveadvisor_users u ON u.id::text = t.user_id
@@ -84,13 +84,43 @@ ticketsRouter.get('/tickets/:id', requireRole(['admin', 'support', 'operations',
   }
 });
 
+/**
+ * Copia el cliente a la tabla espejo del ERP si no estaba.
+ *
+ * Los tickets apuntan a `erp_users`, no a la tabla de clientes, y esa tabla
+ * está vacía: sin esto, crear un ticket falla siempre por la clave foránea, con
+ * el mensaje crudo de Postgres en la cara de quien lo intentaba.
+ *
+ * Devuelve false si el cliente no existe: eso no es un error del servidor, es
+ * que se ha pedido un ticket para alguien que no está.
+ */
+async function aseguraCliente(userId: string): Promise<boolean> {
+  const ya = await query(`SELECT id FROM erp_users WHERE id = $1`, [userId]);
+  if (ya.rows.length) return true;
+
+  const cliente = await query(
+    `SELECT id, name, email, phone, last_login_at FROM moveadvisor_users WHERE id::text = $1 LIMIT 1`,
+    [userId]
+  );
+  if (!cliente.rows.length) return false;
+
+  const c = cliente.rows[0] as Record<string, string | null>;
+  await query(
+    `INSERT INTO erp_users (id, name, email, phone, status, last_seen_at)
+     VALUES ($1, $2, $3, $4, 'active', COALESCE($5::timestamptz, NOW()))
+     ON CONFLICT (id) DO NOTHING`,
+    [userId, c.name || c.email || 'Sin nombre', c.email || '', c.phone || '', c.last_login_at]
+  );
+  return true;
+}
+
 const createSchema = z.object({
   user_id:     z.string().min(1),
   title:       z.string().min(3).max(200),
   description: z.string().min(5),
   channel:     z.enum(['web', 'phone', 'email', 'whatsapp']).default('web'),
   priority:    z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-  assigned_to: z.string().optional(),
+  assignee: z.string().optional(),
 });
 
 ticketsRouter.post('/tickets', requireRole(['admin', 'support', 'operations']), async (req, res) => {
@@ -101,14 +131,24 @@ ticketsRouter.post('/tickets', requireRole(['admin', 'support', 'operations']), 
   }
   const d = parsed.data;
   try {
+    // La tabla no pone nada por defecto: id, quién lo lleva y las dos fechas
+    // tienen que venir de aquí. Sin esto, crear un ticket fallaba siempre.
+    if (!(await aseguraCliente(d.user_id))) {
+      res.status(400).json({ ok: false, error: 'cliente_no_encontrado',
+        detail: 'No hay ningún cliente con ese identificador.' });
+      return;
+    }
+
+    const id = `t_${Date.now()}`;
     const result = await query(
-      `INSERT INTO erp_tickets (user_id, title, description, channel, priority, assigned_to, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'open') RETURNING *`,
-      [d.user_id, d.title, d.description, d.channel, d.priority, d.assigned_to ?? null]
+      `INSERT INTO erp_tickets
+         (id, user_id, title, description, channel, priority, assignee, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', NOW(), NOW()) RETURNING *`,
+      [id, d.user_id, d.title, d.description, d.channel, d.priority, d.assignee ?? 'unassigned']
     );
     const actor = (req as { actor?: { sub: string } }).actor?.sub ?? 'system';
     await query(
-      `INSERT INTO erp_ticket_events (ticket_id, actor, message) VALUES ($1, $2, $3)`,
+      `INSERT INTO erp_ticket_events (ticket_id, event_at, actor, message) VALUES ($1, NOW(), $2, $3)`,
       [result.rows[0].id, actor, `Ticket creado por ${actor}`]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
@@ -120,7 +160,7 @@ ticketsRouter.post('/tickets', requireRole(['admin', 'support', 'operations']), 
 const updateSchema = z.object({
   status:      z.enum(['open', 'in_progress', 'waiting_customer', 'resolved', 'closed']).optional(),
   priority:    z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  assigned_to: z.string().nullable().optional(),
+  assignee: z.string().optional(),
   note:        z.string().min(1).optional(),
 });
 
@@ -157,7 +197,7 @@ ticketsRouter.patch('/tickets/:id', requireRole(['admin', 'support', 'operations
     const eventParts: string[] = [];
     if (fields.status)      eventParts.push(`Estado → ${fields.status}`);
     if (fields.priority)    eventParts.push(`Prioridad → ${fields.priority}`);
-    if (fields.assigned_to !== undefined) eventParts.push(`Asignado → ${fields.assigned_to ?? 'sin asignar'}`);
+    if (fields.assignee !== undefined) eventParts.push(`Asignado → ${fields.assignee || 'sin asignar'}`);
     if (note)               eventParts.push(note);
 
     if (eventParts.length) {
