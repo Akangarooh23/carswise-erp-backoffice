@@ -10,6 +10,34 @@ import { falloInterno } from '../lib/fallos.js';
 
 export const marketplaceRouter = Router();
 
+// ── Brand normalization ───────────────────────────────────────────────────────
+// Maps accent-stripped lowercase variants to the canonical name used in CarsWise.
+const BRAND_NORMALIZATION: Record<string, string> = {
+  // Citroën
+  'citroen':           'Citroën',
+  // Mercedes-Benz
+  'mercedes':          'Mercedes-Benz',
+  'mercedes benz':     'Mercedes-Benz',
+  'mercedes-benz':     'Mercedes-Benz',
+  // Alfa Romeo
+  'alfa-romeo':        'Alfa Romeo',
+  // Land Rover
+  'land-rover':        'Land Rover',
+  'landrover':         'Land Rover',
+  // DS
+  'ds automobiles':    'DS',
+  // Volkswagen alias
+  'vw':                'Volkswagen',
+  // Škoda (diacritic stripped = skoda → canonical Skoda)
+  'skoda':             'Skoda',
+};
+
+function normalizeBrand(brand: string | undefined | null): string {
+  if (!brand) return brand ?? '';
+  const key = brand.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return BRAND_NORMALIZATION[key] ?? brand.trim();
+}
+
 // Downloads an external image URL and uploads it to Supabase Storage.
 // Returns the public Supabase URL, or the original URL if upload fails/not configured.
 async function mirrorImageToSupabase(imageUrl: string, offerId: string): Promise<string> {
@@ -63,7 +91,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   const portal = String(req.query.portal || '').trim();
   const sellerType = String(req.query.seller_type || '').trim();
   const page   = Math.max(1, Number(req.query.page) || 1);
-  const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const limit  = req.query.export === '1' ? 999999 : Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
   const s = (k: string) => String(req.query[k] || '').trim();
 
@@ -377,7 +405,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
   const rentingAvailable    = req.query.renting_available;
   const sellerType          = String(req.query.seller_type || '').trim();
   const page                = Math.max(1, Number(req.query.page) || 1);
-  const limit               = Math.min(500, Math.max(10, Number(req.query.limit) || 50));
+  const limit               = req.query.export === '1' ? 999999 : Math.min(500, Math.max(10, Number(req.query.limit) || 50));
   const offset              = (page - 1) * limit;
 
   const conditions: string[] = [];
@@ -579,7 +607,7 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'manual',
                $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,NOW(),NOW())
        RETURNING *`,
-      [id, d.title, d.brand, d.model, d.year, d.price, d.mileage, d.fuel, d.power,
+      [id, d.title, normalizeBrand(d.brand), d.model, d.year, d.price, d.mileage, d.fuel, d.power,
        d.displacement, d.color, d.location, d.seller, d.seller_type,
        d.description, d.image_urls?.[0] ?? d.image_url, JSON.stringify(d.image_urls ?? []),
        d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
@@ -659,6 +687,7 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
 
   // Serialize image_urls array to JSON string; also sync image_url to first element
   const dbFields: Record<string, unknown> = { ...fields };
+  if (typeof dbFields.brand === 'string') dbFields.brand = normalizeBrand(dbFields.brand);
   if (Array.isArray(dbFields.image_urls)) {
     const arr = dbFields.image_urls as string[];
     dbFields.image_url = arr[0] ?? null;
@@ -916,7 +945,7 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
               portal_score, warranty_months, has_guarantee_seal, is_active, portal,
               has_stock_management, created_at, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,80,0,false,true,'manual',TRUE,NOW(),NOW())`,
-          [offerId, first.title, first.brand, first.model, first.year, first.price,
+          [offerId, first.title, normalizeBrand(first.brand), first.model, first.year, first.price,
            first.fuel, first.power, first.location, first.seller, sellerTypeVal,
            imageUrlsArr[0] ?? null, JSON.stringify(imageUrlsArr), first.source_url, first.description,
            first.available_for_purchase !== 0, first.renting_available !== 0, first.renting_km_year,
@@ -956,7 +985,7 @@ marketplaceRouter.post('/marketplace/vo/bulk-with-units', requireRole(['admin', 
 marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   const q       = String(req.query.q    || '').trim();
   const page    = Math.max(1, Number(req.query.page)  || 1);
-  const limit   = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
+  const limit   = req.query.export === '1' ? 999999 : Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset  = (page - 1) * limit;
 
   const conditions: string[] = [

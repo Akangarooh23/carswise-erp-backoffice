@@ -12,7 +12,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import * as XLSX from 'xlsx';
-import { filasParaExcel, parseXlsx } from './excel.js';
+import { filasParaExcel, parseXlsx, COLUMNAS_EXPORTACION } from './excel.js';
 import { EXCEL_HEADERS } from './constantes.js';
 import type { VoOffer } from '../../types/index.js';
 
@@ -34,6 +34,34 @@ function idaYVuelta(items: VoOffer[]): Record<string, string>[] {
   const bytes = XLSX.write(libro, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
   return parseXlsx(bytes);
 }
+
+describe('la versión viaja en el fichero exportado', () => {
+  // `json_to_sheet` recorta a las columnas que se le pasan, así que añadir el
+  // campo a la fila no basta: si no está en la lista, se calcula y se tira. Así
+  // llevaba sin salir desde que se pidió.
+  test('sale como columna, detrás del modelo', () => {
+    const hoja = XLSX.utils.json_to_sheet(
+      filasParaExcel([vehiculo({ version: '1.6 TDI Comfortline' } as Partial<VoOffer>)]),
+      { header: COLUMNAS_EXPORTACION }
+    );
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Marketplace VO');
+    const bytes = XLSX.write(libro, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    const filas = parseXlsx(bytes);
+
+    assert.equal(filas[0].version, '1.6 TDI Comfortline');
+    assert.equal(COLUMNAS_EXPORTACION[COLUMNAS_EXPORTACION.indexOf('version') - 1], 'model');
+  });
+
+  test('un coche sin versión no rompe la fila', () => {
+    assert.equal(filasParaExcel([vehiculo()])[0].version, '');
+  });
+
+  test('la plantilla no la lleva: la importación no sabe leerla', () => {
+    // Una columna que se rellena y se pierde en silencio es peor que no tenerla.
+    assert.ok(!EXCEL_HEADERS.includes('version'));
+  });
+});
 
 describe('exportar y volver a importar', () => {
   test('vuelven todas las filas', () => {

@@ -12,7 +12,22 @@
 
 import * as XLSX from 'xlsx';
 import type { VoOffer, RentingPricesJson } from '../../types/index.js';
+import type { ParticularsOffer, PortalOffer } from './tipos.js';
 import { EXCEL_HEADERS, RENTING_KM_OPTIONS } from './constantes.js';
+
+/**
+ * Las columnas del fichero que se exporta.
+ *
+ * No son las mismas que las de la plantilla. `json_to_sheet` recorta a la lista
+ * que se le pasa, así que la versión no salía por mucho que se calculara: se
+ * añadía al objeto de la fila y se tiraba al escribir. Aquí va, detrás del
+ * modelo, que es donde se lee.
+ *
+ * Y no se mete en EXCEL_HEADERS porque esa lista es la de la plantilla, y la
+ * importación no sabe leer la versión: una columna que se rellena y se pierde
+ * en silencio es peor que no tenerla.
+ */
+export const COLUMNAS_EXPORTACION = EXCEL_HEADERS.flatMap((c) => (c === 'model' ? [c, 'version'] : [c]));
 
 export function xlsxDownload(wb: XLSX.WorkBook, filename: string) {
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -40,7 +55,7 @@ export function parseXlsx(buffer: ArrayBuffer): Record<string, string>[] {
  */
 export function filasParaExcel(items: VoOffer[]): Record<string, string | number>[] {
   return items.map((o) => ({
-    title: o.title, brand: o.brand, model: o.model, year: o.year,
+    title: o.title, brand: o.brand, model: o.model, version: o.version ?? '', year: o.year,
     price: o.price, mileage: o.mileage, fuel: o.fuel ?? '', power: o.power ?? '',
     color: o.color ?? '', location: o.location ?? '', seller: o.seller ?? '',
     seller_type: o.seller_type ?? '',
@@ -63,10 +78,51 @@ export function filasParaExcel(items: VoOffer[]): Record<string, string | number
 
 /** Exporta y descarga. Lo de arriba se puede probar; esto necesita navegador. */
 export function exportXlsx(items: VoOffer[]) {
-  const ws = XLSX.utils.json_to_sheet(filasParaExcel(items), { header: EXCEL_HEADERS });
+  const ws = XLSX.utils.json_to_sheet(filasParaExcel(items), { header: COLUMNAS_EXPORTACION });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Marketplace VO');
   xlsxDownload(wb, `marketplace-vo-${Date.now()}.xlsx`);
+}
+
+/** Lo que va en cada celda al exportar particulares. */
+export function filasDeParticulares(rows: ParticularsOffer[]): Record<string, string | number>[] {
+  return rows.map((o) => ({
+    titulo: o.title, marca: o.brand, modelo: o.model, version: o.version ?? '',
+    anio: o.year, km: o.mileage, combustible: o.fuel, color: o.color ?? '',
+    precio: o.price, cv: o.cv ?? '', cambio: o.transmission_type ?? '',
+    ubicacion: o.vehicle_location ?? '', matricula: o.plate ?? '',
+    propietario: o.owner_name ?? '', telefono: o.owner_phone ?? '',
+    email_cliente: o.user_email, notas: o.notes ?? '',
+    url_anuncio: o.listing_url ?? '', actualizado: o.updated_at,
+  }));
+}
+
+export function exportParticularsXlsx(rows: ParticularsOffer[]) {
+  const ws = XLSX.utils.json_to_sheet(filasDeParticulares(rows));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Particulares');
+  xlsxDownload(wb, `particulares-${Date.now()}.xlsx`);
+}
+
+/** Lo que va en cada celda al exportar lo recogido de un portal. */
+export function filasDePortal(rows: PortalOffer[]): Record<string, string | number>[] {
+  return rows.map((o) => ({
+    portal: o.portal, titulo: o.title, marca: o.brand, modelo: o.model,
+    anio: o.year, precio: o.price, km: o.mileage, combustible: o.fuel ?? '',
+    color: o.color ?? '', carroceria: o.body_type ?? '', cambio: o.transmission ?? '',
+    cv: o.power_cv ?? '', kw: o.power_kw ?? '', puertas: o.doors ?? '',
+    plazas: o.seats ?? '', cilindrada: o.displacement ?? '', co2: o.co2 ?? '',
+    etiqueta_dgt: o.environmental_label ?? '', traccion: o.traction ?? '',
+    consumo: o.consumption ?? '', provincia: o.province ?? '', ciudad: o.city ?? '',
+    tipo_vendedor: o.seller_type ?? '', activo: o.is_active ? 'Sí' : 'No', url: o.url ?? '',
+  }));
+}
+
+export function exportPortalXlsx(rows: PortalOffer[], sheetName: string, filePrefix: string) {
+  const ws = XLSX.utils.json_to_sheet(filasDePortal(rows));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  xlsxDownload(wb, `${filePrefix}-${Date.now()}.xlsx`);
 }
 
 export function downloadTemplate() {
