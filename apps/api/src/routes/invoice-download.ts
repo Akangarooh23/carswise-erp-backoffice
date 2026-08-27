@@ -291,10 +291,14 @@ invoiceDownloadRouter.get(
         data,
         `cw-invoices/vta/${invoiceNumber}.pdf`,
         async (pdfUrl) => {
+          // La columna que se escribía aquí, cw_generated_at, no existe en esta
+          // tabla: la que hay es issued_at. Con el nombre malo fallaba la
+          // consulta, el error se registraba y se seguía, así que la factura se
+          // generaba y su PDF no quedaba guardado en ningún sitio.
           await query(
             `UPDATE moveadvisor_provider_invoices
-             SET pdf_url        = $1,
-                 cw_generated_at = COALESCE(issued_at, NOW())
+             SET pdf_url    = $1,
+                 issued_at = COALESCE(issued_at, NOW())
                  ${shouldSendVta ? ', cw_sent_at = NOW()' : ''}
              WHERE invoice_number = $2`,
             [pdfUrl, invoiceNumber]

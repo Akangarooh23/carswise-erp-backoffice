@@ -233,7 +233,10 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
 
     // Update lead status to Cerrado
     await query(
-      `UPDATE moveadvisor_market_leads SET status = 'Cerrado', updated_at = NOW() WHERE id = $1`,
+      // Sin `updated_at`: esa tabla no la tiene, y con ella la consulta fallaba
+      // entera. Como el fallo se traga con un .catch, el contrato se creaba y el
+      // lead se quedaba abierto para siempre.
+      `UPDATE moveadvisor_market_leads SET status = 'Cerrado' WHERE id = $1`,
       [lead_id]
     ).catch(() => {});
 
