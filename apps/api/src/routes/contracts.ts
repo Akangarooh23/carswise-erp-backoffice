@@ -7,6 +7,7 @@ import { config } from '../config.js';
 export const contractsRouter = Router();
 
 import { enviar, plantilla, parrafo, datos, boton, esc, MARCA } from '../lib/correo.js';
+import { prefijoAnual, conNumero, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 
 /** Lo que el cliente necesita saber: nunca se desvia a un buzon de pruebas. */
 const enviarContrato = (to: string, subject: string, html: string) =>
@@ -39,38 +40,18 @@ function rentingContractEmailHtml(data: {
 }
 
 /** El prefijo de la serie de renting del año en curso. */
-export function prefijoContrato(anio = new Date().getFullYear()): string {
-  return `PC-RENT-${anio}-`;
+export function prefijoContrato(anio?: number): string {
+  return prefijoAnual('PC-RENT', anio);
 }
 
-/**
- * El identificador a partir del último número emitido.
- *
- * Tres dígitos porque una serie anual de renting no llega a mil; si llegara,
- * el número sigue creciendo y deja de ir alineado, que es mejor que repetirse.
- */
+/** El identificador a partir del último número emitido. */
 export function siguienteContrato(ultimo: number, anio?: number): string {
-  return prefijoContrato(anio) + String(ultimo + 1).padStart(3, '0');
+  return conNumero(prefijoContrato(anio), ultimo);
 }
 
-/**
- * El siguiente número de contrato: PC-RENT-2026-001.
- *
- * Se mira el último sufijo emitido del año, no cuántos hay. Contando filas,
- * borrar un contrato hace que el siguiente repita un número ya usado.
- *
- * Solo se miran los que acaban en dígitos: un identificador escrito a mano
- * que no siga el formato no puede tumbar la creación del siguiente.
- */
+/** El siguiente número libre de la serie: PC-RENT-2026-001. */
 async function generateContractId(): Promise<string> {
-  const prefijo = prefijoContrato();
-  const result = await query(
-    `SELECT COALESCE(MAX(substring(id from '[0-9]+$')::int), 0) AS ultimo
-       FROM moveadvisor_renting_contracts
-      WHERE id LIKE $1 AND id ~ '[0-9]+$'`,
-    [`${prefijo}%`]
-  );
-  return siguienteContrato(Number((result.rows[0] as { ultimo: number }).ultimo));
+  return siguienteDeSerie('moveadvisor_renting_contracts', prefijoContrato());
 }
 
 // ── GET /contracts — unified list of purchases + renting contracts ─────────────
@@ -232,14 +213,10 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
     endDate.setMonth(endDate.getMonth() + Number(duration_months));
     const end_date = endDate.toISOString().slice(0, 10);
 
-    // Dos personas creando un contrato a la vez leen el mismo máximo y
-    // escriben el mismo número. La clave primaria impide que se guarden los
-    // dos —que es lo importante—, pero al segundo le saldría un error de base
-    // de datos en vez del contrato que pidió. Se vuelve a pedir número.
-    let contractId = '';
-    for (let intento = 0; intento < 3; intento++) {
-      contractId = await generateContractId();
-      try {
+    // Si dos personas cierran un renting a la vez, las dos piden el mismo
+    // número. Una gana y la otra vuelve a pedir, en vez de llevarse un error
+    // de base de datos en lugar del contrato.
+    const { id: contractId } = await guardaConIdUnico(generateContractId, async (contractId) => {
         await query(
           `INSERT INTO moveadvisor_renting_contracts
              (id, lead_id, offer_id, user_email, contact_name, vehicle_title,
@@ -252,12 +229,7 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
             Number(monthly_price), start_date, end_date, notes || null,
           ]
         );
-        break;
-      } catch (e) {
-        const duplicado = (e as { code?: string }).code === '23505';
-        if (!duplicado || intento === 2) throw e;
-      }
-    }
+    });
 
     // Update lead status to Cerrado
     await query(

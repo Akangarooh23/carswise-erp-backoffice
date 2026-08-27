@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
+import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
@@ -26,15 +27,18 @@ async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: 
 
 export const providerBillingRouter = Router();
 
-// ── Helper: generate invoice ID ───────────────────────────────────────────────
+/**
+ * El siguiente identificador de fila de facturación de proveedores.
+ *
+ * Contaba filas, así que borrar una hacía que la siguiente repitiera un
+ * identificador ya usado y chocara contra la clave primaria. Ahora se lee el
+ * último emitido, como en los contratos, y desde el mismo sitio.
+ *
+ * No confundir con el número fiscal de la factura, que sale de
+ * `nextInvoiceNumber` y lleva su propio contador atómico.
+ */
 export async function nextProviderInvoiceId(): Promise<string> {
-  const year = new Date().getFullYear();
-  const r = await query(
-    `SELECT COUNT(*)::int AS n FROM moveadvisor_provider_invoices WHERE id LIKE $1`,
-    [`PROV-${year}-%`]
-  );
-  const seq = ((r.rows[0] as { n: number }).n + 1).toString().padStart(3, '0');
-  return `PROV-${year}-${seq}`;
+  return siguienteDeSerie('moveadvisor_provider_invoices', prefijoAnual('PROV'));
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
@@ -100,19 +104,25 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
     return;
   }
   try {
-    const id = await nextProviderInvoiceId();
+    // Si dos personas dan de alta una factura a la vez, las dos piden el mismo
+    // identificador. Una gana y la otra vuelve a pedir, en vez de llevarse un
+    // error de base de datos.
     let pdf_url: string | null = null;
-    if (pdf_base64 && pdf_filename) {
-      pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, id);
-    }
-    await query(
-      `INSERT INTO moveadvisor_provider_invoices
-         (id, type, direction, provider_name, contract_id, vehicle_title,
-          invoice_amount, invoice_date, pdf_url, notes, status)
-       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
-      [id, provider_name, contract_id || null, vehicle_title || null,
-       Number(amount), invoice_date || null, pdf_url, notes || null]
-    );
+    const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (id) => {
+      // El PDF se guarda con el identificador en la ruta, así que va aquí
+      // dentro: si hay que reintentar, el identificador cambia.
+      if (pdf_base64 && pdf_filename) {
+        pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, id);
+      }
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, direction, provider_name, contract_id, vehicle_title,
+            invoice_amount, invoice_date, pdf_url, notes, status)
+         VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+        [id, provider_name, contract_id || null, vehicle_title || null,
+         Number(amount), invoice_date || null, pdf_url, notes || null]
+      );
+    });
     res.status(201).json({ ok: true, data: { id, pdf_url } });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'create_failed', detail: (err as Error).message });
@@ -256,14 +266,15 @@ providerBillingRouter.post('/provider-billing/commissions', requireRole(['admin'
 
     const portal = lead.portal || 'externo';
     const providerName = portal.charAt(0).toUpperCase() + portal.slice(1);
-    const id = await nextProviderInvoiceId();
-
-    await query(
-      `INSERT INTO moveadvisor_provider_invoices
-         (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email, base_amount, invoice_amount)
-       VALUES ($1, 'portal_commission', $2, $3, $4, $5, $6, $7, $8)`,
-      [id, providerName, lead_id, lead.vehicle_title, lead.contact_name, lead.user_email, salePrice, invoiceAmount]
-    );
+    // Igual que en el alta manual: se reintenta en vez de fallar.
+    const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (id) => {
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email, base_amount, invoice_amount)
+         VALUES ($1, 'portal_commission', $2, $3, $4, $5, $6, $7, $8)`,
+        [id, providerName, lead_id, lead.vehicle_title, lead.contact_name, lead.user_email, salePrice, invoiceAmount]
+      );
+    });
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: invoiceAmount, provider_name: providerName } });
   } catch (err) {
