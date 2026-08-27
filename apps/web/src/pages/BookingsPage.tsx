@@ -218,6 +218,15 @@ export default function BookingsPage() {
                                 {b.buyer_phone && (
                                   <span className="text-xs text-brand-300">· {b.buyer_phone}</span>
                                 )}
+                                {/* Si nadie publicó horarios para esa oferta, el sistema se los
+                                    inventa —L a V de 9 a 18— y el cliente reserva sobre una hora
+                                    que nadie ha confirmado. Mejor verlo aquí que en la puerta. */}
+                                {b.slot_source === 'auto' && (
+                                  <span title="Hueco generado automáticamente: nadie confirmó ese horario"
+                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    horario sin confirmar
+                                  </span>
+                                )}
                               </div>
                             </div>
 

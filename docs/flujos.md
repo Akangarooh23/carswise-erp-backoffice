@@ -1,0 +1,147 @@
+# Flujos entre PopCar y el ERP
+
+Qué pasa cuando un cliente hace algo en PopCar, dónde se ve en el ERP, qué tiene
+que ejecutar un trabajador y qué ocurre cuando lo ejecuta.
+
+Cada flujo se documenta leyendo el código, con la referencia al fichero y la
+línea. Si algo aquí no coincide con lo que hace el sistema, manda el código: lo
+que hay que corregir es este documento.
+
+---
+
+## 1. Visita a una oferta de concesionario desde el marketplace VO
+
+### Lo que hace el cliente
+
+Entra en el marketplace VO, abre una oferta de concesionario y pulsa **Solicitar
+visita**. Se le abre un calendario, elige día y hora, rellena nombre, teléfono y
+notas, y confirma.
+
+### Por dónde pasa
+
+| Paso | Dónde |
+|---|---|
+| Botón y calendario | `src/pages/PortalVoDetailPage.js:821` → `src/components/SlotPicker.js` |
+| Pedir horarios libres | `GET /api/visit-availability?offerId=…` |
+| Confirmar la reserva | `POST /api/visit-availability` con `route: "book"` |
+| Lo que la ejecuta | `lib/api/visit-availability-handler.js:321` (`bookSlot`) |
+
+La reserva se hace **dentro de una transacción**, con `SELECT … FOR UPDATE` sobre
+el hueco. Dos personas que pulsen a la vez no pueden reservar la misma hora: la
+segunda recibe `slot_unavailable` y el calendario le quita ese hueco de la
+pantalla.
+
+El **correo del vendedor lo resuelve el servidor** leyéndolo de la oferta, no
+llega del navegador. Antes venía de fuera, y eso permitía que cualquiera se
+hiciera mandar la visita de otro.
+
+### Qué queda escrito
+
+Dos tablas, ninguna de ellas la de leads:
+
+- `vehicle_visit_availability` — el hueco pasa de `available` a `booked`.
+- `vehicle_visit_bookings` — fila nueva con estado `confirmed`, y dos testigos
+  (`token_buyer`, `token_seller`) que son los que permiten cancelar o cambiar la
+  cita desde el enlace del correo, sin contraseña.
+
+### Quién recibe correo
+
+| Quién | Qué recibe |
+|---|---|
+| El cliente | Confirmación con el `.ics` para meterla en su calendario |
+| Operaciones | Aviso de cita nueva, a `OPS_EMAIL` o, si no está, a `INTERNAL_EMAIL` |
+| El concesionario | **Nada** |
+
+El vendedor solo recibe correo cuando la oferta es de un particular
+(`visit-availability-handler.js:163`). En una oferta de concesionario el aviso va
+a operaciones, y es operaciones quien tiene que avisar al concesionario.
+
+### Dónde se ve en el ERP
+
+**Agenda** (menú lateral, `/bookings`). Sale toda la lista de citas confirmadas
+ordenada por fecha, con buscador y filtro de rango. Al desplegar una fila se ven
+el correo, el teléfono y las notas del cliente.
+
+También se ve **por vehículo**, dentro de Marketplace → la oferta → panel de
+visitas, que muestra los huecos y las reservas de ese coche en concreto.
+
+### Qué puede ejecutar un trabajador, y qué pasa
+
+| Acción | Qué hace | Qué **no** hace |
+|---|---|---|
+| **Cancelar cita** | Marca la reserva como `cancelled` y devuelve el hueco a `available` | **No avisa al cliente** |
+| **Contactar** | Abre el correo con el asunto puesto | Nada automático |
+| **Llamar** | Abre el teléfono | Nada automático |
+| **Añadir o quitar huecos** | Publica disponibilidad para esa oferta, con `source: 'erp'` | — |
+
+Todo queda en el registro de actividad: el middleware de auditoría anota
+cualquier escritura que salga bien (`apps/api/src/app.ts:38`).
+
+---
+
+## Lo que este flujo no hace, y conviene saber
+
+Tres cosas que no son fallos de código —funciona como está escrito— pero que
+cambian cómo hay que trabajarlo.
+
+### Los horarios se los inventa el sistema
+
+Si una oferta de concesionario no tiene disponibilidad publicada, al primer
+cliente que abre el calendario **se le generan huecos automáticamente**: lunes a
+viernes, de 9 a 18, durante doce semanas, y se guardan en la base con
+`source: 'auto'` (`visit-availability-handler.js:230`).
+
+Nadie los ha confirmado. El cliente puede reservar un martes a las 10 en un
+concesionario que ese día cierra. La cita aparece en la Agenda como confirmada
+igualmente.
+
+**Cómo se evita:** publicar los huecos reales desde el ERP antes de que la oferta
+reciba visitas. En cuanto hay un hueco creado a mano, el sistema deja de
+inventarse ninguno.
+
+En la Agenda se distingue el origen: la reserva trae `slot_source`, que vale
+`auto` si el hueco se generó solo y `erp` si lo puso una persona.
+
+### Cancelar desde el ERP no avisa a nadie
+
+La ruta de cancelar del ERP solo toca la base (`apps/api/src/routes/visits.ts:89`).
+Cuando el cliente cancela desde el enlace de su correo, PopCar sí manda los
+avisos; cuando cancela un trabajador desde la Agenda, **el cliente no se entera y
+se presenta igual**.
+
+**Mientras siga así:** después de cancelar, escribirle con el botón Contactar. No
+es opcional.
+
+Tampoco hay reprogramar en el ERP. Existe en PopCar para el cliente
+(`rescheduleBooking`), pero desde el ERP solo se puede cancelar y que el cliente
+pida otra hora.
+
+### Estas citas no generan recordatorio
+
+El recordatorio de cita —el que sale a las 08:00— lee `moveadvisor_market_leads`,
+y estas reservas viven en `vehicle_visit_bookings`. **Nada las copia de una tabla
+a la otra.** Así que una visita reservada desde el marketplace no recibe ni el
+aviso de la víspera, ni el del día, ni el de después.
+
+Esto es porque hay **dos sistemas de visitas en paralelo**:
+
+| | Reserva del marketplace | Cita puesta desde el ERP |
+|---|---|---|
+| Quién la crea | El cliente, con el calendario | Un trabajador, en Leads |
+| Dónde vive | `vehicle_visit_bookings` | `moveadvisor_market_leads` |
+| Dónde se ve | Agenda | Leads |
+| Recordatorios | **No** | Sí, a las 08:00 |
+| Cancelar avisa al cliente | No | — |
+
+**Mientras siga así:** las citas de la Agenda hay que recordarlas a mano.
+
+---
+
+## Pendiente de documentar
+
+- Oferta de particular: solicitar visita
+- Oferta de importación: solicitar importación
+- Oferta de renting: solicitar oferta
+- Solicitud de servicio y taller
+- Alertas de mercado
+- Publicar un coche propio y su informe de estado
