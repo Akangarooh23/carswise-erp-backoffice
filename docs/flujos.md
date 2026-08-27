@@ -3,9 +3,13 @@
 Qué pasa cuando un cliente hace algo en PopCar, dónde se ve en el ERP, qué tiene
 que ejecutar un trabajador y qué ocurre cuando lo ejecuta.
 
-Cada flujo se documenta leyendo el código, con la referencia al fichero y la
-línea. Si algo aquí no coincide con lo que hace el sistema, manda el código: lo
-que hay que corregir es este documento.
+Cada flujo se documenta leyendo el código. Las referencias son a fichero y
+**nombre de función**, no a número de línea: los números se mueven en cuanto
+alguien toca algo encima, y una referencia que apunta a otro sitio es peor que
+ninguna. Ya pasó una vez aquí.
+
+Si algo aquí no coincide con lo que hace el sistema, manda el código: lo que hay
+que corregir es este documento.
 
 ---
 
@@ -21,10 +25,10 @@ notas, y confirma.
 
 | Paso | Dónde |
 |---|---|
-| Botón y calendario | `src/pages/PortalVoDetailPage.js:821` → `src/components/SlotPicker.js` |
-| Pedir horarios libres | `GET /api/visit-availability?offerId=…` |
+| Botón y calendario | `src/pages/PortalVoDetailPage.js` → `src/components/SlotPicker.js` |
+| Pedir horarios libres | `GET /api/visit-availability?offerId=…` → `getSlots` |
 | Confirmar la reserva | `POST /api/visit-availability` con `route: "book"` |
-| Lo que la ejecuta | `lib/api/visit-availability-handler.js:321` (`bookSlot`) |
+| Lo que la ejecuta | `lib/api/visit-availability-handler.js` → `bookSlot` |
 
 La reserva se hace **dentro de una transacción**, con `SELECT … FOR UPDATE` sobre
 el hueco. Dos personas que pulsen a la vez no pueden reservar la misma hora: la
@@ -40,27 +44,46 @@ hiciera mandar la visita de otro.
 Dos tablas, ninguna de ellas la de leads:
 
 - `vehicle_visit_availability` — el hueco pasa de `available` a `booked`.
-- `vehicle_visit_bookings` — fila nueva con estado `confirmed`, y dos testigos
-  (`token_buyer`, `token_seller`) que son los que permiten cancelar o cambiar la
-  cita desde el enlace del correo, sin contraseña.
+- `vehicle_visit_bookings` — fila nueva y dos testigos (`token_buyer`,
+  `token_seller`) que permiten cancelar o cambiar la cita desde el enlace del
+  correo, sin contraseña.
+
+**El estado depende de quién publicó el hueco**: `confirmed` si lo publicó una
+persona desde el ERP, `pending` si lo generó el sistema. Está explicado más
+abajo, en «Los horarios inventados».
+
+### Qué ve el cliente al terminar
+
+Si la reserva quedó **confirmada**, la pantalla dice «¡Visita confirmada!» y le
+ofrece descargar el `.ics`. Si quedó **pendiente**, dice «Solicitud enviada», le
+explica que falta confirmar el horario y **no le ofrece calendario**
+(`SlotPicker.js`, paso `done`).
 
 ### Quién recibe correo
 
 | Quién | Qué recibe |
 |---|---|
-| El cliente | Confirmación con el `.ics` para meterla en su calendario |
-| Operaciones | Aviso de cita nueva, a `OPS_EMAIL` o, si no está, a `INTERNAL_EMAIL` |
+| El cliente, si está confirmada | Confirmación con el `.ics` |
+| El cliente, si está pendiente | «Hemos recibido tu solicitud», **sin `.ics`** |
+| Operaciones | Aviso de cita nueva, a `OPS_EMAIL` o, si no está, a `INTERNAL_EMAIL`. Si está pendiente, con un recuadro diciendo que hay que confirmarla, y un botón a la Agenda |
 | El concesionario | **Nada** |
 
 El vendedor solo recibe correo cuando la oferta es de un particular
-(`visit-availability-handler.js:163`). En una oferta de concesionario el aviso va
-a operaciones, y es operaciones quien tiene que avisar al concesionario.
+(`sendBookingEmails`, rama `isParticular`). En una oferta de concesionario el
+aviso va a operaciones, y es operaciones quien tiene que avisar al concesionario.
 
 ### Dónde se ve en el ERP
 
-**Agenda** (menú lateral, `/bookings`). Sale toda la lista de citas confirmadas
-ordenada por fecha, con buscador y filtro de rango. Al desplegar una fila se ven
-el correo, el teléfono y las notas del cliente.
+**Agenda** (menú lateral, `/bookings`), con dos partes:
+
+- **Arriba, las pendientes**, si las hay: su propio bloque, sin acotar por fecha
+  —son trabajo por hacer, y una que caiga fuera del rango elegido no puede
+  desaparecer de la vista—, con **Confirmar** y **No puede ser**.
+- **Debajo, las confirmadas**, ordenadas por fecha, con buscador y filtro de
+  rango. Al desplegar una fila se ven el correo, el teléfono y las notas.
+
+Una reserva que cayó en un horario generado por el sistema lleva la marca
+**«horario sin confirmar»**, para verlo antes de presentarse y no en la puerta.
 
 También se ve **por vehículo**, dentro de Marketplace → la oferta → panel de
 visitas, que muestra los huecos y las reservas de ese coche en concreto.
@@ -80,18 +103,19 @@ cualquier escritura que salga bien (`apps/api/src/app.ts:38`).
 
 ---
 
-## Lo que este flujo no hace, y conviene saber
+## Tres cosas que tenía este flujo, y cómo quedaron
 
-Tres cosas que no son fallos de código —funciona como está escrito— pero que
-cambian cómo hay que trabajarlo.
+Ninguna era un fallo de código —hacía lo que estaba escrito— pero las tres
+cambiaban cómo hay que trabajarlo. Se documentan con lo que pasaba antes, porque
+si no, dentro de un año nadie entiende por qué está montado así.
 
 ### Los horarios inventados — resuelto
 
 Si una oferta de concesionario no tiene disponibilidad publicada, al primer
 cliente que abre el calendario **se le generan huecos automáticamente**: lunes a
 viernes, de 9 a 18, durante doce semanas, con `source: 'auto'`
-(`visit-availability-handler.js:230`). Eso se queda: sin ellos, una oferta sin
-horarios publicados no recibiría ni una visita.
+(`seedProfessionalSlots`). Eso se queda: sin ellos, una oferta sin horarios
+publicados no recibiría ni una visita.
 
 Lo que cambia es lo que se promete encima de ellos. Antes la reserva nacía
 `confirmed` y al cliente le llegaba el archivo de calendario, aunque nadie
@@ -174,6 +198,25 @@ migración de datos que no toca ahora:
 | Dónde se ve | Agenda | Leads |
 | Recordatorios | Sí | Sí |
 | Al hacer el seguimiento | Solo se apunta | Además pasa a «Visita realizada» |
+
+---
+
+## Lo que hace falta configurado
+
+Variables que tocan este flujo. Ninguna rompe nada si falta, pero cada una
+degrada algo en silencio, que es lo malo.
+
+| Variable | Dónde | Si falta |
+|---|---|---|
+| `OPS_EMAIL` | PopCar | Los avisos de cita nueva caen en `INTERNAL_EMAIL` |
+| `INTERNAL_EMAIL` | PopCar | Nadie recibe el aviso de cita nueva |
+| `ERP_URL` | PopCar | El botón del aviso interno apunta al despliegue por defecto. Antes apuntaba a `erp.popcar.tech`, que **nunca se creó**: era un 404 |
+| `PUBLIC_SITE_URL` | ERP | El enlace «pedir otra hora» del correo de cancelación se arma mal |
+| `RESEND_TEST_EMAIL` | ERP | Se ignora en producción a propósito. Los correos de esta pantalla salen al cliente de todos modos |
+
+La dirección del backoffice vive en `lib/marca.js` (`MARCA.urlErp`), no escrita a
+mano en los handlers: `comprueba-marca.js` falla si alguien la vuelve a poner
+suelta.
 
 ---
 
