@@ -67,6 +67,16 @@ export function createApp() {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    // Un cuerpo demasiado grande no es un fallo del servidor: es que alguien
+    // ha subido un fichero que no cabe, y merece que se le diga.
+    if ((err as { type?: string }).type === 'entity.too.large') {
+      res.status(413).json({
+        ok: false,
+        error: 'demasiado_grande',
+        detail: 'El fichero es demasiado grande. El máximo son 3 MB.',
+      });
+      return;
+    }
     console.error('[server] Unhandled error:', err.message);
     res.status(500).json({ ok: false, error: 'internal_error' });
   });

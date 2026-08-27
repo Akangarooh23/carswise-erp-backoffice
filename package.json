@@ -14,7 +14,8 @@
     "test": "tsx --test \"apps/api/src/**/*.test.ts\" \"apps/web/src/**/*.test.ts\"",
     "test:facturacion": "node scripts/comprueba-facturacion.js",
     "test:datos": "node scripts/comprueba-datos.js",
-    "test:contratos": "node scripts/comprueba-contratos.js"
+    "test:contratos": "node scripts/comprueba-contratos.js",
+    "test:ficheros": "node scripts/comprueba-ficheros.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

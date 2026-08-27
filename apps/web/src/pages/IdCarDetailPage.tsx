@@ -166,6 +166,9 @@ export default function IdCarDetailPage() {
     setUploadingType(fileType);
     setUploadStatus((s) => ({ ...s, [fileType]: null }));
     let errors = 0;
+    // El primer motivo, para poder decir qué ha pasado. «2 de 3 fallaron» no
+    // dice si el problema es el tipo, el tamaño o el nombre del fichero.
+    let primerMotivo = '';
     let firstUploadedFileData: IdCarFile | null = null;
     for (const file of files) {
       try {
@@ -175,7 +178,11 @@ export default function IdCarDetailPage() {
           file_mime_type: file.type || 'application/octet-stream',
           file_content_base64: base64, file_size: file.size,
         });
-        if (!r.ok) { errors++; continue; }
+        if (!r.ok) {
+          errors++;
+          primerMotivo = primerMotivo || (r as { detail?: string }).detail || '';
+          continue;
+        }
         if (fileType === 'photo' && !firstUploadedFileData && r.data?.data) {
           firstUploadedFileData = r.data.data;
         }
@@ -186,7 +193,12 @@ export default function IdCarDetailPage() {
       ...s,
       [fileType]: errors === 0
         ? { ok: true,  text: `${count} archivo${count > 1 ? 's' : ''} subido${count > 1 ? 's' : ''} correctamente` }
-        : { ok: false, text: `${errors} de ${count} archivos fallaron` },
+        : {
+            ok: false,
+            text: primerMotivo
+              ? (count > 1 ? `${errors} de ${count} archivos no se subieron. ${primerMotivo}` : primerMotivo)
+              : `${errors} de ${count} archivos no se subieron`,
+          },
     }));
     setPendingFiles((p) => ({ ...p, [fileType]: [] }));
     if (inputRefs.current[fileType]) inputRefs.current[fileType]!.value = '';
@@ -422,6 +434,11 @@ export default function IdCarDetailPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
                   className="w-full border border-brand-200 rounded-md px-2 py-1 text-sm text-brand-500 focus:outline-none focus:ring-1 focus:ring-acento resize-none"
                 />
+                {/* Se publica tal cual al mandar el coche al marketplace, y
+                    quien escribe aquí no tiene por qué saberlo. */}
+                <p className="text-[11px] text-brand-300 mt-1">
+                  Si el vehículo se publica en el marketplace, esto es lo que se ve como descripción del anuncio.
+                </p>
               </div>
             </div>
           )}

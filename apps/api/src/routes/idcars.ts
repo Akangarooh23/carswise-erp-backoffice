@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
+import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -259,8 +260,23 @@ idcarsRouter.post('/idcars/:id/files', requireRole(['admin', 'operations', 'supp
   const { file_type, file_name, file_mime_type, file_content_base64, file_size } = req.body ?? {};
 
   const ALL_TYPES = ['photo', 'document', 'technical_sheet', 'circulation_permit', 'itv', 'insurance', 'maintenance_invoices'];
-  if (!ALL_TYPES.includes(file_type) || !file_name || !file_content_base64) {
-    res.status(400).json({ ok: false, error: 'invalid_payload' });
+  // Cada motivo por su nombre: «invalid_payload» no le dice nada a nadie.
+  const falta =
+    !ALL_TYPES.includes(file_type) ? `Tipo de archivo desconocido: ${String(file_type ?? '') || '(vacío)'}.`
+    : !file_name                   ? 'El archivo no tiene nombre.'
+    : !file_content_base64         ? 'El archivo ha llegado vacío.'
+    : '';
+  if (falta) {
+    res.status(400).json({ ok: false, error: 'invalid_payload', detail: falta });
+    return;
+  }
+
+  // El tipo se comprueba aquí porque el fichero acaba en un bucket público:
+  // lo que se suba se sirve desde una dirección nuestra. Hoy solo hay fotos y
+  // PDF guardados, así que la lista no quita nada que se esté usando.
+  const problema = revisaFichero(file_name, file_mime_type, tamanoDeBase64(file_content_base64));
+  if (problema) {
+    res.status(400).json({ ok: false, error: 'fichero_no_valido', detail: problema.motivo });
     return;
   }
 
