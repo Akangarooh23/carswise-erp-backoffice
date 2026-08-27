@@ -49,6 +49,8 @@ export default function EquipoPage() {
   const [alta, setAlta] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState({ nombre: '', email: '', rol: 'support' as Role, clave: '' });
+  const [cambioClave, setCambioClave] = useState<Persona | null>(null);
+  const [claveNueva, setClaveNueva] = useState('');
 
   const cargar = () => {
     setCargando(true);
@@ -78,6 +80,32 @@ export default function EquipoPage() {
     if (!r.ok) { setError(r.error || 'No se ha podido cambiar el rol'); return; }
     decir(`${p.nombre} pasa a ${NOMBRE_ROL[rol]}.`);
     cargar();
+  };
+
+  /**
+   * Una contraseña que nadie tenga que inventarse.
+   *
+   * Sin esto, quien la pone acaba escribiendo algo que recuerda, que es
+   * justamente lo que se adivina. Sin letras que se confundan al dictarla: ni
+   * O con 0, ni l con 1.
+   */
+  const claveSugerida = () => {
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#%+=?';
+    const bytes = crypto.getRandomValues(new Uint8Array(20));
+    setClaveNueva([...bytes].map((b) => abc[b % abc.length]).join(''));
+  };
+
+  const guardarClave = async () => {
+    if (!cambioClave) return;
+    setGuardando(true);
+    setError('');
+    const r = await api.patch(`/personal/${cambioClave.id}/clave`, { clave: claveNueva });
+    setGuardando(false);
+    if (!r.ok) { setError(r.error || 'No se ha podido cambiar la contraseña'); return; }
+    const quien = cambioClave.nombre;
+    setCambioClave(null);
+    setClaveNueva('');
+    decir(`Contraseña cambiada. Dásela a ${quien} por un canal seguro, no por correo.`);
   };
 
   const cambiarActivo = async (p: Persona) => {
@@ -151,7 +179,11 @@ export default function EquipoPage() {
                       {p.activo ? 'Activa' : 'De baja'}
                     </span>
                   </td>
-                  <td className="text-right">
+                  <td className="text-right whitespace-nowrap">
+                    <Boton tam="sm" variante="fantasma"
+                           onClick={() => { setCambioClave(p); setClaveNueva(''); setError(''); }}>
+                      Cambiar contraseña
+                    </Boton>
                     <Boton tam="sm" variante={p.activo ? 'fantasma' : 'secundario'} onClick={() => cambiarActivo(p)}>
                       {p.activo ? 'Dar de baja' : 'Reactivar'}
                     </Boton>
@@ -175,6 +207,32 @@ export default function EquipoPage() {
           activo, o si la base no responde</b>, que es justo cuando hacen falta.
         </p>
       </div>
+
+      {cambioClave && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setCambioClave(null)} role="dialog" aria-modal="true" aria-label="Cambiar contraseña">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Cambiar la contraseña de {cambioClave.nombre}</h2>
+              <p className="text-[12px] text-brand-300 mt-0.5">{cambioClave.email}</p>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <Campo etiqueta="Contraseña nueva" type="text" value={claveNueva} requerido
+                     ayuda="Mínimo 10 caracteres. La anterior deja de valer en cuanto guardes."
+                     onChange={(e) => setClaveNueva(e.target.value)} />
+              <button type="button" onClick={claveSugerida}
+                      className="text-[13px] font-medium text-acento-texto underline underline-offset-2">
+                Generar una
+              </button>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setCambioClave(null)}>Cancelar</Boton>
+              <Boton variante="acento" cargando={guardando} onClick={guardarClave}>Cambiar</Boton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {alta && (
         <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
