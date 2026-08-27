@@ -86,7 +86,18 @@ export async function listar(): Promise<Persona[]> {
   return r.rows.map(aPersona);
 }
 
-/** Busca por correo. Primero en la tabla; si no está, en las de arranque. */
+/**
+ * Busca por correo. Primero en la tabla; si no está, en las de arranque.
+ *
+ * Las de arranque son para arrancar, no para quedarse. Mientras haya un
+ * administrador de verdad dado de alta, dejan de valer: si no, admin@carswise.es
+ * seguiría siendo una puerta abierta con la contraseña en una variable de
+ * entorno, y no se podría cerrar sin tocar el código —la variable es obligatoria
+ * para que la API levante—.
+ *
+ * Si se quedara la casa sin ningún administrador activo vuelven a servir, que es
+ * exactamente cuando hacen falta. Y si la base no contesta también, por lo mismo.
+ */
 export async function buscar(email: string): Promise<(Persona & { clave?: string }) | null> {
   const correo = email.trim().toLowerCase();
   try {
@@ -96,6 +107,7 @@ export async function buscar(email: string): Promise<(Persona & { clave?: string
       [correo]
     );
     if (r.rows.length) return aPersona(r.rows[0]);
+    if ((await admins()) > 0) return null;
   } catch (e) {
     // Sin base no se puede consultar, pero las de arranque siguen valiendo:
     // es justo el caso en que hace falta poder entrar.

@@ -18,10 +18,11 @@
     "test:ficheros": "node scripts/comprueba-ficheros.js",
     "test:tickets": "node scripts/comprueba-tickets.js",
     "test:rutas": "node scripts/comprueba-rutas.js",
-    "test:todo": "npm test && npm run test:rutas && npm run test:columnas && npm run test:facturacion && npm run test:datos && npm run test:ficheros && npm run test:tickets && npm run test:contratos",
+    "test:todo": "npm test && npm run test:rutas && npm run test:columnas && npm run test:facturacion && npm run test:datos && npm run test:ficheros && npm run test:tickets && npm run test:contratos && npm run test:arranque",
     "test:columnas": "node scripts/comprueba-columnas.js",
     "test:regresion": "node scripts/comprueba-regresion.js",
-    "test:pantallas": "node scripts/comprueba-pantallas.js"
+    "test:pantallas": "node scripts/comprueba-pantallas.js",
+    "test:arranque": "node scripts/comprueba-arranque.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

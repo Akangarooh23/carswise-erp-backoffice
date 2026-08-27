@@ -25,7 +25,10 @@ interface Persona {
 }
 
 const ROLES: { valor: Role; texto: string; queHace: string }[] = [
-  { valor: 'admin',      texto: 'Administración', queHace: 'Todo, incluido dar de alta al equipo' },
+  // «Administrador», no «Administración»: administración es el área que lleva
+  // facturas y bancos, y llamar así al rol que lo puede todo invita a dárselo a
+  // quien solo tenía que revisar facturas.
+  { valor: 'admin',      texto: 'Administrador',  queHace: 'Todo, incluido dar de alta al equipo' },
   { valor: 'operations', texto: 'Operaciones',    queHace: 'Marketplace, IDCars, talleres y facturación' },
   { valor: 'support',    texto: 'Soporte',        queHace: 'Tickets, usuarios y consentimientos' },
   { valor: 'sales',      texto: 'Comercial',      queHace: 'Leads, contratos y embudo' },
@@ -164,10 +167,12 @@ export default function EquipoPage() {
         <h3 className="text-[13px] font-bold text-acento-texto mb-1">Las cuatro cuentas de arranque</h3>
         <p className="text-[13px] text-acento-texto/85 max-w-3xl">
           <code className="font-mono">admin@</code>, <code className="font-mono">support@</code>,{' '}
-          <code className="font-mono">ops@</code> y <code className="font-mono">sales@</code> siguen
-          funcionando a propósito: son la puerta por la que entrar si esta tabla
-          se queda vacía o la base no responde. En cuanto haya personal dado de
-          alta, dejan de usarse solas.
+          <code className="font-mono">ops@</code> y <code className="font-mono">sales@</code> ya no
+          entran: mientras haya algún Administrador en esta lista, las
+          cuatro quedan cerradas. Son la puerta del primer día, y sus contraseñas
+          viven en variables de entorno, compartidas y sin nombre detrás.{' '}
+          <b>Vuelven a valer si esta lista se queda sin ningún administrador
+          activo, o si la base no responde</b>, que es justo cuando hacen falta.
         </p>
       </div>
 
