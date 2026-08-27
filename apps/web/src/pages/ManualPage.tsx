@@ -8,6 +8,11 @@
  *
  * Se empaquetan al construir, así que la pantalla no llama a la API y funciona
  * aunque el servidor esté caído.
+ *
+ * Añadir un documento es dejar un `.md` en `docs/`: aparece solo, con el título
+ * que lleve dentro. En desarrollo hay que reiniciar `npm run dev` la primera
+ * vez, porque `docs/` queda fuera de lo que vigila Vite y no se entera de un
+ * fichero nuevo. Al construir sí entra siempre.
  */
 import { useMemo, useState } from 'react';
 import { PageHeader } from '../components/ui/PageHeader.js';
