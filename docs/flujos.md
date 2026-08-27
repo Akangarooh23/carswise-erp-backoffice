@@ -139,24 +139,41 @@ correo es lo que le permite elegir otra hora.
 
 Y sigue sin avisarse al **concesionario**, ni al reservar ni al cancelar.
 
-### Estas citas no generan recordatorio
+### Los recordatorios — resuelto
 
-El recordatorio de cita —el que sale a las 08:00— lee `moveadvisor_market_leads`,
-y estas reservas viven en `vehicle_visit_bookings`. **Nada las copia de una tabla
-a la otra.** Así que una visita reservada desde el marketplace no recibe ni el
-aviso de la víspera, ni el del día, ni el de después.
+El cron de las 08:00 solo leía `moveadvisor_market_leads`, y estas reservas viven
+en `vehicle_visit_bookings`. Nada las copiaba de una tabla a la otra, así que una
+visita reservada desde el marketplace no recibía ni el aviso de la víspera, ni el
+del día, ni el de después.
 
-Esto es porque hay **dos sistemas de visitas en paralelo**:
+Ahora el cron recorre **las dos fuentes** con las mismas tres plantillas: la
+reserva se traduce a la forma que ya esperaban, y los huecos que no tiene
+—dirección, persona por la que preguntar— se quedan vacíos y no se pintan.
+
+Tres detalles que importan:
+
+- **Solo las confirmadas.** Recordarle a alguien una cita que todavía no le
+  hemos dado es peor que no decirle nada.
+- **El enlace de gestión es el suyo**, `/mi-cita` con su testigo, no el panel de
+  solicitudes: quien reservó con el calendario puede no tener cuenta.
+- **El seguimiento tiene ventana de tres días.** Sin ella, la primera ejecución
+  habría mandado un «¿qué tal fue la visita?» a una reserva de hace un mes. Un
+  seguimiento a destiempo no es un seguimiento.
+
+Cada envío deja su marca —`reminder_sent_at`, `reminder_day_of_sent_at`,
+`followup_sent_at`, añadidas en la migración `018`— y esa marca es la que impide
+repetirlo.
+
+Siguen siendo **dos sistemas de visitas en paralelo**, y unificarlos es una
+migración de datos que no toca ahora:
 
 | | Reserva del marketplace | Cita puesta desde el ERP |
 |---|---|---|
 | Quién la crea | El cliente, con el calendario | Un trabajador, en Leads |
 | Dónde vive | `vehicle_visit_bookings` | `moveadvisor_market_leads` |
 | Dónde se ve | Agenda | Leads |
-| Recordatorios | **No** | Sí, a las 08:00 |
-| Cancelar avisa al cliente | No | — |
-
-**Mientras siga así:** las citas de la Agenda hay que recordarlas a mano.
+| Recordatorios | Sí | Sí |
+| Al hacer el seguimiento | Solo se apunta | Además pasa a «Visita realizada» |
 
 ---
 
