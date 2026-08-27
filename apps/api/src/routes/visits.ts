@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole, type Role } from '../middleware/auth.js';
-import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA } from '../lib/correo.js';
+import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA } from '../lib/correo.js';
 import { config } from '../config.js';
 
 export const visitsRouter = Router();
@@ -13,8 +13,66 @@ interface Reserva {
   offer_id: string;
   vehicle_title: string | null;
   starts_at: string;
+  ends_at?: string;
   buyer_email: string | null;
   buyer_name: string | null;
+}
+
+/** Cuándo, como lo quiere un calendario: 20260915T100000Z. */
+const enFormatoIcs = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+/**
+ * El archivo que mete la cita en el calendario de quien la recibe.
+ *
+ * Sale solo al confirmar, nunca al pedirla: un `.ics` en el móvil de alguien es
+ * una cita cerrada, y una solicitud sobre un horario que nadie ha publicado no
+ * lo es.
+ *
+ * El identificador va contra popcar.tech. Si algún día se reenvía el mismo
+ * evento, el calendario lo reconoce y lo actualiza en vez de duplicarlo, así que
+ * este valor no se cambia a la ligera.
+ */
+export function calendarioDeLaCita(r: Reserva): string {
+  const fin = r.ends_at || new Date(new Date(r.starts_at).getTime() + 3600000).toISOString();
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    `PRODID:-//${MARCA.nombre}//Visitas//ES`,
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `DTSTART:${enFormatoIcs(r.starts_at)}`,
+    `DTEND:${enFormatoIcs(fin)}`,
+    `SUMMARY:Visita: ${r.vehicle_title || r.offer_id}`,
+    `DESCRIPTION:Visita confirmada para ver el vehículo.\\nID: ${r.id}`,
+    `UID:${r.id}@popcar.tech`,
+    `ORGANIZER;CN=${MARCA.nombre}:mailto:${(respuestaA() || 'notifications@popcar.tech')}`,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+/**
+ * El correo que confirma una visita que estaba pendiente.
+ *
+ * Separado del envío para poder leerlo sin mandarlo, igual que el de cancelar.
+ */
+export function correoDeConfirmacion(r: Reserva): { subject: string; html: string } {
+  const coche = r.vehicle_title || 'el vehículo';
+  return {
+    subject: `Tu visita está confirmada — ${coche}`,
+    html: plantilla({
+      titulo: 'Tu visita está confirmada',
+      cuerpo:
+        parrafo(`Hola${r.buyer_name ? ` ${esc(r.buyer_name)}` : ''}, ya está: te esperamos.`) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Día', fechaLarga(r.starts_at)],
+          ['Hora', hora(r.starts_at)],
+        ]) +
+        parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, responde a este correo y lo movemos.', 14),
+    }),
+  };
 }
 
 const fechaLarga = (iso: string) =>
@@ -153,6 +211,55 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
 });
 
 // POST /visit-bookings/:bookingId/cancel  (ERP staff can cancel any booking)
+/**
+ * Se confirma una visita que estaba pendiente.
+ *
+ * Pendientes son las que cayeron en un horario que generó el sistema, no una
+ * persona. Hasta que alguien dice que sí, el cliente solo sabe que la ha pedido.
+ * Aquí es donde se le promete algo, y por eso es aquí donde sale el calendario.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  try {
+    const r = await query(
+      `UPDATE vehicle_visit_bookings SET status = 'confirmed', updated_at = NOW()
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
+      [bookingId]
+    );
+    // Si no había ninguna pendiente con ese id, o ya estaba confirmada, no se
+    // vuelve a escribir al cliente: recibir dos veces la misma confirmación
+    // hace dudar de si son dos citas.
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_pendiente' });
+
+    const reserva = r.rows[0] as Reserva;
+    let avisado = true;
+    let fallo = '';
+    try {
+      if (!reserva.buyer_email) throw new Error('la reserva no tiene correo del cliente');
+      const { subject, html } = correoDeConfirmacion(reserva);
+      await enviar({
+        to: reserva.buyer_email,
+        subject,
+        alClienteSiempre: true,
+        html,
+        attachments: [{
+          filename: 'visita-popcar.ics',
+          content: Buffer.from(calendarioDeLaCita(reserva)).toString('base64'),
+        }],
+      });
+    } catch (e) {
+      avisado = false;
+      fallo = e instanceof Error ? e.message : String(e);
+      console.error('[visitas] no se ha podido confirmar al cliente:', fallo);
+    }
+
+    return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
   const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);

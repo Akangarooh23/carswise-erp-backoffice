@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { correoDeCancelacion } from './visits.js';
+import { correoDeCancelacion, correoDeConfirmacion, calendarioDeLaCita } from './visits.js';
 
 const reserva = {
   id: 'b-1',
@@ -71,5 +71,45 @@ describe('el correo de cancelación', () => {
     assert.ok(html.includes('<table'));
     assert.ok(!/<style[\s>]/i.test(html), 'Gmail quita las hojas de estilo');
     assert.ok(!/display:\s*(flex|grid)/i.test(html), 'ningún cliente de correo entiende flex ni grid');
+  });
+});
+
+describe('el correo de confirmación', () => {
+  test('dice que está confirmada y de qué coche', () => {
+    const { subject, html } = correoDeConfirmacion(reserva);
+    assert.ok(subject.includes('confirmada'));
+    assert.ok(subject.includes('Toyota C-HR'));
+    assert.ok(html.includes('septiembre'));
+  });
+
+  test('sin nombre no saluda en falso', () => {
+    const { html } = correoDeConfirmacion({ ...reserva, buyer_name: null });
+    assert.ok(!html.includes('Hola ,'));
+    assert.ok(!html.includes('null'));
+  });
+});
+
+describe('el calendario que se adjunta al confirmar', () => {
+  test('es un calendario que un cliente de correo entiende', () => {
+    const ics = calendarioDeLaCita(reserva);
+    assert.ok(ics.startsWith('BEGIN:VCALENDAR'));
+    assert.ok(ics.trimEnd().endsWith('END:VCALENDAR'));
+    assert.ok(ics.includes('\r\n'), 'el formato exige retorno de carro, no solo salto');
+  });
+
+  test('lleva la hora de la cita, en el formato del calendario', () => {
+    const ics = calendarioDeLaCita(reserva);
+    assert.ok(ics.includes('DTSTART:20260915T100000Z'));
+  });
+
+  test('si no viene el final, dura una hora', () => {
+    const ics = calendarioDeLaCita({ ...reserva, ends_at: undefined });
+    assert.ok(ics.includes('DTEND:20260915T110000Z'));
+  });
+
+  test('el identificador va contra popcar.tech, no contra la marca vieja', () => {
+    const ics = calendarioDeLaCita(reserva);
+    assert.ok(ics.includes('UID:b-1@popcar.tech'));
+    assert.ok(!/carswise/i.test(ics));
   });
 });

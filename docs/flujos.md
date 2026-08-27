@@ -69,6 +69,7 @@ visitas, que muestra los huecos y las reservas de ese coche en concreto.
 
 | Acción | Qué hace | Qué **no** hace |
 |---|---|---|
+| **Confirmar** (solo pendientes) | Pasa la reserva a `confirmed` y **escribe al cliente** con el `.ics` | Avisar al concesionario |
 | **Cancelar cita** | Marca la reserva como `cancelled`, devuelve el hueco a `available` y **escribe al cliente** con el motivo y un enlace para pedir otra hora | Avisar al concesionario |
 | **Contactar** | Abre el correo con el asunto puesto | Nada automático |
 | **Llamar** | Abre el teléfono | Nada automático |
@@ -84,23 +85,33 @@ cualquier escritura que salga bien (`apps/api/src/app.ts:38`).
 Tres cosas que no son fallos de código —funciona como está escrito— pero que
 cambian cómo hay que trabajarlo.
 
-### Los horarios se los inventa el sistema
+### Los horarios inventados — resuelto
 
 Si una oferta de concesionario no tiene disponibilidad publicada, al primer
 cliente que abre el calendario **se le generan huecos automáticamente**: lunes a
-viernes, de 9 a 18, durante doce semanas, y se guardan en la base con
-`source: 'auto'` (`visit-availability-handler.js:230`).
+viernes, de 9 a 18, durante doce semanas, con `source: 'auto'`
+(`visit-availability-handler.js:230`). Eso se queda: sin ellos, una oferta sin
+horarios publicados no recibiría ni una visita.
 
-Nadie los ha confirmado. El cliente puede reservar un martes a las 10 en un
-concesionario que ese día cierra. La cita aparece en la Agenda como confirmada
-igualmente.
+Lo que cambia es lo que se promete encima de ellos. Antes la reserva nacía
+`confirmed` y al cliente le llegaba el archivo de calendario, aunque nadie
+hubiera dicho que el concesionario abre ese día.
 
-**Cómo se evita:** publicar los huecos reales desde el ERP antes de que la oferta
-reciba visitas. En cuanto hay un hueco creado a mano, el sistema deja de
-inventarse ninguno.
+| Hueco | Estado al reservar | Qué recibe el cliente |
+|---|---|---|
+| Publicado desde el ERP | `confirmed` | Confirmación y `.ics`, como siempre |
+| Generado solo | `pending` | «Hemos recibido tu solicitud» — **sin `.ics`** |
 
-En la Agenda se distingue el origen: la reserva trae `slot_source`, que vale
-`auto` si el hueco se generó solo y `erp` si lo puso una persona.
+En la Agenda, las pendientes salen **arriba, en su propio bloque**, con
+**Confirmar** y **No puede ser**. Confirmar es lo que le promete algo al cliente,
+y por eso es ahí donde sale el correo con el calendario.
+
+Un `.ics` en el móvil de alguien es una cita cerrada. Por eso solo sale cuando
+lo es.
+
+**Sigue mereciendo la pena** publicar los huecos reales desde el ERP: en cuanto
+hay uno creado a mano, el sistema deja de inventarse ninguno y las reservas
+vuelven a nacer confirmadas, sin pasar por nadie.
 
 ### Cancelar desde el ERP — resuelto
 

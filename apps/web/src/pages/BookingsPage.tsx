@@ -57,6 +57,8 @@ export default function BookingsPage() {
   const [cancelar, setCancelar] = useState<Booking | null>(null);
   const [motivo, setMotivo] = useState('');
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
+  const [pendientes, setPendientes] = useState<Booking[]>([]);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,12 +67,32 @@ export default function BookingsPage() {
     if (range === 'today')  { from = today; to = today + 'T23:59:59Z'; }
     if (range === 'week')   { from = today; to = inNDays(7) + 'T23:59:59Z'; }
     if (range === 'month')  { from = today; to = inNDays(30) + 'T23:59:59Z'; }
+    // Las pendientes se piden aparte y sin acotar por fecha: son trabajo que
+    // hay que despachar, y una que caiga fuera del rango elegido no puede
+    // desaparecer de la vista sin más.
     const params = new URLSearchParams({ status: 'confirmed', from });
     if (to) params.set('to', to);
-    const r = await api.get<any>(`/all-bookings?${params}`);
-    if (r.ok) setBookings((r as any).bookings || []);
+    const [conf, pend] = await Promise.all([
+      api.get<any>(`/all-bookings?${params}`),
+      api.get<any>(`/all-bookings?status=pending&from=${today}`),
+    ]);
+    if (conf.ok) setBookings((conf as any).bookings || []);
+    if (pend.ok) setPendientes((pend as any).bookings || []);
     setLoading(false);
   }, [range]);
+
+  async function confirmar(b: Booking) {
+    setConfirmando(b.id);
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${b.id}/confirm`, {});
+    setConfirmando(null);
+    if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido confirmar la visita.' }); return; }
+    setResultado(
+      r.data?.avisado
+        ? { mal: false, texto: `Visita confirmada. ${b.buyer_name || 'El cliente'} ya lo sabe: le hemos escrito con el calendario.` }
+        : { mal: true, texto: `Confirmada, pero no hemos podido avisar a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.` }
+    );
+    load();
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -83,7 +105,9 @@ export default function BookingsPage() {
     setCancelar(null);
     setMotivo('');
     if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido cancelar la visita.' }); return; }
-    setBookings((prev) => prev.filter((x) => x.id !== b.id));
+    // Recargar y no filtrar a mano: la cancelada puede estar en las confirmadas
+    // o en las pendientes, y quitarla de una sola dejaba la otra lista mintiendo.
+    load();
     // Que el aviso saliera o no cambia lo que hay que hacer después, así que se
     // dice; no se da por hecho que el cliente está enterado.
     setResultado(
@@ -125,6 +149,47 @@ export default function BookingsPage() {
         } role={resultado.mal ? 'alert' : undefined}>
           <span className="flex-1">{resultado.texto}</span>
           <button onClick={() => setResultado(null)} className="font-bold shrink-0" aria-label="Cerrar">✕</button>
+        </div>
+      )}
+
+      {/* Las pendientes van arriba y no dentro del listado: son trabajo por
+          hacer, y una lista donde se mezclan con las cerradas no se despacha. */}
+      {pendientes.length > 0 && (
+        <div className="rounded-xl border border-acento bg-acento-tenue overflow-hidden">
+          <div className="px-4 py-3 border-b border-acento/50">
+            <h2 className="text-sm font-bold text-acento-texto">
+              {pendientes.length === 1 ? 'Una visita por confirmar' : `${pendientes.length} visitas por confirmar`}
+            </h2>
+            <p className="text-[12.5px] text-acento-texto/85 mt-0.5 max-w-3xl">
+              Cayeron en un horario que generó el sistema, no lo publicó nadie. El cliente sabe que
+              está pendiente y no ha recibido calendario. Al confirmar se le escribe.
+            </p>
+          </div>
+          <ul className="divide-y divide-acento/40">
+            {pendientes.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="shrink-0 text-center w-16">
+                  <div className="text-lg font-black text-acento-texto leading-none tabular-nums">{fmtTime(b.starts_at)}</div>
+                  <div className="text-[10px] text-acento-texto/70 tabular-nums">{fmtDate(b.starts_at)}</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</div>
+                  <div className="text-xs text-brand-400">
+                    {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
+                  </div>
+                  {b.notes && <div className="text-xs text-brand-300 italic mt-0.5">"{b.notes}"</div>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Boton tam="sm" variante="acento" cargando={confirmando === b.id} onClick={() => confirmar(b)}>
+                    Confirmar
+                  </Boton>
+                  <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
+                    No puede ser
+                  </Boton>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
