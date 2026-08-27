@@ -9,6 +9,7 @@ const ColaPage = lazy(() => import('./pages/ColaPage.js'));
 const DatosPage = lazy(() => import('./pages/DatosPage.js'));
 const EquipoPage = lazy(() => import('./pages/EquipoPage.js'));
 const ActividadPage = lazy(() => import('./pages/ActividadPage.js'));
+const ManualPage = lazy(() => import('./pages/ManualPage.js'));
 const EstiloPage = lazy(() => import('./pages/EstiloPage.js'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage.js'));
 const UsersPage         = lazy(() => import('./pages/UsersPage.js'));
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'datos', element: <Suspense fallback={<Loader />}><DatosPage /></Suspense> },
       { path: 'equipo', element: <Suspense fallback={<Loader />}><EquipoPage /></Suspense> },
       { path: 'actividad', element: <Suspense fallback={<Loader />}><ActividadPage /></Suspense> },
+      { path: 'manual', element: <Suspense fallback={<Loader />}><ManualPage /></Suspense> },
       { path: 'estilo', element: <Suspense fallback={<Loader />}><EstiloPage /></Suspense> },
       { path: 'marketing-analytics', element: <Suspense fallback={<Loader />}><MarketingAnalyticsPage /></Suspense> },
       { path: 'contracts',          element: <Suspense fallback={<Loader />}><ContractsPage /></Suspense> },

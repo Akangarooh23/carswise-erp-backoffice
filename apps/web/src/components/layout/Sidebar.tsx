@@ -33,6 +33,8 @@ const NAV: NavItem[] = [
   { to: '/datos',        label: 'Datos',         icon: 'tabla', roles: ['admin','operations'] },
   { to: '/equipo',       label: 'Equipo',        icon: 'equipo', roles: ['admin'] },
   { to: '/actividad',    label: 'Actividad',     icon: 'historial', roles: ['admin'] },
+  // Para todos: es donde se explica qué hace cada pantalla y qué pasa al pulsar.
+  { to: '/manual',       label: 'Manual',        icon: 'documento', roles: ['admin','operations','support','sales'] },
 ];
 
 const ROLE_LABELS: Record<Role, string> = {
