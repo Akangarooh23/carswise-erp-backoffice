@@ -103,19 +103,36 @@ export function aviso(titulo: string, texto: string): string {
 }
 
 /**
+ * Una dirección lista para meter en un `href`.
+ *
+ * Las direcciones de los anuncios vienen de portales de fuera y llevan `&` y
+ * parámetros dentro. Un `&` sin escapar en un atributo es HTML inválido y hay
+ * clientes de correo que lo destrozan, y una comilla permitiría salirse del
+ * atributo y escribir marcado propio.
+ *
+ * Y solo http y https: `javascript:` no tiene nada que hacer en un correo, y
+ * aunque hoy los clientes lo bloqueen, no es algo que se deba dejar salir.
+ */
+export function urlSegura(url: unknown): string {
+  const limpia = String(url ?? '').trim();
+  if (!/^https?:\/\//i.test(limpia)) return '';
+  return esc(limpia);
+}
+
+/**
  * El botón. Amarillo relleno con texto negro: es el único sitio del correo
  * donde aparece el amarillo a este tamaño, y así no compite con nada.
  */
 export const boton = (texto: string, url: string) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0">
      <tr><td style="background:${C.amarillo};border-radius:8px">
-       <a href="${url}" style="display:inline-block;padding:13px 26px;font-family:${TIPO};font-size:15px;font-weight:700;color:${C.negro};text-decoration:none">${texto}</a>
+       <a href="${urlSegura(url)}" style="display:inline-block;padding:13px 26px;font-family:${TIPO};font-size:15px;font-weight:700;color:${C.negro};text-decoration:none">${texto}</a>
      </td></tr>
    </table>`;
 
 /** Un enlace discreto, para lo secundario. */
 export const enlace = (texto: string, url: string) =>
-  `<p style="margin:0 0 14px 0;font-size:14px"><a href="${url}" style="color:${C.negro};font-weight:600">${texto}</a></p>`;
+  `<p style="margin:0 0 14px 0;font-size:14px"><a href="${urlSegura(url)}" style="color:${C.negro};font-weight:600">${texto}</a></p>`;
 
 /**
  * La maqueta completa: cabecera negra con la marca, tarjeta blanca y pie.
