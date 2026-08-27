@@ -6,6 +6,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prepara, fusionaRejilla, columnasDesdeRejilla, type Rejilla } from '../lib/importacion.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const marketplaceRouter = Router();
 
@@ -171,7 +172,7 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
     const t0 = total.rows[0];
     res.json({ ok: true, data: rows.rows, meta: { total: t0.total, verifiable: t0.verifiable, verified_today: t0.verified_today, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_offers_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_offers_failed', err);
   }
 });
 
@@ -198,7 +199,7 @@ marketplaceRouter.post('/marketplace/verify-liveness/run', requireRole(['admin']
     res.json({ ok: true, data: { started: true, batch } });
   } catch (err) {
     verifyLivenessRunning = false;
-    res.status(500).json({ ok: false, error: 'verify_liveness_run_failed', detail: (err as Error).message });
+    falloInterno(res, 'verify_liveness_run_failed', err);
   }
 });
 
@@ -222,7 +223,7 @@ marketplaceRouter.get('/marketplace/offers/filter-options', requireRole(['admin'
     );
     res.json({ ok: true, data: { colors, bodyTypes, transmissions, tractions, fuels, portals, provinces, cities, years: yearsRes.rows.map((x) => x.v) } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_filter_options_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_filter_options_failed', err);
   }
 });
 
@@ -258,7 +259,7 @@ marketplaceRouter.get('/marketplace/offers/:id', requireRole(['admin', 'support'
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_offer_detail_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_offer_detail_failed', err);
   }
 });
 
@@ -313,7 +314,7 @@ marketplaceRouter.patch('/marketplace/offers/:id', requireRole(['admin', 'suppor
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_offer_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_offer_update_failed', err);
   }
 });
 
@@ -362,7 +363,7 @@ marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'suppor
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_portal_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_portal_stats_failed', err);
   }
 });
 
@@ -481,7 +482,7 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_vo_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_vo_failed', err);
   }
 });
 
@@ -502,7 +503,7 @@ marketplaceRouter.get('/marketplace/vo/filter-options', requireRole(['admin', 's
     );
     res.json({ ok: true, data: { colors, fuels, transmissions, sellers, provincias, portals, years: yearsRes.rows.map((x) => x.v) } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'marketplace_vo_filter_options_failed', detail: (err as Error).message });
+    falloInterno(res, 'marketplace_vo_filter_options_failed', err);
   }
 });
 
@@ -515,7 +516,7 @@ marketplaceRouter.get('/marketplace/vo/:id', requireRole(['admin', 'support', 'o
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'offer_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'offer_get_failed', err);
   }
 });
 
@@ -588,7 +589,7 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'offer_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'offer_create_failed', err);
   }
 });
 
@@ -691,7 +692,7 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'offer_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'offer_update_failed', err);
   }
 });
 
@@ -715,7 +716,7 @@ marketplaceRouter.post('/marketplace/vo/bulk', requireRole(['admin', 'operations
     );
     res.json({ ok: true, updated: result.rows.length });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'bulk_action_failed', detail: (err as Error).message });
+    falloInterno(res, 'bulk_action_failed', err);
   }
 });
 
@@ -733,7 +734,7 @@ marketplaceRouter.delete('/marketplace/vo/:id', requireRole(['admin', 'operation
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'offer_delete_failed', detail: (err as Error).message });
+    falloInterno(res, 'offer_delete_failed', err);
   }
 });
 
@@ -747,7 +748,7 @@ marketplaceRouter.get('/marketplace/vo/:id/units', requireRole(['admin', 'suppor
     );
     res.json({ ok: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'units_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'units_list_failed', err);
   }
 });
 
@@ -778,7 +779,7 @@ marketplaceRouter.post('/marketplace/vo/:id/units', requireRole(['admin', 'opera
     const result = await query(`SELECT * FROM moveadvisor_marketplace_vo_units WHERE id = $1`, [id]);
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'unit_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'unit_create_failed', err);
   }
 });
 
@@ -817,7 +818,7 @@ marketplaceRouter.patch('/marketplace/vo/units/:unitId', requireRole(['admin', '
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'unit_not_found' }); return; }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'unit_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'unit_update_failed', err);
   }
 });
 
@@ -829,7 +830,7 @@ marketplaceRouter.delete('/marketplace/vo/units/:unitId', requireRole(['admin', 
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'unit_not_found' }); return; }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'unit_delete_failed', detail: (err as Error).message });
+    falloInterno(res, 'unit_delete_failed', err);
   }
 });
 
@@ -1040,7 +1041,7 @@ marketplaceRouter.get('/marketplace/particulares', requireRole(['admin', 'suppor
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'particulares_failed', detail: (err as Error).message });
+    falloInterno(res, 'particulares_failed', err);
   }
 });
 
@@ -1058,7 +1059,7 @@ marketplaceRouter.get('/marketplace/particulares/filter-options', requireRole(['
     ]);
     res.json({ ok: true, data: { fuels, colors, transmissions, years } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'particulares_filter_options_failed', detail: (err as Error).message });
+    falloInterno(res, 'particulares_filter_options_failed', err);
   }
 });
 
@@ -1113,7 +1114,7 @@ marketplaceRouter.patch('/marketplace/particulares/:vehicleId/state', requireRol
 
     res.json({ ok: true, vehicleId, state, isListed });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'db_error', detail: (err as Error).message });
+    falloInterno(res, 'db_error', err);
   }
 });
 
@@ -1154,7 +1155,7 @@ marketplaceRouter.patch('/marketplace/particulares/:id', requireRole(['admin', '
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'vehicle_not_found' }); return; }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'particulares_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'particulares_update_failed', err);
   }
 });
 
@@ -1168,6 +1169,6 @@ marketplaceRouter.get('/marketplace/brands', requireRole(['admin', 'support', 'o
     );
     res.json({ ok: true, data: result.rows.map((r) => (r as { brand: string }).brand) });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'brands_failed', detail: (err as Error).message });
+    falloInterno(res, 'brands_failed', err);
   }
 });

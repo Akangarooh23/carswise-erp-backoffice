@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const workshopsRouter = Router();
 
@@ -41,7 +42,7 @@ workshopsRouter.get('/workshops', requireRole(['admin', 'support', 'operations',
     );
     res.json({ ok: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshops_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshops_list_failed', err);
   }
 });
 
@@ -67,7 +68,7 @@ workshopsRouter.get('/workshops/:id', requireRole(['admin', 'support', 'operatio
       res.status(404).json({ ok: false, error: 'no_encontrado' });
       return;
     }
-    res.status(500).json({ ok: false, error: 'workshop_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_get_failed', err);
   }
 });
 
@@ -99,7 +100,7 @@ workshopsRouter.post('/workshops', requireRole(['admin', 'operations']), async (
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshop_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_create_failed', err);
   }
 });
 
@@ -128,7 +129,7 @@ workshopsRouter.patch('/workshops/:id', requireRole(['admin', 'operations']), as
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshop_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_update_failed', err);
   }
 });
 
@@ -137,6 +138,6 @@ workshopsRouter.delete('/workshops/:id', requireRole(['admin']), async (req, res
     await query(`UPDATE erp_workshops SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshop_delete_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_delete_failed', err);
   }
 });

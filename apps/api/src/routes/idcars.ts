@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
+import { falloInterno } from '../lib/fallos.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -91,7 +92,7 @@ idcarsRouter.get('/idcars', requireRole(['admin', 'support', 'operations', 'sale
       meta: { total: (total as { rows: { total: number }[] }).rows[0]?.total ?? 0, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcars_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcars_list_failed', err);
   }
 });
 
@@ -111,7 +112,7 @@ idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', '
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcar_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcar_get_failed', err);
   }
 });
 
@@ -251,7 +252,7 @@ idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operatio
 
     res.json({ ok: true, data: allFiles });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcar_files_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcar_files_failed', err);
   }
 });
 
@@ -313,7 +314,7 @@ idcarsRouter.post('/idcars/:id/files', requireRole(['admin', 'operations', 'supp
     }
     res.status(201).json({ ok: true, data: inserted.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'file_upload_failed', detail: (err as Error).message });
+    falloInterno(res, 'file_upload_failed', err);
   }
 });
 
@@ -326,7 +327,7 @@ idcarsRouter.delete('/idcars/:id/files/:fileId', requireRole(['admin', 'operatio
     await query(`DELETE FROM ${table} WHERE ${idCol} = $1 AND vehicle_id = $2`, [req.params.fileId, req.params.id]);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'file_delete_failed', detail: (err as Error).message });
+    falloInterno(res, 'file_delete_failed', err);
   }
 });
 
@@ -372,7 +373,7 @@ idcarsRouter.post('/idcars/:id/migrate-to-storage', requireRole(['admin', 'opera
     const migrated = results.filter((r) => r.status === 'fulfilled').length;
     res.json({ ok: true, total: toMigrate.length, migrated });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'migrate_failed', detail: (err as Error).message });
+    falloInterno(res, 'migrate_failed', err);
   }
 });
 
@@ -469,7 +470,7 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
 
     res.json({ ok: true, offer_id: offerId });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcar_publish_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcar_publish_failed', err);
   }
 });
 
@@ -498,7 +499,7 @@ idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (r
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'idcar_not_found' }); return; }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcar_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcar_update_failed', err);
   }
 });
 
@@ -516,7 +517,7 @@ idcarsRouter.patch('/idcars/:id/photos/reorder', requireRole(['admin', 'operatio
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'reorder_failed', detail: (err as Error).message });
+    falloInterno(res, 'reorder_failed', err);
   }
 });
 
@@ -552,7 +553,7 @@ idcarsRouter.patch('/idcars/:id/primary-photo', requireRole(['admin', 'support',
 
     res.json({ ok: true, updated: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'primary_photo_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'primary_photo_update_failed', err);
   }
 });
 
@@ -596,6 +597,6 @@ idcarsRouter.get('/idcars/stats/summary', requireRole(['admin', 'operations']), 
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'idcars_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'idcars_stats_failed', err);
   }
 });

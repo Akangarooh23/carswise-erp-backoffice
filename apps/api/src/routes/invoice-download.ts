@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { buildInvoicePdf, generateAndStoreInvoicePdf, nextInvoiceNumber, type InvoiceData } from '../services/invoice-pdf.js';
 import { enviar, plantilla, parrafo, esc, MARCA } from '../lib/correo.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const invoiceDownloadRouter = Router();
 
@@ -103,7 +104,7 @@ invoiceDownloadRouter.get(
         sendInvoiceEmail(String(inv.customer_email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
+      falloInterno(res, 'pdf_failed', err);
     }
   }
 );
@@ -214,7 +215,7 @@ invoiceDownloadRouter.get(
         sendInvoiceEmail(String(inv.email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
+      falloInterno(res, 'pdf_failed', err);
     }
   }
 );
@@ -311,7 +312,7 @@ invoiceDownloadRouter.get(
         sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf).catch(() => {});
       }
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'pdf_failed', detail: (err as Error).message });
+      falloInterno(res, 'pdf_failed', err);
     }
   }
 );
@@ -360,7 +361,7 @@ invoiceDownloadRouter.post(
 
       res.status(201).json({ ok: true, data: { id: rectId, amount: -origAmount } });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'rectify_failed', detail: (err as Error).message });
+      falloInterno(res, 'rectify_failed', err);
     }
   }
 );

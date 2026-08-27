@@ -7,6 +7,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 export const leadsRouter = Router();
 
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
+import { falloInterno } from '../lib/fallos.js';
 
 /** El panel del cliente, a donde apuntan casi todos los correos. */
 const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
@@ -172,7 +173,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'leads_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'leads_list_failed', err);
   }
 });
 
@@ -197,7 +198,7 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations', '
     `);
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'leads_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'leads_stats_failed', err);
   }
 });
 
@@ -222,7 +223,7 @@ leadsRouter.get('/leads/:id/history', requireRole(['admin', 'support', 'operatio
     );
     res.json({ ok: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'history_fetch_failed', detail: (err as Error).message });
+    falloInterno(res, 'history_fetch_failed', err);
   }
 });
 
@@ -314,7 +315,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
         .catch((e: Error) => console.error('[leads] descartado email error:', e.message));
     }
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'lead_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'lead_update_failed', err);
   }
 });
 
@@ -501,6 +502,6 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
 
     res.json({ ok: true, data: updated.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'notify_failed', detail: (err as Error).message });
+    falloInterno(res, 'notify_failed', err);
   }
 });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireRole } from "../middleware/auth.js";
-import { importMarketVoOffersRows, listMarketOffersTable, listMarketVoOffers, listMarketVoOffersTable, updateMarketTableRow } from "../data/store.js";
+import { importMarketVoOffersRows, listMarketOffersTable, listMarketVoOffers, listMarketVoOffersTable, updateMarketTableRow } from "../data/market.js";
 
 export const marketRouter = Router();
 

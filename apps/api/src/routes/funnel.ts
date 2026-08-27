@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const funnelRouter = Router();
 
@@ -98,7 +99,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
 
     res.json({ ok: true, data: { days, date, funnel, utmSources: utmSources.rows, utmCampaigns: utmCampaigns.rows, topOffers: topOffers.rows } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'funnel_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'funnel_stats_failed', err);
   }
 });
 
@@ -160,7 +161,7 @@ funnelRouter.get('/funnel/sessions', requireRole(['admin', 'sales', 'operations'
 
     res.json({ ok: true, data: rows.rows, meta: { total: Number(countResult.rows[0].total), page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'funnel_sessions_failed', detail: (err as Error).message });
+    falloInterno(res, 'funnel_sessions_failed', err);
   }
 });
 
@@ -205,7 +206,7 @@ funnelRouter.get('/funnel/events', requireRole(['admin', 'sales', 'operations'])
 
     res.json({ ok: true, data: rows.rows, meta: { total: countResult.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'funnel_events_failed', detail: (err as Error).message });
+    falloInterno(res, 'funnel_events_failed', err);
   }
 });
 
@@ -244,7 +245,7 @@ funnelRouter.get('/funnel/daily', requireRole(['admin', 'sales', 'operations']),
     );
     res.json({ ok: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'funnel_daily_failed', detail: (err as Error).message });
+    falloInterno(res, 'funnel_daily_failed', err);
   }
 });
 
@@ -338,7 +339,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
       meta: { total: s.total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'callqueue_failed', detail: (err as Error).message });
+    falloInterno(res, 'callqueue_failed', err);
   }
 });
 
@@ -364,6 +365,6 @@ funnelRouter.post('/funnel/outreach', requireRole(['admin', 'sales', 'operations
     );
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'outreach_save_failed', detail: (err as Error).message });
+    falloInterno(res, 'outreach_save_failed', err);
   }
 });

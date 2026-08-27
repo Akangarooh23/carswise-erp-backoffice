@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const billingRouter = Router();
 
@@ -19,7 +20,7 @@ billingRouter.get('/billing/summary', requireRole(['admin', 'operations']), asyn
     `);
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_summary_failed', detail: (err as Error).message });
+    falloInterno(res, 'billing_summary_failed', err);
   }
 });
 
@@ -166,7 +167,7 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 
     res.json({ ok: true, data: paginated, meta: { total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_invoices_failed', detail: (err as Error).message });
+    falloInterno(res, 'billing_invoices_failed', err);
   }
 });
 
@@ -227,7 +228,7 @@ billingRouter.get('/billing/invoices/stats', requireRole(['admin', 'operations']
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'billing_stats_failed', err);
   }
 });
 
@@ -413,7 +414,7 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
     res.setHeader('Content-Disposition', `attachment; filename="facturas-clientes-${today}.csv"`);
     res.send('﻿' + csv); // BOM for Spanish Excel
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'billing_export_failed', detail: (err as Error).message });
+    falloInterno(res, 'billing_export_failed', err);
   }
 });
 
@@ -439,7 +440,7 @@ billingRouter.get('/billing/free-users', requireRole(['admin', 'operations']), a
       meta: { total: (total.rows[0] as { total: number }).total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'free_users_failed', detail: (err as Error).message });
+    falloInterno(res, 'free_users_failed', err);
   }
 });
 

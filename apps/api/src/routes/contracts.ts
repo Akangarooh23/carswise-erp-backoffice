@@ -8,6 +8,7 @@ export const contractsRouter = Router();
 
 import { enviar, plantilla, parrafo, datos, boton, esc, MARCA } from '../lib/correo.js';
 import { prefijoAnual, conNumero, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
+import { falloInterno } from '../lib/fallos.js';
 
 /** Lo que el cliente necesita saber: nunca se desvia a un buzon de pruebas. */
 const enviarContrato = (to: string, subject: string, html: string) =>
@@ -178,7 +179,7 @@ contractsRouter.get('/contracts', requireRole(['admin', 'support', 'operations',
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'contracts_fetch_failed', detail: (err as Error).message });
+    falloInterno(res, 'contracts_fetch_failed', err);
   }
 });
 
@@ -321,7 +322,7 @@ contractsRouter.post('/contracts/renting', requireRole(['admin', 'support', 'ope
 
     res.status(201).json({ ok: true, data: { id: contractId, idcar_id: newId, end_date } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'contract_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'contract_create_failed', err);
   }
 });
 
@@ -358,6 +359,6 @@ contractsRouter.patch('/contracts/renting/:id', requireRole(['admin', 'support',
 
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'contract_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'contract_update_failed', err);
   }
 });

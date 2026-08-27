@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const appointmentsRouter = Router();
 
@@ -47,7 +48,7 @@ appointmentsRouter.get('/appointments', requireRole(['admin', 'support', 'operat
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'appointments_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'appointments_list_failed', err);
   }
 });
 
@@ -72,7 +73,7 @@ appointmentsRouter.get('/appointments/:id', requireRole(['admin', 'support', 'op
       res.status(404).json({ ok: false, error: 'no_encontrado' });
       return;
     }
-    res.status(500).json({ ok: false, error: 'appointment_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'appointment_get_failed', err);
   }
 });
 
@@ -100,7 +101,7 @@ appointmentsRouter.post('/appointments', requireRole(['admin', 'support', 'opera
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'appointment_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'appointment_create_failed', err);
   }
 });
 
@@ -139,6 +140,6 @@ appointmentsRouter.patch('/appointments/:id', requireRole(['admin', 'support', '
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'appointment_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'appointment_update_failed', err);
   }
 });

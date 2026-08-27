@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const workshopLocationsRouter = Router();
 
@@ -72,7 +73,7 @@ workshopLocationsRouter.get('/workshop-locations', requireRole(['admin', 'suppor
       meta: { total: countResult.rows[0].total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshop_locations_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_locations_list_failed', err);
   }
 });
 
@@ -98,7 +99,7 @@ workshopLocationsRouter.get('/workshop-locations/:id', requireRole(['admin', 'su
       res.status(404).json({ ok: false, error: 'no_encontrado' });
       return;
     }
-    res.status(500).json({ ok: false, error: 'workshop_location_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_location_get_failed', err);
   }
 });
 
@@ -150,6 +151,6 @@ workshopLocationsRouter.patch('/workshop-locations/:id', requireRole(['admin', '
     }
     res.json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'workshop_location_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'workshop_location_update_failed', err);
   }
 });

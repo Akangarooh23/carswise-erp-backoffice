@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const analyticsRouter = Router();
 
@@ -93,6 +94,6 @@ analyticsRouter.get('/analytics/marketing', requireRole(['admin', 'operations', 
       meta: { days },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'analytics_failed', detail: (err as Error).message });
+    falloInterno(res, 'analytics_failed', err);
   }
 });

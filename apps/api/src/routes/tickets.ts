@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const ticketsRouter = Router();
 
@@ -55,7 +56,7 @@ ticketsRouter.get('/tickets', requireRole(['admin', 'support', 'operations', 'sa
     ]);
     res.json({ ok: true, data: rows.rows, meta: { total: total.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'tickets_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'tickets_list_failed', err);
   }
 });
 
@@ -80,7 +81,7 @@ ticketsRouter.get('/tickets/:id', requireRole(['admin', 'support', 'operations',
     }
     res.json({ ok: true, data: { ...ticket.rows[0], events: events.rows } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'ticket_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'ticket_get_failed', err);
   }
 });
 
@@ -153,7 +154,7 @@ ticketsRouter.post('/tickets', requireRole(['admin', 'support', 'operations']), 
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'ticket_create_failed', detail: (err as Error).message });
+    falloInterno(res, 'ticket_create_failed', err);
   }
 });
 
@@ -211,6 +212,6 @@ ticketsRouter.patch('/tickets/:id', requireRole(['admin', 'support', 'operations
     const events  = await query(`SELECT * FROM erp_ticket_events WHERE ticket_id = $1 ORDER BY event_at`, [req.params.id]);
     res.json({ ok: true, data: { ...updated.rows[0], events: events.rows } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'ticket_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'ticket_update_failed', err);
   }
 });

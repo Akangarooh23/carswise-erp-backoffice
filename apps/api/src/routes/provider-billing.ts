@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
+import { falloInterno } from '../lib/fallos.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
@@ -56,7 +57,7 @@ providerBillingRouter.get('/provider-billing/summary', requireRole(['admin', 'op
     `);
     res.json({ ok: true, data: r.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'summary_failed', detail: (err as Error).message });
+    falloInterno(res, 'summary_failed', err);
   }
 });
 
@@ -90,7 +91,7 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
       meta: { total: (total.rows[0] as { total: number }).total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'list_failed', detail: (err as Error).message });
+    falloInterno(res, 'list_failed', err);
   }
 });
 
@@ -125,7 +126,7 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
     });
     res.status(201).json({ ok: true, data: { id, pdf_url } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'create_failed', detail: (err as Error).message });
+    falloInterno(res, 'create_failed', err);
   }
 });
 
@@ -150,7 +151,7 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/pdf', requireRole(['
     );
     res.json({ ok: true, data: { pdf_url } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'pdf_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'pdf_update_failed', err);
   }
 });
 
@@ -181,7 +182,7 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
       meta: { total: (total.rows[0] as { total: number }).total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'received_failed', detail: (err as Error).message });
+    falloInterno(res, 'received_failed', err);
   }
 });
 
@@ -206,7 +207,7 @@ providerBillingRouter.patch('/provider-billing/invoices/:id', requireRole(['admi
     if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
     res.json({ ok: true, data: r.rows[0] });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'update_failed', detail: (err as Error).message });
+    falloInterno(res, 'update_failed', err);
   }
 });
 
@@ -229,7 +230,7 @@ providerBillingRouter.get('/provider-billing/pending-commissions', requireRole([
     `);
     res.json({ ok: true, data: r.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'pending_failed', detail: (err as Error).message });
+    falloInterno(res, 'pending_failed', err);
   }
 });
 
@@ -278,6 +279,6 @@ providerBillingRouter.post('/provider-billing/commissions', requireRole(['admin'
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: invoiceAmount, provider_name: providerName } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'create_failed', detail: (err as Error).message });
+    falloInterno(res, 'create_failed', err);
   }
 });

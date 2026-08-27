@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const dashboardRouter = Router();
 
@@ -102,6 +103,6 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'dashboard_stats_failed', detail: (err as Error).message });
+    falloInterno(res, 'dashboard_stats_failed', err);
   }
 });

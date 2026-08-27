@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const usersRouter = Router();
 
@@ -69,7 +70,7 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
       meta: { total: countResult.rows[0].total, page, limit },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'users_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'users_list_failed', err);
   }
 });
 
@@ -140,7 +141,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
       data: { ...user.rows[0], appointments: appointments.rows, tickets: tickets.rows, leads: leads.rows, funnelEvents: funnelEvents.rows },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'user_get_failed', detail: (err as Error).message });
+    falloInterno(res, 'user_get_failed', err);
   }
 });
 
@@ -190,7 +191,7 @@ usersRouter.get('/consentimientos', requireRole(['admin', 'support', 'operations
 
     res.json({ ok: true, data: rows.rows, meta: { total: countResult.rows[0].total, page, limit } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'consentimientos_list_failed', detail: (err as Error).message });
+    falloInterno(res, 'consentimientos_list_failed', err);
   }
 });
 
@@ -218,7 +219,7 @@ usersRouter.patch('/users/:id/status', requireRole(['admin', 'support', 'operati
     );
     res.json({ ok: true, data: { id: u.id, status: parsed.data } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: 'user_status_update_failed', detail: (err as Error).message });
+    falloInterno(res, 'user_status_update_failed', err);
   }
 });
 
