@@ -105,6 +105,35 @@ export function correoDeConfirmacion(r: Reserva): { subject: string; html: strin
   };
 }
 
+/**
+ * Deja constancia de un paso de la visita.
+ *
+ * El estado dice dónde está; esto dice cómo ha llegado. Sin ello, quien abre una
+ * cita no sabe si ya se llamó al concesionario, y acaba llamando dos veces o
+ * ninguna.
+ *
+ * No tumba la operación si falla: perder una línea del rastro es malo, pero
+ * mucho menos que dejar una cita a medio confirmar por no poder escribirla.
+ */
+async function apunta(
+  bookingId: string,
+  evento: string,
+  actor: string,
+  datos: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    await query(
+      `INSERT INTO visit_booking_events (booking_id, evento, actor, datos) VALUES ($1,$2,$3,$4)`,
+      [bookingId, evento, actor || 'sistema', JSON.stringify(datos)]
+    );
+  } catch (e) {
+    console.error('[visitas] no se ha podido apuntar el paso', evento, (e as Error).message);
+  }
+}
+
+/** Quién está haciendo esto, para el rastro. */
+const quien = (req: { actor?: { sub?: string } }) => req.actor?.sub ?? 'desconocido';
+
 const fechaLarga = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 const hora = (iso: string) =>
@@ -263,6 +292,7 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_pendiente' });
 
     const reserva = r.rows[0] as Reserva;
+    await apunta(bookingId, 'confirmada', quien(req as never));
     let avisado = true;
     let fallo = '';
     try {
@@ -367,6 +397,7 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
     );
 
     const nueva = movida.rows[0] as Reserva;
+    await apunta(bookingId, 'movida', quien(req as never), { de: horaAnterior, a: inicio.toISOString() });
     let avisado = true;
     let fallo = '';
     try {
@@ -397,6 +428,46 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
   }
 });
 
+/**
+ * Los pasos que se pueden apuntar a mano desde la Agenda.
+ *
+ * Confirmar, mover y cancelar dejan su rastro solos porque cambian algo. Estos
+ * dos no cambian nada en la base: son cosas que ha hecho una persona por
+ * teléfono, y si no se apuntan no existen para nadie más.
+ */
+const PASOS_A_MANO: Record<string, true> = {
+  concesionario_contactado: true,
+  horas_propuestas: true,
+  concesionario_avisado: true,
+};
+
+visitsRouter.post('/visit-bookings/:bookingId/paso', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const evento = String(req.body?.evento ?? '').trim();
+  if (!PASOS_A_MANO[evento]) return res.status(400).json({ ok: false, error: 'ese paso no se apunta a mano' });
+
+  const existe = await query(`SELECT id FROM vehicle_visit_bookings WHERE id = $1`, [bookingId]);
+  if (!existe.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+
+  const nota = String(req.body?.nota ?? '').trim().slice(0, 500);
+  await apunta(bookingId, evento, quien(req as never), nota ? { nota } : {});
+  return res.json({ ok: true });
+});
+
+/** El rastro de una visita, en orden. */
+visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (req, res) => {
+  try {
+    const r = await query(
+      `SELECT evento, actor, datos, created_at
+         FROM visit_booking_events WHERE booking_id = $1 ORDER BY created_at ASC`,
+      [req.params.bookingId]
+    );
+    return res.json({ ok: true, pasos: r.rows });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
   const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
@@ -409,6 +480,7 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
     );
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'Not found' });
     await query(`UPDATE vehicle_visit_availability SET status = 'available' WHERE id = $1`, [r.rows[0].availability_id]);
+    await apunta(bookingId, 'cancelada', quien(req as never), motivo ? { motivo } : {});
 
     // El correo va después de liberar el hueco y no puede tumbar la cancelación:
     // ya está hecha. Pero sí se cuenta si salió, porque una cita cancelada de la
