@@ -11,3 +11,6 @@ coverage
 # del ERP con datos reales de clientes. Ninguna de las dos cosas va al repo.
 recorre-erp.js
 capturas-erp/
+
+# Cache del compilador: cambia en cada compilacion y ensucia el git status.
+*.tsbuildinfo
