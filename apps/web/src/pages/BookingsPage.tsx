@@ -132,6 +132,9 @@ export default function BookingsPage() {
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [confirmar, setConfirmar] = useState<Booking | null>(null);
+  const [donde, setDonde] = useState('');
+  const [preguntarPor, setPreguntarPor] = useState('');
   const [proponer, setProponer] = useState<Booking | null>(null);
   const [horas, setHoras] = useState<{ dia: string; hora: string }[]>([{ dia: '', hora: '' }]);
   const [proponiendo, setProponiendo] = useState(false);
@@ -228,10 +231,16 @@ export default function BookingsPage() {
     load();
   }
 
-  async function confirmar(b: Booking) {
+  async function confirmarVisita(b: Booking) {
     setConfirmando(b.id);
-    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${b.id}/confirm`, {});
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${b.id}/confirm`, {
+      donde: donde.trim(),
+      preguntarPor: preguntarPor.trim(),
+    });
     setConfirmando(null);
+    setConfirmar(null);
+    setDonde('');
+    setPreguntarPor('');
     if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido confirmar la visita.' }); return; }
     setResultado(
       r.data?.avisado
@@ -329,7 +338,11 @@ export default function BookingsPage() {
                 {/* Los tres finales de la llamada al concesionario: que sí, que
                     no a esa hora pero sí a otras, o que ya no hay coche. */}
                 <div className="flex gap-2 shrink-0 flex-wrap">
-                  <Boton tam="sm" variante="acento" cargando={confirmando === b.id} onClick={() => confirmar(b)}>
+                  {/* Abre el diálogo en vez de confirmar de golpe: al cliente
+                      hay que decirle dónde va y por quién preguntar, y quien
+                      acaba de hablar con el concesionario lo tiene delante. */}
+                  <Boton tam="sm" variante="acento"
+                         onClick={() => { setConfirmar(b); setDonde(''); setPreguntarPor(''); }}>
                     Puede
                   </Boton>
                   <Boton tam="sm" variante="secundario"
@@ -365,6 +378,49 @@ export default function BookingsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {confirmar && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setConfirmar(null)} role="dialog" aria-modal="true" aria-label="Confirmar la visita">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Confirmar la visita</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                {confirmar.buyer_name || confirmar.buyer_email} · {fmtDate(confirmar.starts_at)} a las {fmtTime(confirmar.starts_at)}
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[13px] text-brand-400">
+                Estos dos datos van en el correo del cliente y en sus recordatorios.
+                Los tienes de la llamada al concesionario.
+              </p>
+              <label className="block text-xs font-medium text-brand-500">
+                Dónde es
+                <input value={donde} onChange={(e) => setDonde(e.target.value)} maxLength={200}
+                       placeholder="Calle y número, o el nombre del concesionario"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <label className="block text-xs font-medium text-brand-500">
+                Por quién preguntar
+                <input value={preguntarPor} onChange={(e) => setPreguntarPor(e.target.value)} maxLength={120}
+                       placeholder="Nombre de quien le atiende"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <p className="text-[12px] text-brand-300">
+                Si los dejas vacíos la cita se confirma igual, y al cliente se le dice que le
+                confirmaremos la dirección antes de la visita.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setConfirmar(null)}>Volver</Boton>
+              <Boton variante="acento" cargando={confirmando === confirmar.id} onClick={() => confirmar && confirmarVisita(confirmar)}>
+                Confirmar y avisar
+              </Boton>
+            </div>
+          </div>
         </div>
       )}
 

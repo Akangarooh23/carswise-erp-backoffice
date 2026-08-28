@@ -88,7 +88,11 @@ export function correoDeCambioDeHora(r: Reserva, antes: string, enlace: string):
  *
  * Separado del envío para poder leerlo sin mandarlo, igual que el de cancelar.
  */
-export function correoDeConfirmacion(r: Reserva): { subject: string; html: string } {
+export function correoDeConfirmacion(
+  r: Reserva,
+  donde = '',
+  preguntarPor = ''
+): { subject: string; html: string } {
   const coche = r.vehicle_title || 'el vehículo';
   return {
     subject: `Tu visita está confirmada — ${coche}`,
@@ -96,11 +100,19 @@ export function correoDeConfirmacion(r: Reserva): { subject: string; html: strin
       titulo: 'Tu visita está confirmada',
       cuerpo:
         parrafo(`Hola${r.buyer_name ? ` ${esc(r.buyer_name)}` : ''}, ya está: te esperamos.`) +
+        // La dirección y por quién preguntar son lo que necesita para
+        // presentarse. `datos()` no pinta las filas vacías, así que si no se han
+        // puesto no queda un hueco con un guion.
         datos([
           ['Vehículo', esc(coche)],
           ['Día', fechaLarga(r.starts_at)],
           ['Hora', hora(r.starts_at)],
+          ['Dónde', esc(donde)],
+          ['Pregunta por', esc(preguntarPor)],
         ]) +
+        (donde
+          ? ''
+          : parrafo('Te confirmaremos la dirección exacta antes de la visita.', 14)) +
         parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, responde a este correo y lo movemos.', 14),
     }),
   };
@@ -166,10 +178,22 @@ async function apunta(
 /** Quién está haciendo esto, para el rastro. */
 const quien = (req: { actor?: { sub?: string } }) => req.actor?.sub ?? 'desconocido';
 
+/**
+ * La fecha y la hora, siempre en la del cliente.
+ *
+ * Sin `timeZone` se usa la del servidor, y en Vercel es UTC: a una visita de las
+ * 18:00 el correo le ponía las 16:00. El ERP la enseñaba bien porque lo pinta el
+ * navegador, así que las dos pantallas decían cosas distintas y solo se veía
+ * mirando el correo que le llega al cliente.
+ *
+ * Todos los clientes están en España; el día que no sea así, esto sale de la
+ * oferta y no de una constante.
+ */
+const ZONA = 'Europe/Madrid';
 const fechaLarga = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ZONA });
 const hora = (iso: string) =>
-  new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: ZONA });
 
 /**
  * El correo que se le manda al cliente cuando le cancelan la visita.
@@ -311,12 +335,19 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
  */
 visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
+  // Dónde es y por quién preguntar. El trabajador acaba de hablar con el
+  // concesionario, así que los tiene delante; se guardan porque los necesitan
+  // también los recordatorios y quien abra la cita después.
+  const donde        = String(req.body?.donde ?? '').trim().slice(0, 200);
+  const preguntarPor = String(req.body?.preguntarPor ?? '').trim().slice(0, 120);
   try {
     const r = await query(
-      `UPDATE vehicle_visit_bookings SET status = 'confirmed', updated_at = NOW()
-       WHERE id = $1 AND status = 'pending'
-       RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
-      [bookingId]
+      `UPDATE vehicle_visit_bookings
+          SET status = 'confirmed', updated_at = NOW(),
+              meeting_place = $2, meeting_contact = $3
+        WHERE id = $1 AND status = 'pending'
+        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
+      [bookingId, donde, preguntarPor]
     );
     // Si no había ninguna pendiente con ese id, o ya estaba confirmada, no se
     // vuelve a escribir al cliente: recibir dos veces la misma confirmación
@@ -324,12 +355,12 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_pendiente' });
 
     const reserva = r.rows[0] as Reserva;
-    await apunta(bookingId, 'confirmada', quien(req as never));
+    await apunta(bookingId, 'confirmada', quien(req as never), donde || preguntarPor ? { donde, preguntarPor } : {});
     let avisado = true;
     let fallo = '';
     try {
       if (!reserva.buyer_email) throw new Error('la reserva no tiene correo del cliente');
-      const { subject, html } = correoDeConfirmacion(reserva);
+      const { subject, html } = correoDeConfirmacion(reserva, donde, preguntarPor);
       await enviar({
         to: reserva.buyer_email,
         subject,
@@ -346,7 +377,7 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
       console.error('[visitas] no se ha podido confirmar al cliente:', fallo);
     }
 
-    return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
+    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -467,7 +498,7 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
       console.error('[visitas] no se ha podido avisar del cambio de hora:', fallo);
     }
 
-    return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
+    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -600,7 +631,7 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
       console.error('[visitas] no se ha podido avisar de la cancelación:', fallo);
     }
 
-    return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
+    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
