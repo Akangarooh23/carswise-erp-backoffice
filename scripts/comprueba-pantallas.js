@@ -98,19 +98,32 @@ function elementos(fuente) {
   return fuera;
 }
 
-const antes = new Map();
-for (const f of ficherosDe(BASE)) antes.set(pantallaDe(f), elementos(leer(BASE, f)));
+/**
+ * Una pantalla puede estar repartida en varios ficheros: lo que era
+ * MarketplacePage es ahora esa página más los suyos en marketplace/. Todos
+ * cuentan como la misma pantalla.
+ *
+ * El plegado tiene que hacerse **en los dos lados**. Se aplicaba solo al nuevo,
+ * y funcionó mientras producción tenía la página entera en un fichero; en cuanto
+ * el reparto llegó a master, los trozos aparecían como pantallas sueltas en el
+ * lado viejo y el comprobador anunciaba siete pantallas perdidas que estaban
+ * todas ahí.
+ */
+const clavePantalla = (f) => (f.includes('/marketplace/') ? 'MarketplacePage' : pantallaDe(f));
 
-// Ahora las pantallas pueden estar repartidas en varios ficheros: lo que era
-// MarketplacePage es ahora esa página más los suyos en marketplace/.
-const ahora = new Map();
-for (const f of ficherosDe(null)) {
-  const nombre = pantallaDe(f);
-  const clave = f.includes('/marketplace/') ? 'MarketplacePage' : nombre;
-  const acc = ahora.get(clave) || new Set();
-  for (const e of elementos(leer(null, f))) acc.add(e);
-  ahora.set(clave, acc);
+function porPantalla(rama) {
+  const mapa = new Map();
+  for (const f of ficherosDe(rama)) {
+    const clave = clavePantalla(f);
+    const acc = mapa.get(clave) || new Set();
+    for (const e of elementos(leer(rama, f))) acc.add(e);
+    mapa.set(clave, acc);
+  }
+  return mapa;
 }
+
+const antes = porPantalla(BASE);
+const ahora = porPantalla(null);
 
 let perdidas = 0;
 console.log(`  Comparando las pantallas con ${BASE}\n`);
