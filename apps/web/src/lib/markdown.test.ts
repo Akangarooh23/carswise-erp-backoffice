@@ -119,3 +119,60 @@ describe('el documento de verdad', () => {
     ]);
   });
 });
+
+describe('el flujo de cajas', () => {
+  const doc = [
+    ':::flujo',
+    'cliente: Abre una oferta',
+    'sistema: Guarda la reserva **pendiente**',
+    '? ¿Puede ese día?',
+    'rama Sí | Confirmar | Le llega el calendario',
+    'rama No | No puede ser | Le llega el motivo',
+    'correo: Recordatorio la víspera',
+    ':::',
+  ].join('\n');
+
+  test('sale como un bloque de flujo, no como párrafos sueltos', () => {
+    const b = interpreta(doc);
+    assert.equal(b.length, 1);
+    assert.equal(b[0].tipo, 'flujo');
+  });
+
+  test('cada paso sabe quién lo hace', () => {
+    const f = interpreta(doc)[0] as { pasos: { tipo: string; actor?: string }[] };
+    assert.deepEqual(f.pasos.map((p) => p.tipo), ['paso', 'paso', 'pregunta', 'ramas', 'paso']);
+    assert.equal(f.pasos[0].actor, 'cliente');
+    assert.equal(f.pasos[4].actor, 'correo');
+  });
+
+  test('las salidas de una pregunta se agrupan, no van sueltas', () => {
+    const f = interpreta(doc)[0] as { pasos: { tipo: string; ramas?: { caso: string; accion: string }[] }[] };
+    const ramas = f.pasos[3].ramas!;
+    assert.equal(ramas.length, 2, 'dos alternativas, no dos pasos seguidos');
+    assert.equal(ramas[0].caso, 'Sí');
+    assert.equal(ramas[0].accion, 'Confirmar');
+  });
+
+  test('la negrita sigue funcionando dentro de una caja', () => {
+    const f = interpreta(doc)[0] as { pasos: { trozos?: { tipo: string }[] }[] };
+    assert.ok(f.pasos[1].trozos!.some((t) => t.tipo === 'fuerte'));
+  });
+
+  test('lo de después del flujo se lee normal', () => {
+    const b = interpreta(doc + '\n\nUn párrafo suelto.');
+    assert.deepEqual(b.map((x) => x.tipo), ['flujo', 'parrafo']);
+  });
+
+  test('una línea sin actor no desaparece', () => {
+    // Mejor que se vea rara a que se pierda sin que nadie se entere.
+    const f = interpreta(':::flujo\nesto no lleva actor\n:::')[0] as { pasos: { actor: string }[] };
+    assert.equal(f.pasos.length, 1);
+    assert.equal(f.pasos[0].actor, 'sistema');
+  });
+
+  test('un flujo sin cerrar no se come el resto del documento', () => {
+    const b = interpreta(':::flujo\ncliente: algo');
+    assert.equal(b.length, 1);
+    assert.equal(b[0].tipo, 'flujo');
+  });
+});

@@ -17,13 +17,24 @@ export type Trozo =
   | { tipo: 'codigo'; texto: string }
   | { tipo: 'enlace'; texto: string; url: string };
 
+/** Quién hace el paso. Da el color de la caja, para verlo de un vistazo. */
+export type Actor = 'cliente' | 'sistema' | 'correo' | 'erp' | 'trabajador';
+
+export type Paso =
+  | { tipo: 'paso'; actor: Actor; trozos: Trozo[] }
+  | { tipo: 'pregunta'; trozos: Trozo[] }
+  | { tipo: 'ramas'; ramas: { caso: string; accion: string; resultado: Trozo[] }[] };
+
 export type Bloque =
   | { tipo: 'titulo'; nivel: 1 | 2 | 3; trozos: Trozo[] }
   | { tipo: 'parrafo'; trozos: Trozo[] }
   | { tipo: 'lista'; puntos: Trozo[][] }
   | { tipo: 'tabla'; cabecera: Trozo[][]; filas: Trozo[][][] }
   | { tipo: 'cita'; trozos: Trozo[] }
+  | { tipo: 'flujo'; pasos: Paso[] }
   | { tipo: 'separador' };
+
+const ACTORES: Actor[] = ['cliente', 'sistema', 'correo', 'erp', 'trabajador'];
 
 /**
  * Parte una línea en trozos con formato.
@@ -90,6 +101,53 @@ export function interpreta(fuente: string): Bloque[] {
     if (!l.trim()) { i++; continue; }
 
     if (/^---+\s*$/.test(l)) { fuera.push({ tipo: 'separador' }); i++; continue; }
+
+    // Un flujo: cajas encadenadas, para ver de un vistazo quién hace qué.
+    //
+    //   :::flujo
+    //   cliente: elige día y hora
+    //   ? ¿puede ese día?
+    //   rama Sí | Confirmar | queda confirmada
+    //   :::
+    if (/^:::\s*flujo\s*$/.test(l.trim())) {
+      i++;
+      const pasos: Paso[] = [];
+      let ramas: { caso: string; accion: string; resultado: Trozo[] }[] = [];
+      const cierraRamas = () => {
+        if (ramas.length) { pasos.push({ tipo: 'ramas', ramas }); ramas = []; }
+      };
+
+      while (i < lineas.length && !/^:::\s*$/.test(lineas[i].trim())) {
+        const linea = lineas[i].trim();
+        i++;
+        if (!linea) continue;
+
+        const rama = /^rama\s+([^|]+)\|([^|]+)\|(.*)$/.exec(linea);
+        if (rama) {
+          ramas.push({ caso: rama[1].trim(), accion: rama[2].trim(), resultado: trozos(rama[3].trim()) });
+          continue;
+        }
+        cierraRamas();
+
+        if (linea.startsWith('?')) {
+          pasos.push({ tipo: 'pregunta', trozos: trozos(linea.replace(/^\?\s*/, '')) });
+          continue;
+        }
+
+        const paso = /^([a-záéíóúñ]+)\s*:\s*(.*)$/i.exec(linea);
+        if (paso && ACTORES.includes(paso[1].toLowerCase() as Actor)) {
+          pasos.push({ tipo: 'paso', actor: paso[1].toLowerCase() as Actor, trozos: trozos(paso[2]) });
+          continue;
+        }
+        // Una línea que no encaja se enseña igual, como paso del sistema: es
+        // mejor que se vea rara a que desaparezca sin que nadie se entere.
+        pasos.push({ tipo: 'paso', actor: 'sistema', trozos: trozos(linea) });
+      }
+      cierraRamas();
+      i++; // el ::: de cierre
+      fuera.push({ tipo: 'flujo', pasos });
+      continue;
+    }
 
     const titulo = /^(#{1,3})\s+(.*)$/.exec(l);
     if (titulo) {

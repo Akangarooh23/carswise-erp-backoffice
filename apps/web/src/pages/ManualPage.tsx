@@ -17,7 +17,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
-import { interpreta, tituloDe, type Bloque, type Trozo } from '../lib/markdown.js';
+import { interpreta, tituloDe, type Bloque, type Trozo, type Paso } from '../lib/markdown.js';
 
 const FICHEROS = import.meta.glob('../../../../docs/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -41,6 +41,80 @@ function Trozos({ trozos }: { trozos: Trozo[] }) {
   );
 }
 
+/**
+ * Quién hace cada paso, y de qué color se ve.
+ *
+ * El color no decora: dice de un vistazo si algo lo hace el cliente, lo hace
+ * solo el sistema, es un correo que sale, o hay una persona detrás. Eso último
+ * es lo que importa al leer un flujo — dónde hace falta alguien.
+ */
+const ACTOR = {
+  cliente:    { rotulo: 'Cliente',    caja: 'bg-blue-50 border-blue-200',       texto: 'text-blue-800' },
+  sistema:    { rotulo: 'Automático', caja: 'bg-brand-50 border-brand-200',     texto: 'text-brand-500' },
+  correo:     { rotulo: 'Correo',     caja: 'bg-violet-50 border-violet-200',   texto: 'text-violet-800' },
+  erp:        { rotulo: 'En el ERP',  caja: 'bg-emerald-50 border-emerald-200', texto: 'text-emerald-800' },
+  trabajador: { rotulo: 'Una persona', caja: 'bg-acento-tenue border-acento',   texto: 'text-acento-texto' },
+} as const;
+
+/** La flecha entre dos cajas. */
+function Flecha() {
+  return (
+    <div className="flex justify-center py-1.5" aria-hidden="true">
+      <svg width="14" height="18" viewBox="0 0 14 18" className="text-brand-300">
+        <path d="M7 0 V13 M2.5 9 L7 13.5 L11.5 9" fill="none" stroke="currentColor" strokeWidth="1.6"
+              strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function Flujo({ pasos }: { pasos: Paso[] }) {
+  return (
+    <div className="my-6 max-w-3xl">
+      {pasos.map((p, i) => (
+        <div key={i}>
+          {i > 0 && <Flecha />}
+
+          {p.tipo === 'paso' && (
+            <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${ACTOR[p.actor].caja}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5 w-20 ${ACTOR[p.actor].texto}`}>
+                {ACTOR[p.actor].rotulo}
+              </span>
+              <span className="text-[14px] text-brand-600 leading-snug"><Trozos trozos={p.trozos} /></span>
+            </div>
+          )}
+
+          {p.tipo === 'pregunta' && (
+            <div className="rounded-xl border border-brand-300 border-dashed bg-white px-4 py-3 text-center">
+              <span className="text-[14px] font-semibold text-brand-600"><Trozos trozos={p.trozos} /></span>
+            </div>
+          )}
+
+          {/* Las salidas van en columnas, una al lado de otra: puestas en fila
+              se leen como pasos seguidos, y son alternativas. */}
+          {p.tipo === 'ramas' && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {p.ramas.map((r, j) => (
+                <div key={j} className="rounded-xl border border-brand-200 bg-white overflow-hidden flex flex-col">
+                  <div className="px-3 py-1.5 bg-brand-50 border-b border-brand-100 text-[11px] font-bold uppercase tracking-wide text-brand-400">
+                    {r.caso}
+                  </div>
+                  <div className="px-3 py-2.5 space-y-1.5">
+                    <div className="inline-block rounded-md bg-acento-tenue border border-acento px-2 py-0.5 text-[12px] font-bold text-acento-texto">
+                      {r.accion}
+                    </div>
+                    <p className="text-[13px] text-brand-500 leading-snug"><Trozos trozos={r.resultado} /></p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Contenido({ bloques }: { bloques: Bloque[] }) {
   return (
     <div className="space-y-4">
@@ -51,6 +125,7 @@ function Contenido({ bloques }: { bloques: Bloque[] }) {
           return <h3 key={i} className="text-[15px] font-bold text-brand-500 mt-6"><Trozos trozos={b.trozos} /></h3>;
         }
         if (b.tipo === 'separador') return <hr key={i} className="border-brand-100 my-8" />;
+        if (b.tipo === 'flujo') return <Flujo key={i} pasos={b.pasos} />;
         if (b.tipo === 'cita') {
           return (
             <blockquote key={i} className="border-l-2 border-acento pl-4 text-[14px] text-brand-400 italic">
