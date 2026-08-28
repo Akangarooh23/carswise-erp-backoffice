@@ -515,6 +515,10 @@ const PASOS_A_MANO: Record<string, true> = {
   concesionario_contactado: true,
   horas_propuestas: true,
   concesionario_avisado: true,
+  // Una nota de quien lleva la cita. Va como paso y no como un campo editable a
+  // propósito: así queda quién la escribió y cuándo, y nadie pisa la de otro al
+  // guardar. Lo que se apunta de una gestión no se corrige, se añade.
+  nota: true,
 };
 
 /**
@@ -584,7 +588,11 @@ visitsRouter.post('/visit-bookings/:bookingId/paso', requireRole(ROLES), async (
   const existe = await query(`SELECT id FROM vehicle_visit_bookings WHERE id = $1`, [bookingId]);
   if (!existe.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
 
-  const nota = String(req.body?.nota ?? '').trim().slice(0, 500);
+  const nota = String(req.body?.nota ?? '').trim().slice(0, 1000);
+  // Una nota vacía no es un paso: sería una línea del rastro que no dice nada.
+  if (evento === 'nota' && !nota) {
+    return res.status(400).json({ ok: false, error: 'la nota está vacía' });
+  }
   await apunta(bookingId, evento, quien(req as never), nota ? { nota } : {});
   return res.json({ ok: true });
 });

@@ -47,6 +47,7 @@ const PASO: Record<string, string> = {
   horas_propuestas:         'El concesionario propone otras horas',
   whatsapp_enviado:         'Mandado al cliente por WhatsApp',
   cliente_respondio:        'El cliente eligió una hora',
+  nota:                     'Nota',
   confirmada:               'Cita confirmada',
   movida:                   'Cita movida a otra hora',
   cancelada:                'Cita cancelada',
@@ -107,6 +108,12 @@ function Rastro({ pasos }: { pasos: Paso[] }) {
               {typeof d.motivo === 'string' && d.motivo && (
                 <span className="block text-brand-400 italic">«{d.motivo}»</span>
               )}
+              {typeof d.nota === 'string' && d.nota && (
+                <span className="block text-brand-500 whitespace-pre-wrap mt-0.5">{d.nota}</span>
+              )}
+              {typeof d.donde === 'string' && d.donde && (
+                <span className="block text-brand-400">{d.donde}</span>
+              )}
               {horas && (
                 <span className="block text-brand-400">
                   {horas.map((h) => `${fmtDate(h)} ${fmtTime(h)}`).join(' · ')}
@@ -141,6 +148,8 @@ export default function BookingsPage() {
   const [mensaje, setMensaje] = useState<{ texto: string; enviado: boolean; motivo?: string; telefono: string } | null>(null);
   const [rastroDe, setRastroDe] = useState<string | null>(null);
   const [rastro, setRastro] = useState<Paso[]>([]);
+  const [notaNueva, setNotaNueva] = useState('');
+  const [guardandoNota, setGuardandoNota] = useState(false);
   const [mover, setMover] = useState<Booking | null>(null);
   const [nuevoDia, setNuevoDia] = useState('');
   const [nuevaHora, setNuevaHora] = useState('');
@@ -187,19 +196,74 @@ export default function BookingsPage() {
     load();
   }
 
-  async function verRastro(b: Booking) {
-    if (rastroDe === b.id) { setRastroDe(null); return; }
+  /**
+   * Trae los pasos y los enseña. Siempre: no alterna.
+   *
+   * Estaba metido dentro de `verRastro`, que alterna, y refrescar después de
+   * guardar una nota cerraba el panel en vez de recargarlo —React no había
+   * aplicado todavía el `setRastroDe(null)` de la línea anterior, así que veía
+   * el panel como abierto y lo cerraba—. La nota se guardaba bien; lo que no se
+   * veía era el resultado, que es la mitad de lo que hace falta.
+   */
+  async function cargaRastro(b: Booking) {
     setRastroDe(b.id);
     setRastro([]);
     const r = await api.get<{ pasos: Paso[] }>(`/visit-bookings/${b.id}/pasos`);
     if (r.ok) setRastro((r as unknown as { pasos: Paso[] }).pasos || r.data?.pasos || []);
   }
 
+  /** Abre o cierra el rastro, según esté. */
+  async function verRastro(b: Booking) {
+    if (rastroDe === b.id) { setRastroDe(null); return; }
+    await cargaRastro(b);
+  }
+
+  /**
+   * Escribir una nota sobre la cita.
+   *
+   * Va al rastro como un paso más, con quién la escribió y cuándo. No es un
+   * campo que se edita: dos personas llevando la misma cita se pisarían el
+   * texto, y lo que se apunta de una gestión no se corrige, se añade.
+   */
+  const NotaNueva = ({ b }: { b: Booking }) => (
+    <div className="mt-3 pt-3 border-t border-brand-100">
+      <label className="block text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
+        Añadir una nota
+      </label>
+      <div className="flex gap-2 items-start">
+        <textarea
+          value={notaNueva}
+          onChange={(e) => setNotaNueva(e.target.value)}
+          rows={2}
+          maxLength={1000}
+          placeholder="Lo que haya que saber: qué dijo el concesionario, si el cliente llamó…"
+          className="flex-1 px-3 py-2 text-[13px] border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
+        />
+        <Boton tam="sm" variante="secundario" cargando={guardandoNota}
+               onClick={() => guardaNota(b)}>
+          Guardar
+        </Boton>
+      </div>
+    </div>
+  );
+
+  async function guardaNota(b: Booking) {
+    const texto = notaNueva.trim();
+    if (!texto) return;
+    setGuardandoNota(true);
+    const r = await api.post(`/visit-bookings/${b.id}/paso`, { evento: 'nota', nota: texto });
+    setGuardandoNota(false);
+    if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido guardar la nota.' }); return; }
+    setNotaNueva('');
+    setRastroDe(null);
+    await verRastro(b);
+  }
+
   async function apuntaPaso(b: Booking, evento: string, texto: string) {
     const r = await api.post(`/visit-bookings/${b.id}/paso`, { evento });
     if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido apuntar.' }); return; }
     setResultado({ mal: false, texto });
-    if (rastroDe === b.id) { setRastroDe(null); await verRastro(b); }
+    if (rastroDe === b.id) await cargaRastro(b);
   }
 
   /** Abre el diálogo ya con el día y la hora que tenía: casi siempre cambia uno de los dos. */
@@ -373,6 +437,7 @@ export default function BookingsPage() {
                         Le he dicho que el cliente va
                       </Boton>
                     </div>
+                    <NotaNueva b={b} />
                   </div>
                 )}
               </li>
@@ -718,13 +783,15 @@ export default function BookingsPage() {
                                 {b.buyer_phone && (
                                   <span className="text-xs text-brand-300">· {b.buyer_phone}</span>
                                 )}
-                                {/* Si nadie publicó horarios para esa oferta, el sistema se los
-                                    inventa —L a V de 9 a 18— y el cliente reserva sobre una hora
-                                    que nadie ha confirmado. Mejor verlo aquí que en la puerta. */}
-                                {b.slot_source === 'auto' && (
-                                  <span title="Hueco generado automáticamente: nadie confirmó ese horario"
+                                {/* Solo mientras está pendiente.
+                                    La marca dice que ese hueco lo generó el sistema —L a V de 9 a
+                                    18— y que nadie había acordado esa hora. En cuanto alguien llama
+                                    al concesionario y la confirma, deja de ser verdad: la hora ya
+                                    está acordada, y seguir avisando de lo contrario confunde. */}
+                                {b.slot_source === 'auto' && b.status === 'pending' && (
+                                  <span title="Este hueco lo generó el sistema; nadie ha acordado aún esa hora"
                                         className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                    horario sin confirmar
+                                    hora propuesta por el sistema
                                   </span>
                                 )}
                               </div>
@@ -795,6 +862,15 @@ export default function BookingsPage() {
                                 >
                                   Otra hora
                                 </button>
+                                {/* También en las confirmadas: lo que pasa después
+                                    de confirmar —que el cliente llame, que cambie
+                                    algo— hay que poder apuntarlo igual. */}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); verRastro(b); }}
+                                  className="px-3 py-1.5 text-xs font-bold text-brand-400 underline underline-offset-2"
+                                >
+                                  {rastroDe === b.id ? 'Ocultar' : 'Ver'} rastro y notas
+                                </button>
                                 <a
                                   href={`mailto:${b.buyer_email}?subject=Tu visita al ${b.vehicle_title || 'vehículo'}`}
                                   onClick={(e) => e.stopPropagation()}
@@ -812,6 +888,13 @@ export default function BookingsPage() {
                                   </a>
                                 )}
                               </div>
+
+                              {rastroDe === b.id && (
+                                <div className="mt-3 rounded-lg border border-brand-200 bg-white px-4 py-3">
+                                  <Rastro pasos={rastro} />
+                                  <NotaNueva b={b} />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

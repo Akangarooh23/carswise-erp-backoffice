@@ -13,7 +13,7 @@ cliente: La ve en **Solicitudes**, como pendiente. Todavía **no** en la campana
 erp: Sale en **Agenda**, arriba, en «visitas por confirmar»
 trabajador: **Llama al concesionario** y le pide la cita
 ? ¿Qué contesta el concesionario?
-rama Que sí | Puede | Queda confirmada. Le llega el calendario y **ya sale en su campana**
+rama Que sí | Puede | Se apunta **dónde es** y **por quién preguntar**. Queda confirmada y le llega el calendario
 rama Otras horas | Propone otras horas | Sigue **pendiente**. Se le preguntan al cliente — abajo
 rama Ya no hay coche | No puede ser | Se cancela con un motivo. Le llega el motivo y un enlace para pedir otra hora
 :::
@@ -45,10 +45,14 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 
 | Botón | Qué hace |
 |---|---|
-| **Puede** | El concesionario ha dicho que sí. La cita queda confirmada, al cliente le llega el correo con el calendario y ya sale en su campana |
+| **Puede** | El concesionario ha dicho que sí. Pide **dónde es** y **por quién preguntar**, y con eso confirma: al cliente le llega el correo con esos datos y el calendario, y ya sale en su campana |
 | **Propone otras horas** | Abre el diálogo para apuntar las que dio. Se le mandan al cliente y la cita **sigue pendiente** hasta que conteste |
 | **No puede ser** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
-| **Ver rastro** | Despliega los pasos dados, y los dos botones para apuntar lo que se hace por teléfono |
+| **Ver rastro** | Despliega los pasos dados, los dos botones para apuntar lo que se hace por teléfono, y el sitio para escribir notas |
+
+Dónde es y por quién preguntar **se guardan**, así que van también en los
+recordatorios. Si se dejan en blanco la cita se confirma igual, y al cliente se
+le dice que le confirmaremos la dirección antes de la visita.
 
 ### En una visita **ya confirmada** (al desplegar la fila)
 
@@ -58,6 +62,13 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 | **Otra hora** | La mueve al día y hora que le digas. Con una casilla para marcar si **la ha elegido el cliente**, porque entonces se le confirma en vez de decirle que se la hemos movido |
 | **Contactar** | Abre tu correo con el asunto puesto. No hace nada automático |
 | **Llamar** | Abre el teléfono del cliente. No hace nada automático |
+| **Ver rastro y notas** | Lo mismo que en las pendientes: lo que pasa después de confirmar también hay que poder apuntarlo |
+
+### La marca «hora propuesta por el sistema»
+
+Solo sale **mientras está pendiente**, y dice que ese hueco lo generó el sistema
+—nadie había acordado esa hora—. En cuanto se confirma deja de salir: la hora ya
+está acordada, y seguir avisando de lo contrario confunde.
 
 El **identificador de la oferta** es un enlace: abre la ficha del coche en el
 marketplace VO, en otra pestaña, para verlo antes de llamar.
@@ -83,16 +94,35 @@ Agenda.
 | El concesionario propone otras horas | Al guardar las horas |
 | Mandado al cliente por WhatsApp | Solo, si salió |
 | El cliente eligió una hora | Al marcar la casilla |
+| **Nota** | El trabajador, escribiéndola |
 | Cita confirmada, movida o cancelada | Solo, con la acción |
 | Avisado el concesionario de que el cliente va | El trabajador, a mano |
 
-Los dos que se apuntan a mano son cosas que pasan por teléfono: **si no se
-apuntan, no existen para nadie más**, y el siguiente que abra la cita vuelve a
-llamar o no llama.
+Los que se apuntan a mano son cosas que pasan por teléfono: **si no se apuntan,
+no existen para nadie más**, y el siguiente que abra la cita vuelve a llamar o no
+llama.
+
+### Las notas
+
+Se escriben en el rastro, y quedan con quién las escribió y cuándo. **No son un
+campo que se edita**: dos personas llevando la misma cita se pisarían el texto, y
+lo que se apunta de una gestión no se corrige, se añade.
 
 Ninguna línea se borra nunca.
 
 ---
+
+## Si el cliente se cambia la hora
+
+Desde el enlace de su correo puede mover su cita él mismo. Cuando lo hace,
+**vuelve a quedar pendiente** y aparece otra vez en el bloque de arriba de la
+Agenda, para aprobarla de nuevo.
+
+Es lo mismo de siempre: la hora nueva la ha elegido él, sobre huecos que tampoco
+ha acordado el concesionario. Toda visita se aprueba, también esta.
+
+Al cliente se le dice que hemos cambiado la hora y que falta confirmarla, no que
+ya está reprogramada, y el cambio queda en el rastro a su nombre.
 
 ## Lo que hay que saber
 
@@ -130,9 +160,13 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 |---|---|---|---|
 | Recién pedida | Pendiente de aprobación | No | Aviso de que la hemos recibido |
 | Le hemos propuesto horas | Pendiente de aprobación | No | El WhatsApp con las opciones |
-| Confirmada | Cita confirmada | Sí | Confirmación con el calendario |
+| **Se ha cambiado la hora él** | Pendiente de aprobación | No | Que hemos cambiado la hora y falta confirmarla |
+| Confirmada | Cita confirmada | Sí | Confirmación con el calendario, dónde es y por quién preguntar |
 | Movida por nosotros | Cita confirmada | Sí | Las dos horas y el calendario nuevo |
 | Cancelada | Cancelado | No | El motivo y un enlace para pedir otra |
+
+En su solicitud tiene un enlace **«Ver el coche»** que abre la ficha del vehículo,
+para no tener que buscarlo otra vez.
 
 La sigue desde su panel y también desde el enlace de su correo, que abre su cita
 sin pedirle contraseña.
