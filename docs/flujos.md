@@ -225,16 +225,37 @@ Cada envío deja su marca —`reminder_sent_at`, `reminder_day_of_sent_at`,
 `followup_sent_at`, añadidas en la migración `018`— y esa marca es la que impide
 repetirlo.
 
-Siguen siendo **dos sistemas de visitas en paralelo**, y unificarlos es una
-migración de datos que no toca ahora:
+---
 
-| | Reserva del marketplace | Cita puesta desde el ERP |
-|---|---|---|
-| Quién la crea | El cliente, con el calendario | Un trabajador, en Leads |
-| Dónde vive | `vehicle_visit_bookings` | `moveadvisor_market_leads` |
-| Dónde se ve | Agenda | Leads |
-| Recordatorios | Sí | Sí |
-| Al hacer el seguimiento | Solo se apunta | Además pasa a «Visita realizada» |
+## Por qué hay tres tablas de citas y no se unifican
+
+Una cita puede vivir en tres sitios:
+
+| | Reserva del marketplace | Cita sobre una solicitud | Entre particulares |
+|---|---|---|---|
+| Quién la crea | El cliente, con el calendario | Un trabajador, en Leads | El vendedor y el comprador |
+| Dónde vive | `vehicle_visit_bookings` | `moveadvisor_market_leads` | `moveadvisor_viewing_appointments` |
+| Cuándo es | `starts_at` | `appointment_date` + `appointment_time` | `confirmed_slot` |
+| Dónde se ve | Agenda | Leads | Vehículos, del vendedor |
+
+**No se unifican, y es a propósito.** `moveadvisor_market_leads` no es una tabla
+de citas: es el embudo comercial —información, renting, importación, preguntas—
+y solo algunas de sus filas tienen fecha. Meterlo en una tabla de reservas sería
+mudar el embudo entero a un sitio que no le corresponde. Un lead es una
+conversación de venta que **puede** tener cita; una reserva **es** una cita, con
+sus testigos y su vida propia.
+
+Lo que sí sobraba era **traducir cada origen a mano en cada pantalla**. Llegó a
+estar escrito cuatro veces, con tres nombres distintos: `cuandoEs` en dos sitios
+—dos funciones diferentes con el mismo nombre—, `comoCita` en el cron y
+`ESTADO_DE_CITA` en el panel. Eso es lo que hacía que cada cosa nueva hubiera que
+escribirla dos veces.
+
+Ahora vive en **`citas.js`**, y de ahí salen la campana, Inicio, Solicitudes, los
+recordatorios y el panel. Son dos ficheros y no uno —`src/utils/citas.js` para el
+navegador y `lib/citas.js` para el servidor— porque Create React App no deja
+importar nada de fuera de `src/` y `lib/` es CommonJS. Misma forma en los dos
+lados: **si se toca uno, se toca el otro.**
 
 ---
 
