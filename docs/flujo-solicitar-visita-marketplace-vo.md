@@ -60,10 +60,15 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 | **Llamar** | Abre el teléfono del cliente. No hace nada automático |
 
 El **identificador de la oferta** es un enlace: abre la ficha del coche en el
-marketplace VO, en otra pestaña, para verlo antes de llamar al concesionario.
-Vale para todas, también para las de IDCar. Va a nuestra ficha y no al anuncio
-del portal de origen, porque los coches que no vienen de un portal no tienen
-anuncio propio en internet.
+marketplace VO, en otra pestaña, para verlo antes de llamar.
+
+Vale para todas. Las de IDCar también están publicadas en el marketplace VO, en
+la sección de **particulares** —van con `seller_type` de particular—, así que
+tienen su ficha igual que las de concesionario.
+
+Va a **nuestra ficha** y no al anuncio del portal de origen, porque los coches
+que no vienen de un portal no tienen anuncio propio en internet. La ficha del
+marketplace la tienen todos.
 
 ## El rastro
 
