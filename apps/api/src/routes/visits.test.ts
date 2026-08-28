@@ -149,7 +149,8 @@ describe('el correo de cuando se mueve la visita', () => {
 });
 
 describe('el WhatsApp de las otras horas', () => {
-  const horas = ['jueves 4 a las 10:00', 'jueves 4 a las 17:00', 'viernes 5 a las 12:00'];
+  // Fechas de verdad: es lo que luego se puede aplicar sin volver a teclear.
+  const horas = ['2026-09-04T10:00:00.000Z', '2026-09-04T17:00:00.000Z', '2026-09-05T12:00:00.000Z'];
 
   test('dice que la suya no ha podido ser, no solo las nuevas', () => {
     const m = mensajeDeOtrasHoras('Toyota C-HR', 'Juan', horas);
@@ -159,8 +160,10 @@ describe('el WhatsApp de las otras horas', () => {
 
   test('las horas van numeradas, para poder contestar «la 2»', () => {
     const m = mensajeDeOtrasHoras('Toyota C-HR', 'Juan', horas);
-    assert.match(m, /1\. jueves 4 a las 10:00/);
-    assert.match(m, /3\. viernes 5 a las 12:00/);
+    // La hora se enseña en la del cliente, no en UTC: las 10:00 de un ISO de
+    // verano son las 12:00 aquí, y decirle 10:00 sería citarle dos horas antes.
+    assert.match(m, /1\. viernes, 4 de septiembre a las \d\d:\d\d/);
+    assert.match(m, /3\. sábado, 5 de septiembre/);
   });
 
   test('deja salida si ninguna le sirve', () => {

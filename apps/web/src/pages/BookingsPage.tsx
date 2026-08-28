@@ -32,6 +32,26 @@ function inNDays(n: number) {
 }
 
 type Range = 'today' | 'week' | 'month' | 'all';
+
+interface Paso {
+  evento: string;
+  actor: string;
+  datos: Record<string, unknown> | null;
+  created_at: string;
+}
+
+/** Cómo se lee cada paso del rastro. La misma lista que en `lib/citas.js`. */
+const PASO: Record<string, string> = {
+  solicitada:               'El cliente pidió la visita',
+  concesionario_contactado: 'Hablado con el concesionario',
+  horas_propuestas:         'El concesionario propone otras horas',
+  whatsapp_enviado:         'Mandado al cliente por WhatsApp',
+  cliente_respondio:        'El cliente eligió una hora',
+  confirmada:               'Cita confirmada',
+  movida:                   'Cita movida a otra hora',
+  cancelada:                'Cita cancelada',
+  concesionario_avisado:    'Avisado el concesionario de que el cliente va',
+};
 const RANGE_LABELS: Record<Range, string> = { today: 'Hoy', week: 'Esta semana', month: 'Este mes', all: 'Todas' };
 
 function groupByDay(bookings: Booking[]): Record<string, Booking[]> {
@@ -47,6 +67,46 @@ function groupByDay(bookings: Booking[]): Record<string, Booking[]> {
 function isToday(d: string) { return d === todayIso(); }
 function isProfessional(b: Booking) { return !b.offer_id?.startsWith('idcar-'); }
 
+/**
+ * Los pasos que ha dado una visita, en orden.
+ *
+ * El estado dice dónde está; esto dice cómo ha llegado. Sirve para lo de todos
+ * los días: saber si ya se llamó al concesionario sin tener que preguntar a
+ * quien lo hizo.
+ */
+function Rastro({ pasos }: { pasos: Paso[] }) {
+  if (!pasos.length) {
+    return <p className="text-[12.5px] text-brand-300">Todavía no hay ningún paso apuntado.</p>;
+  }
+  return (
+    <ol className="space-y-2">
+      {pasos.map((p, i) => {
+        const d = (p.datos ?? {}) as Record<string, unknown>;
+        const horas = Array.isArray(d.horas) ? (d.horas as string[]) : null;
+        return (
+          <li key={i} className="flex gap-3 text-[13px]">
+            <span className="text-brand-300 tabular-nums shrink-0 w-28">
+              {new Date(p.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="flex-1">
+              <span className="text-brand-600 font-medium">{PASO[p.evento] ?? p.evento}</span>
+              <span className="text-brand-300"> · {p.actor}</span>
+              {typeof d.motivo === 'string' && d.motivo && (
+                <span className="block text-brand-400 italic">«{d.motivo}»</span>
+              )}
+              {horas && (
+                <span className="block text-brand-400">
+                  {horas.map((h) => `${fmtDate(h)} ${fmtTime(h)}`).join(' · ')}
+                </span>
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -59,10 +119,17 @@ export default function BookingsPage() {
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [proponer, setProponer] = useState<Booking | null>(null);
+  const [horas, setHoras] = useState<{ dia: string; hora: string }[]>([{ dia: '', hora: '' }]);
+  const [proponiendo, setProponiendo] = useState(false);
+  const [mensaje, setMensaje] = useState<{ texto: string; enviado: boolean; motivo?: string; telefono: string } | null>(null);
+  const [rastroDe, setRastroDe] = useState<string | null>(null);
+  const [rastro, setRastro] = useState<Paso[]>([]);
   const [mover, setMover] = useState<Booking | null>(null);
   const [nuevoDia, setNuevoDia] = useState('');
   const [nuevaHora, setNuevaHora] = useState('');
   const [moviendo, setMoviendo] = useState(false);
+  const [laEligio, setLaEligio] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,12 +152,47 @@ export default function BookingsPage() {
     setLoading(false);
   }, [range]);
 
+  /** De un día y una hora sueltos a la fecha que espera la API. */
+  const aFecha = (dia: string, hora: string) => (dia && hora ? new Date(`${dia}T${hora}:00`).toISOString() : '');
+
+  async function mandarPropuesta() {
+    if (!proponer) return;
+    const fechas = horas.map((h) => aFecha(h.dia, h.hora)).filter(Boolean);
+    if (!fechas.length) { setResultado({ mal: true, texto: 'Pon al menos una hora.' }); return; }
+    setProponiendo(true);
+    const r = await api.post<{ texto: string; enviado: boolean; motivo?: string; telefono: string }>(
+      `/visit-bookings/${proponer.id}/proponer`, { horas: fechas }
+    );
+    setProponiendo(false);
+    if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar la propuesta.' }); return; }
+    // El diálogo no se cierra: ahora enseña el mensaje, que es lo que hay que
+    // mandar o comprobar. Cerrarlo y dejarlo en un aviso lo haría desaparecer.
+    setMensaje({ ...r.data!, telefono: r.data?.telefono || proponer.buyer_phone || '' });
+    load();
+  }
+
+  async function verRastro(b: Booking) {
+    if (rastroDe === b.id) { setRastroDe(null); return; }
+    setRastroDe(b.id);
+    setRastro([]);
+    const r = await api.get<{ pasos: Paso[] }>(`/visit-bookings/${b.id}/pasos`);
+    if (r.ok) setRastro((r as unknown as { pasos: Paso[] }).pasos || r.data?.pasos || []);
+  }
+
+  async function apuntaPaso(b: Booking, evento: string, texto: string) {
+    const r = await api.post(`/visit-bookings/${b.id}/paso`, { evento });
+    if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido apuntar.' }); return; }
+    setResultado({ mal: false, texto });
+    if (rastroDe === b.id) { setRastroDe(null); await verRastro(b); }
+  }
+
   /** Abre el diálogo ya con el día y la hora que tenía: casi siempre cambia uno de los dos. */
   function abreMover(b: Booking) {
     const d = new Date(b.starts_at);
     const dosCifras = (n: number) => String(n).padStart(2, '0');
     setNuevoDia(`${d.getFullYear()}-${dosCifras(d.getMonth() + 1)}-${dosCifras(d.getDate())}`);
     setNuevaHora(`${dosCifras(d.getHours())}:${dosCifras(d.getMinutes())}`);
+    setLaEligio(false);
     setMover(b);
   }
 
@@ -100,7 +202,7 @@ export default function BookingsPage() {
     // Se manda la hora tal y como la ha escrito quien la teclea, en su huso: si
     // se convirtiera a UTC aquí, una cita de las 10 podría acabar a las 8.
     const startsAt = new Date(`${nuevoDia}T${nuevaHora}:00`).toISOString();
-    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${mover.id}/reprogramar`, { startsAt });
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${mover.id}/reprogramar`, { startsAt, laEligioElCliente: laEligio });
     setMoviendo(false);
     if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido cambiar la hora.' }); return; }
     const quien = mover.buyer_name || 'El cliente';
@@ -211,22 +313,129 @@ export default function BookingsPage() {
                   </div>
                   {b.notes && <div className="text-xs text-brand-300 italic mt-0.5">"{b.notes}"</div>}
                 </div>
-                <div className="flex gap-2 shrink-0">
+                {/* Los tres finales de la llamada al concesionario: que sí, que
+                    no a esa hora pero sí a otras, o que ya no hay coche. */}
+                <div className="flex gap-2 shrink-0 flex-wrap">
                   <Boton tam="sm" variante="acento" cargando={confirmando === b.id} onClick={() => confirmar(b)}>
-                    Confirmar
+                    Puede
                   </Boton>
-                  {/* El caso de «ese día no, pero el jueves sí». Sin esto había
-                      que cancelar y esperar a que el cliente volviera a pedir. */}
-                  <Boton tam="sm" variante="secundario" onClick={() => abreMover(b)}>
-                    Otra hora
+                  <Boton tam="sm" variante="secundario"
+                         onClick={() => { setProponer(b); setHoras([{ dia: '', hora: '' }]); setMensaje(null); }}>
+                    Propone otras horas
                   </Boton>
                   <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
                     No puede ser
                   </Boton>
+                  <button onClick={() => verRastro(b)}
+                          className="px-2 py-1 text-[11px] font-bold text-brand-400 underline underline-offset-2">
+                    {rastroDe === b.id ? 'Ocultar' : 'Ver'} rastro
+                  </button>
                 </div>
+
+                {rastroDe === b.id && (
+                  <div className="w-full mt-1 rounded-lg border border-brand-200 bg-white px-4 py-3">
+                    <Rastro pasos={rastro} />
+                    <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-brand-100">
+                      {/* Lo que hace una persona por teléfono no cambia nada en
+                          la base: si no se apunta, no existe para nadie más. */}
+                      <Boton tam="sm" variante="secundario"
+                             onClick={() => apuntaPaso(b, 'concesionario_contactado', 'Apuntado que has hablado con el concesionario.')}>
+                        He llamado al concesionario
+                      </Boton>
+                      <Boton tam="sm" variante="secundario"
+                             onClick={() => apuntaPaso(b, 'concesionario_avisado', 'Apuntado que el concesionario ya sabe que el cliente va.')}>
+                        Le he dicho que el cliente va
+                      </Boton>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {proponer && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4 py-8 overflow-y-auto"
+             onClick={() => { setProponer(null); setMensaje(null); }} role="dialog" aria-modal="true"
+             aria-label="Horas que propone el concesionario">
+          <div className="w-full max-w-lg rounded-2xl bg-white border border-brand-200 shadow-2xl my-auto"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Horas que propone el concesionario</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                {proponer.buyer_name || proponer.buyer_email} · {proponer.vehicle_title || proponer.offer_id}
+              </p>
+            </div>
+
+            {!mensaje ? (
+              <>
+                <div className="px-6 py-5 space-y-3">
+                  <p className="text-[13px] text-brand-400">
+                    Pon las que te haya dado. Se las mandamos al cliente para que elija, y la cita
+                    sigue pendiente hasta que conteste.
+                  </p>
+                  {horas.map((h, i) => (
+                    <div key={i} className="flex gap-2 items-end">
+                      <label className="flex-1 text-xs font-medium text-brand-500">
+                        Día
+                        <input type="date" value={h.dia}
+                               onChange={(e) => setHoras(horas.map((x, j) => j === i ? { ...x, dia: e.target.value } : x))}
+                               className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                      </label>
+                      <label className="w-28 text-xs font-medium text-brand-500">
+                        Hora
+                        <input type="time" value={h.hora}
+                               onChange={(e) => setHoras(horas.map((x, j) => j === i ? { ...x, hora: e.target.value } : x))}
+                               className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                      </label>
+                      {horas.length > 1 && (
+                        <button onClick={() => setHoras(horas.filter((_, j) => j !== i))}
+                                className="px-2 py-2 text-brand-300 hover:text-red-600" aria-label="Quitar esta hora">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  {horas.length < 6 && (
+                    <button onClick={() => setHoras([...horas, { dia: '', hora: '' }])}
+                            className="text-[13px] font-medium text-acento-texto underline underline-offset-2">
+                      Añadir otra hora
+                    </button>
+                  )}
+                </div>
+                <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+                  <Boton variante="fantasma" onClick={() => setProponer(null)}>Volver</Boton>
+                  <Boton variante="acento" cargando={proponiendo} onClick={mandarPropuesta}>
+                    Preparar mensaje
+                  </Boton>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-6 py-5 space-y-3">
+                  {mensaje.enviado ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
+                      Mandado por WhatsApp al {mensaje.telefono}. Esto es lo que se le ha dicho:
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-acento bg-acento-tenue px-4 py-2.5 text-[13px] text-acento-texto">
+                      No ha salido solo{mensaje.motivo ? ` — ${mensaje.motivo}` : ''}. Copia el mensaje y
+                      mándaselo tú al <b>{mensaje.telefono || 'teléfono que tengas'}</b>. El paso ya está apuntado.
+                    </div>
+                  )}
+                  <pre className="whitespace-pre-wrap rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-600 font-sans">
+                    {mensaje.texto}
+                  </pre>
+                </div>
+                <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+                  <Boton variante="secundario"
+                         onClick={() => { navigator.clipboard?.writeText(mensaje.texto); setResultado({ mal: false, texto: 'Mensaje copiado.' }); }}>
+                    Copiar mensaje
+                  </Boton>
+                  <Boton variante="acento" onClick={() => { setProponer(null); setMensaje(null); }}>Hecho</Boton>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -258,10 +467,20 @@ export default function BookingsPage() {
                          className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
                 </label>
               </div>
+              {/* No es lo mismo moverla nosotros que aplicar la que ha elegido
+                  él: cambia el rastro y cambia lo que se le escribe. */}
+              <label className="flex items-start gap-2.5 text-[13px] text-brand-500 cursor-pointer">
+                <input type="checkbox" checked={laEligio} onChange={(e) => setLaEligio(e.target.checked)}
+                       className="mt-0.5 accent-[var(--acento,#FFC400)]" />
+                <span>
+                  Esta hora <b>la ha elegido el cliente</b>, contestando a las que le propusimos
+                </span>
+              </label>
+
               <p className="text-[12px] text-brand-300">
-                La visita queda <b>confirmada</b> en la hora nueva: quien tenía que aprobarla es
-                quien la ha propuesto. Al cliente se le escribe con las dos horas, el calendario
-                y un enlace por si no le viene bien.
+                {laEligio
+                  ? 'Se apunta que contestó y la cita queda confirmada. Se le escribe confirmándosela, no diciéndole que se la hemos movido.'
+                  : 'La visita queda confirmada en la hora nueva: quien tenía que aprobarla es quien la ha propuesto. Al cliente se le escribe con las dos horas, el calendario y un enlace por si no le viene bien.'}
               </p>
             </div>
             <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">

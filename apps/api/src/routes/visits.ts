@@ -119,7 +119,12 @@ export function correoDeConfirmacion(r: Reserva): { subject: string; html: strin
  */
 export function mensajeDeOtrasHoras(coche: string, nombre: string, horas: string[]): string {
   const saludo = nombre ? `Hola ${nombre}` : 'Hola';
-  const lista = horas.map((h, i) => `${i + 1}. ${h}`).join('\n');
+  // Las horas llegan como fecha, no como texto libre: así, cuando el cliente
+  // elija una, se puede aplicar tal cual. Con «jueves por la tarde» habría que
+  // volver a teclearla, y ahí es donde se cuela el error.
+  const lista = horas
+    .map((h, i) => `${i + 1}. ${fechaLarga(h)} a las ${hora(h)}`)
+    .join('\n');
   return [
     `${saludo}, te escribimos de ${MARCA.nombre}.`,
     '',
@@ -494,12 +499,16 @@ const PASOS_A_MANO: Record<string, true> = {
  */
 visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
+  // Fechas de verdad, no texto: es lo que permite aplicarlas cuando el cliente
+  // elija una, sin que nadie las vuelva a teclear.
   const horas = (Array.isArray(req.body?.horas) ? req.body.horas : [])
     .map((h: unknown) => String(h ?? '').trim())
-    .filter(Boolean)
+    .filter((h: string) => h && !Number.isNaN(new Date(h).getTime()) && new Date(h).getTime() > Date.now())
     .slice(0, 6);
 
-  if (!horas.length) return res.status(400).json({ ok: false, error: 'no has puesto ninguna hora' });
+  if (!horas.length) {
+    return res.status(400).json({ ok: false, error: 'no has puesto ninguna hora válida y futura' });
+  }
 
   try {
     const r = await query(
