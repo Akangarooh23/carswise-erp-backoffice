@@ -122,12 +122,12 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0, visitasPorC
                 {pendingLeads > 99 ? '99+' : pendingLeads}
               </span>
             )}
-            {/* En ámbar y no en rojo: una visita por confirmar es trabajo que
-                espera, no una urgencia. Si todo lo que avisa es rojo, el rojo
-                deja de querer decir nada. */}
+            {/* Rojo, igual que los leads: detrás de una visita por confirmar
+                hay alguien esperando respuesta, y además con un día en la
+                cabeza. Es lo mismo que hay detrás de un lead sin atender. */}
             {item.to === '/bookings' && visitasPorConfirmar > 0 && (
               <span title={`${visitasPorConfirmar} visita${visitasPorConfirmar > 1 ? 's' : ''} por confirmar`}
-                    className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-acento text-brand-700 text-[10px] font-bold text-center leading-tight">
+                    className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
                 {visitasPorConfirmar > 99 ? '99+' : visitasPorConfirmar}
               </span>
             )}

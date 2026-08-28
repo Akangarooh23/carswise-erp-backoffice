@@ -65,15 +65,15 @@ function groupByDay(bookings: Booking[]): Record<string, Booking[]> {
 }
 
 /**
- * El anuncio público de una oferta, o cadena vacía si no se puede enlazar.
+ * La ficha del coche en el marketplace VO.
  *
- * Solo las del marketplace VO tienen dirección propia. Las de IDCar se abren
- * desde dentro de la aplicación —`/ficha-vehiculo` no lleva identificador—, así
- * que a esas no se les pone enlace: mandar a alguien a una página que enseña
- * otro coche es peor que dejarle el identificador y que lo busque.
+ * Vale para todas, también para las de IDCar: viven en la misma tabla de ofertas
+ * y tienen su ficha igual. Lo que no tienen las que no vienen de un portal es un
+ * anuncio propio en internet, y por eso el enlace va siempre a la ficha nuestra
+ * y no a la del portal de origen.
  */
 function enlaceOferta(offerId: string): string {
-  if (!offerId || offerId.startsWith('idcar-')) return '';
+  if (!offerId) return '';
   return `https://www.popcar.tech/marketplace-vo/${encodeURIComponent(offerId)}`;
 }
 

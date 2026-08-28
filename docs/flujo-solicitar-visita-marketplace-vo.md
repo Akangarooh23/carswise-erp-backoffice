@@ -59,9 +59,11 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 | **Contactar** | Abre tu correo con el asunto puesto. No hace nada automático |
 | **Llamar** | Abre el teléfono del cliente. No hace nada automático |
 
-El **identificador de la oferta** es un enlace: abre el anuncio real en otra
-pestaña, para ver el coche antes de llamar al concesionario. Las ofertas de IDCar
-no lo llevan, porque su ficha no tiene dirección propia.
+El **identificador de la oferta** es un enlace: abre la ficha del coche en el
+marketplace VO, en otra pestaña, para verlo antes de llamar al concesionario.
+Vale para todas, también para las de IDCar. Va a nuestra ficha y no al anuncio
+del portal de origen, porque los coches que no vienen de un portal no tienen
+anuncio propio en internet.
 
 ## El rastro
 
@@ -110,7 +112,7 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 
 | Qué | Dónde |
 |---|---|
-| Cuántas hay por confirmar | El número **ámbar** junto a Agenda, en el menú. Se refresca cada 30 segundos |
+| Cuántas hay por confirmar | El número **rojo** junto a Agenda, en el menú. Se refresca cada 30 segundos |
 | Las visitas por confirmar | **Agenda**, bloque de arriba |
 | Las confirmadas | **Agenda**, lista por fecha |
 | El rastro de una visita | **Agenda** → Ver rastro |
