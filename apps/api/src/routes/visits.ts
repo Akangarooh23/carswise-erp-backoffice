@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole, type Role } from '../middleware/auth.js';
 import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA } from '../lib/correo.js';
 import { config } from '../config.js';
+import { manda } from '../lib/whatsapp.js';
 
 export const visitsRouter = Router();
 
@@ -103,6 +104,32 @@ export function correoDeConfirmacion(r: Reserva): { subject: string; html: strin
         parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, responde a este correo y lo movemos.', 14),
     }),
   };
+}
+
+/**
+ * El WhatsApp que se le manda al cliente cuando el concesionario no puede.
+ *
+ * Se le dice que su hora no ha podido ser y se le dan las que sí, para que
+ * conteste con una. Va en texto plano porque es WhatsApp: sin negritas raras ni
+ * enlaces largos, que ahí se leen mal.
+ *
+ * Las horas van numeradas para que pueda contestar «la 2» en vez de teclear una
+ * fecha: es lo que hace la gente, y pedirle que escriba «jueves 17:00» es pedirle
+ * que se equivoque.
+ */
+export function mensajeDeOtrasHoras(coche: string, nombre: string, horas: string[]): string {
+  const saludo = nombre ? `Hola ${nombre}` : 'Hola';
+  const lista = horas.map((h, i) => `${i + 1}. ${h}`).join('\n');
+  return [
+    `${saludo}, te escribimos de ${MARCA.nombre}.`,
+    '',
+    `Lo sentimos: la hora que pediste para ver el ${coche} no ha podido ser.`,
+    '',
+    'El concesionario nos propone estas:',
+    lista,
+    '',
+    'Contéstanos con el número que mejor te venga y te la dejamos confirmada. Si ninguna te sirve, dínoslo y buscamos otra.',
+  ].join('\n');
 }
 
 /**
@@ -339,6 +366,8 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
   const { bookingId } = req.params;
   const startsAt = String(req.body?.startsAt ?? '').trim();
   const endsAt   = String(req.body?.endsAt ?? '').trim();
+  // Cuando la hora la ha elegido el cliente contestando a las que le propusimos.
+  const laEligioElCliente = req.body?.laEligioElCliente === true;
 
   if (!startsAt) return res.status(400).json({ ok: false, error: 'falta la hora nueva' });
   const inicio = new Date(startsAt);
@@ -397,7 +426,16 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
     );
 
     const nueva = movida.rows[0] as Reserva;
-    await apunta(bookingId, 'movida', quien(req as never), { de: horaAnterior, a: inicio.toISOString() });
+
+    // No es lo mismo moverla nosotros que confirmarle la que ha elegido él.
+    // Cambia el rastro y cambia lo que se le dice: a quien ha contestado «la 2»
+    // por WhatsApp no se le escribe «hemos movido tu visita», se le confirma.
+    if (laEligioElCliente) {
+      await apunta(bookingId, 'cliente_respondio', 'cliente', { eligio: inicio.toISOString() });
+      await apunta(bookingId, 'confirmada', quien(req as never), { por: 'respuesta del cliente' });
+    } else {
+      await apunta(bookingId, 'movida', quien(req as never), { de: horaAnterior, a: inicio.toISOString() });
+    }
     let avisado = true;
     let fallo = '';
     try {
@@ -405,7 +443,9 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
       const enlace = reserva.token_buyer
         ? `${config.PUBLIC_SITE_URL.replace(/\/$/, '')}/mi-cita?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(String(reserva.token_buyer))}`
         : '';
-      const { subject, html } = correoDeCambioDeHora(nueva, horaAnterior, enlace);
+      const { subject, html } = laEligioElCliente
+        ? correoDeConfirmacion(nueva)
+        : correoDeCambioDeHora(nueva, horaAnterior, enlace);
       await enviar({
         to: nueva.buyer_email,
         subject,
@@ -440,6 +480,61 @@ const PASOS_A_MANO: Record<string, true> = {
   horas_propuestas: true,
   concesionario_avisado: true,
 };
+
+/**
+ * El concesionario no puede a esa hora, pero propone otras.
+ *
+ * En vez de mover la cita por nuestra cuenta y decirle al cliente dónde tiene
+ * que estar, se le pregunta. La cita se queda pendiente hasta que conteste: no
+ * se le promete nada que no haya elegido él.
+ *
+ * Se intenta mandar por WhatsApp. Si no está configurado —o Meta lo rechaza— se
+ * devuelve el texto para que lo mande una persona. El paso queda apuntado en los
+ * dos casos, con cuál de las dos cosas pasó.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const horas = (Array.isArray(req.body?.horas) ? req.body.horas : [])
+    .map((h: unknown) => String(h ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (!horas.length) return res.status(400).json({ ok: false, error: 'no has puesto ninguna hora' });
+
+  try {
+    const r = await query(
+      `SELECT id, vehicle_title, buyer_name, buyer_phone FROM vehicle_visit_bookings WHERE id = $1`,
+      [bookingId]
+    );
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+    const b = r.rows[0];
+
+    const texto = mensajeDeOtrasHoras(
+      String(b.vehicle_title || 'vehículo'),
+      String(b.buyer_name || '').split(' ')[0],
+      horas
+    );
+
+    await apunta(bookingId, 'horas_propuestas', quien(req as never), { horas });
+
+    const envio = await manda(String(b.buyer_phone || ''), texto);
+    if (envio.enviado) {
+      await apunta(bookingId, 'whatsapp_enviado', quien(req as never), { horas });
+    }
+
+    // El texto se devuelve siempre, salga o no: si salió, quien lo mandó quiere
+    // saber qué se ha dicho en su nombre.
+    return res.json({
+      ok: true,
+      enviado: envio.enviado,
+      motivo: envio.motivo,
+      texto,
+      telefono: b.buyer_phone || '',
+    });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 visitsRouter.post('/visit-bookings/:bookingId/paso', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;

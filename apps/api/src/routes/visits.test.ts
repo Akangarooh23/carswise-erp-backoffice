@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, calendarioDeLaCita } from './visits.js';
+import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
 
 const reserva = {
   id: 'b-1',
@@ -145,5 +145,37 @@ describe('el correo de cuando se mueve la visita', () => {
 
   test('el calendario que se adjunta lleva la hora nueva', () => {
     assert.ok(calendarioDeLaCita(nueva).includes('DTSTART:20260918T160000Z'));
+  });
+});
+
+describe('el WhatsApp de las otras horas', () => {
+  const horas = ['jueves 4 a las 10:00', 'jueves 4 a las 17:00', 'viernes 5 a las 12:00'];
+
+  test('dice que la suya no ha podido ser, no solo las nuevas', () => {
+    const m = mensajeDeOtrasHoras('Toyota C-HR', 'Juan', horas);
+    assert.match(m, /no ha podido ser/);
+    assert.match(m, /Toyota C-HR/);
+  });
+
+  test('las horas van numeradas, para poder contestar «la 2»', () => {
+    const m = mensajeDeOtrasHoras('Toyota C-HR', 'Juan', horas);
+    assert.match(m, /1\. jueves 4 a las 10:00/);
+    assert.match(m, /3\. viernes 5 a las 12:00/);
+  });
+
+  test('deja salida si ninguna le sirve', () => {
+    assert.match(mensajeDeOtrasHoras('x', 'Juan', horas), /ninguna te sirve/);
+  });
+
+  test('sin nombre no saluda en falso', () => {
+    const m = mensajeDeOtrasHoras('x', '', horas);
+    assert.ok(!m.includes('Hola ,'));
+    assert.ok(m.startsWith('Hola,'));
+  });
+
+  test('va en texto plano: es WhatsApp, no un correo', () => {
+    const m = mensajeDeOtrasHoras('x', 'Juan', horas);
+    assert.ok(!m.includes('<'), 'nada de etiquetas');
+    assert.ok(!m.includes('&nbsp;'));
   });
 });
