@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { correoDeCancelacion, correoDeConfirmacion, calendarioDeLaCita } from './visits.js';
+import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, calendarioDeLaCita } from './visits.js';
 
 const reserva = {
   id: 'b-1',
@@ -111,5 +111,39 @@ describe('el calendario que se adjunta al confirmar', () => {
     const ics = calendarioDeLaCita(reserva);
     assert.ok(ics.includes('UID:b-1@popcar.tech'));
     assert.ok(!/carswise/i.test(ics));
+  });
+});
+
+describe('el correo de cuando se mueve la visita', () => {
+  const ANTES = '2026-09-15T10:00:00.000Z';
+  const nueva = { ...reserva, starts_at: '2026-09-18T16:00:00.000Z' };
+
+  test('el asunto avisa de que cambia, no parece una cita nueva', () => {
+    const { subject } = correoDeCambioDeHora(nueva, ANTES, '');
+    assert.ok(/cambia de hora/i.test(subject));
+    assert.ok(subject.includes('Toyota C-HR'));
+  });
+
+  test('lleva las dos horas: la que era y la que es', () => {
+    const { html } = correoDeCambioDeHora(nueva, ANTES, '');
+    assert.ok(html.includes('Ahora es'), 'sin la nueva no sirve de nada');
+    assert.ok(html.includes('Antes era'), 'sin la vieja, quien lo lee no sabe que ha cambiado');
+    assert.ok(/18 de septiembre/.test(html));
+    assert.ok(/15 de septiembre/.test(html));
+  });
+
+  test('ofrece elegir otra, porque se la hemos movido sin preguntar', () => {
+    const { html } = correoDeCambioDeHora(nueva, ANTES, 'https://www.popcar.tech/mi-cita?id=b-1&token=t');
+    assert.ok(html.includes('elige otra'));
+    assert.ok(html.includes('/mi-cita?id=b-1'));
+  });
+
+  test('sin enlace no deja un botón roto', () => {
+    const { html } = correoDeCambioDeHora(nueva, ANTES, '');
+    assert.ok(!html.includes('elige otra'));
+  });
+
+  test('el calendario que se adjunta lleva la hora nueva', () => {
+    assert.ok(calendarioDeLaCita(nueva).includes('DTSTART:20260918T160000Z'));
   });
 });

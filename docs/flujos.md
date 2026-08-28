@@ -108,6 +108,7 @@ visitas, que muestra los huecos y las reservas de ese coche en concreto.
 | Acción | Qué hace | Qué **no** hace |
 |---|---|---|
 | **Confirmar** (solo pendientes) | Pasa la reserva a `confirmed` y **escribe al cliente** con el `.ics` | Avisar al concesionario |
+| **Otra hora** | Mueve la visita al día y la hora que haya dado el concesionario, la deja confirmada y **escribe al cliente** con las dos horas, el `.ics` y un enlace por si no le viene bien | Avisar al concesionario |
 | **Cancelar cita** | Marca la reserva como `cancelled`, devuelve el hueco a `available` y **escribe al cliente** con el motivo y un enlace para pedir otra hora | Avisar al concesionario |
 | **Contactar** | Abre el correo con el asunto puesto | Nada automático |
 | **Llamar** | Abre el teléfono | Nada automático |
@@ -173,11 +174,31 @@ Dos detalles que importan:
   cancelada, y quien la cancela tiene que poder distinguirlo sin ir a mirar
   ningún registro.
 
-Sigue sin haber **reprogramar** en el ERP. Existe en PopCar para el cliente
-(`rescheduleBooking`), pero desde el ERP solo se puede cancelar; el enlace del
-correo es lo que le permite elegir otra hora.
+### Mover la visita a otra hora
 
-Y sigue sin avisarse al **concesionario**, ni al reservar ni al cancelar.
+Es el caso de «ese día no, pero el jueves sí». Antes había que cancelar y esperar
+a que el cliente volviera a pedir hora, con lo que eso tiene de que no vuelva.
+
+Con **Otra hora**, el trabajador escribe el día y la hora que le haya dado el
+concesionario. No se elige de una lista: el concesionario dice una hora concreta
+y no tiene por qué estar publicada. Se guarda como hueco del ERP, que es lo que
+es —una hora que ha puesto una persona— y **el hueco anterior vuelve a quedar
+libre**, para que esa hora no se pierda.
+
+La visita **queda confirmada**: quien tenía que aprobarla es quien ha propuesto
+esta. Al cliente le llega un correo con **las dos horas** —la que era y la que
+es, porque tiene la primera en la cabeza—, el `.ics` con la nueva y un enlace
+para elegir otra si no le viene bien. Se la hemos movido sin preguntarle, así que
+tiene que poder decir que no sin escribir a nadie.
+
+Y se borran las marcas de aviso, que si no nadie recibiría el recordatorio de la
+víspera: ya constaba como mandado para la fecha vieja.
+
+Funciona igual sobre una pendiente y sobre una ya confirmada, porque un
+concesionario puede cambiar de día después de haber dicho que sí.
+
+Sigue sin avisarse al **concesionario**, ni al reservar, ni al confirmar, ni al
+mover, ni al cancelar.
 
 ### Los recordatorios — resuelto
 

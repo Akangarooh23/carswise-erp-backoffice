@@ -59,6 +59,10 @@ export default function BookingsPage() {
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [mover, setMover] = useState<Booking | null>(null);
+  const [nuevoDia, setNuevoDia] = useState('');
+  const [nuevaHora, setNuevaHora] = useState('');
+  const [moviendo, setMoviendo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +84,34 @@ export default function BookingsPage() {
     if (pend.ok) setPendientes((pend as any).bookings || []);
     setLoading(false);
   }, [range]);
+
+  /** Abre el diálogo ya con el día y la hora que tenía: casi siempre cambia uno de los dos. */
+  function abreMover(b: Booking) {
+    const d = new Date(b.starts_at);
+    const dosCifras = (n: number) => String(n).padStart(2, '0');
+    setNuevoDia(`${d.getFullYear()}-${dosCifras(d.getMonth() + 1)}-${dosCifras(d.getDate())}`);
+    setNuevaHora(`${dosCifras(d.getHours())}:${dosCifras(d.getMinutes())}`);
+    setMover(b);
+  }
+
+  async function guardarNuevaHora() {
+    if (!mover || !nuevoDia || !nuevaHora) return;
+    setMoviendo(true);
+    // Se manda la hora tal y como la ha escrito quien la teclea, en su huso: si
+    // se convirtiera a UTC aquí, una cita de las 10 podría acabar a las 8.
+    const startsAt = new Date(`${nuevoDia}T${nuevaHora}:00`).toISOString();
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${mover.id}/reprogramar`, { startsAt });
+    setMoviendo(false);
+    if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido cambiar la hora.' }); return; }
+    const quien = mover.buyer_name || 'El cliente';
+    setMover(null);
+    setResultado(
+      r.data?.avisado
+        ? { mal: false, texto: `Visita movida y confirmada. ${quien} ya lo sabe: le hemos escrito con la hora nueva y el calendario.` }
+        : { mal: true, texto: `Movida, pero no hemos podido avisar a ${quien}. Llámale antes de que se presente a la hora vieja.` }
+    );
+    load();
+  }
 
   async function confirmar(b: Booking) {
     setConfirmando(b.id);
@@ -183,6 +215,11 @@ export default function BookingsPage() {
                   <Boton tam="sm" variante="acento" cargando={confirmando === b.id} onClick={() => confirmar(b)}>
                     Confirmar
                   </Boton>
+                  {/* El caso de «ese día no, pero el jueves sí». Sin esto había
+                      que cancelar y esperar a que el cliente volviera a pedir. */}
+                  <Boton tam="sm" variante="secundario" onClick={() => abreMover(b)}>
+                    Otra hora
+                  </Boton>
                   <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
                     No puede ser
                   </Boton>
@@ -190,6 +227,50 @@ export default function BookingsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {mover && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setMover(null)} role="dialog" aria-modal="true" aria-label="Cambiar la hora de la visita">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Mover la visita a otra hora</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                {mover.buyer_name || mover.buyer_email} · {mover.vehicle_title || mover.offer_id}
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[13px] text-brand-400">
+                Ahora es el <b className="text-brand-600">{fmtDate(mover.starts_at)} a las {fmtTime(mover.starts_at)}</b>.
+                Pon la hora que te haya dado el concesionario.
+              </p>
+              <div className="flex gap-3">
+                <label className="flex-1 text-xs font-medium text-brand-500">
+                  Día
+                  <input type="date" value={nuevoDia} onChange={(e) => setNuevoDia(e.target.value)}
+                         className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                </label>
+                <label className="w-32 text-xs font-medium text-brand-500">
+                  Hora
+                  <input type="time" value={nuevaHora} onChange={(e) => setNuevaHora(e.target.value)}
+                         className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+                </label>
+              </div>
+              <p className="text-[12px] text-brand-300">
+                La visita queda <b>confirmada</b> en la hora nueva: quien tenía que aprobarla es
+                quien la ha propuesto. Al cliente se le escribe con las dos horas, el calendario
+                y un enlace por si no le viene bien.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setMover(null)}>Volver</Boton>
+              <Boton variante="acento" cargando={moviendo} onClick={guardarNuevaHora}>
+                Mover y avisar
+              </Boton>
+            </div>
+          </div>
         </div>
       )}
 
@@ -406,6 +487,14 @@ export default function BookingsPage() {
                                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
                                 >
                                   {cancelling === b.id ? 'Cancelando…' : '✕ Cancelar cita'}
+                                </button>
+                                {/* Una confirmada también se mueve: el concesionario
+                                    puede cambiar de día después de haber dicho que sí. */}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); abreMover(b); }}
+                                  className="px-3 py-1.5 text-xs font-bold text-brand-600 bg-white border border-brand-200 rounded-lg hover:bg-brand-50 transition-colors"
+                                >
+                                  Otra hora
                                 </button>
                                 <a
                                   href={`mailto:${b.buyer_email}?subject=Tu visita al ${b.vehicle_title || 'vehículo'}`}

@@ -53,6 +53,36 @@ export function calendarioDeLaCita(r: Reserva): string {
 }
 
 /**
+ * El correo de cuando la visita se mueve a otra hora.
+ *
+ * Se manda cuando el concesionario no puede el día pedido pero sí otro. Lleva
+ * las dos horas —la que era y la que es— porque quien lo lee tiene la primera
+ * en la cabeza, y un correo que solo dice la nueva se lee como una cita más, no
+ * como un cambio.
+ *
+ * Y lleva el enlace a su cita: se la hemos movido sin preguntarle, así que
+ * tiene que poder decir que no le va bien sin escribir a nadie.
+ */
+export function correoDeCambioDeHora(r: Reserva, antes: string, enlace: string): { subject: string; html: string } {
+  const coche = r.vehicle_title || 'el vehículo';
+  return {
+    subject: `Tu visita cambia de hora — ${coche}`,
+    html: plantilla({
+      titulo: 'Tu visita cambia de hora',
+      cuerpo:
+        parrafo(`Hola${r.buyer_name ? ` ${esc(r.buyer_name)}` : ''}, el día que pediste no era posible, así que hemos movido tu visita. Queda confirmada en el nuevo horario.`) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Ahora es', `${fechaLarga(r.starts_at)} a las ${hora(r.starts_at)}`],
+          ['Antes era', `${fechaLarga(antes)} a las ${hora(antes)}`],
+        ]) +
+        parrafo('Va adjunto el archivo para tu calendario, con la hora nueva.', 14) +
+        (enlace ? boton('Si no te va bien, elige otra', enlace) : ''),
+    }),
+  };
+}
+
+/**
  * El correo que confirma una visita que estaba pendiente.
  *
  * Separado del envío para poder leerlo sin mandarlo, igual que el de cancelar.
@@ -252,6 +282,113 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
       avisado = false;
       fallo = e instanceof Error ? e.message : String(e);
       console.error('[visitas] no se ha podido confirmar al cliente:', fallo);
+    }
+
+    return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
+ * Se mueve una visita a otra hora.
+ *
+ * Es lo que pasa cuando el concesionario dice «ese día no, pero el jueves sí».
+ * Antes había que cancelar y esperar a que el cliente volviera a pedir hora, con
+ * lo que eso tiene de que no vuelva.
+ *
+ * La hora nueva la escribe el trabajador, no se elige de una lista: el
+ * concesionario dice una hora concreta y no tiene por qué estar publicada. Se
+ * crea como hueco del ERP, que es lo que es —una hora que ha puesto una persona—.
+ *
+ * Queda confirmada: quien tenía que aprobarla ya lo ha hecho, y ha sido él quien
+ * ha propuesto esta. Al cliente se le manda el calendario y el enlace a su cita,
+ * porque se la hemos movido sin preguntarle.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const startsAt = String(req.body?.startsAt ?? '').trim();
+  const endsAt   = String(req.body?.endsAt ?? '').trim();
+
+  if (!startsAt) return res.status(400).json({ ok: false, error: 'falta la hora nueva' });
+  const inicio = new Date(startsAt);
+  if (Number.isNaN(inicio.getTime())) return res.status(400).json({ ok: false, error: 'la hora nueva no se entiende' });
+  if (inicio.getTime() < Date.now()) return res.status(400).json({ ok: false, error: 'esa hora ya ha pasado' });
+  // Una hora sin final se toma como una hora de duración, que es lo que dura
+  // una visita en todos los huecos que genera el sistema.
+  const fin = endsAt || new Date(inicio.getTime() + 3600000).toISOString();
+
+  try {
+    const actual = await query(
+      `SELECT id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name,
+              availability_id, token_buyer, status
+         FROM vehicle_visit_bookings WHERE id = $1`,
+      [bookingId]
+    );
+    if (!actual.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+    const reserva = actual.rows[0];
+    if (reserva.status === 'cancelled') {
+      return res.status(409).json({ ok: false, error: 'esa visita está cancelada' });
+    }
+    const horaAnterior = String(reserva.starts_at);
+
+    // El hueco de la hora nueva. Si ya existe uno libre a esa hora se aprovecha,
+    // y si no se crea: así no se llena la tabla de duplicados cuando se mueve una
+    // visita a un hueco que ya estaba publicado.
+    const existente = await query(
+      `SELECT id FROM vehicle_visit_availability
+        WHERE offer_id = $1 AND starts_at = $2 AND status = 'available' LIMIT 1`,
+      [reserva.offer_id, inicio.toISOString()]
+    );
+    const nuevoHueco = existente.rows.length
+      ? existente.rows[0].id
+      : (await query(
+          `INSERT INTO vehicle_visit_availability (offer_id, starts_at, ends_at, source, status)
+           VALUES ($1, $2, $3, 'erp', 'available') RETURNING id`,
+          [reserva.offer_id, inicio.toISOString(), fin]
+        )).rows[0].id;
+
+    await query(`UPDATE vehicle_visit_availability SET status = 'booked' WHERE id = $1`, [nuevoHueco]);
+    // El de antes vuelve a estar libre: si no, la hora que se deja se pierde.
+    if (reserva.availability_id) {
+      await query(`UPDATE vehicle_visit_availability SET status = 'available' WHERE id = $1`, [reserva.availability_id]);
+    }
+
+    // Se borran las marcas de aviso: la cita es otra, y si no se limpian nadie
+    // recibiría el recordatorio de la víspera porque ya se dio por mandado.
+    const movida = await query(
+      `UPDATE vehicle_visit_bookings
+          SET availability_id = $2, starts_at = $3, ends_at = $4,
+              status = 'confirmed', updated_at = NOW(),
+              reminder_sent_at = NULL, reminder_day_of_sent_at = NULL, followup_sent_at = NULL
+        WHERE id = $1
+        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
+      [bookingId, nuevoHueco, inicio.toISOString(), fin]
+    );
+
+    const nueva = movida.rows[0] as Reserva;
+    let avisado = true;
+    let fallo = '';
+    try {
+      if (!nueva.buyer_email) throw new Error('la reserva no tiene correo del cliente');
+      const enlace = reserva.token_buyer
+        ? `${config.PUBLIC_SITE_URL.replace(/\/$/, '')}/mi-cita?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(String(reserva.token_buyer))}`
+        : '';
+      const { subject, html } = correoDeCambioDeHora(nueva, horaAnterior, enlace);
+      await enviar({
+        to: nueva.buyer_email,
+        subject,
+        alClienteSiempre: true,
+        html,
+        attachments: [{
+          filename: 'visita-popcar.ics',
+          content: Buffer.from(calendarioDeLaCita(nueva)).toString('base64'),
+        }],
+      });
+    } catch (e) {
+      avisado = false;
+      fallo = e instanceof Error ? e.message : String(e);
+      console.error('[visitas] no se ha podido avisar del cambio de hora:', fallo);
     }
 
     return res.json({ ok: true, avisado, ...(avisado ? {} : { fallo }) });
