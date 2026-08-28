@@ -97,10 +97,32 @@ vacías, que es peor que no tenerlas.
 
 ---
 
+## Cómo quedó
+
+Las reservas del marketplace **ya llegan al panel**, en tres sitios y con un
+criterio: cada uno hace algo que los otros no.
+
+| Dónde | Qué enseña |
+|---|---|
+| **La campana**, en la cabecera del sitio | Cuántas citas tienes por delante. Se ve mientras miras coches, sin entrar a la cuenta |
+| **Inicio** | La cita más próxima, la primera de la lista de movimientos: es lo único ahí que tiene día y hora |
+| **Solicitudes** | El bloque de arriba con todas las futuras, su estado y el enlace para moverlas. Y abajo, en la lista, como una solicitud más |
+
+La campana **solo cuenta citas** —visitas del marketplace y citas puestas desde
+el ERP—, nunca alertas ni novedades. Si lo llevara todo, siempre tendría un
+número, y una campana que siempre tiene un número deja de mirarse en dos
+semanas. No se apaga a mano: una cita desaparece cuando pasa.
+
+Y es un enlace, no un desplegable: lleva a Solicitudes, al bloque que ya existe.
+
+`UserDashboardAppointments.js` está borrado. Era código muerto que no importaba
+nadie, y además no valía para esto: iba de mantenimiento, seguros y sugerencias,
+y esa pestaña ya la dibuja `UserDashboardOperations`. Este documento llegó a
+decir «o se usa para esto»; era falso, y por eso se comprobó antes de tocarlo.
+
 ## Pendiente
 
-- Llevar las reservas del marketplace a Solicitudes y a Inicio, como está
-  descrito arriba.
-- `UserDashboardAppointments.js` no lo importa nadie: es código muerto. O se usa
-  para esto, o se borra. Un fichero que parece que hace algo y no se ejecuta es
-  una trampa para quien lo lea después.
+- **El panel se identifica solo con el correo, sin sesión.** Quien conozca la
+  dirección de alguien puede pedir sus datos. Las citas no lo empeoran —van por
+  donde ya iban nombre, teléfono y fecha de los leads— pero es lo más serio que
+  hay abierto aquí, y arreglarlo es meter sesión de verdad en la API del panel.
