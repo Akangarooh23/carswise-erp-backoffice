@@ -113,7 +113,42 @@ export function correoDeConfirmacion(
         (donde
           ? ''
           : parrafo('Te confirmaremos la dirección exacta antes de la visita.', 14)) +
-        parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, responde a este correo y lo movemos.', 14),
+        parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, entra en tu panel, en Solicitudes: desde ahí cambias el día y la hora o cancelas la visita.', 14),
+    }),
+  };
+}
+
+/**
+ * El correo de cuando se apunta (o se cambia) dónde es y por quién preguntar.
+ *
+ * Hace falta porque el sitio no siempre se sabe al confirmar. Si el trabajador
+ * no lo tenía, al cliente se le dijo «te confirmaremos la dirección antes de la
+ * visita», y esa frase es una promesa que alguien tiene que cumplir. Esto es
+ * cumplirla.
+ *
+ * No lleva calendario ni dice «confirmada»: la cita ya lo estaba, y volver a
+ * confirmarla hace dudar de si son dos.
+ */
+export function correoDeLugar(
+  r: Reserva,
+  donde: string,
+  preguntarPor: string
+): { subject: string; html: string } {
+  const coche = r.vehicle_title || 'el vehículo';
+  return {
+    subject: `Dónde es tu visita — ${coche}`,
+    html: plantilla({
+      titulo: 'Dónde es tu visita',
+      cuerpo:
+        parrafo(`Hola${r.buyer_name ? ` ${esc(r.buyer_name)}` : ''}, ya tenemos el sitio de tu visita. La hora no cambia.`) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Día', fechaLarga(r.starts_at)],
+          ['Hora', hora(r.starts_at)],
+          ['Dónde', esc(donde)],
+          ['Pregunta por', esc(preguntarPor)],
+        ]) +
+        parrafo('Si no puedes venir, entra en tu panel, en Solicitudes: desde ahí cambias el día y la hora o cancelas la visita.', 14),
     }),
   };
 }
@@ -313,6 +348,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
     const r = await query(
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
               b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
+              b.meeting_place, b.meeting_contact,
               b.status, b.created_at
        FROM vehicle_visit_bookings b
        WHERE b.offer_id = $1 AND b.status != 'cancelled'
@@ -570,10 +606,12 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
     // saber qué se ha dicho en su nombre.
     return res.json({
       ok: true,
-      enviado: envio.enviado,
-      motivo: envio.motivo,
-      texto,
-      telefono: b.buyer_phone || '',
+      data: {
+        enviado: envio.enviado,
+        motivo: envio.motivo,
+        texto,
+        telefono: b.buyer_phone || '',
+      },
     });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
@@ -655,6 +693,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
              b.status, b.source, b.created_at,
+             b.meeting_place, b.meeting_contact,
              a.source AS slot_source
       FROM vehicle_visit_bookings b
       JOIN vehicle_visit_availability a ON a.id = b.availability_id
@@ -668,6 +707,64 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     sql += ' ORDER BY b.starts_at ASC LIMIT 200';
     const r = await query(sql, params);
     return res.json({ ok: true, bookings: r.rows });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
+ * Se apunta dónde es la visita y por quién hay que preguntar.
+ *
+ * Se piden al confirmar, pero muchas veces no se saben todavía: el concesionario
+ * dice que sí por teléfono y la dirección concreta llega después. Sin esto, ese
+ * dato se quedaba en la cabeza del que llamó y el cliente no lo recibía nunca.
+ *
+ * Vale para una cita ya confirmada y también para una pendiente. Y se puede
+ * cambiar: una dirección mal apuntada tiene que poder corregirse.
+ *
+ * Escribir al cliente es una decisión de quien lo apunta, no automática. Si la
+ * cita todavía está pendiente no se le escribe: aún no se le ha prometido nada.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/lugar', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const donde        = String(req.body?.donde ?? '').trim().slice(0, 200);
+  const preguntarPor = String(req.body?.preguntarPor ?? '').trim().slice(0, 120);
+  const avisar       = req.body?.avisar === true;
+  if (!donde && !preguntarPor) return res.status(400).json({ ok: false, error: 'no hay nada que apuntar' });
+
+  try {
+    const r = await query(
+      `UPDATE vehicle_visit_bookings
+          SET meeting_place = $2, meeting_contact = $3, updated_at = NOW()
+        WHERE id = $1 AND status != 'cancelled'
+        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name, status`,
+      [bookingId, donde, preguntarPor]
+    );
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+
+    const reserva = r.rows[0] as Reserva & { status: string };
+    await apunta(bookingId, 'lugar', quien(req as never), { donde, preguntarPor });
+
+    // Al cliente solo se le escribe si la cita está confirmada y le han dicho
+    // que se le escriba. Mandarle la dirección de algo que todavía no es suyo
+    // se lee como una confirmación, y no lo es.
+    if (!avisar || reserva.status !== 'confirmed') {
+      return res.json({ ok: true, data: { avisado: false, escrito: false } });
+    }
+
+    let avisado = true;
+    let fallo = '';
+    try {
+      if (!reserva.buyer_email) throw new Error('la reserva no tiene correo del cliente');
+      const { subject, html } = correoDeLugar(reserva, donde, preguntarPor);
+      await enviar({ to: reserva.buyer_email, subject, alClienteSiempre: true, html });
+      await apunta(bookingId, 'lugar_avisado', 'sistema', { a: reserva.buyer_email });
+    } catch (e) {
+      avisado = false;
+      fallo = e instanceof Error ? e.message : String(e);
+      console.error('[visitas] no se ha podido mandar el sitio al cliente:', fallo);
+    }
+    return res.json({ ok: true, data: { avisado, escrito: true, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }

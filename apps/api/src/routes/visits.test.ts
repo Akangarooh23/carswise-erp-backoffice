@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
+import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, correoDeLugar, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
 
 const reserva = {
   id: 'b-1',
@@ -180,5 +180,34 @@ describe('el WhatsApp de las otras horas', () => {
     const m = mensajeDeOtrasHoras('x', 'Juan', horas);
     assert.ok(!m.includes('<'), 'nada de etiquetas');
     assert.ok(!m.includes('&nbsp;'));
+  });
+});
+
+describe('lo que se le dice al cliente para cambiar o cancelar', () => {
+  test('le manda a su panel, no a contestar el correo', () => {
+    const { html } = correoDeConfirmacion(reserva, 'Calle Mauricio Legendre 45', 'Sergio');
+    assert.ok(html.includes('Solicitudes'), 'ahí tiene los botones de cambiar la hora y de cancelar');
+    assert.ok(!html.includes('responde a este correo'), 'pedirle que conteste un correo es pedirle que espere a que alguien lo lea');
+  });
+});
+
+describe('el correo de dónde es la visita', () => {
+  test('lleva la dirección y por quién preguntar', () => {
+    const { subject, html } = correoDeLugar(reserva, 'Calle Mauricio Legendre 45', 'Sergio Casares');
+    assert.ok(subject.includes('Toyota C-HR'));
+    assert.ok(html.includes('Calle Mauricio Legendre 45'));
+    assert.ok(html.includes('Sergio Casares'));
+  });
+
+  test('no vuelve a decir que está confirmada', () => {
+    const { subject, html } = correoDeLugar(reserva, 'Calle Mauricio Legendre 45', '');
+    assert.ok(!subject.toLowerCase().includes('confirmada'), 'ya lo estaba; repetirlo hace dudar de si son dos citas');
+    assert.ok(!html.includes('BEGIN:VCALENDAR'));
+  });
+
+  test('mantiene el día y la hora que ya tenía', () => {
+    const { html } = correoDeLugar(reserva, 'Un sitio', '');
+    assert.ok(html.includes('septiembre'));
+    assert.ok(/1[012]:00/.test(html), 'la hora no cambia, y quien lo lee tiene que verlo');
   });
 });

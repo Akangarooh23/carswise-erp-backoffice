@@ -13,9 +13,9 @@ cliente: La ve en **Solicitudes**, como pendiente. Todavía **no** en la campana
 erp: Sale en **Agenda**, arriba, en «visitas por confirmar»
 trabajador: **Llama al concesionario** y le pide la cita
 ? ¿Qué contesta el concesionario?
-rama Que sí | Puede | Se apunta **dónde es** y **por quién preguntar**. Queda confirmada y le llega el calendario
+rama Que sí | Confirmar | Se apunta **dónde es** y **por quién preguntar**. Queda confirmada y le llega el calendario
 rama Otras horas | Propone otras horas | Sigue **pendiente**. Se le preguntan al cliente — abajo
-rama Ya no hay coche | No puede ser | Se cancela con un motivo. Le llega el motivo y un enlace para pedir otra hora
+rama Ya no hay coche | Cancelar cita | Se cancela con un motivo. Le llega el motivo y un enlace para pedir otra hora
 :::
 
 ---
@@ -45,20 +45,22 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 
 | Botón | Qué hace |
 |---|---|
-| **Puede** | El concesionario ha dicho que sí. Pide **dónde es** y **por quién preguntar**, y con eso confirma: al cliente le llega el correo con esos datos y el calendario, y ya sale en su campana |
+| **Confirmar** | El concesionario ha dicho que sí. Pide **dónde es** y **por quién preguntar**, y con eso confirma: al cliente le llega el correo con esos datos y el calendario, y ya sale en su campana |
 | **Propone otras horas** | Abre el diálogo para apuntar las que dio. Se le mandan al cliente y la cita **sigue pendiente** hasta que conteste |
-| **No puede ser** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
+| **Cancelar cita** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
 | **Ver rastro** | Despliega los pasos dados, los dos botones para apuntar lo que se hace por teléfono, y el sitio para escribir notas |
 
 Dónde es y por quién preguntar **se guardan**, así que van también en los
-recordatorios. Si se dejan en blanco la cita se confirma igual, y al cliente se
-le dice que le confirmaremos la dirección antes de la visita.
+recordatorios y en la página de su cita. Si se dejan en blanco la cita se
+confirma igual, y al cliente se le dice que le confirmaremos la dirección antes
+de la visita — **y entonces hay que cumplirlo**, con el botón de abajo.
 
 ### En una visita **ya confirmada** (al desplegar la fila)
 
 | Botón | Qué hace |
 |---|---|
 | **Cancelar cita** | Cancela con motivo y **escribe al cliente**. Si el correo falla, la pantalla lo dice para que le llames |
+| **Apuntar el sitio** | Dónde es y por quién preguntar, cuando no se sabían al confirmar. Con una casilla para escribírselo al cliente: la hora no cambia y no se le manda el calendario otra vez. Si ya estaban puestos, el botón dice **Cambiar el sitio** |
 | **Otra hora** | La mueve al día y hora que le digas. Con una casilla para marcar si **la ha elegido el cliente**, porque entonces se le confirma en vez de decirle que se la hemos movido |
 | **Contactar** | Abre tu correo con el asunto puesto. No hace nada automático |
 | **Llamar** | Abre el teléfono del cliente. No hace nada automático |
@@ -94,6 +96,8 @@ Agenda.
 | El concesionario propone otras horas | Al guardar las horas |
 | Mandado al cliente por WhatsApp | Solo, si salió |
 | El cliente eligió una hora | Al marcar la casilla |
+| Apuntado dónde es y por quién preguntar | El trabajador, al guardarlo |
+| Mandado el sitio al cliente | Solo, si marcó la casilla |
 | **Nota** | El trabajador, escribiéndola |
 | Cita confirmada, movida o cancelada | Solo, con la acción |
 | Avisado el concesionario de que el cliente va | El trabajador, a mano |
@@ -167,6 +171,11 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 
 En su solicitud tiene un enlace **«Ver el coche»** que abre la ficha del vehículo,
 para no tener que buscarlo otra vez.
+
+Dónde es y por quién preguntar salen en su cita, no solo en el correo: el correo
+se pierde y esa página se guarda. Y para cambiar la hora o cancelar se le manda
+a **Solicitudes**, que es donde tiene los dos botones, en vez de a contestar un
+correo que alguien tiene que leer.
 
 La sigue desde su panel y también desde el enlace de su correo, que abre su cita
 sin pedirle contraseña.

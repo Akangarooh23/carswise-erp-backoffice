@@ -14,6 +14,10 @@ type Booking = {
   buyer_name: string;
   buyer_phone: string;
   notes: string;
+  // Dónde es la visita y por quién preguntar. Se apuntan al confirmar, pero
+  // muchas veces se saben después, así que pueden llegar vacíos.
+  meeting_place: string | null;
+  meeting_contact: string | null;
   status: string;
   source: string;
   slot_source: string;
@@ -52,6 +56,8 @@ const PASO: Record<string, string> = {
   movida:                   'Cita movida a otra hora',
   cancelada:                'Cita cancelada',
   concesionario_avisado:    'Avisado el concesionario de que el cliente va',
+  lugar:                    'Apuntado dónde es y por quién preguntar',
+  lugar_avisado:            'Mandado el sitio al cliente',
 };
 const RANGE_LABELS: Record<Range, string> = { today: 'Hoy', week: 'Esta semana', month: 'Este mes', all: 'Todas' };
 
@@ -127,6 +133,46 @@ function Rastro({ pasos }: { pasos: Paso[] }) {
   );
 }
 
+/**
+ * Escribir una nota sobre la cita.
+ *
+ * Va al rastro como un paso más, con quién la escribió y cuándo. No es un
+ * campo que se edita: dos personas llevando la misma cita se pisarían el
+ * texto, y lo que se apunta de una gestión no se corrige, se añade.
+ *
+ * Vive fuera de la página a propósito. Estaba declarado dentro, y entonces cada
+ * vez que se teclea una letra React ve un componente distinto, tira el de antes
+ * y monta otro: el cuadro perdía el foco a cada letra y había que volver a
+ * pinchar. Declararlo aquí lo convierte en el mismo componente siempre.
+ */
+function NotaNueva({ valor, alEscribir, guardando, alGuardar }: {
+  valor: string;
+  alEscribir: (t: string) => void;
+  guardando: boolean;
+  alGuardar: () => void;
+}) {
+  return (
+    <div className="mt-3 pt-3 border-t border-brand-100">
+      <label className="block text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
+        Añadir una nota
+      </label>
+      <div className="flex gap-2 items-start">
+        <textarea
+          value={valor}
+          onChange={(e) => alEscribir(e.target.value)}
+          rows={2}
+          maxLength={1000}
+          placeholder="Lo que haya que saber: qué dijo el concesionario, si el cliente llamó…"
+          className="flex-1 px-3 py-2 text-[13px] border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
+        />
+        <Boton tam="sm" variante="secundario" cargando={guardando} onClick={alGuardar}>
+          Guardar
+        </Boton>
+      </div>
+    </div>
+  );
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -140,6 +186,11 @@ export default function BookingsPage() {
   const [pendientes, setPendientes] = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<Booking | null>(null);
+  // El mismo par de datos que pide confirmar, pero para una cita que ya lo
+  // está: la dirección concreta casi nunca se sabe cuando se dice que sí.
+  const [lugar, setLugar] = useState<Booking | null>(null);
+  const [avisarDelLugar, setAvisarDelLugar] = useState(true);
+  const [guardandoLugar, setGuardandoLugar] = useState(false);
   const [donde, setDonde] = useState('');
   const [preguntarPor, setPreguntarPor] = useState('');
   const [proponer, setProponer] = useState<Booking | null>(null);
@@ -218,34 +269,6 @@ export default function BookingsPage() {
     await cargaRastro(b);
   }
 
-  /**
-   * Escribir una nota sobre la cita.
-   *
-   * Va al rastro como un paso más, con quién la escribió y cuándo. No es un
-   * campo que se edita: dos personas llevando la misma cita se pisarían el
-   * texto, y lo que se apunta de una gestión no se corrige, se añade.
-   */
-  const NotaNueva = ({ b }: { b: Booking }) => (
-    <div className="mt-3 pt-3 border-t border-brand-100">
-      <label className="block text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
-        Añadir una nota
-      </label>
-      <div className="flex gap-2 items-start">
-        <textarea
-          value={notaNueva}
-          onChange={(e) => setNotaNueva(e.target.value)}
-          rows={2}
-          maxLength={1000}
-          placeholder="Lo que haya que saber: qué dijo el concesionario, si el cliente llamó…"
-          className="flex-1 px-3 py-2 text-[13px] border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
-        />
-        <Boton tam="sm" variante="secundario" cargando={guardandoNota}
-               onClick={() => guardaNota(b)}>
-          Guardar
-        </Boton>
-      </div>
-    </div>
-  );
 
   async function guardaNota(b: Booking) {
     const texto = notaNueva.trim();
@@ -255,8 +278,9 @@ export default function BookingsPage() {
     setGuardandoNota(false);
     if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido guardar la nota.' }); return; }
     setNotaNueva('');
-    setRastroDe(null);
-    await verRastro(b);
+    // `cargaRastro` y no `verRastro`: el segundo alterna, y aquí lo que hay
+    // que hacer es releerlo, no cerrarlo.
+    await cargaRastro(b);
   }
 
   async function apuntaPaso(b: Booking, evento: string, texto: string) {
@@ -310,6 +334,37 @@ export default function BookingsPage() {
       r.data?.avisado
         ? { mal: false, texto: `Visita confirmada. ${b.buyer_name || 'El cliente'} ya lo sabe: le hemos escrito con el calendario.` }
         : { mal: true, texto: `Confirmada, pero no hemos podido avisar a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.` }
+    );
+    load();
+  }
+
+  /**
+   * Se apunta dónde es y por quién preguntar en una cita que ya existe.
+   *
+   * Vale para una confirmada y para una pendiente. Escribir al cliente es una
+   * casilla y no algo automático: si la dirección se corrige por un dedazo, no
+   * hace falta un correo; si es la primera vez que la sabe, sí.
+   */
+  async function guardaLugar() {
+    if (!lugar) return;
+    const b = lugar;
+    setGuardandoLugar(true);
+    const r = await api.post<{ avisado?: boolean; escrito?: boolean }>(`/visit-bookings/${b.id}/lugar`, {
+      donde: donde.trim(),
+      preguntarPor: preguntarPor.trim(),
+      avisar: avisarDelLugar,
+    });
+    setGuardandoLugar(false);
+    if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar el sitio.' }); return; }
+    setLugar(null);
+    setDonde('');
+    setPreguntarPor('');
+    setResultado(
+      !r.data?.escrito
+        ? { mal: false, texto: 'Apuntado. Al cliente no se le ha escrito.' }
+        : r.data?.avisado
+          ? { mal: false, texto: `Apuntado. ${b.buyer_name || 'El cliente'} ya sabe dónde es.` }
+          : { mal: true, texto: `Apuntado, pero no hemos podido escribir a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.` }
     );
     load();
   }
@@ -380,9 +435,12 @@ export default function BookingsPage() {
             <h2 className="text-sm font-bold text-acento-texto">
               {pendientes.length === 1 ? 'Una visita por confirmar' : `${pendientes.length} visitas por confirmar`}
             </h2>
+            {/* En singular cuando hay una: el titular ya dice cuántas, y decir
+                «cayeron» de una sola se lee como un descuido. */}
             <p className="text-[12.5px] text-acento-texto/85 mt-0.5 max-w-3xl">
-              Cayeron en un horario que generó el sistema, no lo publicó nadie. El cliente sabe que
-              está pendiente y no ha recibido calendario. Al confirmar se le escribe.
+              {pendientes.length === 1
+                ? 'El cliente ha pedido esta hora y todavía no se la hemos dado: lo sabe, y no ha recibido calendario. Llama al concesionario y confírmala o proponle otra.'
+                : 'Los clientes han pedido estas horas y todavía no se las hemos dado: lo saben, y no han recibido calendario. Llama al concesionario y confírmalas o proponles otra.'}
             </p>
           </div>
           <ul className="divide-y divide-acento/40">
@@ -406,15 +464,15 @@ export default function BookingsPage() {
                       hay que decirle dónde va y por quién preguntar, y quien
                       acaba de hablar con el concesionario lo tiene delante. */}
                   <Boton tam="sm" variante="acento"
-                         onClick={() => { setConfirmar(b); setDonde(''); setPreguntarPor(''); }}>
-                    Puede
+                         onClick={() => { setConfirmar(b); setDonde(b.meeting_place || ''); setPreguntarPor(b.meeting_contact || ''); }}>
+                    Confirmar
                   </Boton>
                   <Boton tam="sm" variante="secundario"
                          onClick={() => { setProponer(b); setHoras([{ dia: '', hora: '' }]); setMensaje(null); }}>
                     Propone otras horas
                   </Boton>
                   <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
-                    No puede ser
+                    Cancelar cita
                   </Boton>
                   <button onClick={() => verRastro(b)}
                           className="px-2 py-1 text-[11px] font-bold text-brand-400 underline underline-offset-2">
@@ -437,7 +495,8 @@ export default function BookingsPage() {
                         Le he dicho que el cliente va
                       </Boton>
                     </div>
-                    <NotaNueva b={b} />
+                    <NotaNueva valor={notaNueva} alEscribir={setNotaNueva}
+ guardando={guardandoNota} alGuardar={() => guardaNota(b)} />
                   </div>
                 )}
               </li>
@@ -483,6 +542,59 @@ export default function BookingsPage() {
               <Boton variante="fantasma" onClick={() => setConfirmar(null)}>Volver</Boton>
               <Boton variante="acento" cargando={confirmando === confirmar.id} onClick={() => confirmar && confirmarVisita(confirmar)}>
                 Confirmar y avisar
+              </Boton>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {lugar && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setLugar(null)} role="dialog" aria-modal="true" aria-label="Dónde es la visita">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">Dónde es y por quién preguntar</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                {lugar.buyer_name || lugar.buyer_email} · {fmtDate(lugar.starts_at)} a las {fmtTime(lugar.starts_at)}
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <label className="block text-xs font-medium text-brand-500">
+                Dónde es
+                <input value={donde} onChange={(e) => setDonde(e.target.value)} maxLength={200}
+                       placeholder="Calle y número, o el nombre del concesionario"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <label className="block text-xs font-medium text-brand-500">
+                Por quién preguntar
+                <input value={preguntarPor} onChange={(e) => setPreguntarPor(e.target.value)} maxLength={120}
+                       placeholder="Nombre de quien le atiende"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              {lugar.status === 'confirmed' ? (
+                <label className="flex items-start gap-2 text-[12.5px] text-brand-500">
+                  <input type="checkbox" checked={avisarDelLugar} className="mt-0.5"
+                         onChange={(e) => setAvisarDelLugar(e.target.checked)} />
+                  <span>
+                    Escribir al cliente con estos datos. La hora no cambia y no se le manda
+                    calendario otra vez.
+                  </span>
+                </label>
+              ) : (
+                <p className="text-[12px] text-brand-300">
+                  La cita todavía está pendiente, así que al cliente no se le escribe: estos
+                  datos irán en el correo de cuando se confirme.
+                </p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setLugar(null)}>Volver</Boton>
+              <Boton variante="acento" cargando={guardandoLugar}
+                     disabled={!donde.trim() && !preguntarPor.trim()}
+                     onClick={guardaLugar}>
+                Guardar
               </Boton>
             </div>
           </div>
@@ -839,6 +951,21 @@ export default function BookingsPage() {
                                   <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Reservado</div>
                                   <div className="text-brand-400">{new Date(b.created_at).toLocaleDateString('es-ES')}</div>
                                 </div>
+                                {/* Dónde es y por quién preguntar. Se enseñan siempre,
+                                    también vacíos: si no están, alguien tiene que
+                                    verlo y apuntarlos antes de que llegue el día. */}
+                                <div>
+                                  <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Dónde es</div>
+                                  {b.meeting_place
+                                    ? <div className="text-brand-500 font-medium">{b.meeting_place}</div>
+                                    : <div className="text-amber-700">Sin apuntar</div>}
+                                </div>
+                                <div>
+                                  <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Preguntar por</div>
+                                  {b.meeting_contact
+                                    ? <div className="text-brand-500 font-medium">{b.meeting_contact}</div>
+                                    : <div className="text-amber-700">Sin apuntar</div>}
+                                </div>
                                 {b.notes && (
                                   <div className="col-span-2">
                                     <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Notas</div>
@@ -865,6 +992,15 @@ export default function BookingsPage() {
                                 {/* También en las confirmadas: lo que pasa después
                                     de confirmar —que el cliente llame, que cambie
                                     algo— hay que poder apuntarlo igual. */}
+                                {/* La dirección concreta llega casi siempre después de
+                                    confirmar, y sin esto se quedaba en la cabeza del que
+                                    llamó. */}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setLugar(b); setDonde(b.meeting_place || ''); setPreguntarPor(b.meeting_contact || ''); setAvisarDelLugar(!b.meeting_place); }}
+                                  className="px-3 py-1.5 text-xs font-bold text-brand-600 bg-white border border-brand-200 rounded-lg hover:bg-brand-50 transition-colors"
+                                >
+                                  {b.meeting_place || b.meeting_contact ? 'Cambiar el sitio' : 'Apuntar el sitio'}
+                                </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); verRastro(b); }}
                                   className="px-3 py-1.5 text-xs font-bold text-brand-400 underline underline-offset-2"
@@ -892,7 +1028,8 @@ export default function BookingsPage() {
                               {rastroDe === b.id && (
                                 <div className="mt-3 rounded-lg border border-brand-200 bg-white px-4 py-3">
                                   <Rastro pasos={rastro} />
-                                  <NotaNueva b={b} />
+                                  <NotaNueva valor={notaNueva} alEscribir={setNotaNueva}
+ guardando={guardandoNota} alGuardar={() => guardaNota(b)} />
                                 </div>
                               )}
                             </div>
