@@ -120,9 +120,41 @@ nadie, y además no valía para esto: iba de mantenimiento, seguros y sugerencia
 y esa pestaña ya la dibuja `UserDashboardOperations`. Este documento llegó a
 decir «o se usa para esto»; era falso, y por eso se comprobó antes de tocarlo.
 
+---
+
+## Quién puede ver los datos de quién
+
+Este documento llegó a decir que **el panel se identificaba solo con el correo,
+sin sesión**. Era falso. Se comprobó pidiéndole los datos de alguien a
+producción sin haber entrado, y contesta **401**: el correo que viaja en la URL
+llega y se descarta.
+
+La regla vive en `lib/api/identidad.js` y es una sola: **manda la sesión, nunca
+la URL**. La cookie es `HttpOnly`, va firmada y se comprueba contra la tabla de
+sesiones. Fuera de producción se admite el correo de la petición, para poder
+probar un endpoint sin montar antes una sesión; esa puerta se cierra sola en
+cuanto hay `NODE_ENV=production` o se está en Vercel.
+
+### Lo que sí estaba abierto
+
+La **factura en PDF**. Se conformaba con el número de factura y el correo, sin
+mirar la sesión. Y los números no siempre son impredecibles: junto a
+`CW-2026-DEPBCJ` hay `SUBS-2026-0001` y `GZNNTAHZ-0003`. Con el correo de
+alguien y un número correlativo se le podía descargar una factura con su nombre,
+su teléfono, su NIF y su dirección.
+
+Ya exige sesión. Y la consulta sigue filtrando por correo, que es lo que impide
+ver la factura de otro aun teniendo sesión propia.
+
+Estaba abierto porque la regla existía **en un solo sitio**, dentro del manejador
+de la cuenta, y quien escribió el de la factura no la tenía a mano. Por eso ahora
+está en su propio módulo, con diez pruebas: que el correo de la URL se ignore
+aunque haya sesión, que sin sesión no haya correo, y que si leer la sesión
+revienta no se dé por buena.
+
 ## Pendiente
 
-- **El panel se identifica solo con el correo, sin sesión.** Quien conozca la
-  dirección de alguien puede pedir sus datos. Las citas no lo empeoran —van por
-  donde ya iban nombre, teléfono y fecha de los leads— pero es lo más serio que
-  hay abierto aquí, y arreglarlo es meter sesión de verdad en la API del panel.
+- **Los PDF de las facturas están en URL públicas.** Comprobado: se descargan sin
+  ninguna credencial. Exigir sesión protege la búsqueda, no el fichero — quien
+  tenga la dirección, lo abre. Lo correcto es servirlos con una URL firmada que
+  caduque, y dejar el almacén cerrado.
