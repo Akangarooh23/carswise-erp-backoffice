@@ -48,9 +48,9 @@ Dos tablas, ninguna de ellas la de leads:
   `token_seller`) que permiten cancelar o cambiar la cita desde el enlace del
   correo, sin contraseña.
 
-**El estado depende de quién publicó el hueco**: `confirmed` si lo publicó una
-persona desde el ERP, `pending` si lo generó el sistema. Está explicado más
-abajo, en «Los horarios inventados».
+**Siempre nace `pending`.** Ninguna visita se da por confirmada sola: alguien
+tiene que llamar al concesionario y aprobarla desde la Agenda. De dónde salió el
+hueco se guarda igual, y el ERP lo enseña, pero no cambia el estado.
 
 ### Dónde sigue el cliente su cita
 
@@ -136,21 +136,22 @@ Lo que cambia es lo que se promete encima de ellos. Antes la reserva nacía
 `confirmed` y al cliente le llegaba el archivo de calendario, aunque nadie
 hubiera dicho que el concesionario abre ese día.
 
-| Hueco | Estado al reservar | Qué recibe el cliente |
-|---|---|---|
-| Publicado desde el ERP | `confirmed` | Confirmación y `.ics`, como siempre |
-| Generado solo | `pending` | «Hemos recibido tu solicitud» — **sin `.ics`** |
+**Ahora toda visita se aprueba.** Nace `pending`, y al cliente se le dice
+«Pendiente de aprobación», sin `.ics`. Un `.ics` en el móvil de alguien es una
+cita cerrada, y no lo es hasta que un trabajador ha llamado al concesionario.
 
-En la Agenda, las pendientes salen **arriba, en su propio bloque**, con
-**Confirmar** y **No puede ser**. Confirmar es lo que le promete algo al cliente,
-y por eso es ahí donde sale el correo con el calendario.
+Hubo un paso intermedio en que las reservas sobre huecos publicados desde el ERP
+nacían confirmadas, con el argumento de que si alguien había publicado esa hora
+ya estaba acordada. No se sostiene: que una hora esté publicada no significa que
+el concesionario haya dicho que sí a **esta** visita, con este coche y esta
+persona.
 
-Un `.ics` en el móvil de alguien es una cita cerrada. Por eso solo sale cuando
-lo es.
+**Sigue mereciendo la pena** publicar los huecos reales desde el ERP: no salta la
+aprobación, pero evita que el cliente pida un martes en un sitio que cierra los
+martes, y aprobarla es entonces un trámite en vez de una negociación.
 
-**Sigue mereciendo la pena** publicar los huecos reales desde el ERP: en cuanto
-hay uno creado a mano, el sistema deja de inventarse ninguno y las reservas
-vuelven a nacer confirmadas, sin pasar por nadie.
+En la Agenda se distingue una cosa de otra: una reserva sobre un hueco inventado
+lleva la marca **«horario sin confirmar»**.
 
 ### Cancelar desde el ERP — resuelto
 
