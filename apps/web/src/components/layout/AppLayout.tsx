@@ -13,6 +13,7 @@ export default function AppLayout() {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [pendingLeads, setPendingLeads] = useState(0);
+  const [visitasPorConfirmar, setVisitasPorConfirmar] = useState(0);
   const [toast, setToast]               = useState<string | null>(null);
 
   // Los atajos. El hook se llama siempre, tambien sin sesion: React exige que
@@ -25,6 +26,17 @@ export default function AppLayout() {
     if (!user) return;
 
     async function poll() {
+      // Las visitas por confirmar, en el mismo sondeo. Sin esto solo se veían
+      // entrando en la Agenda, y una visita que nadie confirma deja al cliente
+      // esperando sin que salte nada en ninguna parte.
+      api.get<{ bookings?: unknown[] }>('/all-bookings?status=pending')
+        .then((v) => {
+          if (!v.ok) return;
+          const lista = (v as unknown as { bookings?: unknown[] }).bookings ?? v.data?.bookings ?? [];
+          setVisitasPorConfirmar(lista.length);
+        })
+        .catch(() => {});
+
       const r = await api.get<LeadStats>('/leads/stats');
       if (!r.ok) return;
       const current = r.data.pending ?? 0;
@@ -61,7 +73,7 @@ export default function AppLayout() {
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads} visitasPorConfirmar={visitasPorConfirmar} />
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Mobile top bar */}

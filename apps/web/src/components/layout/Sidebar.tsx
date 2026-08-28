@@ -48,9 +48,10 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   pendingLeads?: number;
+  visitasPorConfirmar?: number;
 }
 
-export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, pendingLeads = 0, visitasPorConfirmar = 0 }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -119,6 +120,15 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0 }: SidebarPr
             {item.to === '/leads' && pendingLeads > 0 && (
               <span className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
                 {pendingLeads > 99 ? '99+' : pendingLeads}
+              </span>
+            )}
+            {/* En ámbar y no en rojo: una visita por confirmar es trabajo que
+                espera, no una urgencia. Si todo lo que avisa es rojo, el rojo
+                deja de querer decir nada. */}
+            {item.to === '/bookings' && visitasPorConfirmar > 0 && (
+              <span title={`${visitasPorConfirmar} visita${visitasPorConfirmar > 1 ? 's' : ''} por confirmar`}
+                    className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-acento text-brand-700 text-[10px] font-bold text-center leading-tight">
+                {visitasPorConfirmar > 99 ? '99+' : visitasPorConfirmar}
               </span>
             )}
           </NavLink>

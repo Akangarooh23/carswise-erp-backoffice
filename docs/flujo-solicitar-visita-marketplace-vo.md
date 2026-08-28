@@ -39,6 +39,30 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 
 ---
 
+## Los botones de la Agenda
+
+### En una visita **por confirmar** (bloque de arriba)
+
+| Botón | Qué hace |
+|---|---|
+| **Puede** | El concesionario ha dicho que sí. La cita queda confirmada, al cliente le llega el correo con el calendario y ya sale en su campana |
+| **Propone otras horas** | Abre el diálogo para apuntar las que dio. Se le mandan al cliente y la cita **sigue pendiente** hasta que conteste |
+| **No puede ser** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
+| **Ver rastro** | Despliega los pasos dados, y los dos botones para apuntar lo que se hace por teléfono |
+
+### En una visita **ya confirmada** (al desplegar la fila)
+
+| Botón | Qué hace |
+|---|---|
+| **Cancelar cita** | Cancela con motivo y **escribe al cliente**. Si el correo falla, la pantalla lo dice para que le llames |
+| **Otra hora** | La mueve al día y hora que le digas. Con una casilla para marcar si **la ha elegido el cliente**, porque entonces se le confirma en vez de decirle que se la hemos movido |
+| **Contactar** | Abre tu correo con el asunto puesto. No hace nada automático |
+| **Llamar** | Abre el teléfono del cliente. No hace nada automático |
+
+El **identificador de la oferta** es un enlace: abre el anuncio real en otra
+pestaña, para ver el coche antes de llamar al concesionario. Las ofertas de IDCar
+no lo llevan, porque su ficha no tiene dirección propia.
+
 ## El rastro
 
 Cada visita guarda los pasos que ha dado, con quién y cuándo. El estado dice
@@ -86,6 +110,7 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 
 | Qué | Dónde |
 |---|---|
+| Cuántas hay por confirmar | El número **ámbar** junto a Agenda, en el menú. Se refresca cada 30 segundos |
 | Las visitas por confirmar | **Agenda**, bloque de arriba |
 | Las confirmadas | **Agenda**, lista por fecha |
 | El rastro de una visita | **Agenda** → Ver rastro |

@@ -64,6 +64,19 @@ function groupByDay(bookings: Booking[]): Record<string, Booking[]> {
   return map;
 }
 
+/**
+ * El anuncio público de una oferta, o cadena vacía si no se puede enlazar.
+ *
+ * Solo las del marketplace VO tienen dirección propia. Las de IDCar se abren
+ * desde dentro de la aplicación —`/ficha-vehiculo` no lleva identificador—, así
+ * que a esas no se les pone enlace: mandar a alguien a una página que enseña
+ * otro coche es peor que dejarle el identificador y que lo busque.
+ */
+function enlaceOferta(offerId: string): string {
+  if (!offerId || offerId.startsWith('idcar-')) return '';
+  return `https://www.popcar.tech/marketplace-vo/${encodeURIComponent(offerId)}`;
+}
+
 function isToday(d: string) { return d === todayIso(); }
 function isProfessional(b: Booking) { return !b.offer_id?.startsWith('idcar-'); }
 
@@ -685,8 +698,19 @@ export default function BookingsPage() {
                                   <div className="text-brand-500 font-medium">{b.buyer_phone || '–'}</div>
                                 </div>
                                 <div>
-                                  <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">ID Oferta</div>
-                                  <div className="font-mono text-brand-300 text-[10px]">{b.offer_id}</div>
+                                  <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Oferta</div>
+                                  {/* Enlace al anuncio de verdad: quien va a llamar al
+                                      concesionario necesita ver el coche, y copiar un
+                                      identificador a mano se hace mal. */}
+                                  {enlaceOferta(b.offer_id) ? (
+                                    <a href={enlaceOferta(b.offer_id)} target="_blank" rel="noreferrer"
+                                       onClick={(e) => e.stopPropagation()}
+                                       className="font-mono text-acento-texto text-[10px] underline underline-offset-2 break-all">
+                                      {b.offer_id} ↗
+                                    </a>
+                                  ) : (
+                                    <div className="font-mono text-brand-300 text-[10px] break-all">{b.offer_id}</div>
+                                  )}
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Reservado</div>
