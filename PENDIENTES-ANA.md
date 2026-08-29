@@ -149,7 +149,14 @@ importe libre, como el informe de tasación: el cargo lleva el nombre del coche 
 la cifra que se le dijo a ese cliente. Un producto fijo no valdría, porque cada
 fianza es distinta.
 
-Dos cosas que sí conviene mirar en su panel:
+Tres cosas que sí conviene mirar en su panel:
+
+**En qué modo estás mirando.** Arriba a la derecha hay un interruptor de **modo
+de prueba**. Un pago hecho con tarjeta falsa solo aparece con ese modo
+encendido: en la vista normal no sale, y parece que el cobro no existe. El 29
+de agosto pasó exactamente eso — se pagó una fianza de 1.019 € y no la
+encontrábamos. Antes de dar por perdido un cobro, mira con el interruptor
+puesto.
 
 **Que el webhook manda `checkout.session.completed`.** Es el aviso con el que se
 da la fianza por cobrada, se avanza el expediente y se emite la factura. Ya hace
@@ -162,6 +169,11 @@ algún día se cambia por una restringida, necesita permiso de escritura sobre
 
 Las devoluciones salen en Stripe como tales, sobre el cargo original. No hay que
 configurar nada para eso.
+
+Y una tranquilidad: aunque ese aviso fallara, **la fianza ya no se pierde**. Al
+volver del pago, la pantalla le pregunta directamente a Stripe si esa sesión
+está pagada y la anota igual. Lo que llegue primero gana, y nunca se emiten dos
+facturas por el mismo cobro.
 
 ## 7 · WhatsApp, cuando lo quieras
 

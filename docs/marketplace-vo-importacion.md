@@ -5,7 +5,8 @@ Alemania y que traemos nosotros. Hoy hay 1.568 publicados.
 
 **Aquí no hay visita.** No se puede ver un coche que está en Alemania, así que
 no hay calendario ni horas que confirmar: el cliente pide que se lo traigamos y
-alguien le llama. Por eso este flujo **no vive en la Agenda, sino en Leads**.
+alguien le llama. Por eso este flujo **no vive en la Agenda, sino en
+Importaciones**, su propia sección del menú.
 
 Es lo que más lo diferencia de las otras dos secciones, y por eso este manual es
 corto: no hay que aprobar nada, hay que llamar.
@@ -15,10 +16,42 @@ corto: no hay que aprobar nada, hay que llamar.
 | | Concesionario y Ex-Renting | Importación |
 |---|---|---|
 | Qué pide el cliente | Una **visita**, con día y hora | Que **le traigamos** el coche |
-| Dónde aparece | **Agenda** | **Leads** |
+| Dónde aparece | **Agenda** | **Importaciones** |
 | Hay que aprobar | Sí, siempre | No: hay que llamar |
 | Dinero por delante | No | **Una fianza del 30 %** |
 | Cuándo lo ve | En días | En semanas: hay que traerlo |
+
+---
+
+## La pantalla de Importaciones
+
+Una columna por etapa, y cada columna dice qué toca hacer con esos coches. Se
+lee de izquierda a derecha: lo de la izquierda es lo que está empezando.
+
+| Columna | Qué toca |
+|---|---|
+| Pendiente | Llamar y explicarle el proceso |
+| Contactado | Esperando a que pague la fianza |
+| Fianza pagada | Hacer el pedido a Alemania |
+| Pedido a Alemania | Confirmar fecha y organizar el transporte |
+| En transporte | El coche viene de camino |
+| En trámites | Impuesto, ITV y matrícula |
+| Entregado | Cerrado |
+
+Arriba hay cuatro números. El que importa es **Fianzas cobradas**: es dinero de
+clientes que tenemos y de coches que todavía no hemos entregado.
+
+Al pulsar un coche se abre su expediente con todo lo que se puede hacer: marcar
+la fianza, pasarlo de etapa, poner la fecha de entrega y devolver la fianza. Un
+expediente que lleva más de una semana parado lo dice en rojo en su tarjeta.
+
+Dos cosas que la pantalla no te deja hacer, a propósito:
+
+- **Pasar a «Pedido a Alemania» sin la fianza cobrada.** Pedir el coche nos
+  compromete con dinero; lo que cubre eso es la fianza.
+- **Poner fecha de entrega antes del pedido.** La fecha la da el vendedor al
+  aceptarlo. Antes de eso cualquier fecha es inventada, y el cliente la ve en su
+  panel como una promesa.
 
 ---
 
@@ -29,7 +62,7 @@ cliente: Entra en **Marketplace VO**, pestaña **Importación**, y abre un coche
 cliente: Pulsa **Solicitar importación** y deja nombre, correo, teléfono y su mensaje
 sistema: Le dice **cuánto es la fianza**: el 30 % del precio con el coste de traerlo
 correo: **Al cliente** — su solicitud, con esa cifra · **A operaciones** — solicitud nueva
-erp: Sale en **Leads**, como **Importar un coche**, con la fianza destacada
+erp: Sale en **Importaciones**, en la columna **Pendiente**, con su fianza
 trabajador: Le llama, le cuenta el proceso y le dice que pague la fianza desde su panel
 cliente: **Paga la fianza** con tarjeta, desde su solicitud
 sistema: Fianza cobrada, expediente a **Fianza pagada** y **su factura emitida**. Sin tocar nada
@@ -156,7 +189,7 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 
 | Qué | Dónde |
 |---|---|
-| Las solicitudes de importación | **Leads**, con el tipo **Importar un coche** |
+| Las solicitudes de importación | **Importaciones**, repartidas por etapa |
 | De qué sección viene | La etiqueta **Marketplace · Importación** |
 | La fianza: cifra, si está cobrada y desde cuándo | En la ficha del lead, arriba, en azul |
 | Marcarla cobrada a mano, o devolverla | En ese mismo recuadro |
