@@ -76,7 +76,10 @@ recordatorios y en la página de su cita. Si se dejan en blanco la cita se
 confirma igual, y al cliente se le dice que le confirmaremos la dirección antes
 de la visita — **y entonces hay que cumplirlo**, con el botón de abajo.
 
-### En una visita **ya confirmada** (al desplegar la fila)
+### En una visita **ya confirmada**
+
+Se despliega pinchando en la **cabecera** de la fila —la hora, el coche y el
+nombre—. Dentro del detalle se puede escribir y seleccionar sin que se cierre.
 
 | Botón | Qué hace |
 |---|---|
