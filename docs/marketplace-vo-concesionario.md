@@ -1,7 +1,10 @@
-# Flujo solicitar visita - Marketplace VO
+# Marketplace VO — Concesionario
 
-Un cliente pide visita para un coche de concesionario. Qué pasa, quién lo hace y
-en qué pantalla.
+Un cliente pide visita para un coche de **concesionario**. Qué pasa, quién lo
+hace y en qué pantalla.
+
+Para los de la sección **Ex-Renting** —Astara, Leasys— hay otro manual: el
+camino es el mismo, pero a quién se llama y qué hay del coche cambia.
 
 :::flujo
 cliente: Entra en **Marketplace VO** y abre una oferta de concesionario
@@ -178,13 +181,11 @@ marketplace es el coche —concesionario, ex-renting, particular o importación�
 dice: se pone en la ficha de la oferta, en Marketplace, y con una vez basta
 para todos los coches de ese vendedor.
 
-De un particular sale su correo. De los demás, solo el nombre y un enlace de
-**origen**, que lleva a donde salió el coche: unas veces el anuncio del vendedor
-—con su teléfono—, otras un informe de inspección, y muchas veces nada, porque
-el coche lo hemos subido nosotros y no está anunciado en ninguna parte.
-
-**El teléfono de quien vende no está guardado en el sistema.** Hay que tenerlo a
-mano por otro sitio.
+De un particular sale además su correo. Y hay un enlace de **origen**, que lleva
+a donde salió el coche: de un concesionario suele ser su propio anuncio, con su
+teléfono dentro. De otros no —o no hay enlace, porque el coche lo hemos subido
+nosotros y no está anunciado en ninguna parte—, y por eso el teléfono se guarda
+en la ficha.
 
 Y por eso la Agenda no dice «el concesionario» en todas partes: el marketplace
 ya tiene particulares y profesionales, y vendrán importación, renting y
