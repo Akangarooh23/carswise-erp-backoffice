@@ -49,6 +49,27 @@ los precios de hoy son unos 2.200 € de media.
 
 Si alguien discute la cifra, la que vale es la que pone ahí.
 
+**Cuando la pague, márcala como cobrada** con el botón de su ficha. Es el paso
+que separa una persona interesada de un coche que vamos a comprar en Alemania:
+hasta que no está, no se compra nada. Al marcarla, el expediente pasa solo a
+«Fianza pagada», queda la fecha del cobro y el cliente lo ve en su panel.
+
+Si se marcó por error, se quita desde el mismo sitio.
+
+## Cuándo le hemos dicho que lo tendrá
+
+En la ficha del lead hay una fecha para eso, y sirve para dos cosas: que todos
+digan lo mismo cuando llame, y que **si cambia se le avise solo**.
+
+Al cambiarla, al cliente le llega un correo con **las dos fechas** —la que era y
+la que es— y lo que hayas escrito en la respuesta. Si no escribes nada, el correo
+le explica que es una estimación y que los plazos se mueven.
+
+La primera vez que se pone **no se manda nada**: esa se la cuentas tú al llamar.
+Solo se avisa de los cambios.
+
+Y en su panel la ve siempre: «Lo esperamos para el 14 de octubre».
+
 ## Qué se hace con una solicitud
 
 Una importación tiene **sus propios pasos**, porque el coche tarda semanas en

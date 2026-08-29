@@ -130,6 +130,35 @@ function importEmailHtml(lead: Lead): string {
   });
 }
 
+/**
+ * El correo de cuando cambia la fecha en la que le hemos dicho que lo tendrá.
+ *
+ * Se manda solo cuando cambia, no cuando se pone la primera vez: la primera se
+ * la cuenta quien le llama. Lleva las dos fechas —la que era y la que es—
+ * porque quien lo lee tiene la primera en la cabeza, y un correo que solo dice
+ * la nueva se lee como si acabáramos de decidirla.
+ *
+ * Un coche que viene de Alemania se retrasa: lo que no puede pasar es que se
+ * entere llamando.
+ */
+function entregaEmailHtml(lead: Lead, antes: string): string {
+  const dia = (f: string) => (f ? new Date(f).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  return plantilla({
+    titulo: 'Cambia la fecha de tu coche',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Te escribimos por <strong>${esc(lead.vehicle_title)}</strong>, que estamos trayendo para ti.`) +
+      datos([
+        ['Ahora lo esperamos para', dia(lead.delivery_estimate)],
+        ['Antes te dijimos', dia(antes)],
+      ]) +
+      (lead.erp_response
+        ? datos([['Mensaje del equipo', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
+        : parrafo('Es una estimación: los plazos de un coche que viene de Alemania se mueven. Te avisamos de cualquier cambio.', 14)) +
+      enlace('Ver mi panel', PANEL()),
+  });
+}
+
 function rentingNotifyEmailHtml(lead: Lead): string {
   return plantilla({
     titulo: 'Actualización de tu solicitud de renting',
@@ -192,7 +221,9 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'reschedule_proposals',  reschedule_proposals,
                   -- La fianza que se le dijo al pedir una importación. Historica:
                   -- es lo que se le prometio, no lo que saldria hoy.
-                  'deposit_quoted',        deposit_quoted
+                  'deposit_quoted',        deposit_quoted,
+                  'deposit_paid_at',       deposit_paid_at,
+                  'delivery_estimate',     TO_CHAR(delivery_estimate, 'YYYY-MM-DD')
                 ) AS meta
          FROM moveadvisor_market_leads
          ${where}
@@ -267,6 +298,9 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
     sale_price, sale_notes,
+    // De un expediente de importación: si la fianza está cobrada y cuándo le
+    // hemos dicho que lo tendrá.
+    deposit_paid, delivery_estimate,
   } = req.body ?? {};
   // Los estados de una importación son los pasos de su expediente, no los de
   // una gestión cualquiera: el coche está en Alemania y tarda semanas en
@@ -291,7 +325,15 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_address !== undefined) { values.push(appointment_address ?? ''); sets.push(`appointment_address = $${values.length}`); }
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
   if (sale_price  !== undefined)         { values.push(sale_price  || null);        sets.push(`sale_price  = $${values.length}`); }
-  if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = $${values.length}`); }
+  if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = ${values.length}`); }
+  // La fianza se marca cobrada con la fecha de hoy, y se puede desmarcar si fue
+  // un error: quitarla es tan importante como ponerla, porque de ella depende
+  // que se compre un coche en Alemania.
+  if (deposit_paid !== undefined)      { sets.push(`deposit_paid_at = ${deposit_paid ? "NOW()" : "NULL"}`); }
+  if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = ${values.length}`); }
+  // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
+  // interesado de un coche que vamos a comprar.
+  if (deposit_paid && !status) { sets.push(`status = CASE WHEN status IN ('Pendiente','Contactado') THEN 'Fianza pagada' ELSE status END`); }
   // When operator assigns a date without manually changing status, auto-advance Pendiente → En proceso
   if (appointment_date && !status) { sets.push(`status = CASE WHEN status = 'Pendiente' THEN 'En proceso' ELSE status END`); }
   // When operator confirms a new appointment, clear any pending reschedule proposals
@@ -302,7 +344,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   values.push(req.params.id);
   try {
     // Fetch current values for history diff
-    const before = await query(`SELECT status, erp_notes, erp_response, appointment_date FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    const before = await query(`SELECT status, erp_notes, erp_response, appointment_date, deposit_paid_at, delivery_estimate FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
     if (!before.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
     const prev = before.rows[0] as Record<string, unknown>;
 
@@ -319,6 +361,8 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
       ['status',           prev.status,           status ?? (finalStatus !== prev.status ? finalStatus : undefined)],
       ['erp_response',     prev.erp_response,      erp_response],
       ['appointment_date', prev.appointment_date,  appointment_date],
+      ['deposit_paid_at',  prev.deposit_paid_at,   deposit_paid === undefined ? undefined : (deposit_paid ? 'cobrada' : 'sin cobrar')],
+      ['delivery_estimate', prev.delivery_estimate, delivery_estimate],
     ];
     await query(ENSURE_HISTORY_TABLE, []).catch(() => {});
     for (const [field, oldVal, newVal] of tracked) {
@@ -332,6 +376,18 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
 
     const updatedLead = result.rows[0] as Record<string, string>;
     res.json({ ok: true, data: updatedLead });
+
+    // Si la fecha de entrega ha cambiado, se le cuenta. No la primera vez: esa
+    // se la dice quien le llama, y un correo automático ahí sobra.
+    const fechaAntes = prev.delivery_estimate ? String(prev.delivery_estimate).slice(0, 10) : '';
+    const fechaAhora = updatedLead.delivery_estimate ? String(updatedLead.delivery_estimate).slice(0, 10) : '';
+    if (fechaAntes && fechaAhora && fechaAntes !== fechaAhora && updatedLead.user_email) {
+      alCliente(
+        updatedLead.user_email,
+        `Cambia la fecha de tu coche — ${updatedLead.vehicle_title || 'PopCar'}`,
+        entregaEmailHtml(updatedLead, fechaAntes)
+      ).catch((e: Error) => console.error('[leads] aviso de entrega:', e.message));
+    }
 
     // Fire-and-forget emails + sale outcome processing
     if (status === 'Vendido' || status === 'Cerrado') {

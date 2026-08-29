@@ -22,6 +22,10 @@ interface LeadMeta {
   /** La fianza que se le dijo al pedir una importación. Histórica: es lo que se
    *  le prometió, no lo que saldría hoy si el precio ha cambiado. */
   deposit_quoted?: string | number | null;
+  /** Cuándo se cobró la fianza. Vacío mientras no esté pagada. */
+  deposit_paid_at?: string | null;
+  /** Cuándo le hemos dicho que lo tendrá. Estimación, no promesa. */
+  delivery_estimate?: string | null;
 }
 
 interface Lead {
@@ -457,6 +461,27 @@ export default function LeadsPage() {
     });
     if (res.ok) { await loadLeads(); setSelected(null); }
     setSaving(false);
+  }
+
+  /**
+ * Marca —o desmarca— la fianza como cobrada.
+ *
+ * Se guarda al momento y no al darle a Guardar: es un hecho, no un borrador, y
+ * de él depende que se compre un coche en Alemania. Al cobrarla, el expediente
+ * pasa solo a «Fianza pagada» si estaba antes de eso.
+ */
+  async function marcaFianza(cobrada: boolean) {
+    if (!selected) return;
+    const r = await api.patch(`/leads/${selected.id}`, { deposit_paid: cobrada });
+    if (r.ok) { await loadLeads(); setSelected(null); }
+  }
+
+  /** La fecha de entrega. Si cambia, la API se lo cuenta al cliente. */
+  async function guardaEntrega(fecha: string) {
+    if (!selected) return;
+    if ((selected.meta?.delivery_estimate ?? '') === fecha) return;
+    const r = await api.patch(`/leads/${selected.id}`, { delivery_estimate: fecha || null });
+    if (r.ok) await loadLeads();
   }
 
   async function confirmSalePrice() {
@@ -1190,17 +1215,56 @@ export default function LeadsPage() {
         <Modal open={true} title={`Lead: ${selected.meta?.name ?? selected.user_email}`} onClose={() => setSelected(null)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {selected.appointment_type === 'import' && selected.meta?.deposit_quoted != null && (
-                /* Lo primero que hay que saber de una importación: la cifra que se
-                   le dio. Si el precio de la oferta cambia después, esta no. */
-                <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-                  <span className="text-blue-700 text-xs block font-semibold">Fianza que se le dijo</span>
-                  <span className="font-bold text-blue-800 text-lg">
-                    {Number(selected.meta.deposit_quoted).toLocaleString('es-ES')} €
-                  </span>
-                  <span className="text-blue-700/80 text-xs block mt-0.5">
-                    El 30 % del precio con el coste de traerlo, al pedirlo. No se recalcula.
-                  </span>
+              {selected.appointment_type === 'import' && (
+                /* El expediente: lo que se le dijo, si lo ha pagado y cuándo lo
+                   tendrá. Es lo que hay que mirar antes de cogerle el teléfono. */
+                <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 space-y-3">
+                  {selected.meta?.deposit_quoted != null && (
+                    <div>
+                      <span className="text-blue-700 text-xs block font-semibold">Fianza que se le dijo</span>
+                      <span className="font-bold text-blue-800 text-lg">
+                        {Number(selected.meta.deposit_quoted).toLocaleString('es-ES')} €
+                      </span>
+                      <span className="text-blue-700/80 text-xs block mt-0.5">
+                        El 30 % del precio con el coste de traerlo, al pedirlo. No se recalcula.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-blue-200/70">
+                    {/* Hasta que la fianza no está, no se compra nada en Alemania:
+                        es el paso que más cambia el expediente. */}
+                    {selected.meta?.deposit_paid_at ? (
+                      <>
+                        <span className="text-[13px] font-bold text-emerald-700">
+                          ✓ Fianza cobrada el {new Date(selected.meta.deposit_paid_at).toLocaleDateString('es-ES')}
+                        </span>
+                        <button onClick={() => marcaFianza(false)}
+                                className="text-[11px] text-brand-400 underline underline-offset-2">
+                          no estaba cobrada
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => marcaFianza(true)}
+                              className="px-3 py-1.5 text-xs font-bold text-white bg-blue-700 rounded-lg hover:bg-blue-800">
+                        Marcar fianza como cobrada
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-1 border-t border-blue-200/70">
+                    <label className="text-blue-700 text-xs font-semibold block mb-1">
+                      Cuándo le hemos dicho que lo tendrá
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input type="date" defaultValue={selected.meta?.delivery_estimate ?? ''}
+                             onBlur={(e) => guardaEntrega(e.target.value)}
+                             className="px-2 py-1 text-sm border border-blue-200 rounded-lg bg-white" />
+                      <span className="text-blue-700/80 text-[11px]">
+                        Si la cambias, se le avisa por correo con las dos fechas.
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
               <div><span className="text-brand-300 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-brand-100 text-brand-400'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>
