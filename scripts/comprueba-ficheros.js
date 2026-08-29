@@ -16,6 +16,18 @@ const env = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8');
 const clave = (n) => (env.split(/\r?\n/).find((x) => x.startsWith(n + '=')) || '').slice(n.length + 1).trim();
 const API = process.env.API_URL || 'http://localhost:4000/api';
 
+/**
+ * Con qué cuenta entra un comprobador.
+ *
+ * Estaba escrito 'admin@carswise.es' en cinco de ellos, y esa cuenta se eliminó
+ * al crear las de los CEOs. Desde entonces los cinco decían «no se ha podido
+ * entrar en la API» pasara lo que pasara: parecía un problema de la API y era
+ * una cuenta que ya no existe. Un comprobador que no puede pasar nunca es peor
+ * que no tenerlo, porque se lee su MAL y se busca en otro sitio.
+ */
+const correoAdmin = () => clave('ERP_ADMIN_EMAIL') || 'apicazo@popcar.tech';
+
+
 let mal = 0;
 const ok = (t, b, extra = '') => { if (!b) mal++; console.log((b ? '  OK  ' : '  MAL ') + t + (extra ? '  · ' + extra : '')); };
 
@@ -23,9 +35,9 @@ const ok = (t, b, extra = '') => { if (!b) mal++; console.log((b ? '  OK  ' : ' 
   const { token } = await (await fetch(API + '/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@carswise.es', password: clave('ERP_ADMIN_PASSWORD') }),
+    body: JSON.stringify({ email: correoAdmin(), password: clave('ERP_ADMIN_PASSWORD') }),
   })).json();
-  if (!token) { console.log('  MAL  no se ha podido entrar en la API'); process.exit(1); }
+  if (!token) { console.log('  MAL  no se ha podido entrar en la API como ' + correoAdmin() + ' — revisa ERP_ADMIN_EMAIL y ERP_ADMIN_PASSWORD en .env'); process.exit(1); }
   const cab = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
   const guion = Buffer.from('<script>alert(1)</script>').toString('base64');
 
