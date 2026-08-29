@@ -828,7 +828,9 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              b.meeting_place, b.meeting_contact,
              a.source AS slot_source
       FROM vehicle_visit_bookings b
-      JOIN vehicle_visit_availability a ON a.id = b.availability_id
+      -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
+      -- JOIN normal desaparecia de la Agenda sin que nadie lo notara.
+      LEFT JOIN vehicle_visit_availability a ON a.id = b.availability_id
       WHERE 1=1
     `;
     const params: (string | number)[] = [];
