@@ -51,16 +51,25 @@ Si alguien discute la cifra, la que vale es la que pone ahí.
 
 ## Qué se hace con una solicitud
 
-No hay estados de cita —ni pendiente, ni confirmada—: son los estados normales
-de un lead.
+Una importación tiene **sus propios pasos**, porque el coche tarda semanas en
+llegar y entre «le he llamado» y «lo tiene» pasan cosas que hay que distinguir.
 
-| Estado | Qué quiere decir |
+| Paso | Qué quiere decir |
 |---|---|
 | Pendiente | Nadie le ha llamado todavía |
-| Contactado | Ya se ha hablado con él |
-| En proceso | Se está gestionando la importación |
-| Cerrado | Terminado |
+| Contactado | Ya se ha hablado con él y conoce el proceso |
+| Fianza pagada | Ha puesto el dinero por delante |
+| Comprado en Alemania | El coche ya es suyo |
+| En transporte | Viene de camino |
+| En trámites | Está aquí: aduana, ITV y matriculación |
+| Entregado | Lo tiene |
 | Descartado · Cancelado | No sigue adelante |
+
+**El paso se elige en la ficha del lead, y el cliente lo ve en su panel** con una
+barra de avance y una frase que le explica qué significa. Ese es el objetivo: que
+no tenga que llamar para saber por dónde va.
+
+Cada cambio queda en el **historial** del lead, con quién lo hizo y cuándo.
 
 **Notificar** le manda un correo con lo que hayas escrito en la respuesta, y con
 su fianza. Al notificar, un lead que estuviera Pendiente pasa a Contactado solo.
@@ -71,9 +80,9 @@ su fianza. Al notificar, un lead que estuviera Pendiente pasa a Contactado solo.
 ni recordatorios, ni nada automático más allá de los dos correos: el de que la
 hemos recibido y el de cuando se le contesta.
 
-**Si se le pone fecha de cita a una solicitud de importación, no se manda ningún
-recordatorio.** Los avisos de la víspera y del mismo día son solo para visitas.
-Si quedas con alguien, apúntalo tú.
+**Si quedas con él —para entregarle el coche, por ejemplo— pon la fecha y déjalo
+como cita confirmada**: entonces sí recibe los avisos de la víspera y del mismo
+día, igual que en una visita.
 
 **El coche está en Alemania.** Todo lo que se le diga de plazos es una promesa
 que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
@@ -90,10 +99,21 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 
 ## Lo que ve el cliente
 
-| Momento | En su panel | Qué recibe |
-|---|---|---|
-| Recién pedida | 🌍 Importar un coche, Pendiente | Correo con su solicitud y la fianza |
-| Cuando se le contesta | Contactado | Correo con lo que le hayas escrito y la fianza |
+En su panel, la solicitud lleva una **barra de avance** con los siete pasos, el
+que está y una frase que se lo explica en su idioma:
 
-En su panel ve la solicitud entre las demás, y desde ahí puede volver a la ficha
-del coche. **No** ve un calendario ni una hora: no hay ninguna.
+| Paso | Lo que lee |
+|---|---|
+| Pendiente | «Hemos recibido tu solicitud. Te llamamos para contarte el proceso.» |
+| Contactado | «Ya hemos hablado contigo. El siguiente paso es la fianza.» |
+| Fianza pagada | «Con la fianza puesta, vamos a por el coche.» |
+| Comprado en Alemania | «El coche ya es tuyo. Ahora toca traerlo.» |
+| En transporte | «Está de camino a España.» |
+| En trámites | «Ya está aquí: aduana, ITV y matriculación.» |
+| Entregado | «Es tuyo y lo tienes contigo.» |
+
+Debajo, la fianza que se le dijo. **No** ve calendario ni hora: no hay ninguna,
+salvo que quedes con él y la pongas.
+
+Cada vez que cambias el paso, lo ve la próxima vez que abra su panel. Ese es el
+trato: si lo ve, no llama.

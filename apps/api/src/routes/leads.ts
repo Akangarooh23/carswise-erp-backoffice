@@ -215,7 +215,7 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations', '
         COUNT(*)::int                                                                        AS total,
         COUNT(*) FILTER (WHERE status = 'Pendiente')::int                                   AS pending,
         COUNT(*) FILTER (WHERE status = 'Contactado')::int                                  AS contacted,
-        COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado', 'Vendido'))::int    AS resolved,
+        COUNT(*) FILTER (WHERE status IN ('Cita confirmada', 'Cerrado', 'Vendido', 'Entregado'))::int AS resolved,
         COUNT(*) FILTER (WHERE status = 'Descartado')::int                                  AS discarded,
         COUNT(*) FILTER (WHERE lead_type = 'info')::int                                     AS type_info,
         COUNT(*) FILTER (WHERE lead_type = 'visit')::int                                    AS type_visit,
@@ -268,7 +268,12 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
     sale_price, sale_notes,
   } = req.body ?? {};
-  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido'];
+  // Los estados de una importación son los pasos de su expediente, no los de
+  // una gestión cualquiera: el coche está en Alemania y tarda semanas en
+  // llegar. «En proceso» puede querer decir seis cosas distintas, y quien coge
+  // el teléfono necesita saber cuál.
+  const ESTADOS_IMPORTACION = ['Fianza pagada', 'Comprado en Alemania', 'En transporte', 'En trámites', 'Entregado'];
+  const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', ...ESTADOS_IMPORTACION];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });

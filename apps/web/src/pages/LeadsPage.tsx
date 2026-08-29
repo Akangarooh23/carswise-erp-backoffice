@@ -138,13 +138,30 @@ const STATUS_COLORS: Record<string, string> = {
   Descartado:             'bg-brand-100 text-brand-400',
   'Reagendar solicitado': 'bg-orange-100 text-orange-700',
   Cancelado:              'bg-red-100 text-red-700',
+  // Los pasos de un expediente de importación. Van en azul, como todo lo de
+  // importación, y se van oscureciendo según avanza.
+  'Fianza pagada':        'bg-blue-50 text-blue-700',
+  'Comprado en Alemania': 'bg-blue-100 text-blue-700',
+  'En transporte':        'bg-blue-100 text-blue-800',
+  'En trámites':          'bg-indigo-100 text-indigo-700',
+  Entregado:              'bg-emerald-100 text-emerald-700',
 };
 
 const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', 'Descartado', 'Reagendar solicitado', 'Cancelado'];
 
 // Statuses available per lead type — visit has all, renting/info/question exclude appointment-specific ones
+/**
+ * Los pasos de un expediente de importación, en orden.
+ *
+ * El coche está en Alemania y tarda semanas: entre «le he llamado» y «lo tiene»
+ * pasan cosas que hay que poder distinguir. Con «En proceso» a secas, quien
+ * coge el teléfono no sabe si el coche está comprado, en un camión o en la ITV.
+ */
+export const PASOS_IMPORTACION = ['Pendiente', 'Contactado', 'Fianza pagada', 'Comprado en Alemania', 'En transporte', 'En trámites', 'Entregado'];
+
 function getAvailableStatuses(type: string): string[] {
   if (type === 'visit') return ALL_STATUSES;
+  if (type === 'import') return [...PASOS_IMPORTACION, 'Descartado', 'Cancelado'];
   if (type === 'renting') return ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Cancelado'];
   return ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Cancelado'];
 }
