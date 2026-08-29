@@ -45,6 +45,24 @@ function comoSeLlama(tipo: string | null | undefined): string {
   return 'el vendedor';
 }
 
+/**
+ * De qué sección del marketplace es el coche.
+ *
+ * La etiqueta decía «PopCar» para todo lo que no fuera un particular, y con eso
+ * un Astara o un Leasys —flota de renting devuelta— parecía stock nuestro. Se
+ * usan las mismas palabras que ve el cliente en el marketplace, para que al
+ * hablar con él se hable de lo mismo.
+ */
+function seccionDelCoche(b: Booking): string {
+  const t = (b.seller_type || '').toLowerCase();
+  if (t === 'particular') return 'Particular';
+  if (t === 'professional') return 'Ex-renting';
+  if (t === 'concesionario') return 'Concesionario';
+  if (t === 'importador') return 'Importación';
+  // Sin oferta —despublicada— queda lo único que se sabe: de dónde vino.
+  return isProfessional(b) ? 'PopCar' : 'Particular';
+}
+
 /** El correo del vendedor, cuando lo hay: solo los particulares lo tienen. */
 const correoDelVendedor = (b: Booking) =>
   b.seller && b.seller.includes('@') ? b.seller : '';
@@ -1095,7 +1113,7 @@ export default function BookingsPage() {
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                                 isProf ? 'bg-acento-tenue text-acento-texto' : 'bg-brand-100 text-brand-400'
                               }`}>
-                                {isProf ? 'PopCar' : 'Particular'}
+                                {seccionDelCoche(b)}
                               </span>
                               <span className="text-brand-300 text-xs">{isExpanded ? '▾' : '▸'}</span>
                             </div>
