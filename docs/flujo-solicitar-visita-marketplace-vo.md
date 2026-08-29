@@ -9,7 +9,7 @@ cliente: Pulsa **Solicitar visita** y elige día y hora
 sistema: Guarda la reserva. **Siempre** queda pendiente de aprobación
 correo: **Al cliente** — «Hemos recibido tu solicitud». Sin calendario
 correo: **A operaciones** — cita nueva, con aviso de que hay que confirmarla
-cliente: La ve en **Solicitudes**, como pendiente. Todavía **no** en la campana
+cliente: La ve en **Solicitudes**, como pendiente, sin recargar nada. Todavía **no** en la campana
 erp: Sale en **Agenda**, arriba, en «visitas por confirmar»
 trabajador: **Llama al concesionario** y le pide la cita
 ? ¿Qué contesta el concesionario?
@@ -219,6 +219,10 @@ correo que alguien tiene que leer.
 
 La sigue desde su panel y también desde el enlace de su correo, que abre su cita
 sin pedirle contraseña.
+
+Su panel se pone al día solo: al pedir la visita y cada vez que lo abre. Antes
+los datos se pedían una sola vez, al entrar, y lo que acababa de hacer no
+aparecía hasta recargar la página entera.
 
 ## Para conectar WhatsApp
 
