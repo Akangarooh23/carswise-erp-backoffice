@@ -949,17 +949,20 @@ export default function BookingsPage() {
                   const isProf = isProfessional(b);
 
                   return (
+                    // Abre y cierra la cabecera, no la tarjeta entera. Estaba en la
+                    // tarjeta, y entonces pinchar dentro del detalle —en el cuadro de
+                    // la nota, sin ir más lejos— la cerraba: no se podía escribir.
                     <div
                       key={b.id}
-                      className="bg-white rounded-xl border border-brand-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
-                      onClick={() => setExpandedId(isExpanded ? null : b.id)}
+                      className="bg-white rounded-xl border border-brand-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                     >
                       {/* Left accent bar */}
                       <div className="flex">
                         <div className={`w-1 shrink-0 ${isProf ? 'bg-acento-tenue0' : 'bg-brand-300'}`} />
                         <div className="flex-1">
                           {/* Main row */}
-                          <div className="flex items-center gap-4 px-4 py-3">
+                          <div className="flex items-center gap-4 px-4 py-3 cursor-pointer"
+                               onClick={() => setExpandedId(isExpanded ? null : b.id)}>
                             {/* Time block */}
                             <div className="shrink-0 text-center w-16">
                               <div className="text-xl font-black text-brand-600 leading-none tabular-nums">
