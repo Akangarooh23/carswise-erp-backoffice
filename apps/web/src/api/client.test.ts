@@ -31,6 +31,17 @@ describe('la respuesta, con una forma sola', () => {
     assert.equal(r.ok, true);
   });
 
+  test('una lista se lee en data, no en data.data', () => {
+    // La trampa que se llevó por delante la pantalla de Importaciones: como el
+    // cuerpo ya trae `data`, se devuelve tal cual. Escribir `r.data.data`
+    // —que es lo que uno espera del tipo `{ data: T[] }`— da undefined, y la
+    // pantalla dice «no se han podido cargar» con todo cargado.
+    const r = conFormaUnica<{ id: string }[]>({ ok: true, data: [{ id: 'imp-1' }], meta: { total: 1 } });
+    assert.ok(Array.isArray(r.data), 'la lista está en data, entera');
+    assert.equal(r.data.length, 1);
+    assert.equal((r.data as unknown as { data?: unknown }).data, undefined);
+  });
+
   test('varias claves sueltas caben todas', () => {
     const r = conFormaUnica<{ texto: string; telefono: string }>({
       ok: true, texto: 'hola', telefono: '600',

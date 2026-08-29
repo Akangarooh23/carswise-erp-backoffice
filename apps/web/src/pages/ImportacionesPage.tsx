@@ -58,8 +58,13 @@ export default function ImportacionesPage() {
   const carga = useCallback(async () => {
     setCargando(true);
     setError('');
-    const r = await api.get<{ data: Expediente[] }>('/leads?type=import&limit=100');
-    if (r.ok && Array.isArray(r.data?.data)) setExpedientes(r.data.data);
+    // `r.data` **es** la lista.
+    //
+    // Cuando la respuesta ya trae `data`, el cliente la devuelve tal cual: no la
+    // envuelve otra vez. Buscando `r.data.data` salía undefined y la pantalla
+    // decía «no se han podido cargar» con los expedientes ahí, cargados.
+    const r = await api.get<Expediente[]>('/leads?type=import&limit=100');
+    if (r.ok && Array.isArray(r.data)) setExpedientes(r.data);
     else setError(r.error || 'No se han podido cargar los expedientes.');
     setCargando(false);
   }, []);
@@ -75,13 +80,13 @@ export default function ImportacionesPage() {
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
-    const r = await api.patch<{ data: Expediente }>(`/leads/${id}`, cambios);
+    const r = await api.patch<Expediente>(`/leads/${id}`, cambios);
     setGuardando(false);
     if (!r.ok) { setError(r.error || 'No se ha podido guardar.'); return; }
     await carga();
     // El panel abierto se queda con lo recién guardado.
     setAbierto((previo) => (previo && previo.id === id
-      ? { ...previo, ...(r.data?.data ?? {}) }
+      ? { ...previo, ...(r.data ?? {}) }
       : previo));
   }
 
@@ -295,8 +300,8 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
   // El rastro se pide al abrirlo: quién tocó qué y cuándo.
   useEffect(() => {
     let vivo = true;
-    void api.get<{ data: Apunte[] }>(`/leads/${x.id}/history`).then((r) => {
-      if (vivo && r.ok) setHistorial(r.data?.data ?? []);
+    void api.get<Apunte[]>(`/leads/${x.id}/history`).then((r) => {
+      if (vivo && r.ok) setHistorial(Array.isArray(r.data) ? r.data : []);
     });
     return () => { vivo = false; };
   }, [x.id]);
