@@ -1247,6 +1247,13 @@ export default function LeadsPage() {
                 /* El expediente: lo que se le dijo, si lo ha pagado y cuándo lo
                    tendrá. Es lo que hay que mirar antes de cogerle el teléfono. */
                 <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 space-y-3">
+                  {/* Un expediente de importación se lleva en su sección: ahí
+                      están todos, repartidos por la etapa en la que van. Aquí
+                      se deja lo justo para quien llega por el lead. */}
+                  <a href="/importaciones"
+                     className="inline-block text-[11px] font-bold text-blue-700 underline underline-offset-2">
+                    Ver en Importaciones →
+                  </a>
                   {selected.meta?.deposit_quoted != null && (
                     <div>
                       <span className="text-blue-700 text-xs block font-semibold">Fianza que se le dijo</span>

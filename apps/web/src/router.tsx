@@ -23,6 +23,7 @@ const IdCarsPage        = lazy(() => import('./pages/IdCarsPage.js'));
 const IdCarDetailPage   = lazy(() => import('./pages/IdCarDetailPage.js'));
 const BillingPage       = lazy(() => import('./pages/BillingPage.js'));
 const LeadsPage         = lazy(() => import('./pages/LeadsPage.js'));
+const ImportacionesPage = lazy(() => import('./pages/ImportacionesPage.js'));
 const FunnelPage            = lazy(() => import('./pages/FunnelPage.js'));
 const ConsentimientosPage       = lazy(() => import('./pages/ConsentimientosPage.js'));
 const MarketingAnalyticsPage    = lazy(() => import('./pages/MarketingAnalyticsPage.js'));
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
       { path: 'idcars/:id',        element: <Suspense fallback={<Loader />}><IdCarDetailPage /></Suspense> },
       { path: 'billing',           element: <Suspense fallback={<Loader />}><BillingPage /></Suspense> },
       { path: 'leads',             element: <Suspense fallback={<Loader />}><LeadsPage /></Suspense> },
+      { path: 'importaciones',     element: <Suspense fallback={<Loader />}><ImportacionesPage /></Suspense> },
       { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
       { path: 'consentimientos',      element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
       // La guia de estilo. Sin enlace en el menu: es para quien construye, no

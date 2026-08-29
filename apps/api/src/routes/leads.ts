@@ -390,12 +390,12 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_address !== undefined) { values.push(appointment_address ?? ''); sets.push(`appointment_address = $${values.length}`); }
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
   if (sale_price  !== undefined)         { values.push(sale_price  || null);        sets.push(`sale_price  = $${values.length}`); }
-  if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = ${values.length}`); }
+  if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = $${values.length}`); }
   // La fianza se marca cobrada con la fecha de hoy, y se puede desmarcar si fue
   // un error: quitarla es tan importante como ponerla, porque de ella depende
   // que se compre un coche en Alemania.
   if (deposit_paid !== undefined)      { sets.push(`deposit_paid_at = ${deposit_paid ? "NOW()" : "NULL"}`); }
-  if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = ${values.length}`); }
+  if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
   // interesado de un coche que vamos a comprar.
   if (deposit_paid && !status) { sets.push(`status = CASE WHEN status IN ('Pendiente','Contactado') THEN 'Fianza pagada' ELSE status END`); }
