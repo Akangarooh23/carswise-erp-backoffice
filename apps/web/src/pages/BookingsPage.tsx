@@ -146,9 +146,10 @@ function isProfessional(b: Booking) { return !b.offer_id?.startsWith('idcar-'); 
  * necesita saber a quién. Antes en la Agenda solo estaba el identificador de la
  * oferta: había que abrirla en otra pestaña para averiguarlo.
  *
- * De un concesionario o un profesional tenemos el nombre, y el teléfono está en
- * el anuncio de origen: por eso el enlace. De un particular tenemos su correo,
- * que es lo que hay.
+ * De un particular tenemos su correo. De los demás, solo el nombre: el enlace de
+ * origen lleva a donde salió el coche, que unas veces es el anuncio del vendedor
+ * —con su teléfono— y otras un informe de inspección o nada. **El teléfono de
+ * quien vende no está guardado en ninguna parte**, y hay que llamarle igual.
  */
 function QuienVende({ b }: { b: Booking }) {
   if (!b.seller) return null;
@@ -168,8 +169,8 @@ function QuienVende({ b }: { b: Booking }) {
       {b.source_url && (
         <a href={b.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
            className="text-acento-texto underline underline-offset-2"
-           title="El anuncio de origen: ahí está su teléfono">
-          su anuncio ↗
+           title="De dónde salió este coche. Puede ser el anuncio del vendedor o un informe de inspección; no siempre lleva teléfono.">
+          origen ↗
         </a>
       )}
     </div>

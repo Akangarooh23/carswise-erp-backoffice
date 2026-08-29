@@ -171,9 +171,16 @@ excepción es el **particular**: de ese sí tenemos el correo —en el marketpla
 el vendedor de una oferta de particular *es* una dirección— y se le escribe solo
 al reservar.
 
-Por eso la Agenda dice **quién vende** en cada visita, con un enlace a **su
-anuncio**: de un concesionario o un profesional solo tenemos el nombre, y el
-teléfono está ahí. Si la oferta se ha despublicado, lo dice.
+Por eso la Agenda dice **quién vende** en cada visita, y de qué sección del
+marketplace es el coche: concesionario, ex-renting, particular o importación.
+
+De un particular sale su correo. De los demás, solo el nombre y un enlace de
+**origen**, que lleva a donde salió el coche: unas veces el anuncio del vendedor
+—con su teléfono—, otras un informe de inspección, y muchas veces nada, porque
+el coche lo hemos subido nosotros y no está anunciado en ninguna parte.
+
+**El teléfono de quien vende no está guardado en el sistema.** Hay que tenerlo a
+mano por otro sitio.
 
 Y por eso la Agenda no dice «el concesionario» en todas partes: el marketplace
 ya tiene particulares y profesionales, y vendrán importación, renting y
