@@ -18,7 +18,21 @@ const fs = require('fs');
 const path = require('path');
 
 const env = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8');
-const clave = (n) => (env.split(/\r?\n/).find((x) => x.startsWith(n + '=')) || '').slice(n.length + 1).trim();
+/**
+ * Un valor del .env.
+ *
+ * Se queda con la última línea que lo define, que es lo que hace dotenv: con una
+ * variable repetida, la aplicación y esto leían cosas distintas.
+ *
+ * Y quita las comillas de fuera. Una contraseña con una almohadilla o un espacio
+ * hay que escribirla entrecomillada —si no, dotenv la corta por la mitad—, y sin
+ * quitarlas aquí se intentaba entrar con las comillas dentro de la contraseña.
+ */
+const clave = (n) => {
+  const lineas = env.split(/\r?\n/).filter((x) => x.startsWith(n + '='));
+  const bruto = (lineas.length ? lineas[lineas.length - 1] : '').slice(n.length + 1).trim();
+  return bruto.replace(/^"(.*)"$/s, '$1').replace(/^'(.*)'$/s, '$1');
+};
 const API = process.env.API_URL || 'http://localhost:4000/api';
 
 /**
@@ -37,13 +51,16 @@ let mal = 0;
 const ok = (t, b, extra = '') => { if (!b) mal++; console.log((b ? '  OK  ' : '  MAL ') + t + (extra ? '  · ' + extra : '')); };
 
 (async () => {
-  const login = await fetch(API + '/auth/login', {
+  const respuestaLogin = await fetch(API + '/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: correoAdmin(), password: clave('ERP_ADMIN_PASSWORD') }),
   });
-  const { token } = await login.json();
-  if (!token) { console.log('  MAL  no se ha podido entrar en la API como ' + correoAdmin() + ' — revisa ERP_ADMIN_EMAIL y ERP_ADMIN_PASSWORD en .env'); process.exit(1); }
+  const codigoLogin = respuestaLogin.status;
+  const { token } = await respuestaLogin.json().catch(() => ({}));
+  if (!token) { console.log(codigoLogin === 429
+      ? '  MAL  demasiados intentos seguidos: la API los limita a 10 cada 15 minutos. Espera un rato o reinicia la API.'
+      : '  MAL  no se ha podido entrar en la API como ' + correoAdmin() + ' (' + codigoLogin + ') — revisa ERP_ADMIN_EMAIL y ERP_ADMIN_PASSWORD en .env'); process.exit(1); }
   const cab = { Authorization: 'Bearer ' + token };
 
   // Cada pestaña exporta lo que enseña.

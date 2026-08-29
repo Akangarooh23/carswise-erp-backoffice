@@ -9,6 +9,9 @@ export const visitsRouter = Router();
 
 const ROLES: Role[] = ['admin', 'support', 'operations', 'sales'];
 
+/** Los identificadores de cita son UUID. Lo que no lo sea, no se consulta. */
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface Reserva {
   id: string;
   offer_id: string;
@@ -769,6 +772,12 @@ visitsRouter.post('/visit-bookings/:bookingId/paso', requireRole(ROLES), async (
 
 /** El rastro de una visita, en orden. */
 visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (req, res) => {
+  // Un identificador que no es un UUID no es una cita que no existe: es una
+  // consulta que Postgres no puede ni ejecutar, y salia un 500 como si el
+  // servidor estuviera roto.
+  if (!ES_UUID.test(req.params.bookingId)) {
+    return res.status(400).json({ ok: false, error: 'ese identificador no es una cita' });
+  }
   try {
     const r = await query(
       `SELECT evento, actor, datos, created_at

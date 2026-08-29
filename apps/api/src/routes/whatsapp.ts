@@ -29,7 +29,10 @@ export const whatsappRouter = Router();
 /** El apretón de manos con Meta al dar de alta el webhook. */
 whatsappRouter.get('/whatsapp/webhook', (req, res) => {
   const esperado = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
-  if (!esperado) return res.status(503).send('sin WHATSAPP_VERIFY_TOKEN');
+  // Sin token configurado no hay nada que verificar. Se contesta 403, como a
+  // una verificacion que no cuadra: un 503 dice «el servidor esta mal» y lo que
+  // pasa es que esto todavia no esta enchufado.
+  if (!esperado) return res.sendStatus(403);
   const modo   = String(req.query['hub.mode'] || '');
   const token  = String(req.query['hub.verify_token'] || '');
   const reto   = String(req.query['hub.challenge'] || '');
