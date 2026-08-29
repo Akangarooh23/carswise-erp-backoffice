@@ -19,13 +19,16 @@ interface LeadMeta {
   appointment_address?: string;
   appointment_contact?: string;
   reschedule_proposals?: Array<{ date: string; time: string }>;
+  /** La fianza que se le dijo al pedir una importación. Histórica: es lo que se
+   *  le prometió, no lo que saldría hoy si el precio ha cambiado. */
+  deposit_quoted?: string | number | null;
 }
 
 interface Lead {
   id: string;
   user_email: string;
   vehicle_id: string;
-  appointment_type: 'info' | 'visit' | 'question' | 'renting';
+  appointment_type: 'info' | 'visit' | 'question' | 'renting' | 'import';
   title: string;
   meta: LeadMeta;
   status: string;
@@ -44,6 +47,8 @@ interface LeadStats {
   type_visit: number;
   type_question: number;
   type_renting: number;
+  type_import: number;
+  portal_importacion: number;
   portal_renting: number;
   portal_compra: number;
   portal_externo: number;
@@ -111,9 +116,12 @@ const TYPE_LABELS: Record<string, string> = {
   visit:    'Agendar visita',
   question: 'Preguntar',
   renting:  'Oferta de renting',
+  // Una solicitud de importación. Salía la palabra «import», en crudo y en gris.
+  import:   'Importar un coche',
 };
 const TYPE_COLORS: Record<string, string> = {
   info:     'bg-acento-tenue text-acento-texto',
+  import:   'bg-blue-100 text-blue-700',
   visit:    'bg-emerald-100 text-emerald-700',
   question: 'bg-acento-tenue text-acento-texto',
   renting:  'bg-emerald-100 text-emerald-800',
@@ -170,6 +178,9 @@ const REPLY_TEMPLATES = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getModalidad(portal: string | undefined): { label: string; color: string } | null {
+  // La importación es una sección del marketplace, aunque su `portal` no
+  // empiece por «marketplace-vo»: viene de otra tabla y se guardó así.
+  if (portal === 'importacion') return { label: 'Importación', color: 'bg-blue-100 text-blue-700' };
   if (!portal || !portal.startsWith('marketplace-vo')) return null;
   if (portal === 'marketplace-vo-renting') return { label: 'Renting', color: 'bg-emerald-100 text-emerald-700' };
   return { label: 'Compra', color: 'bg-acento-tenue text-acento-texto' };
@@ -177,6 +188,9 @@ function getModalidad(portal: string | undefined): { label: string; color: strin
 
 function formatOrigen(portal: string | undefined): { label: string; color: string } {
   if (!portal) return { label: '–', color: 'bg-brand-100 text-brand-400' };
+  // Sin esto caía en el caso de abajo y salía «Portal: Importacion», como si
+  // viniera de un portal de fuera y sin tilde.
+  if (portal === 'importacion') return { label: 'Marketplace · Importación', color: 'bg-blue-100 text-blue-700' };
   if (portal === 'marketplace-vo-compra')  return { label: 'Marketplace · Compra',  color: 'bg-acento-tenue text-acento-texto' };
   if (portal === 'marketplace-vo-renting') return { label: 'Marketplace · Renting', color: 'bg-emerald-100 text-emerald-700' };
   if (portal.startsWith('marketplace-vo')) return { label: 'Marketplace VO',        color: 'bg-acento-tenue text-acento-texto' };
@@ -1132,6 +1146,19 @@ export default function LeadsPage() {
         <Modal open={true} title={`Lead: ${selected.meta?.name ?? selected.user_email}`} onClose={() => setSelected(null)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
+              {selected.appointment_type === 'import' && selected.meta?.deposit_quoted != null && (
+                /* Lo primero que hay que saber de una importación: la cifra que se
+                   le dio. Si el precio de la oferta cambia después, esta no. */
+                <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <span className="text-blue-700 text-xs block font-semibold">Fianza que se le dijo</span>
+                  <span className="font-bold text-blue-800 text-lg">
+                    {Number(selected.meta.deposit_quoted).toLocaleString('es-ES')} €
+                  </span>
+                  <span className="text-blue-700/80 text-xs block mt-0.5">
+                    El 30 % del precio con el coste de traerlo, al pedirlo. No se recalcula.
+                  </span>
+                </div>
+              )}
               <div><span className="text-brand-300 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-brand-100 text-brand-400'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>
               <div><span className="text-brand-300 text-xs block">{selected.appointment_type === 'renting' ? 'Opción solicitada' : 'Cuándo'}</span><span className="font-medium">{selected.appointment_type === 'renting' ? (selected.meta?.when ?? '—') : (WHEN_LABELS[selected.meta?.when ?? ''] ?? selected.meta?.when ?? '—')}</span></div>
               <div><span className="text-brand-300 text-xs block">Email</span><span className="font-medium">{selected.user_email}</span></div>

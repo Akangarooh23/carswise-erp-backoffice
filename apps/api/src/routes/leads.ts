@@ -102,6 +102,34 @@ function infoEmailHtml(lead: Lead): string {
   });
 }
 
+/**
+ * El correo de cuando se atiende una solicitud de importación.
+ *
+ * Antes le llegaba el genérico, «Respuesta a tu consulta», que no dice nada de
+ * lo único que el cliente tiene en la cabeza: cuánto hay que poner por delante
+ * y qué pasa ahora. La fianza que sale es **la que se le dijo al pedirlo**, la
+ * que quedó guardada: si el precio de la oferta ha cambiado, la suya no.
+ */
+function importEmailHtml(lead: Lead): string {
+  const fianza = lead.deposit_quoted != null && Number(lead.deposit_quoted) > 0
+    ? Number(lead.deposit_quoted).toLocaleString('es-ES')
+    : '';
+  return plantilla({
+    titulo: 'Tu solicitud de importación',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Hemos revisado tu solicitud para importar <strong>${esc(lead.vehicle_title)}</strong>.`) +
+      (lead.erp_response
+        ? datos([['Mensaje del equipo', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
+        : '') +
+      (fianza
+        ? datos([['Fianza para reservarlo', `${fianza} €`]]) +
+          parrafo('Es la que te dimos al pedirlo, y no cambia aunque cambie el precio del anuncio.', 14)
+        : '') +
+      enlace('Ver mi panel', PANEL()),
+  });
+}
+
 function rentingNotifyEmailHtml(lead: Lead): string {
   return plantilla({
     titulo: 'Actualización de tu solicitud de renting',
@@ -161,7 +189,10 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'appointment_time',     appointment_time,
                   'appointment_address',  appointment_address,
                   'appointment_contact',   appointment_contact,
-                  'reschedule_proposals',  reschedule_proposals
+                  'reschedule_proposals',  reschedule_proposals,
+                  -- La fianza que se le dijo al pedir una importación. Historica:
+                  -- es lo que se le prometio, no lo que saldria hoy.
+                  'deposit_quoted',        deposit_quoted
                 ) AS meta
          FROM moveadvisor_market_leads
          ${where}
@@ -190,9 +221,13 @@ leadsRouter.get('/leads/stats', requireRole(['admin', 'support', 'operations', '
         COUNT(*) FILTER (WHERE lead_type = 'visit')::int                                    AS type_visit,
         COUNT(*) FILTER (WHERE lead_type = 'question')::int                                 AS type_question,
         COUNT(*) FILTER (WHERE lead_type = 'renting')::int                                  AS type_renting,
+        COUNT(*) FILTER (WHERE lead_type = 'import')::int                                   AS type_import,
         COUNT(*) FILTER (WHERE portal = 'marketplace-vo-renting')::int                      AS portal_renting,
         COUNT(*) FILTER (WHERE portal LIKE 'marketplace-vo%' AND portal <> 'marketplace-vo-renting')::int AS portal_compra,
-        COUNT(*) FILTER (WHERE portal <> '' AND portal NOT LIKE 'marketplace-vo%')::int     AS portal_externo,
+        COUNT(*) FILTER (WHERE portal = 'importacion')::int                                 AS portal_importacion,
+        -- La importación es sección nuestra, no un portal de fuera: se descuenta.
+        COUNT(*) FILTER (WHERE portal <> '' AND portal NOT LIKE 'marketplace-vo%'
+                           AND portal <> 'importacion')::int                                AS portal_externo,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int               AS new_7d
       FROM moveadvisor_market_leads
     `);
@@ -482,12 +517,23 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
     const lead = leadResult.rows[0] as Record<string, string>;
     const isVisit = lead.lead_type === 'visit';
     const isRentingNotify = lead.lead_type === 'renting' || lead.portal === 'marketplace-vo-renting';
+    // Una importación tiene su propio correo: el genérico no dice nada de la
+    // fianza, que es lo único que el cliente tiene en la cabeza.
+    const isImport = lead.lead_type === 'import' || lead.portal === 'importacion';
     const subject = isVisit
       ? `Confirmación de visita — ${lead.vehicle_title || 'PopCar'}`
+      : isImport
+      ? `Tu solicitud de importación — ${lead.vehicle_title || 'PopCar'}`
       : isRentingNotify
       ? `Actualización de tu solicitud de renting — ${lead.vehicle_title || 'PopCar'}`
       : `Respuesta a tu consulta — ${lead.vehicle_title || 'PopCar'}`;
-    const html = isVisit ? visitEmailHtml(lead) : isRentingNotify ? rentingNotifyEmailHtml(lead) : infoEmailHtml(lead);
+    const html = isVisit
+      ? visitEmailHtml(lead)
+      : isImport
+      ? importEmailHtml(lead)
+      : isRentingNotify
+      ? rentingNotifyEmailHtml(lead)
+      : infoEmailHtml(lead);
 
     await alEquipo(lead.user_email, subject, html);
 
