@@ -85,6 +85,28 @@ export default function ImportacionesPage() {
       : previo));
   }
 
+  /**
+   * Escribirle y avisarle, sin salir de aquí.
+   *
+   * Guardar la respuesta y notificar son dos cosas seguidas siempre: nadie
+   * escribe un mensaje para el cliente y luego decide no mandarlo. Van juntas.
+   */
+  async function notifica(id: string, respuesta: string, notas: string) {
+    setGuardando(true);
+    const guardado = await api.patch(`/leads/${id}`, { erp_response: respuesta, notes: notas });
+    if (!guardado.ok) { setGuardando(false); setError(guardado.error || "No se ha podido guardar."); return; }
+    const r = await api.post(`/leads/${id}/notify`, {});
+    setGuardando(false);
+    if (!r.ok) { setError(r.error || "No se ha podido avisar al cliente."); return; }
+    await carga();
+    setAbierto(null);
+  }
+
+  /** Solo las notas internas: esas no salen hacia el cliente. */
+  async function guardaNotas(id: string, notas: string) {
+    await cambia(id, { notes: notas });
+  }
+
   async function devuelveFianza(id: string) {
     const motivo = window.prompt('¿Por qué se devuelve? Se le dice al cliente en el correo.');
     if (motivo === null) return;
@@ -225,10 +247,22 @@ export default function ImportacionesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onDevolver={() => void devuelveFianza(abierto.id)}
+          onNotificar={(respuesta, notas) => void notifica(abierto.id, respuesta, notas)}
+          onGuardarNotas={(notas) => void guardaNotas(abierto.id, notas)}
         />
       )}
     </div>
   );
+}
+
+/** Un apunte del rastro: quién tocó qué y cuándo. */
+interface Apunte {
+  id: string;
+  operator: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
 }
 
 interface PanelProps {
@@ -240,6 +274,8 @@ interface PanelProps {
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
   onDevolver: () => void;
+  onNotificar: (respuesta: string, notas: string) => void;
+  onGuardarNotas: (notas: string) => void;
 }
 
 /**
@@ -248,10 +284,22 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
+  const [respuesta, setRespuesta] = useState("");
+  const [notas, setNotas] = useState(x.meta?.erp_notes ?? "");
+  const [historial, setHistorial] = useState<Apunte[] | null>(null);
+
+  // El rastro se pide al abrirlo: quién tocó qué y cuándo.
+  useEffect(() => {
+    let vivo = true;
+    void api.get<{ data: Apunte[] }>(`/leads/${x.id}/history`).then((r) => {
+      if (vivo && r.ok) setHistorial(r.data?.data ?? []);
+    });
+    return () => { vivo = false; };
+  }, [x.id]);
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
@@ -385,13 +433,59 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
               </dd>
             </div>
           )}
-          {x.meta?.erp_notes && (
-            <div className="col-span-2">
-              <dt className="text-[11px] text-brand-400">Notas internas</dt>
-              <dd className="text-xs text-brand-500 whitespace-pre-wrap">{x.meta.erp_notes}</dd>
-            </div>
-          )}
         </dl>
+
+        {/* ── Escribirle ── */}
+        <div className="mt-4 pt-4 border-t border-brand-100">
+          <div className="text-xs font-semibold text-brand-500 mb-1.5">Mensaje para el cliente</div>
+          <textarea
+            value={respuesta}
+            onChange={(e) => setRespuesta(e.target.value)}
+            rows={3}
+            placeholder="Lo verá en su panel y le llegará por correo, con su fianza…"
+            className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg resize-y"
+          />
+          <button
+            onClick={() => onNotificar(respuesta, notas)}
+            disabled={guardando || !respuesta.trim()}
+            className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
+          >
+            Guardar y avisar al cliente
+          </button>
+        </div>
+
+        {/* ── Notas internas: estas no salen ── */}
+        <div className="mt-4">
+          <div className="text-xs font-semibold text-brand-500 mb-1.5">Notas internas</div>
+          <textarea
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            onBlur={() => { if (notas !== (x.meta?.erp_notes ?? "")) onGuardarNotas(notas); }}
+            rows={2}
+            placeholder="No se envían al cliente…"
+            className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg resize-y"
+          />
+        </div>
+
+        {/* ── El rastro ── */}
+        <div className="mt-4 pt-4 border-t border-brand-100">
+          <div className="text-xs font-semibold text-brand-500 mb-2">Historial</div>
+          {historial === null ? (
+            <p className="text-[11px] text-brand-300">Cargando…</p>
+          ) : historial.length === 0 ? (
+            <p className="text-[11px] text-brand-300">Todavía no ha tocado nadie este expediente.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {historial.map((a) => (
+                <li key={a.id} className="text-[11px] text-brand-500 leading-snug">
+                  <span className="text-brand-400">{dia(a.created_at)}</span>{" · "}
+                  <strong className="font-semibold">{a.operator}</strong>{" cambió "}
+                  {a.field}{a.new_value ? ` a «${a.new_value}»` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

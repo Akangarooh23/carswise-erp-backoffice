@@ -76,7 +76,7 @@ trabajador: Cuando lo tiene, **Entregado**
 
 ## La fianza
 
-Es lo primero que hay que mirar al abrir el lead, y sale destacada en su ficha.
+Es lo primero que hay que mirar al abrir un expediente, y sale arriba del todo.
 
 **Es la que se le dijo, no la que saldría hoy.** Se guarda en el momento de
 pedirlo: si el precio del anuncio cambia después, o el coche deja de estar
@@ -100,6 +100,17 @@ El orden es este y no otro:
 la cifra. Al pagar pasan tres cosas solas: la fianza queda cobrada, el expediente
 avanza a «Fianza pagada» y **se le emite su factura**, con serie propia. No hay
 que hacer nada en el ERP.
+
+Antes del botón lee **los cinco pasos**: paga la fianza, pedido a Alemania,
+transporte, trámites y entrega. Son los mismos que verá marcarse en su panel, así
+que cuando le llames ya sabe de qué le hablas.
+
+Que la fianza quede cobrada **no depende de un solo aviso**. Se anota por dos
+caminos —el que manda Stripe y el que pregunta la propia pantalla al volver del
+pago—, y solo cuenta el primero que llegue: nunca salen dos facturas por el mismo
+cobro. Si alguna vez alguien dice que ha pagado y su expediente no lo refleja,
+compruébalo en Stripe **con el modo de prueba encendido**: un pago con tarjeta de
+prueba no se ve en la vista normal.
 
 Para que pueda pagar necesita **NIF y dirección** en su perfil: sin eso no se
 puede emitir la factura, y el propio botón se lo dice.
@@ -154,14 +165,17 @@ llegar y entre «le he llamado» y «lo tiene» pasan cosas que hay que distingu
 | Entregado | Lo tiene |
 | Descartado · Cancelado | No sigue adelante |
 
-**El paso se elige en la ficha del lead, y el cliente lo ve en su panel** con una
+**El paso se elige en el expediente, y el cliente lo ve en su panel** con una
 barra de avance y una frase que le explica qué significa. Ese es el objetivo: que
 no tenga que llamar para saber por dónde va.
 
-Cada cambio queda en el **historial** del lead, con quién lo hizo y cuándo.
+Hay un botón para pasarlo al siguiente, que es lo que se hace casi siempre, y el
+desplegable para cualquier otro. Cada cambio queda en el **historial**, abajo del
+expediente, con quién lo hizo y cuándo.
 
-**Notificar** le manda un correo con lo que hayas escrito en la respuesta, y con
-su fianza. Al notificar, un lead que estuviera Pendiente pasa a Contactado solo.
+**Guardar y avisar al cliente** le manda un correo con lo que hayas escrito y con
+su fianza. Al avisarle, un expediente que estuviera Pendiente pasa a Contactado
+solo. Las **notas internas**, debajo, no salen: son para el equipo.
 
 ## Lo que hay que saber
 
@@ -191,12 +205,16 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 |---|---|
 | Las solicitudes de importación | **Importaciones**, repartidas por etapa |
 | De qué sección viene | La etiqueta **Marketplace · Importación** |
-| La fianza: cifra, si está cobrada y desde cuándo | En la ficha del lead, arriba, en azul |
+| La fianza: cifra, si está cobrada y desde cuándo | Al abrir el expediente, arriba, en azul |
 | Marcarla cobrada a mano, o devolverla | En ese mismo recuadro |
+| Pasar de etapa | Debajo, con el botón de la siguiente |
 | Cuándo le hemos dicho que lo tendrá | Debajo, y solo después del pedido |
+| Su teléfono, y cuándo quiere que le llamen | En el expediente, en sus dos campos |
+| Escribirle, y las notas del equipo | Al final del expediente |
+| Quién tocó qué y cuándo | El **historial**, lo último del expediente |
 | Su factura y su rectificativa | **Facturación**, series FIA y RECT |
-| Su teléfono y su mensaje | En la ficha del lead, en «Cuándo» |
-| El coche | El enlace del lead abre su ficha en el marketplace |
+| El coche | El enlace del expediente abre su ficha en el marketplace |
+| Cuánto dinero de clientes tenemos sin entregar | Arriba, **Fianzas cobradas** |
 
 ## Lo que ve el cliente
 
@@ -215,14 +233,19 @@ que está y una frase que se lo explica en su idioma:
 
 Debajo va el dinero y la fecha, según toque:
 
-- Si **no ha pagado**: la cifra y el botón **«Pagar la fianza»**, con la nota de que
-  se le emite factura y de que se devuelve si no se hace el pedido.
+- Si **no ha pagado**: los cinco pasos explicados, la cifra y el botón **«Pagar la
+  fianza»**, con la nota de que se le emite factura y de que se devuelve si no se
+  hace el pedido.
 - Si **ha pagado**: «Fianza pagada el 12 de septiembre» y que tiene su factura en
   Facturación.
 - Si hay **fecha de entrega**: «Lo esperamos para el 14 de octubre», dicho como lo
   que es, una estimación.
 
 **No** ve calendario ni hora: no hay ninguna, salvo que quedes con él y la pongas.
+
+En el **resumen** de su panel, además, le sale la importación en marcha con la
+etapa en la que va —o «pendiente de fianza» con la cifra, si todavía no la ha
+pagado—, delante de su garaje. Es lo más largo que tiene abierto con nosotros.
 
 Cada vez que cambias el paso, lo ve la próxima vez que abra su panel. Ese es el
 trato: si lo ve, no llama.
