@@ -445,7 +445,11 @@ export default function BookingsPage() {
   const today = todayIso();
   const todayCount = bookings.filter((b) => b.starts_at.slice(0, 10) === today).length;
   const weekEnd = inNDays(7);
-  const weekCount = bookings.filter((b) => b.starts_at.slice(0, 10) <= weekEnd).length;
+  // Con suelo, no solo techo. Sin el `>= today`, en «Todas» —que ahora empieza
+  // tres meses atrás— «esta semana» contaba también todo lo ya pasado.
+  const weekCount = bookings.filter(
+    (b) => b.starts_at.slice(0, 10) >= today && b.starts_at.slice(0, 10) <= weekEnd
+  ).length;
 
   const grouped = groupByDay(filtered);
   const days = Object.keys(grouped).sort();
@@ -882,9 +886,13 @@ export default function BookingsPage() {
       )}
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Las tres cifras contaban solo confirmadas, así que con todo por
+          confirmar salían tres ceros debajo de un bloque lleno de trabajo. La
+          cuarta dice cuánto hay pendiente, que es lo que hay que despachar. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Hoy', value: todayCount, color: 'text-acento-texto', bg: 'bg-acento-tenue', border: 'border-acento-tenue' },
+          { label: 'Por confirmar', value: pendientes.length, color: 'text-acento-texto', bg: 'bg-acento-tenue', border: 'border-acento' },
+          { label: 'Confirmadas hoy', value: todayCount, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },
           { label: 'Esta semana', value: weekCount, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },
           { label: range === 'all' ? 'Total' : 'Período', value: bookings.length, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },
         ].map((s) => (

@@ -31,7 +31,13 @@ export function createApp() {
 
   app.use(helmet({ crossOriginEmbedderPolicy: false }));
   app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
-  app.use(express.json({ limit: '4mb' }));
+  // Se guarda el cuerpo tal y como llegó. Meta firma lo que manda, y la firma
+  // se comprueba sobre los bytes exactos: una vez interpretado y vuelto a
+  // escribir, el JSON ya no es el mismo texto y la firma nunca cuadraría.
+  app.use(express.json({
+    limit: '4mb',
+    verify: (req, _res, buf) => { (req as unknown as { cuerpoCrudo?: Buffer }).cuerpoCrudo = buf; },
+  }));
   app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
   // Todo lo que cambia datos deja rastro. Va antes de las rutas para que

@@ -217,6 +217,7 @@ cambian:
 | `WHATSAPP_PHONE_ID` | El identificador del número desde el que se escribe |
 
 | `WHATSAPP_VERIFY_TOKEN` | Una palabra que eliges tú, para dar de alta el webhook |
+| `WHATSAPP_APP_SECRET` | El secreto de la app de Meta. Con él se comprueba que lo que llega al webhook lo manda Meta y no cualquiera |
 
 En la app de Meta, el webhook va a `https://<esta-api>/api/whatsapp/webhook`, con
 ese mismo token de verificación.

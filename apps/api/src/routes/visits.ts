@@ -679,12 +679,17 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
   try {
     const r = await query(
       `SELECT id, offer_id, vehicle_title, starts_at, ends_at, buyer_name, buyer_phone,
-              buyer_email, token_buyer
+              buyer_email, token_buyer, status
          FROM vehicle_visit_bookings WHERE id = $1`,
       [bookingId]
     );
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
     const b = r.rows[0];
+    // A una cancelada no se le proponen horas: el correo le diría que elija
+    // para una visita que ya no existe.
+    if (b.status === 'cancelled') {
+      return res.status(409).json({ ok: false, error: 'esa visita está cancelada' });
+    }
 
     const texto = mensajeDeOtrasHoras(
       String(b.vehicle_title || 'vehículo'),

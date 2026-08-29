@@ -7,7 +7,8 @@
  */
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { estaConfigurado, comoLoQuiereMeta, manda, comoBotones, loQuePulso, botonDeHora } from './whatsapp.js';
+import { createHmac } from 'node:crypto';
+import { estaConfigurado, comoLoQuiereMeta, manda, comoBotones, loQuePulso, botonDeHora, firmaValida } from './whatsapp.js';
 
 const antes = { t: process.env.WHATSAPP_TOKEN, p: process.env.WHATSAPP_PHONE_ID };
 before(() => { delete process.env.WHATSAPP_TOKEN; delete process.env.WHATSAPP_PHONE_ID; });
@@ -116,5 +117,38 @@ describe('las horas como botones', () => {
     assert.equal(suelto('otra|cosa|distinta'), null);
     assert.equal(suelto('elige|b-1|el jueves'), null, 'una hora que no se entiende no se aplica');
     assert.equal(suelto('elige|b-1'), null);
+  });
+});
+
+describe('la firma de lo que manda Meta', () => {
+  const cuerpo = Buffer.from(JSON.stringify({ entry: [{ id: '1' }] }), 'utf8');
+  const firmaDe = (secreto: string) =>
+    'sha256=' + createHmac('sha256', secreto).update(cuerpo).digest('hex');
+
+  test('sin secreto configurado se deja pasar, como antes', () => {
+    delete process.env.WHATSAPP_APP_SECRET;
+    assert.equal(firmaValida(cuerpo, undefined), true);
+  });
+
+  test('con secreto, la buena pasa', () => {
+    process.env.WHATSAPP_APP_SECRET = 'un-secreto';
+    assert.equal(firmaValida(cuerpo, firmaDe('un-secreto')), true);
+    delete process.env.WHATSAPP_APP_SECRET;
+  });
+
+  test('con secreto, una firma de otro no pasa', () => {
+    process.env.WHATSAPP_APP_SECRET = 'un-secreto';
+    assert.equal(firmaValida(cuerpo, firmaDe('otro-secreto')), false, 'si no, cualquiera que sepa una cita y una hora la da por elegida');
+    assert.equal(firmaValida(cuerpo, undefined), false, 'sin firma tampoco');
+    assert.equal(firmaValida(cuerpo, 'sha256=corta'), false);
+    assert.equal(firmaValida(undefined, firmaDe('un-secreto')), false, 'sin cuerpo no hay nada que comprobar');
+    delete process.env.WHATSAPP_APP_SECRET;
+  });
+
+  test('el cuerpo cambiado invalida la firma', () => {
+    process.env.WHATSAPP_APP_SECRET = 'un-secreto';
+    const firma = firmaDe('un-secreto');
+    assert.equal(firmaValida(Buffer.from('{"entry":[{"id":"2"}]}', 'utf8'), firma), false);
+    delete process.env.WHATSAPP_APP_SECRET;
   });
 });

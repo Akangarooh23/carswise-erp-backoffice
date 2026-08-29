@@ -21,7 +21,7 @@
  */
 import { Router } from 'express';
 import { query } from '../db/pool.js';
-import { loQuePulso } from '../lib/whatsapp.js';
+import { loQuePulso, firmaValida } from '../lib/whatsapp.js';
 import { aplicaHoraElegida } from './visits.js';
 
 export const whatsappRouter = Router();
@@ -48,6 +48,13 @@ whatsappRouter.get('/whatsapp/webhook', (req, res) => {
 whatsappRouter.post('/whatsapp/webhook', async (req, res) => {
   // Se contesta antes de trabajar: Meta corta a los pocos segundos.
   res.sendStatus(200);
+
+  // Y antes de tocar nada, que lo mande quien dice.
+  const crudo = (req as unknown as { cuerpoCrudo?: Buffer }).cuerpoCrudo;
+  if (!firmaValida(crudo, req.header('x-hub-signature-256'))) {
+    console.error('[whatsapp] aviso con firma que no cuadra; no se toca nada');
+    return;
+  }
 
   const pulsado = loQuePulso(req.body);
   if (!pulsado) return;

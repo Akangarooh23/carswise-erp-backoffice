@@ -16,6 +16,8 @@
  * una plantilla aprobada, así que el camino de copiar y pegar hace falta igual.
  */
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 const url = (phoneId: string) => `https://graph.facebook.com/v20.0/${phoneId}/messages`;
 
 export function estaConfigurado(): boolean {
@@ -180,3 +182,28 @@ export function loQuePulso(payload: unknown): { bookingId: string; hora: string;
 
 /** El identificador que se le pone al botón de una hora. */
 export const botonDeHora = (bookingId: string, hora: string) => `elige|${bookingId}|${hora}`;
+/**
+ * Que lo que llega al webhook lo manda Meta y no cualquiera.
+ *
+ * Meta firma cada aviso con el secreto de la app —cabecera `X-Hub-Signature-256`,
+ * un HMAC del cuerpo—. Sin comprobarlo, cualquiera que sepa el identificador de
+ * una cita y una de las horas propuestas puede darla por elegida.
+ *
+ * Se compara en tiempo constante: comparar dos textos con `===` se para en el
+ * primer carácter distinto, y eso deja adivinar la firma byte a byte.
+ *
+ * Sin `WHATSAPP_APP_SECRET` no se puede comprobar nada y se deja pasar: es lo
+ * mismo que había antes de esto, y bloquear sin secreto dejaría el webhook
+ * inservible el día que se conecte y falte la variable. Quien lo enchufe la pone.
+ */
+export function firmaValida(cuerpo: Buffer | string | undefined, cabecera: string | undefined): boolean {
+  const secreto = process.env.WHATSAPP_APP_SECRET?.trim();
+  if (!secreto) return true;
+  if (!cuerpo || !cabecera?.startsWith('sha256=')) return false;
+  const esperada = createHmac('sha256', secreto)
+    .update(typeof cuerpo === 'string' ? Buffer.from(cuerpo, 'utf8') : cuerpo)
+    .digest('hex');
+  const recibida = cabecera.slice('sha256='.length);
+  if (recibida.length !== esperada.length) return false;
+  return timingSafeEqual(Buffer.from(recibida, 'utf8'), Buffer.from(esperada, 'utf8'));
+}
