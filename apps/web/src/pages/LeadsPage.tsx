@@ -145,7 +145,7 @@ const STATUS_COLORS: Record<string, string> = {
   // Los pasos de un expediente de importación. Van en azul, como todo lo de
   // importación, y se van oscureciendo según avanza.
   'Fianza pagada':        'bg-blue-50 text-blue-700',
-  'Comprado en Alemania': 'bg-blue-100 text-blue-700',
+  'Pedido a Alemania':    'bg-blue-100 text-blue-700',
   'En transporte':        'bg-blue-100 text-blue-800',
   'En trámites':          'bg-indigo-100 text-indigo-700',
   Entregado:              'bg-emerald-100 text-emerald-700',
@@ -161,7 +161,7 @@ const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada'
  * pasan cosas que hay que poder distinguir. Con «En proceso» a secas, quien
  * coge el teléfono no sabe si el coche está comprado, en un camión o en la ITV.
  */
-export const PASOS_IMPORTACION = ['Pendiente', 'Contactado', 'Fianza pagada', 'Comprado en Alemania', 'En transporte', 'En trámites', 'Entregado'];
+export const PASOS_IMPORTACION = ['Pendiente', 'Contactado', 'Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
 
 function getAvailableStatuses(type: string): string[] {
   if (type === 'visit') return ALL_STATUSES;
@@ -1252,19 +1252,37 @@ export default function LeadsPage() {
                     )}
                   </div>
 
-                  <div className="pt-1 border-t border-blue-200/70">
-                    <label className="text-blue-700 text-xs font-semibold block mb-1">
-                      Cuándo le hemos dicho que lo tendrá
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input type="date" defaultValue={selected.meta?.delivery_estimate ?? ''}
-                             onBlur={(e) => guardaEntrega(e.target.value)}
-                             className="px-2 py-1 text-sm border border-blue-200 rounded-lg bg-white" />
-                      <span className="text-blue-700/80 text-[11px]">
-                        Si la cambias, se le avisa por correo con las dos fechas.
-                      </span>
-                    </div>
-                  </div>
+                  {/* La fecha no existe hasta que hay pedido.
+
+                      Antes de pedirlo a Alemania no hay plazo que dar: ponerla
+                      antes es inventarse una fecha y mandársela al cliente, que
+                      es justo lo que este campo intenta evitar. */}
+                  {(() => {
+                    const hechoElPedido = PASOS_IMPORTACION.indexOf(selected.status) >=
+                      PASOS_IMPORTACION.indexOf('Pedido a Alemania');
+                    return (
+                      <div className="pt-1 border-t border-blue-200/70">
+                        <label className="text-blue-700 text-xs font-semibold block mb-1">
+                          Cuándo le hemos dicho que lo tendrá
+                        </label>
+                        {hechoElPedido ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <input type="date" defaultValue={selected.meta?.delivery_estimate ?? ''}
+                                   onBlur={(e) => guardaEntrega(e.target.value)}
+                                   className="px-2 py-1 text-sm border border-blue-200 rounded-lg bg-white" />
+                            <span className="text-blue-700/80 text-[11px]">
+                              Si la cambias, se le avisa por correo con las dos fechas.
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-blue-700/80 text-[12px]">
+                            Todavía no: la fecha la dan al hacer el pedido a Alemania. Este
+                            expediente está en <strong>{selected.status}</strong>.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               <div><span className="text-brand-300 text-xs block">Tipo</span><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_COLORS[selected.appointment_type] ?? 'bg-brand-100 text-brand-400'}`}>{TYPE_LABELS[selected.appointment_type] ?? selected.appointment_type}</span></div>

@@ -306,12 +306,31 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   // una gestión cualquiera: el coche está en Alemania y tarda semanas en
   // llegar. «En proceso» puede querer decir seis cosas distintas, y quien coge
   // el teléfono necesita saber cuál.
-  const ESTADOS_IMPORTACION = ['Fianza pagada', 'Comprado en Alemania', 'En transporte', 'En trámites', 'Entregado'];
+  const ESTADOS_IMPORTACION = ['Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
   const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', ...ESTADOS_IMPORTACION];
 
   if (status && !allowed.includes(status)) {
     res.status(400).json({ ok: false, error: 'invalid_status' });
     return;
+  }
+
+  // La fecha de entrega no existe hasta que hay pedido.
+  //
+  // Nadie la sabe antes: la dan en Alemania al pedir el coche. Guardarla antes es
+  // inventarse un plazo, y de aquí sale un correo al cliente con esa fecha. La
+  // pantalla ya no la deja poner, pero la regla tiene que estar aquí.
+  if (delivery_estimate) {
+    const YA_PEDIDO = ['Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
+    const ahora = await query(`SELECT status FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    const paso = String((ahora.rows[0] as { status?: string })?.status ?? '');
+    if (!YA_PEDIDO.includes(paso) && !YA_PEDIDO.includes(String(status ?? ''))) {
+      res.status(409).json({
+        ok: false,
+        error: 'sin_pedido',
+        detail: 'La fecha de entrega la dan al hacer el pedido a Alemania: hasta entonces no hay ninguna que dar.',
+      });
+      return;
+    }
   }
 
   const sets: string[] = [];

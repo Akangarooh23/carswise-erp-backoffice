@@ -49,17 +49,27 @@ los precios de hoy son unos 2.200 € de media.
 
 Si alguien discute la cifra, la que vale es la que pone ahí.
 
-**Cuando la pague, márcala como cobrada** con el botón de su ficha. Es el paso
-que separa una persona interesada de un coche que vamos a comprar en Alemania:
-hasta que no está, no se compra nada. Al marcarla, el expediente pasa solo a
-«Fianza pagada», queda la fecha del cobro y el cliente lo ve en su panel.
+**Es lo primero que se cobra, y hasta que no está no se pide nada a Alemania.**
 
-Si se marcó por error, se quita desde el mismo sitio.
+El orden es este y no otro:
+
+1. Se cobra la fianza y se le emite factura.
+2. Con eso hecho, se hace el pedido a Alemania.
+3. Al pedirlo dan fecha, y esa es la que se le dice al cliente.
+4. Cuando llega, los trámites para que pueda usarlo aquí.
+
+Cuando la pague, **márcala como cobrada** con el botón de su ficha: el expediente
+pasa solo a «Fianza pagada», queda la fecha del cobro y el cliente lo ve en su
+panel. Si se marcó por error, se quita desde el mismo sitio.
 
 ## Cuándo le hemos dicho que lo tendrá
 
-En la ficha del lead hay una fecha para eso, y sirve para dos cosas: que todos
-digan lo mismo cuando llame, y que **si cambia se le avise solo**.
+**Hasta que no se hace el pedido a Alemania no hay fecha que dar.** El campo no
+se deja rellenar antes: ponerla es inventársela, y de ahí sale un correo al
+cliente con una fecha que nadie ha confirmado.
+
+Cuando el pedido está hecho, la fecha se pone en la ficha y sirve para dos cosas:
+que todos digan lo mismo cuando llame, y que **si cambia se le avise solo**.
 
 Al cambiarla, al cliente le llega un correo con **las dos fechas** —la que era y
 la que es— y lo que hayas escrito en la respuesta. Si no escribes nada, el correo
@@ -79,8 +89,8 @@ llegar y entre «le he llamado» y «lo tiene» pasan cosas que hay que distingu
 |---|---|
 | Pendiente | Nadie le ha llamado todavía |
 | Contactado | Ya se ha hablado con él y conoce el proceso |
-| Fianza pagada | Ha puesto el dinero por delante |
-| Comprado en Alemania | El coche ya es suyo |
+| Fianza pagada | Ha pagado y tiene su factura. Ya se puede pedir el coche |
+| Pedido a Alemania | Se ha hecho el pedido. Aquí es cuando dan fecha |
 | En transporte | Viene de camino |
 | En trámites | Está aquí: aduana, ITV y matriculación |
 | Entregado | Lo tiene |
