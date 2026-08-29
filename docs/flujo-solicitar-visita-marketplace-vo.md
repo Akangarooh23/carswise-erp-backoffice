@@ -188,7 +188,7 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 | Estado | En su panel | En la campana | Qué recibe |
 |---|---|---|---|
 | Recién pedida | Pendiente de aprobación | No | Aviso de que la hemos recibido |
-| Le hemos propuesto horas | Pendiente de aprobación | No | Un correo con las horas para pinchar, y el WhatsApp si está conectado |
+| Le hemos propuesto horas | Te esperamos: elige una hora, con botón | No | Un correo con las horas para pinchar, y el WhatsApp si está conectado |
 | **Se ha cambiado la hora él** | Pendiente de aprobación | No | Que hemos cambiado la hora y falta confirmarla |
 | Confirmada | Cita confirmada | Sí | Confirmación con el calendario, dónde es y por quién preguntar |
 | Movida por nosotros | Cita confirmada | Sí | Las dos horas y el calendario nuevo |
@@ -196,6 +196,10 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 
 En su solicitud tiene un enlace **«Ver el coche»** que abre la ficha del vehículo,
 para no tener que buscarlo otra vez.
+
+Las horas que le proponemos salen también en **Solicitudes**, con un botón para
+elegir: el correo se pierde, y quien lo pierde se quedaba sin poder contestar.
+Desaparece solo en cuanto elige una.
 
 Dónde es y por quién preguntar salen en su cita, no solo en el correo: el correo
 se pierde y esa página se guarda. Y para cambiar la hora o cancelar se le manda
