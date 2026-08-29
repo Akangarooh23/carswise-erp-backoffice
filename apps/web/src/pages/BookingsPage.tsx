@@ -234,8 +234,8 @@ export default function BookingsPage() {
       // cifra que en la Agenda no aparecía por ningún lado.
       api.get<any>('/all-bookings?status=pending'),
     ]);
-    if (conf.ok) setBookings((conf as any).bookings || []);
-    if (pend.ok) setPendientes((pend as any).bookings || []);
+    if (conf.ok) setBookings(conf.data?.bookings || []);
+    if (pend.ok) setPendientes(pend.data?.bookings || []);
     setLoading(false);
   }, [range]);
 
@@ -272,7 +272,7 @@ export default function BookingsPage() {
     setRastroDe(b.id);
     setRastro([]);
     const r = await api.get<{ pasos: Paso[] }>(`/visit-bookings/${b.id}/pasos`);
-    if (r.ok) setRastro((r as unknown as { pasos: Paso[] }).pasos || r.data?.pasos || []);
+    if (r.ok) setRastro(r.data?.pasos || []);
   }
 
   /** Abre o cierra el rastro, según esté. */
@@ -329,7 +329,7 @@ export default function BookingsPage() {
     setPropuestas([]);
     setMover(b);
     const r = await api.get<{ pasos: Paso[] }>(`/visit-bookings/${b.id}/pasos`);
-    const pasos = (r as unknown as { pasos?: Paso[] }).pasos || r.data?.pasos || [];
+    const pasos = r.data?.pasos || [];
     // La última propuesta manda: si se le propusieron horas dos veces, las
     // buenas son las de la segunda vez.
     const ultima = [...pasos].reverse().find((paso) => paso.evento === 'horas_propuestas');

@@ -32,7 +32,7 @@ export default function AppLayout() {
       api.get<{ bookings?: unknown[] }>('/all-bookings?status=pending')
         .then((v) => {
           if (!v.ok) return;
-          const lista = (v as unknown as { bookings?: unknown[] }).bookings ?? v.data?.bookings ?? [];
+          const lista = v.data?.bookings ?? [];
           setVisitasPorConfirmar(lista.length);
         })
         .catch(() => {});

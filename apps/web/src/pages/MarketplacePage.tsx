@@ -85,7 +85,7 @@ export default function MarketplacePage() {
       ]);
       setVisitData((d) => ({
         ...d,
-        [offerId]: { slots: (sRes as any).slots || [], bookings: (bRes as any).bookings || [], loading: false },
+        [offerId]: { slots: sRes.data?.slots || [], bookings: bRes.data?.bookings || [], loading: false },
       }));
     }
   }
@@ -97,11 +97,11 @@ export default function MarketplacePage() {
     const startsAt = new Date(`${date}T${timeStart}:00`).toISOString();
     const endsAt   = new Date(`${date}T${timeEnd}:00`).toISOString();
     const r = await api.post<any>('/visit-slots', { offerId, startsAt, endsAt, source: 'erp' });
-    if (r.ok && (r as any).slot) {
+    if (r.ok && r.data?.slot) {
       setVisitData((d) => ({
         ...d,
         [offerId]: { ...(d[offerId] || { bookings: [], loading: false }),
-          slots: [...(d[offerId]?.slots || []), (r as any).slot].sort((a: any, b: any) => a.starts_at > b.starts_at ? 1 : -1) },
+          slots: [...(d[offerId]?.slots || []), r.data.slot].sort((a: any, b: any) => a.starts_at > b.starts_at ? 1 : -1) },
       }));
       setVisitSlotMsg('✓ Franja añadida');
     } else {
@@ -123,7 +123,7 @@ export default function MarketplacePage() {
     if (!sRes.ok) return;
     setVisitData((d) => ({
       ...d,
-      [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: (sRes as any).slots || [] },
+      [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: sRes.data?.slots || [] },
     }));
   }
 
@@ -154,7 +154,7 @@ export default function MarketplacePage() {
     if (sRes.ok) {
       setVisitData((d) => ({
         ...d,
-        [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: (sRes as any).slots || [] },
+        [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: sRes.data?.slots || [] },
       }));
     }
   }

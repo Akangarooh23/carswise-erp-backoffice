@@ -51,6 +51,35 @@ async function tryRefresh(): Promise<string | null> {
   }
 }
 
+/**
+ * La respuesta, con una forma sola.
+ *
+ * La API no contesta siempre igual: la mayoría de las rutas devuelven
+ * `{ ok, data }`, pero unas cuantas —las de visitas— devuelven lo suyo al
+ * nivel de arriba: `{ ok, slots }`, `{ ok, pasos }`, `{ ok, bookings }`. Cada
+ * pantalla tenía que saber cuál era cuál, y el día que se acertó mal el cuadro
+ * salió vacío y el botón de copiar copió «undefined»: sin error, sin aviso, y
+ * sin manera de notarlo hasta que alguien lo usó.
+ *
+ * Aquí se le da una forma sola: lo que venga suelto se mete también en `data`,
+ * así que `r.data.slots` funciona en todas. Y se deja donde estaba, porque hay
+ * pantallas que lo leen de arriba y no tienen por qué cambiar hoy.
+ *
+ * El tipo `ApiResponse<T>` declara `data: T`. Antes eso era mentira en esas
+ * rutas: decía que estaba y no venía.
+ */
+export function conFormaUnica<T>(cuerpo: unknown): ApiResponse<T> {
+  if (!cuerpo || typeof cuerpo !== 'object') {
+    return { ok: false, data: undefined as T, error: 'invalid_json' };
+  }
+  const c = cuerpo as Record<string, unknown>;
+  if ('data' in c) return c as unknown as ApiResponse<T>;
+  const { ok, error, meta, ...resto } = c;
+  // `resto` va primero: si una ruta devolviera una clave llamada `ok` dentro de
+  // lo suyo, manda la de fuera, que es la que dice si salió bien.
+  return { ...resto, ok: ok === true, error, meta, data: resto } as unknown as ApiResponse<T>;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
@@ -75,12 +104,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
           ...(options.headers ?? {}),
         },
       });
-      return retryRes.json().catch(() => ({ ok: false, error: 'invalid_json' })) as Promise<ApiResponse<T>>;
+      const reintento = await retryRes.json().catch(() => ({ ok: false, error: 'invalid_json' }));
+      return conFormaUnica<T>(reintento);
     }
     window.location.href = '/login';
   }
 
-  return body as ApiResponse<T>;
+  return conFormaUnica<T>(body);
 }
 
 /**
