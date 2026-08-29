@@ -240,3 +240,25 @@ describe('el correo con las horas para elegir', () => {
     assert.ok(!html.includes('elegir-hora'));
   });
 });
+
+describe('todas las rutas contestan con la misma forma', () => {
+  /**
+   * Esto mira el código, no una respuesta de verdad, y hay que saberlo: prueba
+   * que la regla está escrita, no que el servidor la cumpla a la primera. Vale
+   * igual, porque el fallo que hubo era exactamente ese —una ruta escrita de
+   * otra manera— y no daba error en ninguna parte: la pantalla se quedaba en
+   * blanco y el botón de copiar copiaba «undefined».
+   */
+  test('lo que devuelven va en data, sin excepciones', async () => {
+    const fs = await import('node:fs');
+    const url = await import('node:url');
+    const aqui = url.fileURLToPath(new URL('./visits.ts', import.meta.url));
+    const fuente = fs.readFileSync(aqui, 'utf8');
+
+    const sueltas = [...fuente.matchAll(/res\.json\(\{\s*ok:\s*true,\s*([a-zA-Z_]+)\s*:/g)]
+      .map((m) => m[1])
+      .filter((clave) => clave !== 'data');
+
+    assert.deepEqual(sueltas, [], `estas rutas devuelven algo fuera de data: ${sueltas.join(', ')}`);
+  });
+});

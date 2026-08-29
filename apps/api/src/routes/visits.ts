@@ -335,7 +335,7 @@ visitsRouter.get('/visit-slots', requireRole(ROLES), async (req, res) => {
        LIMIT 200`,
       [offerId]
     );
-    return res.json({ ok: true, slots: r.rows });
+    return res.json({ ok: true, data: { slots: r.rows } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -359,7 +359,7 @@ visitsRouter.post('/visit-slots', requireRole(ROLES), async (req, res) => {
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [offerId, startsAt, endsAt, source || 'erp']
     );
-    return res.json({ ok: true, slot: r.rows[0] });
+    return res.json({ ok: true, data: { slot: r.rows[0] } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -396,7 +396,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
        ORDER BY b.starts_at ASC`,
       [offerId]
     );
-    return res.json({ ok: true, bookings: r.rows });
+    return res.json({ ok: true, data: { bookings: r.rows } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -775,7 +775,7 @@ visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (
          FROM visit_booking_events WHERE booking_id = $1 ORDER BY created_at ASC`,
       [req.params.bookingId]
     );
-    return res.json({ ok: true, pasos: r.rows });
+    return res.json({ ok: true, data: { pasos: r.rows } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -840,7 +840,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     if (to)     { sql += ` AND b.starts_at <= $${pi++}`; params.push(to); }
     sql += ' ORDER BY b.starts_at ASC LIMIT 200';
     const r = await query(sql, params);
-    return res.json({ ok: true, bookings: r.rows });
+    return res.json({ ok: true, data: { bookings: r.rows } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
