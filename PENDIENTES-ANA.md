@@ -12,7 +12,8 @@ que sí hay es un orden, y son dos grupos distintos.
 
 **Lo que hay que tener antes de que entre alguien de fuera** — porque afecta a lo
 que ve o a lo que se le cobra: los datos del emisor en las facturas (4), el
-secreto para las devoluciones (5) y `PUBLIC_SITE_URL` (6).
+secreto para las devoluciones (5) y las variables de Vercel (6). En Stripe no hay
+que crear nada; solo comprobar dos cosas (6b).
 
 **Lo que se puede hacer cuando quieras**: los teléfonos (1), la vuelta de estreno
 (2), las contraseñas (3), WhatsApp (7) y las dos decisiones (8). Ninguno impide
@@ -116,9 +117,51 @@ Sin ella el botón de devolver dice que no está configurado, y todo lo demás
 
 ## 6 · En Vercel
 
-**Proyecto del ERP:** que `PUBLIC_SITE_URL` esté vacía o valga
-`https://www.popcar.tech`. De ahí salen los enlaces de los botones del correo de
-horas: si apunta a otro sitio, el cliente pincha y no llega a ninguna parte.
+Todo lo que hay que tocar fuera del código está aquí. Nada de esto se despliega
+solo: las variables se ponen a mano en cada proyecto.
+
+### Proyecto del ERP
+
+| Variable | Para qué | Si falta |
+|---|---|---|
+| `INTERNAL_API_SECRET` | Pedirle a PopCar que devuelva una fianza | El botón «Devolver la fianza» dice que no está configurado |
+| `PUBLIC_SITE_URL` | Los enlaces de los correos al cliente | Vacía vale: por defecto es `https://www.popcar.tech`. Lo que no puede es apuntar a otro sitio |
+| `WHATSAPP_TOKEN` · `WHATSAPP_PHONE_ID` · `WHATSAPP_VERIFY_TOKEN` · `WHATSAPP_APP_SECRET` | Mandar las horas por WhatsApp | El mensaje sale en pantalla para copiarlo. Es lo que pasa hoy |
+
+### Proyecto de PopCar
+
+| Variable | Para qué | Si falta |
+|---|---|---|
+| `INTERNAL_API_SECRET` | **La misma cadena que en el ERP.** Es lo que los une | No se puede devolver una fianza desde el ERP |
+| `SUPABASE_INVOICE_BUCKET` | Mudar las facturas a un cubo privado | Se quedan donde están hoy. Es una decisión, no una avería |
+
+Estas ya tienen que estar, porque el cobro de suscripciones funciona: comprueba
+que siguen y no las toques — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+`RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`.
+
+La ruta nueva `/api/fianza-devolucion` **no hay que darla de alta**: va en el
+`vercel.json` del repositorio y se despliega con el código.
+
+## 6b · En Stripe
+
+**No hay que crear ningún producto ni ningún precio.** La fianza se cobra con un
+importe libre, como el informe de tasación: el cargo lleva el nombre del coche y
+la cifra que se le dijo a ese cliente. Un producto fijo no valdría, porque cada
+fianza es distinta.
+
+Dos cosas que sí conviene mirar en su panel:
+
+**Que el webhook manda `checkout.session.completed`.** Es el aviso con el que se
+da la fianza por cobrada, se avanza el expediente y se emite la factura. Ya hace
+falta para las suscripciones y para la tasación, así que casi seguro está; con
+ver que el evento está marcado en el endpoint basta.
+
+**Que la clave puede hacer devoluciones.** Una clave secreta normal puede. Si
+algún día se cambia por una restringida, necesita permiso de escritura sobre
+*refunds*, o el botón de devolver fallará con un error de Stripe.
+
+Las devoluciones salen en Stripe como tales, sobre el cargo original. No hay que
+configurar nada para eso.
 
 ## 7 · WhatsApp, cuando lo quieras
 
