@@ -7,6 +7,17 @@ PopCar— y lo que vive fuera de ellos, en Vercel y en Supabase.
 Esto no es un manual de trabajo: los manuales están en `docs/` y los ve el
 equipo en la pantalla de Manual. Esto es tuyo.
 
+**Nada de esto corre prisa hoy**: todavía no hay clientes de verdad usándolo. Lo
+que sí hay es un orden, y son dos grupos distintos.
+
+**Lo que hay que tener antes de que entre alguien de fuera** — porque afecta a lo
+que ve o a lo que se le cobra: los datos del emisor en las facturas (4), el
+secreto para las devoluciones (5) y `PUBLIC_SITE_URL` (6).
+
+**Lo que se puede hacer cuando quieras**: los teléfonos (1), la vuelta de estreno
+(2), las contraseñas (3), WhatsApp (7) y las dos decisiones (8). Ninguno impide
+que el sistema funcione; el 1 solo hace el trabajo más incómodo.
+
 > Actualizado el 29 de agosto de 2026, al terminar los tres flujos del
 > Marketplace VO: Concesionarios, Ex-Renting e Importación.
 
@@ -87,9 +98,10 @@ datos y lo hago en cinco minutos—, pero los datos son tuyos.
 El flujo de importación ya cobra la fianza por Stripe y emite factura. Para que
 funcione en producción hacen falta dos cosas tuyas:
 
-**El NIF y la dirección del emisor** (el punto 4). Antes era un defecto en un
-PDF; ahora vas a emitir facturas de unos 2.200 € con esos campos sin rellenar.
-Esto ya no puede esperar.
+**El NIF y la dirección del emisor** (el punto 4). Mientras no haya clientes
+reales no pasa nada, pero la primera fianza que se cobre de verdad emite una
+factura de unos 2.200 € con esos campos sin rellenar. Que esté antes de esa
+primera.
 
 **Un secreto compartido entre los dos proyectos**, para poder devolver una
 fianza desde el ERP: la clave de Stripe vive en PopCar y no debe salir de ahí,
