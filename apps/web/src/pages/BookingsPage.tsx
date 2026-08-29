@@ -206,6 +206,9 @@ export default function BookingsPage() {
   const [nuevaHora, setNuevaHora] = useState('');
   const [moviendo, setMoviendo] = useState(false);
   const [laEligio, setLaEligio] = useState(false);
+  // Las horas que le propusimos, sacadas del rastro. Cuando contesta «la 2»
+  // hay que poder darle a la 2, no volver a teclear el día y la hora.
+  const [propuestas, setPropuestas] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,14 +293,39 @@ export default function BookingsPage() {
     if (rastroDe === b.id) await cargaRastro(b);
   }
 
-  /** Abre el diálogo ya con el día y la hora que tenía: casi siempre cambia uno de los dos. */
-  function abreMover(b: Booking) {
-    const d = new Date(b.starts_at);
+  /** El día y la hora, como los quieren los dos cuadros del diálogo. */
+  function enCuadros(iso: string) {
+    const d = new Date(iso);
     const dosCifras = (n: number) => String(n).padStart(2, '0');
-    setNuevoDia(`${d.getFullYear()}-${dosCifras(d.getMonth() + 1)}-${dosCifras(d.getDate())}`);
-    setNuevaHora(`${dosCifras(d.getHours())}:${dosCifras(d.getMinutes())}`);
-    setLaEligio(false);
+    return {
+      dia: `${d.getFullYear()}-${dosCifras(d.getMonth() + 1)}-${dosCifras(d.getDate())}`,
+      hora: `${dosCifras(d.getHours())}:${dosCifras(d.getMinutes())}`,
+    };
+  }
+
+  /**
+   * Abre el diálogo ya con el día y la hora que tenía: casi siempre cambia uno
+   * de los dos.
+   *
+   * Arranca con «la ha elegido el cliente» marcado cuando se entra desde el botón
+   * de la pendiente, que es el final normal de haberle propuesto otras horas. Y se
+   * traen las que se le propusieron, del rastro: contestó «la 2», así que lo que
+   * hay que hacer es pinchar la 2, no volver a teclear una fecha y equivocarse.
+   */
+  async function abreMover(b: Booking, eligioElCliente = false) {
+    const { dia, hora } = enCuadros(b.starts_at);
+    setNuevoDia(dia);
+    setNuevaHora(hora);
+    setLaEligio(eligioElCliente);
+    setPropuestas([]);
     setMover(b);
+    const r = await api.get<{ pasos: Paso[] }>(`/visit-bookings/${b.id}/pasos`);
+    const pasos = (r as unknown as { pasos?: Paso[] }).pasos || r.data?.pasos || [];
+    // La última propuesta manda: si se le propusieron horas dos veces, las
+    // buenas son las de la segunda vez.
+    const ultima = [...pasos].reverse().find((paso) => paso.evento === 'horas_propuestas');
+    const horas = (ultima?.datos?.horas as string[] | undefined) || [];
+    setPropuestas(horas.filter((h) => !Number.isNaN(new Date(h).getTime())));
   }
 
   async function guardarNuevaHora() {
@@ -313,7 +341,12 @@ export default function BookingsPage() {
     setMover(null);
     setResultado(
       r.data?.avisado
-        ? { mal: false, texto: `Visita movida y confirmada. ${quien} ya lo sabe: le hemos escrito con la hora nueva y el calendario.` }
+        ? {
+            mal: false,
+            texto: laEligio
+              ? `Hecho: la visita queda confirmada a la hora que eligió. ${quien} ya tiene el correo con el calendario.`
+              : `Visita movida y confirmada. ${quien} ya lo sabe: le hemos escrito con la hora nueva y el calendario.`,
+          }
         : { mal: true, texto: `Movida, pero no hemos podido avisar a ${quien}. Llámale antes de que se presente a la hora vieja.` }
     );
     load();
@@ -470,6 +503,14 @@ export default function BookingsPage() {
                   <Boton tam="sm" variante="secundario"
                          onClick={() => { setProponer(b); setHoras([{ dia: '', hora: '' }]); setMensaje(null); }}>
                     Propone otras horas
+                  </Boton>
+                  {/* El final del camino de «Propone otras horas»: el cliente
+                      contesta por WhatsApp y hay que meter esa hora. Sin esto había
+                      que confirmarla a la hora vieja y moverla después, con lo que
+                      al cliente le llegaba una confirmación de una hora que nadie
+                      había acordado. */}
+                  <Boton tam="sm" variante="secundario" onClick={() => abreMover(b, true)}>
+                    El cliente ha elegido hora
                   </Boton>
                   <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
                     Cancelar cita
@@ -691,16 +732,47 @@ export default function BookingsPage() {
           <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
                onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-brand-100">
-              <h2 className="text-lg font-bold text-brand-600">Mover la visita a otra hora</h2>
+              <h2 className="text-lg font-bold text-brand-600">
+                {mover.status === 'pending' ? 'Poner la hora acordada' : 'Mover la visita a otra hora'}
+              </h2>
               <p className="text-[12.5px] text-brand-400 mt-0.5">
                 {mover.buyer_name || mover.buyer_email} · {mover.vehicle_title || mover.offer_id}
               </p>
             </div>
             <div className="px-6 py-5 space-y-4">
               <p className="text-[13px] text-brand-400">
-                Ahora es el <b className="text-brand-600">{fmtDate(mover.starts_at)} a las {fmtTime(mover.starts_at)}</b>.
-                Pon la hora que te haya dado el concesionario.
+                Pidió el <b className="text-brand-600">{fmtDate(mover.starts_at)} a las {fmtTime(mover.starts_at)}</b>.
+                {mover.status === 'pending'
+                  ? ' Pon la hora que ha aceptado.'
+                  : ' Pon la hora que te haya dado el concesionario.'}
               </p>
+              {propuestas.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
+                    Las que le propusiste
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {propuestas.map((h, i) => {
+                      const puesto = enCuadros(h);
+                      const puesta = puesto.dia === nuevoDia && puesto.hora === nuevaHora;
+                      return (
+                        <button key={h} type="button"
+                                onClick={() => { setNuevoDia(puesto.dia); setNuevaHora(puesto.hora); }}
+                                className={`px-2.5 py-1.5 text-[12px] font-medium rounded-lg border transition-colors ${
+                                  puesta
+                                    ? 'bg-acento-tenue border-acento text-acento-texto font-bold'
+                                    : 'bg-white border-brand-200 text-brand-500 hover:bg-brand-50'
+                                }`}>
+                          {i + 1}. {fmtDate(h)} a las {fmtTime(h)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[12px] text-brand-300 mt-1.5">
+                    Pincha la que te haya dicho. Si te ha dado otra distinta, escríbela abajo.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <label className="flex-1 text-xs font-medium text-brand-500">
                   Día

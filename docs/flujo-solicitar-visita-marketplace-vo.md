@@ -32,10 +32,14 @@ sistema: Prepara el mensaje con las horas **numeradas**, para que pueda contesta
 rama Sí | Se manda solo | Queda apuntado a qué número y qué se le dijo
 rama No | Copiar mensaje | El texto sale en pantalla para mandarlo a mano. El paso se apunta igual
 cliente: Contesta con la hora que le viene bien
-trabajador: La aplica y marca **«la ha elegido el cliente»**
+trabajador: **El cliente ha elegido hora**. Pincha la que dijo, de las que se le propusieron
 correo: **Al cliente** — su visita confirmada, con el calendario
 trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 :::
+
+La hora que contesta **no hay que teclearla**: en ese botón salen las que se le
+propusieron, numeradas igual que en el WhatsApp, y se pincha la que dijo. Si el
+concesionario acaba dando una distinta, se escribe a mano debajo.
 
 ---
 
@@ -47,6 +51,7 @@ trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 |---|---|
 | **Confirmar** | El concesionario ha dicho que sí. Pide **dónde es** y **por quién preguntar**, y con eso confirma: al cliente le llega el correo con esos datos y el calendario, y ya sale en su campana |
 | **Propone otras horas** | Abre el diálogo para apuntar las que dio. Se le mandan al cliente y la cita **sigue pendiente** hasta que conteste |
+| **El cliente ha elegido hora** | Cuando contesta al WhatsApp diciendo que le vale una de las que se le propusieron. Salen las horas propuestas para pincharlas, y con eso la visita queda confirmada a esa hora: al cliente se le confirma, no se le dice que se la hemos movido |
 | **Cancelar cita** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
 | **Ver rastro** | Despliega los pasos dados, los dos botones para apuntar lo que se hace por teléfono, y el sitio para escribir notas |
 

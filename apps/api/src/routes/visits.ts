@@ -493,11 +493,12 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
               status = 'confirmed', updated_at = NOW(),
               reminder_sent_at = NULL, reminder_day_of_sent_at = NULL, followup_sent_at = NULL
         WHERE id = $1
-        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
+        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name,
+                  meeting_place, meeting_contact`,
       [bookingId, nuevoHueco, inicio.toISOString(), fin]
     );
 
-    const nueva = movida.rows[0] as Reserva;
+    const nueva = movida.rows[0] as Reserva & { meeting_place: string | null; meeting_contact: string | null };
 
     // No es lo mismo moverla nosotros que confirmarle la que ha elegido él.
     // Cambia el rastro y cambia lo que se le dice: a quien ha contestado «la 2»
@@ -516,7 +517,7 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
         ? `${config.PUBLIC_SITE_URL.replace(/\/$/, '')}/mi-cita?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(String(reserva.token_buyer))}`
         : '';
       const { subject, html } = laEligioElCliente
-        ? correoDeConfirmacion(nueva)
+        ? correoDeConfirmacion(nueva, nueva.meeting_place || '', nueva.meeting_contact || '')
         : correoDeCambioDeHora(nueva, horaAnterior, enlace);
       await enviar({
         to: nueva.buyer_email,
