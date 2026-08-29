@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { randomBytes } from 'node:crypto';
 import { query } from '../db/pool.js';
 import { config } from '../config.js';
 
@@ -17,12 +18,32 @@ export async function nextInvoiceNumber(series: 'SUBS' | 'VTA' | 'PROV' | 'RECT'
   return `${series}-${year}-${String(n).padStart(4, '0')}`;
 }
 
+/**
+ * El cubo donde van las facturas.
+ *
+ * Hoy es el mismo que el de las fotos, que es público porque las fotos tienen
+ * que serlo. Una factura no. Cuando exista un cubo privado, esto es una
+ * variable de entorno y ya: el resto del código no sabe cuál es.
+ */
+const CUBO = process.env.SUPABASE_INVOICE_BUCKET?.trim() || 'vehicle-files';
+
+/**
+ * Un trozo que no se adivina, para el nombre del fichero.
+ *
+ * Las facturas van numeradas seguidas —SUBS-2026-0001, 0002…—, así que con la
+ * ruta a la vista se pueden pedir todas probando números. Con esto, saber el
+ * número no basta para saber dónde está el fichero.
+ */
+const trozoQueNoSeAdivina = () => randomBytes(8).toString('hex');
+
 // ── Upload PDF bytes to Supabase Storage ─────────────────────────────────────
 async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  // El nombre lleva su parte aleatoria antes de la extensión.
+  const conTrozo = path.replace(/\.pdf$/i, '') + '-' + trozoQueNoSeAdivina() + '.pdf';
   try {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${CUBO}/${conTrozo}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -32,7 +53,10 @@ async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null
       body: Buffer.from(bytes),
     });
     if (!res.ok) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
+    // Se guarda la dirección pública porque es la forma que ya entiende todo lo
+    // que la lee. Quitándole `/public` sale la privada, que es la que se usa
+    // para servirla: el día que el cubo se cierre, lo guardado sigue valiendo.
+    return `${SUPABASE_URL}/storage/v1/object/public/${CUBO}/${conTrozo}`;
   } catch { return null; }
 }
 
