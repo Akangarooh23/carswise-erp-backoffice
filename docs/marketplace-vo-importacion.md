@@ -28,12 +28,17 @@ corto: no hay que aprobar nada, hay que llamar.
 cliente: Entra en **Marketplace VO**, pestaña **Importación**, y abre un coche
 cliente: Pulsa **Solicitar importación** y deja nombre, correo, teléfono y su mensaje
 sistema: Le dice **cuánto es la fianza**: el 30 % del precio con el coste de traerlo
-correo: **Al cliente** — su solicitud, con esa cifra
-correo: **A operaciones** — solicitud nueva, con sus datos
-erp: Sale en **Leads**, como **Importar un coche**, y en el origen pone **Marketplace · Importación**
-trabajador: Le llama con lo que dejó, y le cuenta el proceso y los plazos
-trabajador: Escribe la respuesta en el lead y le da a **Notificar**
-correo: **Al cliente** — su solicitud de importación, con la fianza y lo que le hayamos escrito
+correo: **Al cliente** — su solicitud, con esa cifra · **A operaciones** — solicitud nueva
+erp: Sale en **Leads**, como **Importar un coche**, con la fianza destacada
+trabajador: Le llama, le cuenta el proceso y le dice que pague la fianza desde su panel
+cliente: **Paga la fianza** con tarjeta, desde su solicitud
+sistema: Fianza cobrada, expediente a **Fianza pagada** y **su factura emitida**. Sin tocar nada
+trabajador: Hace el **pedido a Alemania** y pone el paso. Ahí es cuando hay fecha
+trabajador: Escribe **cuándo lo tendrá**. Si luego cambia, al cliente se le avisa solo
+? ¿Sigue adelante?
+rama Sí | En transporte → En trámites | Se va poniendo el paso: él lo ve en su panel sin llamar
+rama No | Devolver la fianza | Se le devuelve el cargo, sale su rectificativa y se le escribe
+trabajador: Cuando lo tiene, **Entregado**
 :::
 
 ## La fianza
@@ -127,9 +132,18 @@ su fianza. Al notificar, un lead que estuviera Pendiente pasa a Contactado solo.
 
 ## Lo que hay que saber
 
-**Al cliente no se le promete ninguna fecha por el sistema.** No hay calendario,
-ni recordatorios, ni nada automático más allá de los dos correos: el de que la
-hemos recibido y el de cuando se le contesta.
+**Estos son todos los correos que salen solos.** Ninguno más:
+
+| Cuándo | Qué recibe |
+|---|---|
+| Al pedirla | Su solicitud, con la fianza |
+| Al pagar la fianza | Su factura queda emitida y la tiene en Facturación |
+| Al darle a **Notificar** | Lo que hayas escrito, con su fianza |
+| Si **cambias** la fecha de entrega | Las dos fechas, la que era y la que es |
+| Si se le **devuelve** la fianza | El motivo y su factura rectificativa |
+
+Cambiar el paso del expediente **no manda ningún correo**: lo ve en su panel
+cuando entre. Si quieres que se entere ya, llámale o usa Notificar.
 
 **Si quedas con él —para entregarle el coche, por ejemplo— pon la fecha y déjalo
 como cita confirmada**: entonces sí recibe los avisos de la víspera y del mismo
@@ -144,7 +158,10 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 |---|---|
 | Las solicitudes de importación | **Leads**, con el tipo **Importar un coche** |
 | De qué sección viene | La etiqueta **Marketplace · Importación** |
-| La fianza que se le dijo | En la ficha del lead, arriba, en azul |
+| La fianza: cifra, si está cobrada y desde cuándo | En la ficha del lead, arriba, en azul |
+| Marcarla cobrada a mano, o devolverla | En ese mismo recuadro |
+| Cuándo le hemos dicho que lo tendrá | Debajo, y solo después del pedido |
+| Su factura y su rectificativa | **Facturación**, series FIA y RECT |
 | Su teléfono y su mensaje | En la ficha del lead, en «Cuándo» |
 | El coche | El enlace del lead abre su ficha en el marketplace |
 
@@ -156,15 +173,23 @@ que está y una frase que se lo explica en su idioma:
 | Paso | Lo que lee |
 |---|---|
 | Pendiente | «Hemos recibido tu solicitud. Te llamamos para contarte el proceso.» |
-| Contactado | «Ya hemos hablado contigo. El siguiente paso es la fianza.» |
-| Fianza pagada | «Con la fianza puesta, vamos a por el coche.» |
-| Comprado en Alemania | «El coche ya es tuyo. Ahora toca traerlo.» |
+| Contactado | «Ya hemos hablado contigo. El siguiente paso es pagar la fianza.» |
+| Fianza pagada | «Fianza recibida y factura emitida. Vamos a pedir tu coche.» |
+| Pedido a Alemania | «Pedido hecho. En cuanto nos confirmen fechas, te las decimos.» |
 | En transporte | «Está de camino a España.» |
-| En trámites | «Ya está aquí: aduana, ITV y matriculación.» |
+| En trámites | «Ya está aquí: aduana, ITV y matriculación para que puedas usarlo.» |
 | Entregado | «Es tuyo y lo tienes contigo.» |
 
-Debajo, la fianza que se le dijo. **No** ve calendario ni hora: no hay ninguna,
-salvo que quedes con él y la pongas.
+Debajo va el dinero y la fecha, según toque:
+
+- Si **no ha pagado**: la cifra y el botón **«Pagar la fianza»**, con la nota de que
+  se le emite factura y de que se devuelve si no se hace el pedido.
+- Si **ha pagado**: «Fianza pagada el 12 de septiembre» y que tiene su factura en
+  Facturación.
+- Si hay **fecha de entrega**: «Lo esperamos para el 14 de octubre», dicho como lo
+  que es, una estimación.
+
+**No** ve calendario ni hora: no hay ninguna, salvo que quedes con él y la pongas.
 
 Cada vez que cambias el paso, lo ve la próxima vez que abra su panel. Ese es el
 trato: si lo ve, no llama.
