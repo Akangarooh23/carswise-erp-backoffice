@@ -15,6 +15,8 @@ async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: 
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
       method: 'POST',
       headers: {
+        // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
+        apikey: SUPABASE_SERVICE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
         'Content-Type': ext === 'pdf' ? 'application/pdf' : 'application/octet-stream',
         'x-upsert': 'true',

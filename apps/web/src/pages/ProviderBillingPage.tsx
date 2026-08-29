@@ -529,10 +529,13 @@ export default function ProviderBillingPage() {
                       <td>
                         {r.pdf_url ? (
                           <div className="flex items-center gap-1">
-                            <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                            {/* Por la ruta con sesión: la dirección del almacén no
+                                sale a la pantalla. */}
+                            <button
+                              onClick={() => descargaConSesion(`/invoices/provider/${r.id}/archivo`, `factura-${r.id.slice(-6)}.pdf`).catch(() => {})}
                               className="text-xs text-acento-texto hover:underline whitespace-nowrap">
-                              Ver PDF
-                            </a>
+                              ↓ PDF
+                            </button>
                             <button onClick={() => { setPdfModal(r); setPdfFile(null); }}
                               className="text-xs text-brand-300 hover:text-brand-400 ml-1 whitespace-nowrap">
                               (reemplazar)
@@ -712,7 +715,8 @@ export default function ProviderBillingPage() {
             {pdfModal.pdf_url && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
                 Ya existe un PDF adjunto. Al subir uno nuevo lo reemplazará.{' '}
-                <a href={pdfModal.pdf_url} target="_blank" rel="noopener noreferrer" className="underline">Ver actual</a>
+                <button onClick={() => descargaConSesion(`/invoices/provider/${pdfModal.id}/archivo`, `factura-${pdfModal.id.slice(-6)}.pdf`).catch(() => {})}
+                        className="underline">Ver el de ahora</button>
               </div>
             )}
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${

@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { buildInvoicePdf, generateAndStoreInvoicePdf, nextInvoiceNumber, type InvoiceData } from '../services/invoice-pdf.js';
 import { enviar, plantilla, parrafo, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
+import { config } from '../config.js';
 
 export const invoiceDownloadRouter = Router();
 
@@ -362,6 +363,79 @@ invoiceDownloadRouter.post(
       res.status(201).json({ ok: true, data: { id: rectId, amount: -origAmount } });
     } catch (err) {
       falloInterno(res, 'rectify_failed', err);
+    }
+  }
+);
+
+/**
+ * Entrega un fichero guardado en el almacén, por una ruta que pide sesión.
+ *
+ * La pantalla enlazaba directamente a la dirección del almacén. A un trabajador
+ * con sesión eso no le da acceso de más —ya lo tiene—, pero deja el enlace suelto
+ * por ahí y, sobre todo, ata la pantalla a que el cubo sea público: el día que
+ * las facturas se muden a uno privado, esos enlaces dejan de abrir.
+ *
+ * A un fichero de fuera —Stripe— se le manda con un redirect: no es nuestro y su
+ * dirección ya lleva su propia llave.
+ */
+async function sirveGuardado(url: string, res: import('express').Response, nombre: string) {
+  if (!url) { res.status(404).json({ ok: false, error: 'sin fichero' }); return; }
+  if (!url.includes('/storage/v1/object/')) { res.redirect(302, url); return; }
+
+  const clave = config.SUPABASE_SERVICE_KEY;
+  // Por la dirección privada —la misma sin `/public`—, que es la que sigue
+  // valiendo cuando el cubo deje de ser público. Y con `apikey`, porque las
+  // claves nuevas de Supabase no son JWT y por Authorization las rechaza.
+  const directa = url.replace('/object/public/', '/object/');
+  const r = await fetch(directa, clave ? { headers: { apikey: clave, Authorization: `Bearer ${clave}` } } : undefined);
+  if (!r.ok) { res.status(502).json({ ok: false, error: 'no se ha podido traer el fichero' }); return; }
+
+  const buf = Buffer.from(await r.arrayBuffer());
+  res.setHeader('Content-Type', r.headers.get('content-type') || 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
+  res.setHeader('Content-Length', buf.byteLength);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.end(buf);
+}
+
+/** El PDF que ya está guardado de una factura de cliente. */
+invoiceDownloadRouter.get(
+  '/invoices/user/:id/archivo',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const r = await query(
+        `SELECT coalesce(cw_pdf_url, pdf_url) AS url, coalesce(cw_invoice_number, number, id::text) AS numero
+           FROM moveadvisor_user_invoices WHERE id = $1`,
+        [req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+      const f = r.rows[0] as { url: string | null; numero: string };
+      await sirveGuardado(String(f.url || ''), res, `${f.numero}.pdf`);
+    } catch (e) {
+      falloInterno(res, 'factura_guardada', e);
+    }
+  }
+);
+
+/** El fichero que subió un proveedor con su factura. Puede no ser un PDF. */
+invoiceDownloadRouter.get(
+  '/invoices/provider/:id/archivo',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const r = await query(
+        `SELECT pdf_url, coalesce(invoice_number, id::text) AS numero
+           FROM moveadvisor_provider_invoices WHERE id = $1`,
+        [req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+      const f = r.rows[0] as { pdf_url: string | null; numero: string };
+      const url = String(f.pdf_url || '');
+      const ext = (url.split('?')[0].match(/\.([a-z0-9]{1,5})$/i)?.[1] || 'pdf').toLowerCase();
+      await sirveGuardado(url, res, `${f.numero}.${ext}`);
+    } catch (e) {
+      falloInterno(res, 'fichero_proveedor', e);
     }
   }
 );

@@ -46,6 +46,14 @@ async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${CUBO}/${conTrozo}`, {
       method: 'POST',
       headers: {
+        // `apikey` además de `Authorization`.
+        //
+        // Las claves nuevas de Supabase (`sb_secret_…`) no son JWT, y Storage
+        // intenta leer el Bearer como uno: contesta «Invalid Compact JWS» y la
+        // subida se pierde en silencio. Con `apikey` las acepta. Se mandan las
+        // dos porque una clave antigua, que sí es JWT, sigue valiendo por
+        // Authorization.
+        apikey: SUPABASE_SERVICE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
         'Content-Type': 'application/pdf',
         'x-upsert': 'true',

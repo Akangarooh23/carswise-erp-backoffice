@@ -69,6 +69,8 @@ async function mirrorImageToSupabase(imageUrl: string, offerId: string): Promise
     const upload = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
       method: 'POST',
       headers: {
+        // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
+        apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
         'Content-Type': contentType,
         'x-upsert': 'true',

@@ -361,13 +361,21 @@ export default function BillingPage() {
                           ) : inv.type === 'tasacion' ? (
                             inv.pdf_url ? (
                               <div className="flex flex-col gap-1">
-                                <a
-                                  href={inv.pdf_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-acento-texto hover:underline whitespace-nowrap">
-                                  ↓ {inv.id.slice(-6).toUpperCase()}
-                                </a>
+                                {/* Por la ruta con sesión, no por la dirección del
+                                    almacén: así el enlace no vale suelto y sigue
+                                    funcionando cuando el cubo sea privado. */}
+                                <button
+                                  disabled={downloadingId === inv.id}
+                                  onClick={async () => {
+                                    setPdfError(null);
+                                    setDownloadingId(inv.id);
+                                    try { await descargaConSesion(`/invoices/user/${inv.id}/archivo`, `${inv.cw_invoice_number ?? inv.id}.pdf`); }
+                                    catch (e) { setPdfError({ id: inv.id, msg: (e as Error).message }); }
+                                    setDownloadingId(null);
+                                  }}
+                                  className="text-xs text-acento-texto hover:underline disabled:opacity-50 whitespace-nowrap">
+                                  {downloadingId === inv.id ? 'Bajando…' : `↓ ${inv.id.slice(-6).toUpperCase()}`}
+                                </button>
                                 {inv.cw_sent_at && (
                                   <span className="text-[10px] text-emerald-600 font-medium">
                                     ✓ Enviada · {new Date(inv.cw_sent_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}

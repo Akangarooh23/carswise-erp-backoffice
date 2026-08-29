@@ -26,6 +26,8 @@ async function uploadIdCarFileToSupabase(
     const res = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
+        // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
+        apikey: SUPABASE_SERVICE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
         'Content-Type': mimeType || (ext === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
         'x-upsert': 'true',
@@ -129,7 +131,8 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
   // vehicles/ is the canonical path; idcars/ kept as legacy for existing uploads
   const PREFIXES = [`vehicles/${vehicleId}`, `idcars/${vehicleId}`];
   const BASE_URL = `${SUPABASE_URL}/storage/v1`;
-  const headers = { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' };
+  // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
+  const headers = { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' };
 
   const FILE_TYPE_MAP: Record<string, string> = {
     photos: 'photo', documents: 'document', photo: 'photo', document: 'document',
