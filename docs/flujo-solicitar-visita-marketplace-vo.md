@@ -100,8 +100,8 @@ El **identificador de la oferta** es un enlace: abre la ficha del coche en el
 marketplace VO, en otra pestaña, para verlo antes de llamar.
 
 Vale para todas. Las de IDCar también están publicadas en el marketplace VO, en
-la sección de **particulares** —van con `seller_type` de particular—, así que
-tienen su ficha igual que las de concesionario.
+la sección de **particulares**, así que tienen su ficha igual que las de
+concesionario.
 
 Va a **nuestra ficha** y no al anuncio del portal de origen, porque los coches
 que no vienen de un portal no tienen anuncio propio en internet. La ficha del
@@ -159,7 +159,7 @@ ya está reprogramada, y el cambio queda en el rastro a su nombre.
 hubiera publicado alguien desde el ERP. Que una hora esté publicada no significa
 que el concesionario haya dicho que sí a esta visita.
 
-**El calendario sale al confirmar, no al pedir.** Un `.ics` en el móvil de
+**El calendario sale al confirmar, no al pedir.** Una cita metida en el móvil de
 alguien es una cita cerrada, y no lo es hasta que un trabajador ha llamado.
 
 **La campana tampoco suena hasta que está confirmada.** Mientras está pendiente
@@ -220,38 +220,23 @@ correo que alguien tiene que leer.
 La sigue desde su panel y también desde el enlace de su correo, que abre su cita
 sin pedirle contraseña.
 
-Su panel se pone al día solo: al pedir la visita y cada vez que lo abre. Antes
-los datos se pedían una sola vez, al entrar, y lo que acababa de hacer no
-aparecía hasta recargar la página entera.
+Su panel se pone al día solo: al pedir la visita y cada vez que lo abre. No
+tiene que recargar nada para ver lo que acaba de hacer.
 
-## Para conectar WhatsApp
+## El WhatsApp al cliente
 
-Hoy el mensaje sale en pantalla para mandarlo a mano. Para que salga solo hacen
-falta dos variables en el ERP, y nada más — ninguna pantalla ni ninguna ruta
-cambian:
+Hoy el mensaje **sale en pantalla y se manda a mano**: se copia con el botón y
+se pega en el WhatsApp del cliente. El paso queda apuntado igual, salga como
+salga.
 
-| Variable | Qué es |
-|---|---|
-| `WHATSAPP_TOKEN` | El token permanente de la app de Meta |
-| `WHATSAPP_PHONE_ID` | El identificador del número desde el que se escribe |
+Cuando el número esté conectado, el mensaje saldrá solo y las horas irán como
+**botones**: el cliente pulsa una y su visita queda confirmada, sin que nadie
+teclee nada. Con más de tres horas no caben botones y saldrá el texto numerado
+de siempre, para que conteste «la 2» y se aplique desde la Agenda.
 
-| `WHATSAPP_VERIFY_TOKEN` | Una palabra que eliges tú, para dar de alta el webhook |
-| `WHATSAPP_APP_SECRET` | El secreto de la app de Meta. Con él se comprueba que lo que llega al webhook lo manda Meta y no cualquiera |
+**El botón de copiar seguirá haciendo falta.** WhatsApp solo deja escribir a
+alguien libremente durante las 24 horas siguientes a su último mensaje; fuera de
+esa ventana hay que mandarlo a mano de todas formas.
 
-En la app de Meta, el webhook va a `https://<esta-api>/api/whatsapp/webhook`, con
-ese mismo token de verificación.
-
-Las horas se mandan **como botones** cuando son tres o menos, que es el máximo de
-WhatsApp. El cliente pulsa uno y la visita queda confirmada sola, igual que por
-el correo. Con cuatro o más horas no hay botones que valgan y sale el texto
-numerado, para que conteste «la 2» y se aplique a mano: recortarle horas que el
-concesionario sí ofrece es peor que pedirle que escriba.
-
-**El botón de copiar no sobra cuando se conecte.** WhatsApp solo deja escribir
-libremente dentro de las 24 horas siguientes al último mensaje del cliente; fuera
-de esa ventana hace falta una plantilla aprobada, así que seguirá haciendo falta
-mandarlo a mano a veces.
-
-Y el correo sale siempre, esté WhatsApp conectado o no: es el camino que no
-depende de que el cliente tenga el número guardado ni de ninguna ventana de 24
-horas.
+Y el correo con las horas sale siempre, esté WhatsApp conectado o no. Es el
+camino que no depende de tener el número guardado.
