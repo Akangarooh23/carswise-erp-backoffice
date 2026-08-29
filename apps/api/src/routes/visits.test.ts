@@ -11,6 +11,8 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, correoDeLugar, correoDeOtrasHoras, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
 
 const reserva = {
@@ -273,5 +275,30 @@ describe('a quien tiene el coche no se le llama concesionario siempre', () => {
   test('el correo con las horas tampoco', () => {
     const { html } = correoDeOtrasHoras(reserva, ['2026-09-16T08:00:00.000Z'], () => 'https://x/y');
     assert.ok(!/concesionario/i.test(html));
+  });
+});
+
+describe('ver lo que se le manda antes de mandarlo', () => {
+  /** El cuerpo de una ruta, para poder mirar qué hace y qué no. */
+  function cuerpoDeLaRuta(camino: string): string {
+    const fuente = readFileSync(fileURLToPath(new URL('./visits.ts', import.meta.url)), 'utf8');
+    const desde = fuente.indexOf(`visitsRouter.post('${camino}'`);
+    assert.ok(desde > 0, `no encuentro la ruta ${camino}`);
+    const hasta = fuente.indexOf('\n});', desde);
+    return fuente.slice(desde, hasta);
+  }
+
+  test('la vista previa no manda nada y no apunta nada', () => {
+    const cuerpo = cuerpoDeLaRuta('/visit-bookings/:bookingId/proponer/vista');
+    assert.ok(!/\benviar\(/.test(cuerpo), 'si manda el correo, no es una vista previa: es el envío');
+    assert.ok(!/\bmanda(Opciones)?\(/.test(cuerpo), 'ni el WhatsApp');
+    assert.ok(!/\bapunta\(/.test(cuerpo), 'y no deja rastro: un intento que no fue no es un paso de la cita');
+    assert.ok(!/UPDATE |INSERT /i.test(cuerpo), 'ni escribe en la base');
+  });
+
+  test('la de mandar sí manda, y apunta', () => {
+    const cuerpo = cuerpoDeLaRuta('/visit-bookings/:bookingId/proponer');
+    assert.ok(/\benviar\(/.test(cuerpo));
+    assert.ok(/\bapunta\(/.test(cuerpo));
   });
 });

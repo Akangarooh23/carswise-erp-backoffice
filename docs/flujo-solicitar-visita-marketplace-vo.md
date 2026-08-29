@@ -27,6 +27,7 @@ hasta que conteste: no se le promete nada que no haya elegido él.
 
 :::flujo
 trabajador: En la Agenda, **Propone otras horas**. Las pone con calendario y reloj
+trabajador: Lee **lo que va a leer el cliente** y le da a enviar. Hasta ahí no sale nada
 correo: **Al cliente** — las horas, **cada una un botón** para pinchar
 sistema: Y por WhatsApp, si está conectado: las mismas horas, también como botones
 ? ¿Qué hace el cliente?
@@ -66,7 +67,7 @@ concesionario acaba dando una distinta, se escribe a mano debajo.
 | Botón | Qué hace |
 |---|---|
 | **Confirmar** | El concesionario ha dicho que sí. Pide **dónde es** y **por quién preguntar**, y con eso confirma: al cliente le llega el correo con esos datos y el calendario, y ya sale en su campana |
-| **Propone otras horas** | Abre el diálogo para apuntar las que dio. Se le mandan al cliente y la cita **sigue pendiente** hasta que conteste |
+| **Propone otras horas** | Se apuntan las horas que dio, y antes de mandar nada **se enseña lo que va a leer el cliente**: el correo entero y el texto del WhatsApp. Desde ahí se cambia o se envía. La cita **sigue pendiente** hasta que conteste |
 | **El cliente ha elegido hora** | Cuando contesta al WhatsApp diciendo que le vale una de las que se le propusieron. Salen las horas propuestas para pincharlas, y con eso la visita queda confirmada a esa hora: al cliente se le confirma, no se le dice que se la hemos movido |
 | **Cancelar cita** | Cancela. Pide un motivo, que se le cuenta al cliente junto a un enlace para pedir otra hora |
 | **Ver rastro** | Despliega los pasos dados, los dos botones para apuntar lo que se hace por teléfono, y el sitio para escribir notas |
@@ -171,8 +172,11 @@ excepción es el **particular**: de ese sí tenemos el correo —en el marketpla
 el vendedor de una oferta de particular *es* una dirección— y se le escribe solo
 al reservar.
 
-Por eso la Agenda dice **quién vende** en cada visita, y de qué sección del
-marketplace es el coche: concesionario, ex-renting, particular o importación.
+Por eso la Agenda dice **quién vende** en cada visita, de qué sección del
+marketplace es el coche —concesionario, ex-renting, particular o importación— y
+**su teléfono**, pinchable para llamar desde el móvil. Si no está puesto lo
+dice: se pone en la ficha de la oferta, en Marketplace, y con una vez basta
+para todos los coches de ese vendedor.
 
 De un particular sale su correo. De los demás, solo el nombre y un enlace de
 **origen**, que lleva a donde salió el coche: unas veces el anuncio del vendedor

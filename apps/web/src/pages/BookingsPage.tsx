@@ -296,6 +296,12 @@ export default function BookingsPage() {
   const [proponer, setProponer] = useState<Booking | null>(null);
   const [horas, setHoras] = useState<{ dia: string; hora: string }[]>([{ dia: '', hora: '' }]);
   const [proponiendo, setProponiendo] = useState(false);
+  // Lo que va a leer el cliente, antes de mandárselo. Un correo sale de una vez
+  // y no se puede recoger.
+  const [borrador, setBorrador] = useState<{
+    asunto: string; correo: string; texto: string;
+    email: string; telefono: string; sinCorreo: boolean; sinTelefono: boolean;
+  } | null>(null);
   const [mensaje, setMensaje] = useState<{ texto: string; enviado: boolean; motivo?: string; telefono: string; correo?: boolean; falloCorreo?: string; email?: string } | null>(null);
   const [rastroDe, setRastroDe] = useState<string | null>(null);
   const [rastro, setRastro] = useState<Paso[]>([]);
@@ -341,6 +347,26 @@ export default function BookingsPage() {
   /** De un día y una hora sueltos a la fecha que espera la API. */
   const aFecha = (dia: string, hora: string) => (dia && hora ? new Date(`${dia}T${hora}:00`).toISOString() : '');
 
+  /**
+   * Arma lo que se le va a mandar y lo enseña. No manda nada.
+   *
+   * Se puede volver atrás, cambiar las horas y volver a mirar: esta llamada no
+   * deja rastro, así que un intento que no fue no aparece en el rastro de la cita.
+   */
+  async function preparaPropuesta() {
+    if (!proponer) return;
+    const fechas = horas.map((h) => aFecha(h.dia, h.hora)).filter(Boolean);
+    if (!fechas.length) { setResultado({ mal: true, texto: 'Pon al menos una hora.' }); return; }
+    setProponiendo(true);
+    const r = await api.post<{
+      asunto: string; correo: string; texto: string;
+      email: string; telefono: string; sinCorreo: boolean; sinTelefono: boolean;
+    }>(`/visit-bookings/${proponer.id}/proponer/vista`, { horas: fechas });
+    setProponiendo(false);
+    if (!r.ok || !r.data) { setResultado({ mal: true, texto: r.error || 'No se ha podido preparar el mensaje.' }); return; }
+    setBorrador(r.data);
+  }
+
   async function mandarPropuesta() {
     if (!proponer) return;
     const fechas = horas.map((h) => aFecha(h.dia, h.hora)).filter(Boolean);
@@ -354,6 +380,7 @@ export default function BookingsPage() {
     if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar la propuesta.' }); return; }
     // El diálogo no se cierra: ahora enseña el mensaje, que es lo que hay que
     // mandar o comprobar. Cerrarlo y dejarlo en un aviso lo haría desaparecer.
+    setBorrador(null);
     setMensaje({ ...r.data!, telefono: r.data?.telefono || proponer.buyer_phone || '' });
     load();
   }
@@ -769,7 +796,7 @@ export default function BookingsPage() {
 
       {proponer && (
         <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4 py-8 overflow-y-auto"
-             onClick={() => { setProponer(null); setMensaje(null); }} role="dialog" aria-modal="true"
+             onClick={() => { setProponer(null); setMensaje(null); setBorrador(null); }} role="dialog" aria-modal="true"
              aria-label="Horas que propone quien tiene el coche">
           <div className="w-full max-w-lg rounded-2xl bg-white border border-brand-200 shadow-2xl my-auto"
                onClick={(e) => e.stopPropagation()}>
@@ -780,7 +807,46 @@ export default function BookingsPage() {
               </p>
             </div>
 
-            {!mensaje ? (
+            {borrador ? (
+              /* Lo que va a leer el cliente, tal cual. El correo va dentro de un
+                 marco aparte para que se vea como se va a ver y para que sus
+                 estilos no se mezclen con los de esta pantalla. */
+              <>
+                <div className="px-6 py-5 space-y-4">
+                  <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-500">
+                    Esto es lo que va a leer. Todavía no se ha mandado nada.
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
+                      Correo {borrador.sinCorreo
+                        ? <span className="text-red-600 normal-case">· esta cita no tiene correo del cliente, así que no saldrá</span>
+                        : <span className="text-brand-400 normal-case font-medium">· a {borrador.email}</span>}
+                    </div>
+                    <div className="text-[13px] text-brand-600 font-semibold mb-1.5">{borrador.asunto}</div>
+                    <iframe title="El correo, como lo va a ver" srcDoc={borrador.correo} sandbox=""
+                            className="w-full h-72 rounded-lg border border-brand-200 bg-white" />
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] font-bold text-brand-300 uppercase tracking-wide mb-1.5">
+                      WhatsApp {borrador.sinTelefono
+                        ? <span className="text-amber-700 normal-case">· esta cita no tiene teléfono</span>
+                        : <span className="text-brand-400 normal-case font-medium">· al {borrador.telefono}</span>}
+                    </div>
+                    <pre className="whitespace-pre-wrap rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-600 font-sans">
+                      {borrador.texto}
+                    </pre>
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+                  <Boton variante="fantasma" onClick={() => setBorrador(null)}>Cambiar las horas</Boton>
+                  <Boton variante="acento" cargando={proponiendo} onClick={mandarPropuesta}>
+                    Enviar al cliente
+                  </Boton>
+                </div>
+              </>
+            ) : !mensaje ? (
               <>
                 <div className="px-6 py-5 space-y-3">
                   <p className="text-[13px] text-brand-400">
@@ -816,8 +882,8 @@ export default function BookingsPage() {
                 </div>
                 <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
                   <Boton variante="fantasma" onClick={() => setProponer(null)}>Volver</Boton>
-                  <Boton variante="acento" cargando={proponiendo} onClick={mandarPropuesta}>
-                    Preparar mensaje
+                  <Boton variante="acento" cargando={proponiendo} onClick={preparaPropuesta}>
+                    Ver lo que se le manda
                   </Boton>
                 </div>
               </>

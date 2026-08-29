@@ -666,14 +666,84 @@ const PASOS_A_MANO: Record<string, true> = {
  * devuelve el texto para que lo mande una persona. El paso queda apuntado en los
  * dos casos, con cuál de las dos cosas pasó.
  */
-visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), async (req, res) => {
-  const { bookingId } = req.params;
-  // Fechas de verdad, no texto: es lo que permite aplicarlas cuando el cliente
-  // elija una, sin que nadie las vuelva a teclear.
-  const horas = (Array.isArray(req.body?.horas) ? req.body.horas : [])
+/**
+ * Las horas que valen de las que llegan.
+ *
+ * Fechas de verdad, no texto: es lo que permite aplicarlas cuando el cliente
+ * elija una, sin que nadie las vuelva a teclear. Y futuras, porque proponerle
+ * una hora que ya pasó es hacerle perder el viaje.
+ */
+function horasQueValen(entrada: unknown): string[] {
+  return (Array.isArray(entrada) ? entrada : [])
     .map((h: unknown) => String(h ?? '').trim())
     .filter((h: string) => h && !Number.isNaN(new Date(h).getTime()) && new Date(h).getTime() > Date.now())
     .slice(0, 6);
+}
+
+/**
+ * Lo que se le va a mandar al cliente, antes de mandarlo.
+ *
+ * Un correo sale de una vez y no se puede recoger. Quien propone unas horas
+ * tiene que poder leer lo que va a leer el cliente —con su nombre, sus horas y
+ * su coche dentro— y decidir después.
+ *
+ * Esta ruta no manda nada y no apunta nada: solo arma los dos textos, el del
+ * correo y el de WhatsApp. Se puede llamar todas las veces que haga falta,
+ * cambiando las horas, sin dejar rastro de intentos que no fueron.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/proponer/vista', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const horas = horasQueValen(req.body?.horas);
+  if (!horas.length) {
+    return res.status(400).json({ ok: false, error: 'no has puesto ninguna hora válida y futura' });
+  }
+
+  try {
+    const r = await query(
+      `SELECT id, offer_id, vehicle_title, starts_at, ends_at, buyer_name, buyer_phone,
+              buyer_email, token_buyer, status
+         FROM vehicle_visit_bookings WHERE id = $1`,
+      [bookingId]
+    );
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+    const b = r.rows[0];
+    if (b.status === 'cancelled') {
+      return res.status(409).json({ ok: false, error: 'esa visita está cancelada' });
+    }
+
+    const texto = mensajeDeOtrasHoras(
+      String(b.vehicle_title || 'vehículo'),
+      String(b.buyer_name || '').split(' ')[0],
+      horas
+    );
+    const sitio = config.PUBLIC_SITE_URL.replace(/\/$/, '');
+    const { subject, html } = correoDeOtrasHoras(b as Reserva, horas, (h: string) =>
+      `${sitio}/elegir-hora?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(String(b.token_buyer || ''))}&h=${encodeURIComponent(h)}`
+    );
+
+    return res.json({
+      ok: true,
+      data: {
+        asunto: subject,
+        correo: html,
+        texto,
+        // Para poder decir a quién van, que es la otra mitad de revisar.
+        email: b.buyer_email || '',
+        telefono: b.buyer_phone || '',
+        // Si falta alguna de las dos cosas, quien revisa tiene que saberlo antes
+        // de darle a enviar y no después.
+        sinCorreo: !b.buyer_email,
+        sinTelefono: !b.buyer_phone,
+      },
+    });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const horas = horasQueValen(req.body?.horas);
 
   if (!horas.length) {
     return res.status(400).json({ ok: false, error: 'no has puesto ninguna hora válida y futura' });
