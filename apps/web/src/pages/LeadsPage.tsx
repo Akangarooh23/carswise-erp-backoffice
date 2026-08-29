@@ -612,6 +612,33 @@ export default function LeadsPage() {
             </div>
           )}
 
+          {/* De qué son las solicitudes.
+
+              La API calculaba estas cifras desde el principio y no las pintaba
+              nadie: cálculo muerto. Y con ellas a la vista se ve de un vistazo si
+              lo que entra son visitas, rentings o importaciones, que es lo que
+              dice a qué dedicar el día. Solo salen las que tienen algo. */}
+          {leadStats && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { label: 'Visitas',        value: leadStats.type_visit,    clase: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+                { label: 'Info',           value: leadStats.type_info,     clase: 'bg-acento-tenue border-acento text-acento-texto' },
+                { label: 'Preguntas',      value: leadStats.type_question, clase: 'bg-brand-50 border-brand-200 text-brand-500' },
+                { label: 'Renting',        value: leadStats.type_renting,  clase: 'bg-green-50 border-green-200 text-green-800' },
+                { label: 'Importaciones',  value: leadStats.type_import,   clase: 'bg-blue-50 border-blue-200 text-blue-800' },
+              ].filter((x) => Number(x.value) > 0).map((x) => (
+                <span key={x.label} className={`${x.clase} border rounded-lg px-3 py-1.5 text-[13px]`}>
+                  <strong className="font-bold">{x.value}</strong> {x.label}
+                </span>
+              ))}
+              {Number(leadStats.portal_externo) > 0 && (
+                <span className="bg-brand-50 border border-brand-200 text-brand-400 rounded-lg px-3 py-1.5 text-[13px]">
+                  <strong className="font-bold">{leadStats.portal_externo}</strong> de portales de fuera
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 mb-4 items-center">
             <input
               type="text"
