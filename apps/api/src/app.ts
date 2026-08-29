@@ -23,6 +23,7 @@ import { contractsRouter } from './routes/contracts.js';
 import { providerBillingRouter } from './routes/provider-billing.js';
 import { invoiceDownloadRouter } from './routes/invoice-download.js';
 import { visitsRouter } from './routes/visits.js';
+import { whatsappRouter } from './routes/whatsapp.js';
 import { apuntaCambios } from './middleware/auditoria.js';
 
 export function createApp() {
@@ -60,6 +61,9 @@ export function createApp() {
   app.use('/api', providerBillingRouter);
   app.use('/api', invoiceDownloadRouter);
   app.use('/api', visitsRouter);
+  // Sin sesión: quien llama es Meta. Lo protege el token de verificación y que
+  // la hora tenga que venir en un botón nuestro.
+  app.use('/api', whatsappRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ ok: false, error: 'not_found' });

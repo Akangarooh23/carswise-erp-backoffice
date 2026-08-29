@@ -3,7 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole, type Role } from '../middleware/auth.js';
 import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA } from '../lib/correo.js';
 import { config } from '../config.js';
-import { manda } from '../lib/whatsapp.js';
+import { manda, mandaOpciones, botonDeHora } from '../lib/whatsapp.js';
 
 export const visitsRouter = Router();
 
@@ -154,6 +154,38 @@ export function correoDeLugar(
 }
 
 /**
+ * El correo con las horas que ha dado el concesionario, cada una un botón.
+ *
+ * Es el mismo mensaje que el de WhatsApp, pero en correo y con las horas
+ * pinchables: el cliente le da a la que le viene bien y la visita queda
+ * confirmada sola, sin que nadie vuelva a teclear nada ni tenga que esperar a
+ * que alguien lea su respuesta.
+ *
+ * Cada botón lleva a la página del cliente con esa hora ya marcada. No la
+ * aplica al abrirse —eso lo hace un segundo toque en la página— porque los
+ * lectores de correo abren solos los enlaces para comprobarlos, y una cita no
+ * puede quedar confirmada porque un antivirus haya mirado el mensaje.
+ */
+export function correoDeOtrasHoras(
+  r: Reserva,
+  horas: string[],
+  enlaceDe: (hora: string) => string
+): { subject: string; html: string } {
+  const coche = r.vehicle_title || 'el vehículo';
+  return {
+    subject: `Esa hora no puede ser — elige otra para ver el ${coche}`,
+    html: plantilla({
+      titulo: 'Elige otra hora para tu visita',
+      cuerpo:
+        parrafo(`Hola${r.buyer_name ? ` ${esc(r.buyer_name)}` : ''}, a la hora que pediste no puede ser. Estas son las que nos ha dado quien tiene el ${esc(coche)}.`) +
+        parrafo('Pincha la que te venga bien y tu visita queda confirmada a esa hora.', 14) +
+        horas.map((h) => boton(`${fechaLarga(h)} a las ${hora(h)}`, enlaceDe(h))).join('') +
+        parrafo('Si ninguna te viene bien, entra en tu panel, en Solicitudes: desde ahí cancelas la visita o pides otro día.', 14),
+    }),
+  };
+}
+
+/**
  * El WhatsApp que se le manda al cliente cuando el concesionario no puede.
  *
  * Se le dice que su hora no ha podido ser y se le dan las que sí, para que
@@ -229,6 +261,15 @@ const fechaLarga = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ZONA });
 const hora = (iso: string) =>
   new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: ZONA });
+
+/**
+ * La hora como cabe en un botón de WhatsApp: veinte caracteres contados.
+ *
+ * Meta rechaza el mensaje entero si un botón se pasa, así que el día va
+ * abreviado. «mar, 16 10:00» se entiende igual que el nombre largo.
+ */
+export const etiquetaDeHora = (iso: string) =>
+  `${new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', timeZone: ZONA })} ${hora(iso)}`.slice(0, 20);
 
 /**
  * El correo que se le manda al cliente cuando le cancelan la visita.
@@ -434,17 +475,40 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
  * ha propuesto esta. Al cliente se le manda el calendario y el enlace a su cita,
  * porque se la hemos movido sin preguntarle.
  */
-visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), async (req, res) => {
-  const { bookingId } = req.params;
-  const startsAt = String(req.body?.startsAt ?? '').trim();
-  const endsAt   = String(req.body?.endsAt ?? '').trim();
-  // Cuando la hora la ha elegido el cliente contestando a las que le propusimos.
-  const laEligioElCliente = req.body?.laEligioElCliente === true;
+/**
+ * Poner una visita en otra hora y dejarla confirmada.
+ *
+ * Es lo que pasa cuando el concesionario dice «ese día no, pero el jueves sí», y
+ * también cuando el cliente contesta con una de las que le propusimos. Antes
+ * había que cancelar y esperar a que el cliente volviera a pedir hora, con lo que
+ * eso tiene de que no vuelva.
+ *
+ * La hora nueva no se elige de una lista: el concesionario dice una hora concreta
+ * y no tiene por qué estar publicada. Se crea como hueco del ERP, que es lo que
+ * es —una hora que ha puesto una persona—.
+ *
+ * Queda confirmada: quien tenía que aprobarla ya lo ha hecho, y ha sido él quien
+ * ha propuesto esta.
+ *
+ * Vive fuera de la ruta porque no la llama solo la Agenda: cuando WhatsApp esté
+ * conectado, el cliente pulsará un botón en su móvil y quien aplique esa hora
+ * será el webhook. Lo que pasa tiene que ser exactamente lo mismo por los dos
+ * caminos, y eso solo se sostiene si el camino es uno.
+ */
+export async function aplicaHoraElegida(
+  bookingId: string,
+  startsAt: string,
+  opciones: { actor: string; laEligioElCliente?: boolean; endsAt?: string; por?: string }
+): Promise<
+  | { ok: true; avisado: boolean; fallo?: string }
+  | { ok: false; codigo: number; error: string }
+> {
+  const { actor, laEligioElCliente = false, endsAt = '', por = 'respuesta del cliente' } = opciones;
 
-  if (!startsAt) return res.status(400).json({ ok: false, error: 'falta la hora nueva' });
+  if (!startsAt) return { ok: false, codigo: 400, error: 'falta la hora nueva' };
   const inicio = new Date(startsAt);
-  if (Number.isNaN(inicio.getTime())) return res.status(400).json({ ok: false, error: 'la hora nueva no se entiende' });
-  if (inicio.getTime() < Date.now()) return res.status(400).json({ ok: false, error: 'esa hora ya ha pasado' });
+  if (Number.isNaN(inicio.getTime())) return { ok: false, codigo: 400, error: 'la hora nueva no se entiende' };
+  if (inicio.getTime() < Date.now()) return { ok: false, codigo: 400, error: 'esa hora ya ha pasado' };
   // Una hora sin final se toma como una hora de duración, que es lo que dura
   // una visita en todos los huecos que genera el sistema.
   const fin = endsAt || new Date(inicio.getTime() + 3600000).toISOString();
@@ -456,10 +520,10 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
          FROM vehicle_visit_bookings WHERE id = $1`,
       [bookingId]
     );
-    if (!actual.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
+    if (!actual.rows.length) return { ok: false, codigo: 404, error: 'no_encontrada' };
     const reserva = actual.rows[0];
     if (reserva.status === 'cancelled') {
-      return res.status(409).json({ ok: false, error: 'esa visita está cancelada' });
+      return { ok: false, codigo: 409, error: 'esa visita está cancelada' };
     }
     const horaAnterior = String(reserva.starts_at);
 
@@ -504,10 +568,10 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
     // Cambia el rastro y cambia lo que se le dice: a quien ha contestado «la 2»
     // por WhatsApp no se le escribe «hemos movido tu visita», se le confirma.
     if (laEligioElCliente) {
-      await apunta(bookingId, 'cliente_respondio', 'cliente', { eligio: inicio.toISOString() });
-      await apunta(bookingId, 'confirmada', quien(req as never), { por: 'respuesta del cliente' });
+      await apunta(bookingId, 'cliente_respondio', 'cliente', { eligio: inicio.toISOString(), por });
+      await apunta(bookingId, 'confirmada', actor, { por });
     } else {
-      await apunta(bookingId, 'movida', quien(req as never), { de: horaAnterior, a: inicio.toISOString() });
+      await apunta(bookingId, 'movida', actor, { de: horaAnterior, a: inicio.toISOString() });
     }
     let avisado = true;
     let fallo = '';
@@ -535,10 +599,25 @@ visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), 
       console.error('[visitas] no se ha podido avisar del cambio de hora:', fallo);
     }
 
-    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
+    return { ok: true, avisado, ...(avisado ? {} : { fallo }) };
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return { ok: false, codigo: 500, error: e.message };
   }
+}
+
+/** La Agenda mueve una visita a otra hora. */
+visitsRouter.post('/visit-bookings/:bookingId/reprogramar', requireRole(ROLES), async (req, res) => {
+  const r = await aplicaHoraElegida(
+    req.params.bookingId,
+    String(req.body?.startsAt ?? '').trim(),
+    {
+      actor: quien(req as never),
+      laEligioElCliente: req.body?.laEligioElCliente === true,
+      endsAt: String(req.body?.endsAt ?? '').trim(),
+    }
+  );
+  if (!r.ok) return res.status(r.codigo).json({ ok: false, error: r.error });
+  return res.json({ ok: true, data: { avisado: r.avisado, ...(r.avisado ? {} : { fallo: r.fallo }) } });
 });
 
 /**
@@ -584,7 +663,9 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
 
   try {
     const r = await query(
-      `SELECT id, vehicle_title, buyer_name, buyer_phone FROM vehicle_visit_bookings WHERE id = $1`,
+      `SELECT id, offer_id, vehicle_title, starts_at, ends_at, buyer_name, buyer_phone,
+              buyer_email, token_buyer
+         FROM vehicle_visit_bookings WHERE id = $1`,
       [bookingId]
     );
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'no_encontrada' });
@@ -598,9 +679,36 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
 
     await apunta(bookingId, 'horas_propuestas', quien(req as never), { horas });
 
-    const envio = await manda(String(b.buyer_phone || ''), texto);
+    // Con botones cuando caben: el cliente pulsa y la hora se aplica sola, sin
+    // que nadie lea el WhatsApp y lo teclee. Con más de tres, Meta no admite
+    // botones y sale el texto numerado de siempre.
+    const envio = await mandaOpciones(
+      String(b.buyer_phone || ''),
+      texto,
+      horas.map((h: string) => ({ id: botonDeHora(bookingId, h), texto: etiquetaDeHora(h) }))
+    );
     if (envio.enviado) {
       await apunta(bookingId, 'whatsapp_enviado', quien(req as never), { horas });
+    }
+
+    // Y el correo, siempre. WhatsApp puede no estar conectado, puede no tener
+    // teléfono, o puede no leerlo: el correo con las horas pinchables es el
+    // camino que funciona hoy, y el que cierra la cita sin que nadie teclee.
+    let correo = false;
+    let falloCorreo = '';
+    try {
+      if (!b.buyer_email) throw new Error('la reserva no tiene correo del cliente');
+      if (!b.token_buyer) throw new Error('la reserva no tiene enlace propio');
+      const sitio = config.PUBLIC_SITE_URL.replace(/\/$/, '');
+      const { subject, html } = correoDeOtrasHoras(b as Reserva, horas, (h: string) =>
+        `${sitio}/elegir-hora?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(String(b.token_buyer))}&h=${encodeURIComponent(h)}`
+      );
+      await enviar({ to: String(b.buyer_email), subject, alClienteSiempre: true, html });
+      correo = true;
+      await apunta(bookingId, 'correo_propuesta', 'sistema', { a: b.buyer_email, horas });
+    } catch (e) {
+      falloCorreo = e instanceof Error ? e.message : String(e);
+      console.error('[visitas] no se ha podido mandar el correo con las horas:', falloCorreo);
     }
 
     // El texto se devuelve siempre, salga o no: si salió, quien lo mandó quiere
@@ -612,6 +720,9 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
         motivo: envio.motivo,
         texto,
         telefono: b.buyer_phone || '',
+        correo,
+        falloCorreo,
+        email: b.buyer_email || '',
       },
     });
   } catch (e: any) {

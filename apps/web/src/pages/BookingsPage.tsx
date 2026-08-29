@@ -50,6 +50,7 @@ const PASO: Record<string, string> = {
   concesionario_contactado: 'Hablado con el concesionario',
   horas_propuestas:         'El concesionario propone otras horas',
   whatsapp_enviado:         'Mandado al cliente por WhatsApp',
+  correo_propuesta:         'Mandadas al cliente por correo, para que elija',
   cliente_respondio:        'El cliente eligió una hora',
   nota:                     'Nota',
   confirmada:               'Cita confirmada',
@@ -196,7 +197,7 @@ export default function BookingsPage() {
   const [proponer, setProponer] = useState<Booking | null>(null);
   const [horas, setHoras] = useState<{ dia: string; hora: string }[]>([{ dia: '', hora: '' }]);
   const [proponiendo, setProponiendo] = useState(false);
-  const [mensaje, setMensaje] = useState<{ texto: string; enviado: boolean; motivo?: string; telefono: string } | null>(null);
+  const [mensaje, setMensaje] = useState<{ texto: string; enviado: boolean; motivo?: string; telefono: string; correo?: boolean; falloCorreo?: string; email?: string } | null>(null);
   const [rastroDe, setRastroDe] = useState<string | null>(null);
   const [rastro, setRastro] = useState<Paso[]>([]);
   const [notaNueva, setNotaNueva] = useState('');
@@ -239,9 +240,10 @@ export default function BookingsPage() {
     const fechas = horas.map((h) => aFecha(h.dia, h.hora)).filter(Boolean);
     if (!fechas.length) { setResultado({ mal: true, texto: 'Pon al menos una hora.' }); return; }
     setProponiendo(true);
-    const r = await api.post<{ texto: string; enviado: boolean; motivo?: string; telefono: string }>(
-      `/visit-bookings/${proponer.id}/proponer`, { horas: fechas }
-    );
+    const r = await api.post<{
+      texto: string; enviado: boolean; motivo?: string; telefono: string;
+      correo?: boolean; falloCorreo?: string; email?: string;
+    }>(`/visit-bookings/${proponer.id}/proponer`, { horas: fechas });
     setProponiendo(false);
     if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar la propuesta.' }); return; }
     // El diálogo no se cierra: ahora enseña el mensaje, que es lo que hay que
@@ -699,6 +701,19 @@ export default function BookingsPage() {
             ) : (
               <>
                 <div className="px-6 py-5 space-y-3">
+                  {/* El correo es el camino que cierra la cita sin que nadie
+                      teclee nada: el cliente pincha una hora y queda confirmada. */}
+                  {mensaje.correo ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
+                      Le hemos escrito a <b>{mensaje.email}</b> con las horas para pinchar. Si elige una,
+                      la visita queda confirmada sola y te llega un aviso.
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-700">
+                      No ha salido el correo con las horas{mensaje.falloCorreo ? ` — ${mensaje.falloCorreo}` : ''}.
+                      Tendrá que contestarte por WhatsApp y aplicarlo tú con «El cliente ha elegido hora».
+                    </div>
+                  )}
                   {mensaje.enviado ? (
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
                       Mandado por WhatsApp al {mensaje.telefono}. Esto es lo que se le ha dicho:

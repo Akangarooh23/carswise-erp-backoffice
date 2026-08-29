@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, correoDeLugar, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
+import { correoDeCancelacion, correoDeConfirmacion, correoDeCambioDeHora, correoDeLugar, correoDeOtrasHoras, calendarioDeLaCita, mensajeDeOtrasHoras } from './visits.js';
 
 const reserva = {
   id: 'b-1',
@@ -209,5 +209,34 @@ describe('el correo de dónde es la visita', () => {
     const { html } = correoDeLugar(reserva, 'Un sitio', '');
     assert.ok(html.includes('septiembre'));
     assert.ok(/1[012]:00/.test(html), 'la hora no cambia, y quien lo lee tiene que verlo');
+  });
+});
+describe('el correo con las horas para elegir', () => {
+  const horas = ['2026-09-16T08:00:00.000Z', '2026-09-17T14:00:00.000Z'];
+  const enlaceDe = (h: string) => `https://www.popcar.tech/elegir-hora?id=b-1&token=t&h=${encodeURIComponent(h)}`;
+
+  test('lleva un botón por cada hora, con su enlace', () => {
+    const { html } = correoDeOtrasHoras(reserva, horas, enlaceDe);
+    for (const h of horas) {
+      assert.ok(html.includes(encodeURIComponent(h)), 'sin el enlace, el botón no lleva a ninguna parte');
+    }
+    assert.equal(html.split('elegir-hora').length - 1, horas.length, 'un botón por hora, ni uno más');
+  });
+
+  test('las horas van en la del cliente, no en la del servidor', () => {
+    const { html } = correoDeOtrasHoras(reserva, ['2026-09-16T08:00:00.000Z'], enlaceDe);
+    assert.ok(html.includes('10:00'), 'las 08:00 UTC de septiembre son las 10:00 en España');
+    assert.ok(!html.includes('>08:00'), 'la hora del servidor en un correo hace que el cliente venga dos horas antes');
+  });
+
+  test('dice qué pasa al pinchar, y qué hacer si ninguna vale', () => {
+    const { html } = correoDeOtrasHoras(reserva, horas, enlaceDe);
+    assert.ok(/confirmada/i.test(html), 'quien pincha tiene que saber que con eso se cierra la cita');
+    assert.ok(html.includes('Solicitudes'), 'y si ninguna le vale, dónde cancelarla o pedir otro día');
+  });
+
+  test('sin ninguna hora no inventa botones', () => {
+    const { html } = correoDeOtrasHoras(reserva, [], enlaceDe);
+    assert.ok(!html.includes('elegir-hora'));
   });
 });

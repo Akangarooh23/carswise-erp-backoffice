@@ -27,18 +27,34 @@ hasta que conteste: no se le promete nada que no haya elegido él.
 
 :::flujo
 trabajador: En la Agenda, **Propone otras horas**. Las pone con calendario y reloj
-sistema: Prepara el mensaje con las horas **numeradas**, para que pueda contestar «la 2»
-? ¿Está WhatsApp conectado?
-rama Sí | Se manda solo | Queda apuntado a qué número y qué se le dijo
-rama No | Copiar mensaje | El texto sale en pantalla para mandarlo a mano. El paso se apunta igual
-cliente: Contesta con la hora que le viene bien
-trabajador: **El cliente ha elegido hora**. Pincha la que dijo, de las que se le propusieron
-correo: **Al cliente** — su visita confirmada, con el calendario
+correo: **Al cliente** — las horas, **cada una un botón** para pinchar
+sistema: Y por WhatsApp, si está conectado: las mismas horas, también como botones
+? ¿Qué hace el cliente?
+rama Pincha una hora | Se cierra sola | Queda **confirmada** a esa hora y le llega el calendario. No hay que teclear nada
+rama Contesta por teléfono | El cliente ha elegido hora | El trabajador pincha la que dijo, en la Agenda
+rama No contesta | Se le llama | Sigue pendiente hasta que conteste
 trabajador: Avisa al concesionario de que el cliente va, y lo apunta
 :::
 
-La hora que contesta **no hay que teclearla**: en ese botón salen las que se le
-propusieron, numeradas igual que en el WhatsApp, y se pincha la que dijo. Si el
+### Cuando pincha una hora, se cierra sola
+
+El correo lleva un botón por hora. Al pinchar se abre una página suya —sin
+contraseña, con el enlace de su cita— con las horas para elegir. Confirma, y la
+visita queda cerrada a esa hora: le sale el correo con el calendario, y a
+operaciones un aviso de que ha contestado, porque **al concesionario hay que
+llamarle a mano igual**.
+
+No se aplica con solo abrir el enlace, hace falta ese segundo toque. Los
+lectores de correo abren solos los enlaces para comprobarlos, y una cita no
+puede quedar confirmada porque un antivirus haya mirado el mensaje.
+
+Solo valen las horas que se le propusieron. Y si mientras tanto la ha confirmado
+un trabajador por teléfono, no se pisa: se le dice que ya está confirmada.
+
+### Si contesta por teléfono o por WhatsApp
+
+Se aplica a mano con **El cliente ha elegido hora**, en la Agenda. La hora no hay
+que teclearla: salen las que se le propusieron y se pincha la que dijo. Si el
 concesionario acaba dando una distinta, se escribe a mano debajo.
 
 ---
@@ -100,7 +116,8 @@ Agenda.
 | Hablado con el concesionario | El trabajador, a mano |
 | El concesionario propone otras horas | Al guardar las horas |
 | Mandado al cliente por WhatsApp | Solo, si salió |
-| El cliente eligió una hora | Al marcar la casilla |
+| Mandadas al cliente por correo, para que elija | Solo, al proponer |
+| El cliente eligió una hora | Solo si la pincha él; a mano si contesta por teléfono |
 | Apuntado dónde es y por quién preguntar | El trabajador, al guardarlo |
 | Mandado el sitio al cliente | Solo, si marcó la casilla |
 | **Nota** | El trabajador, escribiéndola |
@@ -168,7 +185,7 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 | Estado | En su panel | En la campana | Qué recibe |
 |---|---|---|---|
 | Recién pedida | Pendiente de aprobación | No | Aviso de que la hemos recibido |
-| Le hemos propuesto horas | Pendiente de aprobación | No | El WhatsApp con las opciones |
+| Le hemos propuesto horas | Pendiente de aprobación | No | Un correo con las horas para pinchar, y el WhatsApp si está conectado |
 | **Se ha cambiado la hora él** | Pendiente de aprobación | No | Que hemos cambiado la hora y falta confirmarla |
 | Confirmada | Cita confirmada | Sí | Confirmación con el calendario, dónde es y por quién preguntar |
 | Movida por nosotros | Cita confirmada | Sí | Las dos horas y el calendario nuevo |
@@ -196,7 +213,22 @@ cambian:
 | `WHATSAPP_TOKEN` | El token permanente de la app de Meta |
 | `WHATSAPP_PHONE_ID` | El identificador del número desde el que se escribe |
 
+| `WHATSAPP_VERIFY_TOKEN` | Una palabra que eliges tú, para dar de alta el webhook |
+
+En la app de Meta, el webhook va a `https://<esta-api>/api/whatsapp/webhook`, con
+ese mismo token de verificación.
+
+Las horas se mandan **como botones** cuando son tres o menos, que es el máximo de
+WhatsApp. El cliente pulsa uno y la visita queda confirmada sola, igual que por
+el correo. Con cuatro o más horas no hay botones que valgan y sale el texto
+numerado, para que conteste «la 2» y se aplique a mano: recortarle horas que el
+concesionario sí ofrece es peor que pedirle que escriba.
+
 **El botón de copiar no sobra cuando se conecte.** WhatsApp solo deja escribir
 libremente dentro de las 24 horas siguientes al último mensaje del cliente; fuera
 de esa ventana hace falta una plantilla aprobada, así que seguirá haciendo falta
 mandarlo a mano a veces.
+
+Y el correo sale siempre, esté WhatsApp conectado o no: es el camino que no
+depende de que el cliente tenga el número guardado ni de ninguna ventana de 24
+horas.
