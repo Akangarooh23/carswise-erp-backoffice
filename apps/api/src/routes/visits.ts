@@ -209,7 +209,7 @@ export function mensajeDeOtrasHoras(coche: string, nombre: string, horas: string
     '',
     `Lo sentimos: la hora que pediste para ver el ${coche} no ha podido ser.`,
     '',
-    'El concesionario nos propone estas:',
+    'Quien tiene el coche nos propone estas:',
     lista,
     '',
     'Contéstanos con el número que mejor te venga y te la dejamos confirmada. Si ninguna te sirve, dínoslo y buscamos otra.',
@@ -826,11 +826,20 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
-             a.source AS slot_source
+             a.source AS slot_source,
+             -- Quién vende y dónde está su teléfono.
+             --
+             -- Al vendedor hay que llamarle a mano, siempre, y la Agenda no decía
+             -- ni quién era: había que ir a buscar la oferta. De un concesionario o
+             -- un profesional, el vendedor es un nombre y el teléfono está en el
+             -- anuncio de origen. De un particular, es su correo.
+             o.seller, o.seller_type, o.source_url
       FROM vehicle_visit_bookings b
       -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
       -- JOIN normal desaparecia de la Agenda sin que nadie lo notara.
       LEFT JOIN vehicle_visit_availability a ON a.id = b.availability_id
+      -- LEFT también: una oferta puede haberse despublicado y la visita sigue.
+      LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
       WHERE 1=1
     `;
     const params: (string | number)[] = [];

@@ -22,7 +22,32 @@ type Booking = {
   source: string;
   slot_source: string;
   created_at: string;
+  // Quién vende. De un concesionario o un profesional, `seller` es el nombre y
+  // el teléfono está en el anuncio; de un particular, `seller` es su correo.
+  // Puede faltar: la oferta puede haberse despublicado y la visita sigue.
+  seller: string | null;
+  seller_type: string | null;
+  source_url: string | null;
 };
+
+/**
+ * Cómo se llama a quien tiene el coche, según de quién sea.
+ *
+ * Estaba escrito «el concesionario» en todas partes, y el marketplace ya tiene
+ * particulares y profesionales; vendrán importación, renting y portales. Decirle
+ * concesionario a un particular no es un detalle de estilo: quien lee la Agenda
+ * decide a quién llama y cómo le habla.
+ */
+function comoSeLlama(tipo: string | null | undefined): string {
+  if (tipo === 'particular') return 'el particular';
+  if (tipo === 'concesionario') return 'el concesionario';
+  if (tipo === 'professional') return 'el profesional';
+  return 'el vendedor';
+}
+
+/** El correo del vendedor, cuando lo hay: solo los particulares lo tienen. */
+const correoDelVendedor = (b: Booking) =>
+  b.seller && b.seller.includes('@') ? b.seller : '';
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -47,8 +72,8 @@ interface Paso {
 /** Cómo se lee cada paso del rastro. La misma lista que en `lib/citas.js`. */
 const PASO: Record<string, string> = {
   solicitada:               'El cliente pidió la visita',
-  concesionario_contactado: 'Hablado con el concesionario',
-  horas_propuestas:         'El concesionario propone otras horas',
+  concesionario_contactado: 'Hablado con el vendedor',
+  horas_propuestas:         'El vendedor propone otras horas',
   whatsapp_enviado:         'Mandado al cliente por WhatsApp',
   correo_propuesta:         'Mandadas al cliente por correo, para que elija',
   cliente_respondio:        'El cliente eligió una hora',
@@ -56,7 +81,7 @@ const PASO: Record<string, string> = {
   confirmada:               'Cita confirmada',
   movida:                   'Cita movida a otra hora',
   cancelada:                'Cita cancelada',
-  concesionario_avisado:    'Avisado el concesionario de que el cliente va',
+  concesionario_avisado:    'Avisado el vendedor de que el cliente va',
   lugar:                    'Apuntado dónde es y por quién preguntar',
   lugar_avisado:            'Mandado el sitio al cliente',
 };
@@ -95,6 +120,44 @@ function isProfessional(b: Booking) { return !b.offer_id?.startsWith('idcar-'); 
  * los días: saber si ya se llamó al concesionario sin tener que preguntar a
  * quien lo hizo.
  */
+/**
+ * Quién tiene el coche y por dónde se le llama.
+ *
+ * El sistema no le avisa nunca —ni al reservar, ni al confirmar, ni al mover, ni
+ * al cancelar—, así que llamarle es trabajo de una persona, y esa persona
+ * necesita saber a quién. Antes en la Agenda solo estaba el identificador de la
+ * oferta: había que abrirla en otra pestaña para averiguarlo.
+ *
+ * De un concesionario o un profesional tenemos el nombre, y el teléfono está en
+ * el anuncio de origen: por eso el enlace. De un particular tenemos su correo,
+ * que es lo que hay.
+ */
+function QuienVende({ b }: { b: Booking }) {
+  if (!b.seller) return null;
+  const correo = correoDelVendedor(b);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px]">
+      <span className="text-brand-300 font-semibold uppercase tracking-wide">Vende</span>
+      {correo ? (
+        <a href={`mailto:${correo}`} onClick={(e) => e.stopPropagation()}
+           className="font-semibold text-acento-texto underline underline-offset-2">
+          {correo}
+        </a>
+      ) : (
+        <span className="font-semibold text-brand-500">{b.seller}</span>
+      )}
+      <span className="text-brand-300">· {comoSeLlama(b.seller_type).replace(/^el /, '')}</span>
+      {b.source_url && (
+        <a href={b.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+           className="text-acento-texto underline underline-offset-2"
+           title="El anuncio de origen: ahí está su teléfono">
+          su anuncio ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
 function Rastro({ pasos }: { pasos: Paso[] }) {
   if (!pasos.length) {
     return <p className="text-[12.5px] text-brand-300">Todavía no hay ningún paso apuntado.</p>;
@@ -163,7 +226,7 @@ function NotaNueva({ valor, alEscribir, guardando, alGuardar }: {
           onChange={(e) => alEscribir(e.target.value)}
           rows={2}
           maxLength={1000}
-          placeholder="Lo que haya que saber: qué dijo el concesionario, si el cliente llamó…"
+          placeholder="Lo que haya que saber: qué dijo el vendedor, si el cliente llamó…"
           className="flex-1 px-3 py-2 text-[13px] border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
         />
         <Boton tam="sm" variante="secundario" cargando={guardando} onClick={alGuardar}>
@@ -485,8 +548,8 @@ export default function BookingsPage() {
                 «cayeron» de una sola se lee como un descuido. */}
             <p className="text-[12.5px] text-acento-texto/85 mt-0.5 max-w-3xl">
               {pendientes.length === 1
-                ? 'El cliente ha pedido esta hora y todavía no se la hemos dado: lo sabe, y no ha recibido calendario. Llama al concesionario y confírmala o proponle otra.'
-                : 'Los clientes han pedido estas horas y todavía no se las hemos dado: lo saben, y no han recibido calendario. Llama al concesionario y confírmalas o proponles otra.'}
+                ? 'El cliente ha pedido esta hora y todavía no se la hemos dado: lo sabe, y no ha recibido calendario. Llama a quien tiene el coche y confírmala o proponle otra.'
+                : 'Los clientes han pedido estas horas y todavía no se las hemos dado: lo saben, y no han recibido calendario. Llama a quien tiene el coche y confírmalas o proponles otra.'}
             </p>
           </div>
           <ul className="divide-y divide-acento/40">
@@ -510,6 +573,10 @@ export default function BookingsPage() {
                   <div className="text-xs text-brand-400">
                     {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
                   </div>
+                  {/* A quién hay que llamar. El sistema no le avisa nunca, así
+                      que lo primero que hace falta aquí es su nombre y dónde
+                      está su teléfono. */}
+                  <QuienVende b={b} />
                   {b.notes && <div className="text-xs text-brand-300 italic mt-0.5">"{b.notes}"</div>}
                 </div>
                 {/* Los tres finales de la llamada al concesionario: que sí, que
@@ -550,11 +617,11 @@ export default function BookingsPage() {
                       {/* Lo que hace una persona por teléfono no cambia nada en
                           la base: si no se apunta, no existe para nadie más. */}
                       <Boton tam="sm" variante="secundario"
-                             onClick={() => apuntaPaso(b, 'concesionario_contactado', 'Apuntado que has hablado con el concesionario.')}>
-                        He llamado al concesionario
+                             onClick={() => apuntaPaso(b, 'concesionario_contactado', `Apuntado que has hablado con ${comoSeLlama(b.seller_type)}.`)}>
+                        He llamado a {comoSeLlama(b.seller_type)}
                       </Boton>
                       <Boton tam="sm" variante="secundario"
-                             onClick={() => apuntaPaso(b, 'concesionario_avisado', 'Apuntado que el concesionario ya sabe que el cliente va.')}>
+                             onClick={() => apuntaPaso(b, 'concesionario_avisado', `Apuntado que ${comoSeLlama(b.seller_type)} ya sabe que el cliente va.`)}>
                         Le he dicho que el cliente va
                       </Boton>
                     </div>
@@ -582,12 +649,12 @@ export default function BookingsPage() {
             <div className="px-6 py-5 space-y-4">
               <p className="text-[13px] text-brand-400">
                 Estos dos datos van en el correo del cliente y en sus recordatorios.
-                Los tienes de la llamada al concesionario.
+                Los tienes de la llamada a {comoSeLlama(confirmar.seller_type)}.
               </p>
               <label className="block text-xs font-medium text-brand-500">
                 Dónde es
                 <input value={donde} onChange={(e) => setDonde(e.target.value)} maxLength={200}
-                       placeholder="Calle y número, o el nombre del concesionario"
+                       placeholder="Calle y número, o el nombre del sitio"
                        className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </label>
               <label className="block text-xs font-medium text-brand-500">
@@ -627,7 +694,7 @@ export default function BookingsPage() {
               <label className="block text-xs font-medium text-brand-500">
                 Dónde es
                 <input value={donde} onChange={(e) => setDonde(e.target.value)} maxLength={200}
-                       placeholder="Calle y número, o el nombre del concesionario"
+                       placeholder="Calle y número, o el nombre del sitio"
                        className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </label>
               <label className="block text-xs font-medium text-brand-500">
@@ -667,11 +734,11 @@ export default function BookingsPage() {
       {proponer && (
         <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4 py-8 overflow-y-auto"
              onClick={() => { setProponer(null); setMensaje(null); }} role="dialog" aria-modal="true"
-             aria-label="Horas que propone el concesionario">
+             aria-label="Horas que propone quien tiene el coche">
           <div className="w-full max-w-lg rounded-2xl bg-white border border-brand-200 shadow-2xl my-auto"
                onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-brand-100">
-              <h2 className="text-lg font-bold text-brand-600">Horas que propone el concesionario</h2>
+              <h2 className="text-lg font-bold text-brand-600">Horas que propone {comoSeLlama(proponer.seller_type)}</h2>
               <p className="text-[12.5px] text-brand-400 mt-0.5">
                 {proponer.buyer_name || proponer.buyer_email} · {proponer.vehicle_title || proponer.offer_id}
               </p>
@@ -779,7 +846,7 @@ export default function BookingsPage() {
                 Pidió el <b className="text-brand-600">{fmtDate(mover.starts_at)} a las {fmtTime(mover.starts_at)}</b>.
                 {mover.status === 'pending'
                   ? ' Pon la hora que ha aceptado.'
-                  : ' Pon la hora que te haya dado el concesionario.'}
+                  : ` Pon la hora que te haya dado ${comoSeLlama(mover.seller_type)}.`}
               </p>
               {propuestas.length > 0 && (
                 <div>
@@ -1060,6 +1127,12 @@ export default function BookingsPage() {
                                   ) : (
                                     <div className="font-mono text-brand-300 text-[10px] break-all">{b.offer_id}</div>
                                   )}
+                                </div>
+                                <div>
+                                  <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Quién vende</div>
+                                  {b.seller
+                                    ? <QuienVende b={b} />
+                                    : <div className="text-brand-300">La oferta ya no está publicada</div>}
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Reservado</div>

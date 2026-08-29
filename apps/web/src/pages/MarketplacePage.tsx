@@ -2408,7 +2408,7 @@ export default function MarketplacePage() {
             <label className="block text-xs font-medium text-brand-500">
               Motivo
               <input value={motivoCita} onChange={(e) => setMotivoCita(e.target.value)} maxLength={300}
-                     placeholder="El coche ya no está disponible, el concesionario cierra…"
+                     placeholder="El coche ya no está disponible, el vendedor cierra…"
                      className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
             </label>
             <div className="flex justify-end gap-3">

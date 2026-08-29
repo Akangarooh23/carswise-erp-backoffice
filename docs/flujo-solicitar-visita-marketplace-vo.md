@@ -165,8 +165,19 @@ alguien es una cita cerrada, y no lo es hasta que un trabajador ha llamado.
 **La campana tampoco suena hasta que está confirmada.** Mientras está pendiente
 es una precita. La ve en Solicitudes con su estado, que es donde toca.
 
-**Al concesionario hay que llamarle a mano**, siempre. El sistema no le avisa: ni
-al reservar, ni al confirmar, ni al mover, ni al cancelar.
+**A quien tiene el coche hay que llamarle a mano**, siempre. El sistema no le
+avisa: ni al reservar, ni al confirmar, ni al mover, ni al cancelar. La única
+excepción es el **particular**: de ese sí tenemos el correo —en el marketplace,
+el vendedor de una oferta de particular *es* una dirección— y se le escribe solo
+al reservar.
+
+Por eso la Agenda dice **quién vende** en cada visita, con un enlace a **su
+anuncio**: de un concesionario o un profesional solo tenemos el nombre, y el
+teléfono está ahí. Si la oferta se ha despublicado, lo dice.
+
+Y por eso la Agenda no dice «el concesionario» en todas partes: el marketplace
+ya tiene particulares y profesionales, y vendrán importación, renting y
+portales. Cada visita usa la palabra que le toca según de quién sea la oferta.
 
 **Si el horario lo generó el sistema**, la reserva lleva la marca «horario sin
 confirmar» en la Agenda. Cuando una oferta no tiene disponibilidad publicada se

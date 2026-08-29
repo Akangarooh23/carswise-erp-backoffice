@@ -262,3 +262,16 @@ describe('todas las rutas contestan con la misma forma', () => {
     assert.deepEqual(sueltas, [], `estas rutas devuelven algo fuera de data: ${sueltas.join(', ')}`);
   });
 });
+
+describe('a quien tiene el coche no se le llama concesionario siempre', () => {
+  test('el WhatsApp de las otras horas no da por hecho quién vende', () => {
+    const texto = mensajeDeOtrasHoras('Toyota C-HR', 'Juan', ['2026-09-16T08:00:00.000Z']);
+    assert.ok(!/concesionario/i.test(texto), 'el marketplace ya tiene particulares, y vendrán importación, renting y portales');
+    assert.ok(/quien tiene el coche/i.test(texto));
+  });
+
+  test('el correo con las horas tampoco', () => {
+    const { html } = correoDeOtrasHoras(reserva, ['2026-09-16T08:00:00.000Z'], () => 'https://x/y');
+    assert.ok(!/concesionario/i.test(html));
+  });
+});
