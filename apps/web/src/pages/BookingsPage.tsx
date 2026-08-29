@@ -28,6 +28,10 @@ type Booking = {
   seller: string | null;
   seller_type: string | null;
   source_url: string | null;
+  // Cómo se le llama. Se rellena en la ficha de la oferta, una vez por
+  // vendedor, y no sale nunca en el marketplace.
+  seller_phone: string | null;
+  seller_contact: string | null;
 };
 
 /**
@@ -166,6 +170,19 @@ function QuienVende({ b }: { b: Booking }) {
         <span className="font-semibold text-brand-500">{b.seller}</span>
       )}
       <span className="text-brand-300">· {comoSeLlama(b.seller_type).replace(/^el /, '')}</span>
+      {/* El teléfono, que es lo que hace falta para llamarle. Si no está
+          puesto se dice, porque el hueco vacío se lee como «no hace falta». */}
+      {b.seller_phone ? (
+        <a href={`tel:${b.seller_phone}`} onClick={(e) => e.stopPropagation()}
+           className="font-bold text-acento-texto underline underline-offset-2">
+          ☎ {b.seller_phone}
+        </a>
+      ) : (
+        <span className="text-amber-700" title="Se pone en la ficha de la oferta, en Marketplace">
+          sin teléfono
+        </span>
+      )}
+      {b.seller_contact && <span className="text-brand-400">· pregunta por {b.seller_contact}</span>}
       {b.source_url && (
         <a href={b.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
            className="text-acento-texto underline underline-offset-2"

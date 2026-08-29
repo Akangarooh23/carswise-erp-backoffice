@@ -61,6 +61,9 @@ export interface VoOffer {
   color: string;
   location: string;
   seller: string;
+  // Cómo se le llama. De uso interno: no sale en el marketplace público.
+  seller_phone?: string;
+  seller_contact?: string;
   description?: string;
   image_url?: string;
   source_url?: string;

@@ -492,7 +492,8 @@ marketplaceRouter.get('/marketplace/vo', requireRole(['admin', 'support', 'opera
     const [rows, total] = await Promise.all([
       query(
         `SELECT o.id, o.title, o.brand, o.model, o.version, o.transmission, o.year, o.price, o.sale_price, o.mileage, o.fuel,
-                o.color, o.displacement, o.power, o.location, o.internal_location, o.seller, o.seller_type, o.image_url,
+                o.color, o.displacement, o.power, o.location, o.internal_location, o.seller, o.seller_type,
+                o.seller_phone, o.seller_contact, o.image_url,
                 CASE WHEN o.image_urls IS NOT NULL AND o.image_urls <> '' THEN o.image_urls::json ELSE '[]'::json END AS image_urls,
                 o.source_url, o.description, o.portal_score, o.warranty_months, o.has_guarantee_seal, o.is_active,
                 o.available_for_purchase, o.renting_available, o.renting_km_year,
@@ -565,6 +566,10 @@ const voCreateSchema = z.object({
   color:                 z.string().default(''),
   location:              z.string().default(''),
   seller:                z.string().default(''),
+  // De uso interno: el telefono de quien vende y por quien preguntar. No salen
+  // nunca en el marketplace publico, que lista sus columnas una por una.
+  seller_phone:          z.string().max(40).default(''),
+  seller_contact:        z.string().max(120).default(''),
   description:           z.string().default(''),
   image_url:             z.string().default(''),
   source_url:            z.string().default(''),
@@ -601,12 +606,13 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
     const result = await query(
       `INSERT INTO moveadvisor_marketplace_vo_offers
          (id, title, brand, model, year, price, mileage, fuel, power, displacement,
-          color, location, seller, seller_type, description, image_url, image_urls, source_url,
+          color, location, seller, seller_type, seller_phone, seller_contact,
+          description, image_url, image_urls, source_url,
           warranty_months, has_guarantee_seal, portal_score, is_active, portal,
           available_for_purchase, renting_available, renting_km_year,
           renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json,
           carswise_fee, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'manual',
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$33,$34,$15,$16,$17,$18,$19,$20,$21,'manual',
                $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,NOW(),NOW())
        RETURNING *`,
       [id, d.title, normalizeBrand(d.brand), d.model, d.year, d.price, d.mileage, d.fuel, d.power,
@@ -615,7 +621,8 @@ marketplaceRouter.post('/marketplace/vo', requireRole(['admin', 'operations']), 
        d.source_url, d.warranty_months, d.has_guarantee_seal, d.portal_score, d.is_active,
        d.available_for_purchase, d.renting_available, d.renting_km_year,
        d.renting_12m, d.renting_24m, d.renting_36m, d.renting_48m, d.renting_60m, rentingPricesJson,
-       d.carswise_fee]
+       d.carswise_fee,
+       d.seller_phone, d.seller_contact]
     );
     res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
@@ -645,6 +652,8 @@ const voUpdateSchema = z.object({
   color:                 z.string().nullable().optional(),
   location:              z.string().nullable().optional(),
   seller:                z.string().nullable().optional(),
+  seller_phone:          z.string().max(40).nullable().optional(),
+  seller_contact:        z.string().max(120).nullable().optional(),
   description:           z.string().nullable().optional(),
   image_url:             z.string().nullable().optional(),
   source_url:            z.string().nullable().optional(),
@@ -714,7 +723,7 @@ marketplaceRouter.patch('/marketplace/vo/:id', requireRole(['admin', 'operations
 
   try {
     const result = await query(
-      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, version, transmission, year, price, sale_price, mileage, fuel, color, displacement, power, location, internal_location, seller, seller_type, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json, carswise_fee, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
+      `UPDATE moveadvisor_marketplace_vo_offers SET ${setClauses}, updated_at = NOW() WHERE id = $${values.length} RETURNING id, title, brand, model, version, transmission, year, price, sale_price, mileage, fuel, color, displacement, power, location, internal_location, seller, seller_type, seller_phone, seller_contact, image_url, source_url, description, portal_score, warranty_months, has_guarantee_seal, is_active, available_for_purchase, renting_available, renting_km_year, renting_12m, renting_24m, renting_36m, renting_48m, renting_60m, renting_prices_json, carswise_fee, CASE WHEN image_urls IS NOT NULL AND image_urls <> '' THEN image_urls::json ELSE '[]'::json END AS image_urls, created_at, updated_at`,
       values
     );
     if (!result.rows.length) {

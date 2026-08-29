@@ -126,6 +126,28 @@ export default function VehicleFormFields({ form, setForm, idPrefix, onSetPrimar
           </select>
         </div>
       </div>
+      {/* Cómo se le llama.
+
+          A quien tiene el coche hay que llamarle a mano en cada visita: el
+          sistema no le avisa nunca. Su teléfono no estaba en ninguna parte —de
+          un concesionario se sacaba de su anuncio, y de un ex-renting o de un
+          coche nuestro, de la cabeza de quien lo supiera—.
+
+          Se rellena una vez por vendedor, no por coche: los 95 de Astara llevan
+          el mismo. Esto es de uso interno y no sale en el marketplace. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL_CLS}>Teléfono de quien vende</label>
+          <input className={INPUT_CLS} value={form.seller_phone ?? ''} onChange={onText('seller_phone')}
+                 placeholder="600 000 000" />
+          <p className="text-[11px] text-brand-300 mt-1">Solo lo ve el equipo. Sale en la Agenda al llevar una visita.</p>
+        </div>
+        <div>
+          <label className={LABEL_CLS}>Persona por la que preguntar</label>
+          <input className={INPUT_CLS} value={form.seller_contact ?? ''} onChange={onText('seller_contact')}
+                 placeholder="Sergio, de ventas" />
+        </div>
+      </div>
       <div>
         <label className={LABEL_CLS}>Fotos (hasta 10 URLs)</label>
 

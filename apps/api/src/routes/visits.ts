@@ -842,7 +842,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              -- ni quién era: había que ir a buscar la oferta. De un concesionario o
              -- un profesional, el vendedor es un nombre y el teléfono está en el
              -- anuncio de origen. De un particular, es su correo.
-             o.seller, o.seller_type, o.source_url
+             o.seller, o.seller_type, o.source_url, o.seller_phone, o.seller_contact
       FROM vehicle_visit_bookings b
       -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
       -- JOIN normal desaparecia de la Agenda sin que nadie lo notara.
