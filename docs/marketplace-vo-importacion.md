@@ -58,9 +58,29 @@ El orden es este y no otro:
 3. Al pedirlo dan fecha, y esa es la que se le dice al cliente.
 4. Cuando llega, los trámites para que pueda usarlo aquí.
 
-Cuando la pague, **márcala como cobrada** con el botón de su ficha: el expediente
-pasa solo a «Fianza pagada», queda la fecha del cobro y el cliente lo ve en su
-panel. Si se marcó por error, se quita desde el mismo sitio.
+**La paga él, desde su panel, con tarjeta.** En su solicitud le sale el botón con
+la cifra. Al pagar pasan tres cosas solas: la fianza queda cobrada, el expediente
+avanza a «Fianza pagada» y **se le emite su factura**, con serie propia. No hay
+que hacer nada en el ERP.
+
+Para que pueda pagar necesita **NIF y dirección** en su perfil: sin eso no se
+puede emitir la factura, y el propio botón se lo dice.
+
+Si la paga por transferencia o fuera de la web, entonces sí se **marca a mano**
+desde su ficha; y si se marcó por error, se quita desde el mismo sitio.
+
+### Si hay que devolverla
+
+**Devolver la fianza**, en su ficha. Pide un motivo, que es lo que se le cuenta al
+cliente, y hace tres cosas: devuelve el cargo en la tarjeta, emite su **factura
+rectificativa** y le escribe.
+
+Si algo falla al devolver, no se marca nada: un expediente que dice «devuelta»
+con el dinero todavía dentro es peor que un error en pantalla. En ese caso la
+pantalla lo dice y se puede devolver desde Stripe a mano.
+
+El cobro y la devolución **quedan los dos**, cada uno con su fecha y su factura.
+No se borra lo que pasó.
 
 ## Cuándo le hemos dicho que lo tendrá
 

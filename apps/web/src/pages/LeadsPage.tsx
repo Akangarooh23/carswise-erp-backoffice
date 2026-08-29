@@ -26,6 +26,8 @@ interface LeadMeta {
   deposit_paid_at?: string | null;
   /** Cuándo le hemos dicho que lo tendrá. Estimación, no promesa. */
   delivery_estimate?: string | null;
+  /** Cuándo se le devolvió la fianza. Vacío si no se ha devuelto. */
+  deposit_refunded_at?: string | null;
 }
 
 interface Lead {
@@ -284,6 +286,7 @@ export default function LeadsPage() {
   const [notifying, setNotifying]       = useState(false);
   const [history, setHistory]           = useState<LeadHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [devolviendo, setDevolviendo] = useState(false);
 
   // ── Calendar state ──
   const [calendarLeads, setCalendarLeads]   = useState<Lead[]>([]);
@@ -474,6 +477,31 @@ export default function LeadsPage() {
     if (!selected) return;
     const r = await api.patch(`/leads/${selected.id}`, { deposit_paid: cobrada });
     if (r.ok) { await loadLeads(); setSelected(null); }
+  }
+
+  /**
+   * Devuelve la fianza.
+   *
+   * Es dinero saliendo, así que se pregunta antes y se pide el motivo: al
+   * cliente le llega ese motivo en el correo, con su factura rectificativa.
+   */
+  async function devuelveFianza() {
+    if (!selected) return;
+    const motivo = window.prompt('¿Por qué se le devuelve la fianza? Se lo contamos en el correo.', 'No se ha hecho el pedido');
+    if (motivo === null) return;
+    setDevolviendo(true);
+    const r = await api.post<{ importe?: number; rectificativa?: string }>(
+      `/leads/${selected.id}/devolver-fianza`, { motivo }
+    );
+    setDevolviendo(false);
+    if (!r.ok) {
+      window.alert(r.error === 'sin_cobro_guardado'
+        ? 'No hay cobro guardado de esta fianza: devuélvela desde Stripe y márcalo aquí después.'
+        : `No se ha podido devolver: ${r.error ?? 'error'}`);
+      return;
+    }
+    await loadLeads();
+    setSelected(null);
   }
 
   /** La fecha de entrega. Si cambia, la API se lo cuenta al cliente. */
@@ -1243,6 +1271,18 @@ export default function LeadsPage() {
                                 className="text-[11px] text-brand-400 underline underline-offset-2">
                           no estaba cobrada
                         </button>
+                        {/* Se devuelve si al final no se hace el pedido. Sale
+                            aquí, junto al cobro, porque es deshacerlo. */}
+                        {selected.meta?.deposit_refunded_at ? (
+                          <span className="text-[13px] font-bold text-brand-500">
+                            ↩ Devuelta el {new Date(selected.meta.deposit_refunded_at).toLocaleDateString('es-ES')}
+                          </span>
+                        ) : (
+                          <button onClick={devuelveFianza} disabled={devolviendo}
+                                  className="px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50">
+                            {devolviendo ? 'Devolviendo…' : 'Devolver la fianza'}
+                          </button>
+                        )}
                       </>
                     ) : (
                       <button onClick={() => marcaFianza(true)}

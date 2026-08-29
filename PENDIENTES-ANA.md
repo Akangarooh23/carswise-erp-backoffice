@@ -7,8 +7,8 @@ PopCar— y lo que vive fuera de ellos, en Vercel y en Supabase.
 Esto no es un manual de trabajo: los manuales están en `docs/` y los ve el
 equipo en la pantalla de Manual. Esto es tuyo.
 
-> Actualizado el 29 de agosto de 2026, al cerrar los flujos de solicitar visita
-> del Marketplace VO en las secciones de Concesionarios y Ex-Renting.
+> Actualizado el 29 de agosto de 2026, al terminar los tres flujos del
+> Marketplace VO: Concesionarios, Ex-Renting e Importación.
 
 ---
 
@@ -82,13 +82,33 @@ El pie del mismo documento cita la Ley 37/1992, así que se presenta como factur
 formal con dos campos obligatorios sin rellenar. Se cambia en el código —dime los
 datos y lo hago en cinco minutos—, pero los datos son tuyos.
 
-## 5 · En Vercel
+## 5 · Para que funcione el cobro de la fianza
+
+El flujo de importación ya cobra la fianza por Stripe y emite factura. Para que
+funcione en producción hacen falta dos cosas tuyas:
+
+**El NIF y la dirección del emisor** (el punto 4). Antes era un defecto en un
+PDF; ahora vas a emitir facturas de unos 2.200 € con esos campos sin rellenar.
+Esto ya no puede esperar.
+
+**Un secreto compartido entre los dos proyectos**, para poder devolver una
+fianza desde el ERP: la clave de Stripe vive en PopCar y no debe salir de ahí,
+así que el ERP se lo pide. En Vercel, la misma cadena en los dos:
+
+```
+INTERNAL_API_SECRET=<una cadena larga al azar, la misma en ERP y en PopCar>
+```
+
+Sin ella el botón de devolver dice que no está configurado, y todo lo demás
+—cobrar, facturar— sigue funcionando igual.
+
+## 6 · En Vercel
 
 **Proyecto del ERP:** que `PUBLIC_SITE_URL` esté vacía o valga
 `https://www.popcar.tech`. De ahí salen los enlaces de los botones del correo de
 horas: si apunta a otro sitio, el cliente pincha y no llega a ninguna parte.
 
-## 6 · WhatsApp, cuando lo quieras
+## 7 · WhatsApp, cuando lo quieras
 
 Hoy el mensaje sale en pantalla y se manda a mano. Para que salga solo, con las
 horas como botones que el cliente pulsa, hacen falta cuatro variables en el ERP
@@ -98,7 +118,7 @@ y apuntar el webhook en la app de Meta. Está todo escrito en el `README`, en
 Sin `WHATSAPP_APP_SECRET` el webhook acepta lo que le llegue sin comprobar la
 firma: con el número conectado, esa variable no es opcional.
 
-## 7 · Dos decisiones
+## 8 · Dos decisiones
 
 **Las facturas, ¿a un cubo privado?** Sus PDF están en un almacén público. Ya no
 se puede llegar a ellos adivinando la ruta, y ni PopCar ni el ERP enseñan su

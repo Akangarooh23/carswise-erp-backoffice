@@ -223,7 +223,8 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   -- es lo que se le prometio, no lo que saldria hoy.
                   'deposit_quoted',        deposit_quoted,
                   'deposit_paid_at',       deposit_paid_at,
-                  'delivery_estimate',     TO_CHAR(delivery_estimate, 'YYYY-MM-DD')
+                  'delivery_estimate',     TO_CHAR(delivery_estimate, 'YYYY-MM-DD'),
+                  'deposit_refunded_at',   deposit_refunded_at
                 ) AS meta
          FROM moveadvisor_market_leads
          ${where}
@@ -290,6 +291,51 @@ leadsRouter.get('/leads/:id/history', requireRole(['admin', 'support', 'operatio
     res.json({ ok: true, data: result.rows });
   } catch (err) {
     falloInterno(res, 'history_fetch_failed', err);
+  }
+});
+
+
+/**
+ * Devolver la fianza de una importación.
+ *
+ * El cobro está en Stripe y la clave de Stripe vive en PopCar, no aquí: el ERP
+ * no la tiene ni debe tenerla. Así que esta ruta no devuelve nada por su cuenta,
+ * se lo pide a quien puede, con un secreto compartido.
+ *
+ * Lo que contesta se pasa tal cual a la pantalla: si Stripe no acepta la
+ * devolución, quien la pidió tiene que enterarse en el momento, no cuando el
+ * cliente llame preguntando por su dinero.
+ */
+leadsRouter.post('/leads/:id/devolver-fianza', requireRole(['admin', 'operations']), async (req, res) => {
+  const secreto = (process.env.INTERNAL_API_SECRET ?? '').trim();
+  if (!secreto) {
+    res.status(503).json({ ok: false, error: 'sin_configurar', detail: 'Falta INTERNAL_API_SECRET para poder pedir devoluciones.' });
+    return;
+  }
+  const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
+  const sitio = config.PUBLIC_SITE_URL.replace(/\/$/, '');
+  try {
+    const r = await fetch(`${sitio}/api/fianza-devolucion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secreto}` },
+      body: JSON.stringify({ leadId: req.params.id, motivo }),
+    });
+    const cuerpo = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string; detail?: string; importe?: number; rectificativa?: string };
+    if (!r.ok || !cuerpo.ok) {
+      res.status(r.status === 200 ? 502 : r.status).json({ ok: false, error: cuerpo.error ?? 'no_devuelta', detail: cuerpo.detail });
+      return;
+    }
+
+    // Queda en el historial del lead, como todo lo demás.
+    await query(ENSURE_HISTORY_TABLE, []).catch(() => {});
+    await query(
+      `INSERT INTO erp_lead_history (lead_id, operator, field, old_value, new_value) VALUES ($1,$2,'fianza','cobrada',$3)`,
+      [req.params.id, req.actor?.name ?? req.actor?.sub ?? 'desconocido', `devuelta${motivo ? `: ${motivo}` : ''}`]
+    ).catch(() => {});
+
+    res.json({ ok: true, data: { importe: cuerpo.importe, rectificativa: cuerpo.rectificativa } });
+  } catch (err) {
+    falloInterno(res, 'devolucion_fianza', err);
   }
 });
 
