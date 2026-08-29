@@ -110,22 +110,53 @@ export default function MarketplacePage() {
     setVisitSlotAdding(false);
   }
 
+  /**
+   * Quita una franja.
+   *
+   * Se relee del servidor en vez de quitarla de la pantalla y ya: el borrado no
+   * toca las franjas reservadas, así que desaparecía de la vista una franja que
+   * seguía existiendo, y quien la quitaba se quedaba creyendo que estaba libre.
+   */
   async function doRemoveVisitSlot(offerId: string, slotId: string) {
     await api.delete(`/visit-slots/${slotId}?offerId=${encodeURIComponent(offerId)}`);
+    const sRes = await api.get<any>(`/visit-slots?offerId=${encodeURIComponent(offerId)}`);
+    if (!sRes.ok) return;
     setVisitData((d) => ({
       ...d,
-      [offerId]: { ...(d[offerId] || { bookings: [], loading: false }),
-        slots: (d[offerId]?.slots || []).filter((s: any) => s.id !== slotId) },
+      [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: (sRes as any).slots || [] },
     }));
   }
 
-  async function doCancelVisitBooking(offerId: string, bookingId: string) {
-    await api.post(`/visit-bookings/${bookingId}/cancel`, {});
+  /**
+   * Cancela una visita de verdad: al cliente le llega un correo diciéndoselo.
+   *
+   * Por eso pasa por un diálogo y pide motivo, como en la Agenda. Estaba a un
+   * clic y sin motivo: se le podía cancelar la visita a alguien sin querer, y lo
+   * que recibía era una cancelación sin explicación ninguna.
+   */
+  async function doCancelVisitBooking() {
+    if (!cancelarCita) return;
+    const { offerId, booking } = cancelarCita;
+    setCancelandoCita(true);
+    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${booking.id}/cancel`, { motivo: motivoCita.trim() });
+    setCancelandoCita(false);
+    setCancelarCita(null);
+    setMotivoCita('');
+    if (!r.ok) return;
     setVisitData((d) => ({
       ...d,
       [offerId]: { ...(d[offerId] || { slots: [], loading: false }),
-        bookings: (d[offerId]?.bookings || []).filter((b: any) => b.id !== bookingId) },
+        bookings: (d[offerId]?.bookings || []).filter((b: any) => b.id !== booking.id) },
     }));
+    // Las franjas cambian al cancelar —la hora vuelve a estar libre—, así que se
+    // reeleen en vez de suponerlo.
+    const sRes = await api.get<any>(`/visit-slots?offerId=${encodeURIComponent(offerId)}`);
+    if (sRes.ok) {
+      setVisitData((d) => ({
+        ...d,
+        [offerId]: { ...(d[offerId] || { bookings: [], loading: false }), slots: (sRes as any).slots || [] },
+      }));
+    }
   }
 
   function toggleSort(col: string) {
@@ -293,6 +324,10 @@ export default function MarketplacePage() {
   const [creating, setCreating]     = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<VoOffer | null>(null);
+  // Cancelar una visita le escribe al cliente. No puede pasar de un clic.
+  const [cancelarCita, setCancelarCita] = useState<{ offerId: string; booking: any } | null>(null);
+  const [motivoCita, setMotivoCita] = useState('');
+  const [cancelandoCita, setCancelandoCita] = useState(false);
   const [deleting, setDeleting]         = useState(false);
 
   const [imageEditOffer, setImageEditOffer] = useState<VoOffer | null>(null);
@@ -1461,7 +1496,7 @@ export default function MarketplacePage() {
                             adding={visitSlotAdding}
                             msg={visitSlotMsg}
                             onRemoveSlot={(sid) => doRemoveVisitSlot(item.id, sid)}
-                            onCancelBooking={(bid) => doCancelVisitBooking(item.id, bid)}
+                            onCancelBooking={(b) => { setCancelarCita({ offerId: item.id, booking: b }); setMotivoCita(''); }}
                           />
                         </td>
                       </tr>
@@ -1768,7 +1803,7 @@ export default function MarketplacePage() {
                             adding={visitSlotAdding}
                             msg={visitSlotMsg}
                             onRemoveSlot={(sid) => doRemoveVisitSlot(item.id, sid)}
-                            onCancelBooking={(bid) => doCancelVisitBooking(item.id, bid)}
+                            onCancelBooking={(b) => { setCancelarCita({ offerId: item.id, booking: b }); setMotivoCita(''); }}
                           />
                         </td>
                       </tr>
@@ -2356,6 +2391,33 @@ export default function MarketplacePage() {
               <button onClick={doDelete} disabled={deleting}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
                 {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Cancelar una visita ─────────────────────────────────────────────── */}
+      <Modal open={!!cancelarCita} onClose={() => setCancelarCita(null)} title="Cancelar la visita" size="sm">
+        {cancelarCita && (
+          <div className="space-y-4">
+            <p className="text-sm text-brand-400">
+              Se le escribe a <strong>{cancelarCita.booking.buyer_name || cancelarCita.booking.buyer_email}</strong> para
+              decírselo, con el motivo que pongas y un enlace para pedir otra hora.
+            </p>
+            <label className="block text-xs font-medium text-brand-500">
+              Motivo
+              <input value={motivoCita} onChange={(e) => setMotivoCita(e.target.value)} maxLength={300}
+                     placeholder="El coche ya no está disponible, el concesionario cierra…"
+                     className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+            </label>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setCancelarCita(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
+                Volver
+              </button>
+              <button onClick={doCancelVisitBooking} disabled={cancelandoCita}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
+                {cancelandoCita ? 'Cancelando…' : 'Cancelar la visita'}
               </button>
             </div>
           </div>

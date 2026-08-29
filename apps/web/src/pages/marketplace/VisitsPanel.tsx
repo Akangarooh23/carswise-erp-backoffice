@@ -13,7 +13,7 @@ export default function VisitsPanel({
   offerId: string; data: VisitEntry;
   slotForm: SlotFormState; onFormChange: (f: SlotFormState) => void;
   onAdd: () => void; adding: boolean; msg: string | null;
-  onRemoveSlot: (id: string) => void; onCancelBooking: (id: string) => void;
+  onRemoveSlot: (id: string) => void; onCancelBooking: (b: any) => void;
 }) {
   if (data.loading) return <div className="p-4 text-xs text-brand-300">Cargando…</div>;
   return (
@@ -75,7 +75,10 @@ export default function VisitsPanel({
 
         {/* ── Bookings ── */}
         <div>
-          <p className="text-xs font-semibold text-brand-400 mb-2">Citas confirmadas ({data.bookings.length})</p>
+          {/* Decía «Citas confirmadas» y lista todas las vivas, pendientes
+              incluidas. Una pendiente es una solicitud que nadie ha aprobado
+              todavía, y llamarla confirmada aquí hace creer que está cerrada. */}
+          <p className="text-xs font-semibold text-brand-400 mb-2">Citas ({data.bookings.length})</p>
           {data.bookings.length === 0 ? (
             <p className="text-xs text-brand-300">Sin citas.</p>
           ) : (
@@ -83,12 +86,19 @@ export default function VisitsPanel({
               {data.bookings.map((b: any) => (
                 <div key={b.id} className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-white border border-brand-100 text-xs">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-brand-600">{fmtVDate(b.starts_at)} · {fmtVTime(b.starts_at)}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-brand-600">{fmtVDate(b.starts_at)} · {fmtVTime(b.starts_at)}</span>
+                      {b.status === 'pending' ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-acento-tenue text-acento-texto border border-acento">por confirmar</span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">confirmada</span>
+                      )}
+                    </div>
                     <div className="text-brand-400 truncate">{b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}</div>
                     <div className="text-brand-300 text-[10px] truncate">{b.buyer_email}</div>
                     {b.notes && <div className="text-brand-300 truncate italic">{b.notes}</div>}
                   </div>
-                  <button onClick={() => onCancelBooking(b.id)}
+                  <button onClick={() => onCancelBooking(b)}
                     className="text-[10px] text-red-500 hover:text-red-700 font-medium shrink-0 px-1.5 py-0.5 rounded hover:bg-red-50">
                     Cancelar
                   </button>

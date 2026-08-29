@@ -177,10 +177,10 @@ generan huecos de lunes a viernes de 9 a 18, y nadie los ha acordado.
 | Qué | Dónde |
 |---|---|
 | Cuántas hay por confirmar | El número **rojo** junto a Agenda, en el menú. Se refresca cada 30 segundos |
-| Las visitas por confirmar | **Agenda**, bloque de arriba |
-| Las confirmadas | **Agenda**, lista por fecha |
+| Las visitas por confirmar | **Agenda**, bloque de arriba. También las que se pasaron de fecha, marcadas: son personas a las que no contestamos |
+| Las confirmadas | **Agenda**, lista por fecha. Con **Todas** salen también las de los tres meses anteriores |
 | El rastro de una visita | **Agenda** → Ver rastro |
-| Las de un coche concreto | **Marketplace** → la oferta → panel de visitas |
+| Las de un coche concreto | **Marketplace** → la oferta → panel de visitas, cada una con su estado |
 | Publicar horarios reales | **Marketplace** → la oferta → añadir huecos |
 
 ## Lo que ve el cliente

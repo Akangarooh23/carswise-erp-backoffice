@@ -218,6 +218,9 @@ export default function BookingsPage() {
     if (range === 'today')  { from = today; to = today + 'T23:59:59Z'; }
     if (range === 'week')   { from = today; to = inNDays(7) + 'T23:59:59Z'; }
     if (range === 'month')  { from = today; to = inNDays(30) + 'T23:59:59Z'; }
+    // «Todas» incluye lo ya pasado: si no, era «todas las que vienen», y quien
+    // busca una visita de la semana pasada no la encontraba en ninguna parte.
+    if (range === 'all')    { from = inNDays(-90); }
     // Las pendientes se piden aparte y sin acotar por fecha: son trabajo que
     // hay que despachar, y una que caiga fuera del rango elegido no puede
     // desaparecer de la vista sin más.
@@ -225,7 +228,11 @@ export default function BookingsPage() {
     if (to) params.set('to', to);
     const [conf, pend] = await Promise.all([
       api.get<any>(`/all-bookings?${params}`),
-      api.get<any>(`/all-bookings?status=pending&from=${today}`),
+      // Sin acotar por fecha, ni siquiera por hoy. Una pendiente que se pasa de
+      // fecha es una persona a la que no contestamos: esconderla no la arregla,
+      // y además el número rojo del menú las cuenta todas, así que marcaba una
+      // cifra que en la Agenda no aparecía por ningún lado.
+      api.get<any>('/all-bookings?status=pending'),
     ]);
     if (conf.ok) setBookings((conf as any).bookings || []);
     if (pend.ok) setPendientes((pend as any).bookings || []);
@@ -486,7 +493,16 @@ export default function BookingsPage() {
                   <div className="text-[10px] text-acento-texto/70 tabular-nums">{fmtDate(b.starts_at)}</div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</span>
+                    {/* La fecha que pidió ya pasó y nadie le contestó. Sale marcado
+                        porque lo que toca no es confirmarla: es llamarle. */}
+                    {new Date(b.starts_at).getTime() < Date.now() && (
+                      <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
+                        se pasó la fecha
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-brand-400">
                     {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
                   </div>

@@ -527,6 +527,21 @@ export async function aplicaHoraElegida(
     }
     const horaAnterior = String(reserva.starts_at);
 
+    // Nadie más a esa hora con ese coche.
+    //
+    // El hueco se crea si no existe, así que sin esta comprobación se podían
+    // poner dos visitas al mismo coche a la misma hora sin que nada se quejara,
+    // y eso se descubre cuando se presentan los dos.
+    const ocupada = await query(
+      `SELECT id FROM vehicle_visit_bookings
+        WHERE offer_id = $1 AND starts_at = $2 AND id != $3 AND status IN ('pending','confirmed')
+        LIMIT 1`,
+      [reserva.offer_id, inicio.toISOString(), bookingId]
+    );
+    if (ocupada.rows.length) {
+      return { ok: false, codigo: 409, error: 'ya hay otra visita a ese coche a esa hora' };
+    }
+
     // El hueco de la hora nueva. Si ya existe uno libre a esa hora se aprovecha,
     // y si no se crea: así no se llena la tabla de duplicados cuando se mueve una
     // visita a un hueco que ya estaba publicado.
