@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.js';
+import { api, descargaConSesion } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
@@ -282,6 +282,125 @@ function apunteEnCristiano(a: Apunte): string {
   if (a.field === "delivery_estimate") return `puso la fecha de entrega: ${a.new_value || "sin fecha"}`;
   if (a.field === "status")            return `pasó el expediente a «${a.new_value}»`;
   return `cambió ${a.field}${a.new_value ? ` a «${a.new_value}»` : ""}`;
+}
+
+/** Un papel del expediente. */
+interface Documento {
+  id: string;
+  nombre: string;
+  tipo: string;
+  tamano: number;
+  subido_por: string;
+  created_at: string;
+}
+
+function pesa(bytes: number): string {
+  if (!bytes) return "";
+  const kb = bytes / 1024;
+  return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * Los papeles del expediente.
+ *
+ * Factura del vendedor alemán, ficha técnica, justificante del impuesto,
+ * permiso de circulación. Antes vivían en el correo de quien los recibiera, y
+ * el día que esa persona no está el expediente no tiene nada.
+ *
+ * Son internos: el cliente no los ve. Lo que tenga que llegarle se le manda.
+ */
+function Documentos({ leadId }: { leadId: string }) {
+  const [lista, setLista] = useState<Documento[] | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [fallo, setFallo] = useState("");
+
+  const carga = useCallback(async () => {
+    const r = await api.get<Documento[]>(`/leads/${leadId}/documentos`);
+    setLista(r.ok && Array.isArray(r.data) ? r.data : []);
+  }, [leadId]);
+
+  useEffect(() => { void carga(); }, [carga]);
+
+  async function sube(fichero: File) {
+    setFallo("");
+    setSubiendo(true);
+    try {
+      const base64 = await new Promise<string>((listo, falla) => {
+        const lector = new FileReader();
+        lector.onload = () => listo(String(lector.result).split(",")[1] ?? "");
+        lector.onerror = () => falla(new Error("no se ha podido leer el fichero"));
+        lector.readAsDataURL(fichero);
+      });
+      const r = await api.post<Documento>(`/leads/${leadId}/documentos`, {
+        nombre: fichero.name, tipo: fichero.type, contenido_base64: base64,
+      });
+      if (!r.ok) setFallo(r.error === "fichero_no_valido" ? "Ese fichero no vale: solo imágenes o PDF, hasta 3 MB." : "No se ha podido guardar.");
+      else await carga();
+    } catch {
+      setFallo("No se ha podido leer el fichero.");
+    }
+    setSubiendo(false);
+  }
+
+  async function quita(doc: Documento) {
+    if (!window.confirm(`¿Quitar «${doc.nombre}»? Se borra también del almacén.`)) return;
+    const r = await api.delete(`/leads/${leadId}/documentos/${doc.id}`);
+    if (!r.ok) { setFallo("No se ha podido quitar."); return; }
+    await carga();
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1.5">Documentos</div>
+      <p className="text-[11px] text-brand-400 mb-2">
+        Del expediente, para el equipo. El cliente no los ve en su panel.
+      </p>
+
+      {lista === null ? (
+        <p className="text-[11px] text-brand-300">Cargando…</p>
+      ) : lista.length === 0 ? (
+        <p className="text-[11px] text-brand-300">Todavía no hay ninguno.</p>
+      ) : (
+        <ul className="space-y-1.5 mb-2">
+          {lista.map((d) => (
+            <li key={d.id} className="flex items-center gap-2 text-[12px]">
+              {/* Con sesión.
+
+                  Un enlace normal no lleva la cabecera de autorización, así que
+                  abriría un 401 en una pestaña en blanco. Y esa dirección exige
+                  sesión a propósito: son papeles con matrícula, nombre y
+                  dirección de una persona. */}
+              <button
+                onClick={() => { void descargaConSesion(`/leads/${leadId}/documentos/${d.id}`, d.nombre).catch(() => setFallo("No se ha podido abrir.")); }}
+                className="flex-1 text-left text-brand-600 underline underline-offset-2 truncate"
+                title={d.nombre}
+              >
+                {d.nombre}
+              </button>
+              <span className="text-[10px] text-brand-400 shrink-0">{pesa(d.tamano)}</span>
+              <button
+                onClick={() => void quita(d)}
+                className="text-[10px] text-red-600 hover:underline shrink-0"
+              >
+                quitar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <label className="inline-block px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg cursor-pointer hover:bg-brand-50">
+        {subiendo ? "Subiendo…" : "Añadir documento"}
+        <input
+          type="file"
+          className="hidden"
+          disabled={subiendo}
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void sube(f); }}
+        />
+      </label>
+      {fallo && <p className="text-[11px] text-red-600 mt-1.5">{fallo}</p>}
+    </div>
+  );
 }
 
 /** Un apunte del rastro: quién tocó qué y cuándo. */
@@ -567,6 +686,8 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
             )}
           </div>
         </div>
+
+        <Documentos leadId={x.id} />
 
         {/* ── El rastro ── */}
         <div className="mt-4 pt-4 border-t border-brand-100">

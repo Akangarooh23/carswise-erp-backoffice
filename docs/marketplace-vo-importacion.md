@@ -233,10 +233,31 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 | Cuándo le hemos dicho que lo tendrá | Debajo, y solo después del pedido |
 | Su teléfono, y cuándo quiere que le llamen | En el expediente, en sus dos campos |
 | Escribirle, y las notas del equipo | Al final del expediente |
+| Los papeles del coche | **Documentos**, en el expediente |
 | Quién tocó qué y cuándo | El **historial**, lo último del expediente |
 | Su factura y su rectificativa | **Facturación**, series FIA y RECT |
 | El coche | El enlace del expediente abre su ficha en el marketplace |
 | Cuánto dinero de clientes tenemos sin entregar | Arriba, **Fianzas cobradas** |
+
+## Los papeles
+
+En el expediente, debajo de las notas, hay un bloque de **Documentos**. Ahí va lo
+que el coche va dejando por el camino: la factura del vendedor alemán, la ficha
+técnica, el justificante del impuesto de matriculación, el permiso de
+circulación.
+
+Antes eso vivía en el correo de quien lo recibiera, y el día que esa persona no
+está, el expediente no tiene nada.
+
+Se aceptan **imágenes y PDF, hasta 3 MB**. Un ejecutable o una página web no son
+documentos de un coche y se rechazan.
+
+**Son internos: el cliente no los ve en su panel.** Lo que tenga que llegarle se
+le manda. Y no se abren por una dirección suelta: hace falta estar dentro del
+ERP, porque llevan matrícula, nombre y dirección de una persona.
+
+Quitar uno lo borra también del almacén. Un papel con datos de alguien que ya
+nadie mira no se queda ahí.
 
 ## Lo que ve el cliente
 
