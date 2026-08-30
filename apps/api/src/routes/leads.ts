@@ -424,8 +424,16 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
   // interesado de un coche que vamos a comprar.
   if (deposit_paid && !status) { sets.push(`status = CASE WHEN status IN ('Pendiente','Contactado') THEN 'Fianza pagada' ELSE status END`); }
-  // When operator assigns a date without manually changing status, auto-advance Pendiente → En proceso
-  if (appointment_date && !status) { sets.push(`status = CASE WHEN status = 'Pendiente' THEN 'En proceso' ELSE status END`); }
+  /**
+   * Poner fecha adelanta el estado… salvo en una importación.
+   *
+   * En una visita, dar fecha es empezar a trabajarla: de Pendiente pasa a En
+   * proceso. En una importación, «En proceso» no es ninguna de sus etapas: el
+   * expediente se saldría del tablero y aparecería entre los descartados. Y
+   * quedar para entregar el coche no cambia en qué punto está: sigue en
+   * trámites hasta que se entrega.
+   */
+  if (appointment_date && !status) { sets.push(`status = CASE WHEN status = 'Pendiente' AND lead_type <> 'import' THEN 'En proceso' ELSE status END`); }
   // When operator confirms a new appointment, clear any pending reschedule proposals
   if (appointment_date !== undefined && appointment_date) { sets.push(`reschedule_proposals = NULL`); }
 

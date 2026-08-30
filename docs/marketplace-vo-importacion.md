@@ -214,9 +214,10 @@ botón de guardar —cuando está guardado, lo dice.
 Cambiar el paso **no manda ningún correo**, salvo el último: entregarlo sí se le dice. El resto lo ve en su panel
 cuando entre. Si quieres que se entere ya, llámale o usa Notificar.
 
-**Si quedas con él —para entregarle el coche, por ejemplo— pon la fecha y déjalo
-como cita confirmada**: entonces sí recibe los avisos de la víspera y del mismo
-día, igual que en una visita.
+**Si quedas con él para entregarle el coche**, pon el día en «Día de la entrega»,
+dentro del expediente. Recibe los avisos de la víspera y del mismo día, igual que
+en una visita, y el expediente **no se mueve de su etapa**: sigue donde estaba
+hasta que lo marques como entregado.
 
 **El coche está en Alemania.** Todo lo que se le diga de plazos es una promesa
 que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
@@ -234,6 +235,7 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 | Su teléfono, y cuándo quiere que le llamen | En el expediente, en sus dos campos |
 | Escribirle, y las notas del equipo | Al final del expediente |
 | Los papeles del coche | **Documentos**, en el expediente |
+| El día que has quedado para entregarlo | **Día de la entrega**, en el expediente |
 | Quién tocó qué y cuándo | El **historial**, lo último del expediente |
 | Su factura y su rectificativa | **Facturación**, series FIA y RECT |
 | El coche | El enlace del expediente abre su ficha en el marketplace |

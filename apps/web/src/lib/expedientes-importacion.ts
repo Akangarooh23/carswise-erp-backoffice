@@ -40,6 +40,10 @@ export interface MetaImportacion {
   when?: string;
   vehicle_url?: string;
   erp_notes?: string;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
+  appointment_address?: string | null;
+  appointment_contact?: string | null;
   deposit_quoted?: string | number | null;
   deposit_paid_at?: string | null;
   delivery_estimate?: string | null;

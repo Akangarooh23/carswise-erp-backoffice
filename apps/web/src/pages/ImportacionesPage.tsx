@@ -441,6 +441,12 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
   /** La etapa a la que se va a pasar, mientras se escribe por qué. */
   const [aEtapa, setAEtapa] = useState<string | null>(null);
   const [porQue, setPorQue] = useState("");
+  const [cita, setCita] = useState({
+    dia: x.meta?.appointment_date ?? "",
+    hora: x.meta?.appointment_time ?? "",
+    donde: x.meta?.appointment_address ?? "",
+    quien: x.meta?.appointment_contact ?? "",
+  });
   const [historial, setHistorial] = useState<Apunte[] | null>(null);
 
   // El rastro se pide al abrirlo: quién tocó qué y cuándo.
@@ -685,6 +691,44 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
               <span className="text-[11px] font-semibold text-emerald-700">Guardada</span>
             )}
           </div>
+        </div>
+
+        {/* ── El día de la entrega ──
+
+            Es una cita como cualquier otra: el cliente recibe el aviso de la
+            víspera y el del mismo día. Lo que no hace es mover el expediente
+            de etapa — sigue donde estaba hasta que se entrega. */}
+        <div className="mt-4 pt-4 border-t border-brand-100">
+          <div className="text-xs font-semibold text-brand-500 mb-1.5">Día de la entrega</div>
+          <p className="text-[11px] text-brand-400 mb-2">
+            Si quedas con él, se lo recordamos la víspera y el mismo día.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <input type="date" value={cita.dia}
+                   onChange={(e) => setCita((c) => ({ ...c, dia: e.target.value }))}
+                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <input type="time" value={cita.hora}
+                   onChange={(e) => setCita((c) => ({ ...c, hora: e.target.value }))}
+                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <input type="text" value={cita.donde} placeholder="Dónde"
+                   onChange={(e) => setCita((c) => ({ ...c, donde: e.target.value }))}
+                   className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <input type="text" value={cita.quien} placeholder="Pregunta por"
+                   onChange={(e) => setCita((c) => ({ ...c, quien: e.target.value }))}
+                   className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </div>
+          <button
+            onClick={() => onCambiar({
+              appointment_date: cita.dia || null,
+              appointment_time: cita.hora,
+              appointment_address: cita.donde,
+              appointment_contact: cita.quien,
+            })}
+            disabled={guardando || !cita.dia}
+            className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
+          >
+            Guardar el día de la entrega
+          </button>
         </div>
 
         <Documentos leadId={x.id} />
