@@ -90,11 +90,8 @@ el pedido. Un solo sentido, para que no haya dos verdades.
    **Hecho.** «En trámites» abre los tres papeleos que necesita un coche de
    fuera: impuesto, ITV de homologación y matrícula.
 
-   **Falta una cosa**: los documentos de un trámite. Hoy los papeles se suben al
-   expediente, y un trámite suelto —una transferencia entre particulares, que no
-   tiene expediente detrás— no tiene dónde ponerlos. Para arreglarlo bien hay que
-   hacer genérico el almacén de documentos, que ahora solo entiende de
-   solicitudes.
+   Los documentos de un trámite también, desde que el almacén entiende de
+   solicitudes, pedidos, trámites y transportes.
 3. **Los demás orígenes**: concesionario, ex-renting y particulares empiezan a
    crear pedidos y trámites. Aquí se decide qué queda de la sección de
    Importaciones: probablemente una vista sobre lo mismo, filtrada por origen.

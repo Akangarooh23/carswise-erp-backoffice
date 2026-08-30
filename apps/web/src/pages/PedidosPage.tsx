@@ -189,6 +189,8 @@ export default function PedidosPage() {
         ))}
       </div>
 
+      <DondeSeGana />
+
       {cargando ? (
         <div className="text-sm text-brand-400 py-8 text-center">Cargando pedidos…</div>
       ) : pedidos.length === 0 ? (
@@ -253,6 +255,74 @@ export default function PedidosPage() {
           onCreado={() => { setNuevo(false); void carga(); }}
           onError={(m) => setError(m)}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Dónde se gana dinero.
+ *
+ * La pregunta de negocio que hay detrás de todo lo demás: de los cuatro caminos
+ * de compra, cuál deja margen. Alemania parece barato hasta que se suman el
+ * transporte y el impuesto; un particular parece caro hasta que se ve que no
+ * lleva ninguna de las dos cosas.
+ *
+ * Solo cuenta lo vendido. Y no sale hasta que hay algo que contar: un cuadro
+ * vacío con cuatro ceros dice menos que no estar.
+ */
+function DondeSeGana() {
+  const [datos, setDatos] = useState<Record<string, { coches: number; margen: number; medio: number }> | null>(null);
+  const [abierto, setAbierto] = useState(false);
+
+  useEffect(() => {
+    void api.get<Record<string, { coches: number; margen: number; medio: number }>>('/pedidos/margen-por-origen')
+      .then((r) => { if (r.ok && r.data) setDatos(r.data); });
+  }, []);
+
+  const filas = Object.entries(datos ?? {});
+  if (!filas.length) return null;
+
+  const total = filas.reduce((s, [, v]) => s + v.margen, 0);
+  const coches = filas.reduce((s, [, v]) => s + v.coches, 0);
+
+  return (
+    <div className="mb-6 rounded-xl border border-brand-200 bg-white">
+      <button onClick={() => setAbierto((v) => !v)}
+              className="w-full px-4 py-3 flex items-center justify-between text-left">
+        <div>
+          <div className="text-xs font-semibold text-brand-500">Dónde se gana</div>
+          <div className="text-[11px] text-brand-400">
+            {coches} {coches === 1 ? 'coche vendido' : 'coches vendidos'} · {eur(total)} de margen
+          </div>
+        </div>
+        <span className="text-brand-400 text-xs">{abierto ? '▾' : '▸'}</span>
+      </button>
+      {abierto && (
+        <table className="w-full text-[12px] px-4 pb-3">
+          <thead>
+            <tr className="text-brand-400 text-[10px] uppercase">
+              <th className="text-left font-semibold pl-4 pb-1">Origen</th>
+              <th className="text-right font-semibold pb-1">Coches</th>
+              <th className="text-right font-semibold pb-1">Margen</th>
+              <th className="text-right font-semibold pr-4 pb-1">Por coche</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas
+              .sort((a, b) => b[1].medio - a[1].medio)
+              .map(([origen, v]) => (
+                <tr key={origen} className="border-t border-brand-100">
+                  <td className="py-1 pl-4 text-brand-600">{etiquetaOrigen(origen)}</td>
+                  <td className="py-1 text-right tabular-nums text-brand-500">{v.coches}</td>
+                  <td className="py-1 text-right tabular-nums text-brand-600">{eur(v.margen)}</td>
+                  <td className={`py-1 pr-4 text-right tabular-nums font-bold ${v.medio >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {eur(v.medio)}
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

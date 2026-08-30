@@ -25,7 +25,7 @@ import {
 } from '../lib/pedidos.js';
 import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
-import { costeDelCoche, margenDelCoche } from '../lib/coste.js';
+import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
 import {
   comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
   type Comprobadas,
@@ -478,6 +478,68 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
     res.json({ ok: true, data: { ...coste, margen: margenDelCoche(coste.total, venta) } });
   } catch (err) {
     console.error('[pedidos] coste:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'pedidos_failed' });
+  }
+});
+
+/**
+ * Dónde se gana dinero.
+ *
+ * La pregunta de negocio que justifica todo lo anterior: de los cuatro caminos
+ * de compra, cuál deja margen. Alemania parece barato hasta que se suman el
+ * transporte y el impuesto; un particular parece caro hasta que se ve que no
+ * lleva ninguna de las dos cosas.
+ *
+ * Solo cuentan los vendidos. Mezclar los que están de camino daría un número que
+ * baja cada vez que se compra un coche, y eso no dice nada de si el camino es
+ * bueno.
+ */
+pedidosRouter.get('/pedidos/margen-por-origen', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
+  try {
+    await prepara();
+    const [pedidos, transportes, tramites] = await Promise.all([
+      query(`SELECT id, origen, importe::numeric AS importe, lead_id FROM erp_pedidos`),
+      query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_transportes
+              WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
+        .catch(() => ({ rows: [] as Record<string, unknown>[] })),
+      query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_tramites
+              WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
+        .catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    ]);
+
+    const porPedido = (filas: Record<string, unknown>[]) => {
+      const mapa = new Map<string, number>();
+      for (const f of filas) mapa.set(String(f.pedido_id), Number(f.coste) || 0);
+      return mapa;
+    };
+    const transporte = porPedido(transportes.rows as Record<string, unknown>[]);
+    const gestoria = porPedido(tramites.rows as Record<string, unknown>[]);
+
+    // Lo que se cobró por cada uno, de las solicitudes que acabaron en venta.
+    const leadIds = (pedidos.rows as Record<string, unknown>[])
+      .map((p) => p.lead_id).filter(Boolean) as string[];
+    const ventas = new Map<string, unknown>();
+    if (leadIds.length) {
+      const l = await query(
+        `SELECT id, sale_price FROM moveadvisor_market_leads WHERE id = ANY($1::text[])`,
+        [leadIds]
+      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+      for (const f of l.rows as Record<string, unknown>[]) ventas.set(String(f.id), f.sale_price);
+    }
+
+    const coches = (pedidos.rows as Record<string, unknown>[]).map((p) => ({
+      origen: String(p.origen ?? ''),
+      coste: costeDelCoche({
+        precioProveedor: p.importe,
+        transportes: [{ coste: transporte.get(String(p.id)) ?? 0 }],
+        tramites: [{ coste: gestoria.get(String(p.id)) ?? 0 }],
+      }).total,
+      venta: p.lead_id ? ventas.get(String(p.lead_id)) : null,
+    }));
+
+    res.json({ ok: true, data: margenPorOrigen(coches), coches: coches.length });
+  } catch (err) {
+    console.error('[pedidos] margen por origen:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
   }
 });
