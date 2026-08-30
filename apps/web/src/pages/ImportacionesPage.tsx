@@ -55,7 +55,7 @@ export default function ImportacionesPage() {
   const [fecha, setFecha] = useState('');
   const [verCerrados, setVerCerrados] = useState(false);
 
-  const carga = useCallback(async () => {
+  const carga = useCallback(async (): Promise<Expediente[]> => {
     setCargando(true);
     setError('');
     // `r.data` **es** la lista.
@@ -64,9 +64,11 @@ export default function ImportacionesPage() {
     // envuelve otra vez. Buscando `r.data.data` salía undefined y la pantalla
     // decía «no se han podido cargar» con los expedientes ahí, cargados.
     const r = await api.get<Expediente[]>('/leads?type=import&limit=100');
-    if (r.ok && Array.isArray(r.data)) setExpedientes(r.data);
+    const lista = r.ok && Array.isArray(r.data) ? r.data : [];
+    if (r.ok && Array.isArray(r.data)) setExpedientes(lista);
     else setError(r.error || 'No se han podido cargar los expedientes.');
     setCargando(false);
+    return lista;
   }, []);
 
   useEffect(() => { void carga(); }, [carga]);
@@ -83,10 +85,14 @@ export default function ImportacionesPage() {
     const r = await api.patch<Expediente>(`/leads/${id}`, cambios);
     setGuardando(false);
     if (!r.ok) { setError(r.error || 'No se ha podido guardar.'); return; }
-    await carga();
-    // El panel abierto se queda con lo recién guardado.
+    // El panel abierto se queda con lo recién recargado.
+    //
+    // No con lo que devuelve el `PATCH`: eso es la fila cruda de la base, con
+    // `erp_notes` suelto arriba, y la pantalla lee `meta.erp_notes`. Mezclando
+    // las dos formas, una nota recién guardada seguía saliendo como sin guardar.
+    const lista = await carga();
     setAbierto((previo) => (previo && previo.id === id
-      ? { ...previo, ...(r.data ?? {}) }
+      ? (lista.find((x) => x.id === id) ?? previo)
       : previo));
   }
 
@@ -151,7 +157,9 @@ export default function ImportacionesPage() {
         {[
           ['En marcha', String(cuentas.enMarcha), 'sin contar los entregados'],
           ['Esperando fianza', String(cuentas.sinFianza), 'hasta que no está, no se pide'],
-          ['Fianzas cobradas', eur(cuentas.comprometido), 'de coches aún sin entregar'],
+          // `eur(0)` da una raya, que en una tarjeta de dinero se lee como «no se
+          // sabe». Aquí sí se sabe: son cero.
+          ['Fianzas cobradas', cuentas.comprometido ? eur(cuentas.comprometido) : '0 €', 'de coches aún sin entregar'],
           ['Entregados', String(cuentas.entregados), 'expedientes cerrados'],
         ].map(([titulo, valor, pie]) => (
           <div key={titulo} className="px-4 py-3 rounded-xl border border-brand-200 bg-white">
@@ -295,6 +303,7 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
   const hechoElPedido = puedeDarFecha(x.status);
   const [respuesta, setRespuesta] = useState("");
   const [notas, setNotas] = useState(x.meta?.erp_notes ?? "");
+  const [notasGuardadas, setNotasGuardadas] = useState(false);
   const [historial, setHistorial] = useState<Apunte[] | null>(null);
 
   // El rastro se pide al abrirlo: quién tocó qué y cuándo.
@@ -464,12 +473,29 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Notas internas</div>
           <textarea
             value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            onBlur={() => { if (notas !== (x.meta?.erp_notes ?? "")) onGuardarNotas(notas); }}
+            onChange={(e) => { setNotas(e.target.value); setNotasGuardadas(false); }}
             rows={2}
             placeholder="No se envían al cliente…"
             className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg resize-y"
           />
+          {/* Con su botón.
+
+              Se guardaba al salir del recuadro, sin botón y sin decir nada: si
+              cerrabas el panel desde el propio texto, se perdía lo escrito, y si
+              se guardaba tampoco había forma de saberlo. Una nota que no sabes
+              si está guardada es una nota que vas a escribir dos veces. */}
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={() => { onGuardarNotas(notas); setNotasGuardadas(true); }}
+              disabled={guardando || notas === (x.meta?.erp_notes ?? "")}
+              className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40"
+            >
+              Guardar nota
+            </button>
+            {notasGuardadas && notas === (x.meta?.erp_notes ?? "") && (
+              <span className="text-[11px] font-semibold text-emerald-700">Guardada</span>
+            )}
+          </div>
         </div>
 
         {/* ── El rastro ── */}
