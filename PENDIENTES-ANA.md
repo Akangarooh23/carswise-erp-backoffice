@@ -94,6 +94,11 @@ El pie del mismo documento cita la Ley 37/1992, así que se presenta como factur
 formal con dos campos obligatorios sin rellenar. Se cambia en el código —dime los
 datos y lo hago en cinco minutos—, pero los datos son tuyos.
 
+**Esto ya no es hipotético.** El 30 de agosto salió la primera factura de fianza
+de verdad, la **FIA-2026-0001**, de 4.887 € por un SEAT Ateca. En la cabecera solo
+pone «PopCar · www.popcar.tech · popcarmobility@gmail.com»: ni NIF ni dirección
+del emisor. Fue una prueba en modo de prueba, pero la siguiente puede no serlo.
+
 ## 5 · Para que funcione el cobro de la fianza
 
 El flujo de importación ya cobra la fianza por Stripe y emite factura. Para que
@@ -185,6 +190,29 @@ y apuntar el webhook en la app de Meta. Está todo escrito en el `README`, en
 Sin `WHATSAPP_APP_SECRET` el webhook acepta lo que le llegue sin comprobar la
 firma: con el número conectado, esa variable no es opcional.
 
+## 7b · El IVA de la fianza
+
+La factura de la fianza sale con **21 % de IVA desglosado**. La primera, la
+FIA-2026-0001, quedó así:
+
+```
+Base imponible:  4.038,84 EUR
+IVA (21 %):        848,16 EUR
+TOTAL:           4.887,00 EUR
+```
+
+El PDF lo aplica siempre, porque es el mismo que emite las facturas de los
+informes de tasación, donde el 21 % sí corresponde.
+
+Una fianza no es lo mismo. Si es una **garantía que se devuelve**, no hay entrega
+de nada y normalmente no lleva IVA. Si es un **pago a cuenta** del coche, sí lo
+lleva — pero entonces hay que mirar si esa venta va por el régimen especial de
+bienes usados, donde el IVA ni siquiera se desglosa.
+
+Es una pregunta para tu gestoría, no para mí: yo puedo cambiar el PDF en un rato,
+pero quien decide qué IVA lleva esa factura no soy yo. Lo que no puede pasar es
+que la primera fianza de un cliente real salga con un 21 % puesto por inercia.
+
 ## 8 · Dos decisiones
 
 **Las facturas, ¿a un cubo privado?** Sus PDF están en un almacén público. Ya no
@@ -192,6 +220,11 @@ se puede llegar a ellos adivinando la ruta, y ni PopCar ni el ERP enseñan su
 dirección: se sirven por una ruta que pide sesión. Pero el fichero, con su
 enlace, sigue siendo abierto. El código ya no depende de que lo sea, así que
 mudarlos es crear el cubo y cambiar `SUPABASE_INVOICE_BUCKET`.
+
+Con la fianza esto pesa más que antes: la FIA-2026-0001 lleva tu nombre, tu NIF y
+tu dirección de casa, y está en una dirección pública. Basta con que alguien
+tenga el enlace. Antes eran facturas de 10 €; ahora son documentos con los datos
+fiscales completos de quien compra un coche.
 
 **El informe de inspección de los ex-renting.** Los 159 coches en venta de Astara
 y Leasys llevan informe de DEKRA, y hoy **no se le enseña al cliente**. Es un
