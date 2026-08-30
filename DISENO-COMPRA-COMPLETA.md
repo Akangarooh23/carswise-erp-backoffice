@@ -245,7 +245,8 @@ Por lo que más duele hoy, no por lo más bonito:
    es, y cada pedido enseña lo que falta según a quién se le compró.
 2. ~~**Trámites de los otros orígenes.**~~ **Hecho.** Al recibir un coche se
    abren los que le tocan según de dónde venga; al venderlo, su transferencia.
-3. **Comprobaciones del particular.** Poco código, evita el problema caro.
+3. ~~**Comprobaciones del particular.**~~ **Hecho.** No se encarga un coche a
+   una persona sin haber mirado las cuatro, y queda quién las miró.
 4. **Transporte** con sus tramos, sus costes y sus fotos.
 5. **Recepción** del coche.
 6. **Coste y margen.**

@@ -24,6 +24,10 @@ import {
   puedeEncargarse, notaDelCambio,
 } from '../lib/pedidos.js';
 import { abreTramitesDePedido } from './tramites.js';
+import {
+  comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
+  type Comprobadas,
+} from '../lib/comprobaciones.js';
 
 export const pedidosRouter = Router();
 
@@ -45,6 +49,8 @@ const ENSURE_TABLE = `
     fecha_confirmado  TIMESTAMPTZ,
     fecha_recepcion   TIMESTAMPTZ,
     notas          TEXT NOT NULL DEFAULT '',
+    -- Lo que se miró antes de comprarle a un particular, con quién y cuándo.
+    comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb,
     creado_por     TEXT NOT NULL DEFAULT '',
     created_at     TIMESTAMPTZ DEFAULT NOW(),
     updated_at     TIMESTAMPTZ DEFAULT NOW()
@@ -76,10 +82,15 @@ const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_pedidos_estado
     ON erp_pedidos (estado, created_at DESC)`;
 
+/** Para las tablas que ya estuvieran creadas sin esta columna. */
+const ENSURE_COMPROBACIONES = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
+  await query(ENSURE_COMPROBACIONES, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_UNIQUE_LEAD, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
@@ -94,7 +105,12 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
                 importe::numeric AS importe, cliente_email, lead_id,
                 TO_CHAR(fecha_estimada, 'YYYY-MM-DD') AS fecha_estimada,
                 fecha_pedido, fecha_confirmado, fecha_recepcion,
-                notas, creado_por, created_at, updated_at`;
+                notas, comprobaciones, creado_por, created_at, updated_at`;
+
+// ── Qué hay que comprobar antes de encargar, según el origen ───────────────
+pedidosRouter.get('/pedidos/comprobaciones/:origen', requireRole(['admin', 'support', 'operations', 'sales']), (req, res) => {
+  res.json({ ok: true, data: comprobacionesQueTocan(req.params.origen) });
+});
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -181,6 +197,25 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
     const previo = antes.rows[0] as Record<string, unknown> | undefined;
     if (!previo) { res.status(404).json({ ok: false, error: 'pedido_no_encontrado' }); return; }
 
+    /**
+     * A un particular no se le encarga a ciegas.
+     *
+     * El borrador existe justamente para poder prepararlo mientras se mira el
+     * informe de la DGT y lo demás. Pasar de ahí es comprometerse, y con una
+     * persona uno se compromete con lo comprobado: un embargo o una deuda no se
+     * arreglan después de pagar.
+     */
+    const comprobadas = (previo.comprobaciones ?? {}) as Comprobadas;
+    if (estado && estado !== 'Borrador' && estado !== CANCELADO
+        && !puedeEncargarseConComprobaciones(String(previo.origen ?? ""), comprobadas)) {
+      res.status(409).json({
+        ok: false, error: 'faltan_comprobaciones',
+        detail: 'Antes de encargarlo hay que mirar lo que no se puede arreglar después.',
+        faltan: comprobacionesQueFaltan(String(previo.origen ?? ""), comprobadas),
+      });
+      return;
+    }
+
     // Encargar un coche es encargárselo a alguien.
     if (estado && estado !== 'Borrador' && estado !== CANCELADO && !puedeEncargarse({
       proveedor: nt(req.body?.proveedor) || String(previo.proveedor ?? ''),
@@ -201,6 +236,14 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
     }
     if (req.body?.importe !== undefined) pon('importe', req.body.importe === '' || req.body.importe === null ? null : Number(req.body.importe));
     if (req.body?.fecha_estimada !== undefined) pon('fecha_estimada', nt(req.body.fecha_estimada) || null);
+
+    // Marcar o desmarcar una comprobación, con quién y cuándo.
+    if (nt(req.body?.comprobacion)) {
+      const quien = req.actor?.name ?? req.actor?.sub ?? "desconocido";
+      pon('comprobaciones', JSON.stringify(
+        marca(comprobadas, nt(req.body.comprobacion), req.body?.ok !== false, quien)
+      ));
+    }
 
     // La nota del cambio se suma a lo que hubiera; nunca lo pisa.
     const notasNuevas = estado && estado !== previo.estado

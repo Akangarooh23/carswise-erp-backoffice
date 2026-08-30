@@ -72,6 +72,7 @@ before(async () => {
       }
       // Los valores por defecto de la tabla, que aquí no los pone nadie.
       if (!fila.estado) fila.estado = 'Borrador';
+      if (fila.comprobaciones === undefined) fila.comprobaciones = {};
       if (fila.notas === undefined) fila.notas = '';
       pedidos.push(fila);
       siguiente += 1;
@@ -87,7 +88,10 @@ before(async () => {
       const asignaciones = /SET (.*) WHERE/i.exec(t)?.[1].split(',').map((x) => x.trim()) ?? [];
       for (const a of asignaciones) {
         const [col, val] = a.split('=').map((x) => x.trim());
-        if (val.startsWith('$')) fila[col] = p[Number(val.slice(1)) - 1];
+        if (val.startsWith('$')) {
+          const v = p[Number(val.slice(1)) - 1];
+          fila[col] = col === 'comprobaciones' && typeof v === 'string' ? JSON.parse(v) : v;
+        }
         else if (/NOW\(\)/.test(val)) fila[col] = '2026-08-30T10:00:00Z';
       }
       return responde([fila]);
@@ -175,6 +179,67 @@ describe('los pedidos', { concurrency: 1 }, () => {
     const id = (alta.cuerpo.data as Fila).id;
     const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Entregado' });
     assert.equal(r.codigo, 400);
+  });
+});
+
+describe('comprarle a un particular', { concurrency: 1 }, () => {
+  async function creaDeParticular() {
+    const r = await api('/pedidos', 'POST', {
+      origen: 'particular', vehiculo_titulo: 'Golf', proveedor: 'Juan Pérez',
+    });
+    return (r.cuerpo.data as Fila).id as string;
+  }
+
+  test('no se encarga sin haber mirado lo que no se arregla después', async () => {
+    const id = await creaDeParticular();
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Pedido', nota: 'va' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'faltan_comprobaciones');
+    assert.equal((r.cuerpo.faltan as unknown[]).length, 4);
+  });
+
+  test('con las cuatro puestas, sí', async () => {
+    const id = await creaDeParticular();
+    for (const clave of ['informe_dgt', 'firma_el_titular', 'sin_deudas', 'itv_en_vigor']) {
+      await api(`/pedidos/${id}`, 'PATCH', { comprobacion: clave, ok: true });
+    }
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Pedido', nota: 'encargado' });
+    assert.equal(r.codigo, 200);
+  });
+
+  test('se guarda quién comprobó cada cosa', async () => {
+    const id = await creaDeParticular();
+    await api(`/pedidos/${id}`, 'PATCH', { comprobacion: 'informe_dgt', ok: true });
+    const fila = pedidos.find((x) => x.id === id)!;
+    const c = fila.comprobaciones as Record<string, { ok: boolean; por: string }>;
+    assert.equal(c.informe_dgt.ok, true);
+    assert.equal(c.informe_dgt.por, 'Ana', 'el día que aparezca un embargo, esa es la pregunta');
+  });
+
+  test('desmarcar una vuelve a cerrar la puerta', async () => {
+    const id = await creaDeParticular();
+    for (const clave of ['informe_dgt', 'firma_el_titular', 'sin_deudas', 'itv_en_vigor']) {
+      await api(`/pedidos/${id}`, 'PATCH', { comprobacion: clave, ok: true });
+    }
+    await api(`/pedidos/${id}`, 'PATCH', { comprobacion: 'informe_dgt', ok: false });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Pedido', nota: 'va' });
+    assert.equal(r.codigo, 409);
+  });
+
+  test('cancelarlo no exige comprobar nada', async () => {
+    const id = await creaDeParticular();
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Cancelado', nota: 'no sigue' });
+    assert.equal(r.codigo, 200,
+      'renunciar a comprar no puede pedir requisitos: es justo lo contrario');
+  });
+
+  test('a un concesionario esta puerta no le afecta', async () => {
+    const alta = await api('/pedidos', 'POST', {
+      origen: 'concesionario', vehiculo_titulo: 'Golf', proveedor: 'Autos Paco',
+    });
+    const id = (alta.cuerpo.data as Fila).id;
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Pedido', nota: 'encargado' });
+    assert.equal(r.codigo, 200);
   });
 });
 

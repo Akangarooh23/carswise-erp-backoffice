@@ -43,6 +43,14 @@ const ORIGENES = [
   ['stock', 'Para stock'],
 ] as const;
 
+interface Comprobacion {
+  clave: string;
+  que: string;
+  siNo: string;
+}
+
+interface Marcada { ok?: boolean; por?: string; el?: string }
+
 interface Pedido {
   id: string;
   origen: string;
@@ -57,6 +65,7 @@ interface Pedido {
   lead_id: string | null;
   fecha_estimada: string | null;
   notas: string;
+  comprobaciones: Record<string, Marcada> | null;
   created_at: string;
 }
 
@@ -237,6 +246,71 @@ export default function PedidosPage() {
 }
 
 /**
+ * Lo que hay que mirar antes de comprarle a una persona.
+ *
+ * Solo sale cuando el origen es «particular», porque es el único caso que puede
+ * salir mal sin arreglo: un embargo no se quita pagando, una deuda del
+ * ayuntamiento bloquea la transferencia, y si quien firma no es el titular la
+ * venta no vale. Todo eso se ve antes de pagar y no se ve después.
+ *
+ * Va arriba del todo y antes del estado a propósito: es lo primero que hay que
+ * hacer, y hasta que no esté el botón de encargar no funciona.
+ */
+function Comprobaciones({ p, guardando, onCambiar }: {
+  p: Pedido; guardando: boolean; onCambiar: (c: Record<string, unknown>) => void;
+}) {
+  const [lista, setLista] = useState<Comprobacion[]>([]);
+
+  useEffect(() => {
+    void api.get<Comprobacion[]>(`/pedidos/comprobaciones/${p.origen}`).then((r) => {
+      setLista(r.ok && Array.isArray(r.data) ? r.data : []);
+    });
+  }, [p.origen]);
+
+  if (!lista.length) return null;
+
+  const hechas = p.comprobaciones ?? {};
+  const faltan = lista.filter((c) => hechas[c.clave]?.ok !== true).length;
+
+  return (
+    <div className={`mb-4 p-3 rounded-xl border ${faltan ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+      <div className={`text-xs font-bold mb-1 ${faltan ? "text-red-800" : "text-emerald-800"}`}>
+        {faltan ? `Antes de encargarlo: faltan ${faltan}` : "Comprobado: se puede encargar"}
+      </div>
+      <p className={`text-[11px] mb-2 ${faltan ? "text-red-700/80" : "text-emerald-700/80"}`}>
+        Comprarle a una persona es lo único que puede salir mal sin arreglo.
+      </p>
+      <ul className="space-y-1.5">
+        {lista.map((c) => {
+          const m = hechas[c.clave];
+          const puesta = m?.ok === true;
+          return (
+            <li key={c.clave} className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={puesta}
+                disabled={guardando}
+                onChange={(e) => onCambiar({ comprobacion: c.clave, ok: e.target.checked })}
+                className="mt-0.5 shrink-0"
+              />
+              <span className="text-[11px] leading-snug">
+                <span className={puesta ? "text-brand-600" : "font-semibold text-brand-700"}>{c.que}</span>
+                {!puesta && <span className="block text-red-700/80">{c.siNo}</span>}
+                {puesta && m?.por && (
+                  <span className="block text-brand-400">
+                    {m.por}{m.el ? ` · ${new Date(m.el).toLocaleDateString("es-ES")}` : ""}
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
  * Un pedido abierto.
  *
  * Cambiar de estado pide decir qué ha pasado, igual que en un expediente: el
@@ -265,6 +339,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           </div>
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
+
+        <Comprobaciones p={p} guardando={guardando} onCambiar={onCambiar} />
 
         <div className="mb-4">
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Estado</div>
