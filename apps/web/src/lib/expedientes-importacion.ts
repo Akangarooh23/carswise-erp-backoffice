@@ -130,3 +130,30 @@ export function resumen(expedientes: Expediente[]): Resumen {
     entregados: expedientes.filter((x) => x.status === 'Entregado').length,
   };
 }
+
+/**
+ * La nota que deja un cambio de etapa.
+ *
+ * Cambiar de etapa sin decir por qué deja un expediente que avanza solo: el
+ * historial guarda que alguien lo movió, pero no lo que pasó. Y lo que pasó es
+ * justo lo que necesita el siguiente que coja el teléfono —«le he llamado, se
+ * lo piensa», «no contesta desde el martes»—, porque el estado a secas no lo
+ * dice.
+ *
+ * Se escribe encabezada con el salto y la fecha, y se **añade** a lo que ya
+ * hubiera: las notas de un expediente son un cuaderno, no un campo que se pisa.
+ */
+export function notaDelCambio(
+  notasActuales: string,
+  desde: string,
+  hasta: string,
+  texto: string,
+  cuando: Date = new Date()
+): string {
+  const limpio = texto.trim();
+  if (!limpio) return notasActuales;
+  const dia = cuando.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  const entrada = `[${dia} · ${desde} → ${hasta}] ${limpio}`;
+  const previas = (notasActuales || '').trim();
+  return previas ? `${previas}\n${entrada}` : entrada;
+}

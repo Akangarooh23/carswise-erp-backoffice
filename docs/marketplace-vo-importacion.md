@@ -170,12 +170,33 @@ barra de avance y una frase que le explica qué significa. Ese es el objetivo: q
 no tenga que llamar para saber por dónde va.
 
 Hay un botón para pasarlo al siguiente, que es lo que se hace casi siempre, y el
-desplegable para cualquier otro. Cada cambio queda en el **historial**, abajo del
-expediente, con quién lo hizo y cuándo.
+desplegable para cualquier otro.
+
+**Cambiar de etapa pide decir qué ha pasado.** Al pulsar sale un recuadro y hasta
+que no escribes algo no se guarda. Eso se apunta en las notas internas con la
+fecha y el salto delante:
+
+```
+[30 ago 2026 · Pendiente → Contactado] Le he llamado, entiende el proceso y se
+lo piensa esta semana.
+```
+
+No es burocracia: el historial ya guarda **quién** lo movió y **cuándo**, pero no
+lo que pasó, y eso es justo lo que necesita el siguiente que coja el teléfono. Un
+expediente que va cambiando de etapa sin una línea de por qué no se puede
+atender: alguien va a tener que volver a llamar para enterarse de lo que ya
+sabías tú.
+
+Se añade a lo que ya hubiera. Las notas de un expediente son un cuaderno, no un
+campo que se pisa.
+
+Cada cambio queda además en el **historial**, abajo del expediente, con quién lo
+hizo y cuándo.
 
 **Guardar y avisar al cliente** le manda un correo con lo que hayas escrito y con
 su fianza. Al avisarle, un expediente que estuviera Pendiente pasa a Contactado
-solo. Las **notas internas**, debajo, no salen: son para el equipo.
+solo. Las **notas internas**, debajo, no salen: son para el equipo, y tienen su
+botón de guardar —cuando está guardado, lo dice.
 
 ## Lo que hay que saber
 

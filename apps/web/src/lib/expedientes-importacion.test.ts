@@ -10,7 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, puedePedirlo, puedeDarFecha,
-  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde,
+  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio,
   type Expediente,
 } from './expedientes-importacion.js';
 
@@ -139,5 +139,33 @@ describe('cuánto lleva esperando', () => {
   test('sin fecha, no se inventa un número', () => {
     assert.equal(diasDesde(null), null);
     assert.equal(diasDesde('lo que sea'), null);
+  });
+});
+
+describe('la nota que deja un cambio de etapa', () => {
+  const CUANDO = new Date('2026-08-30T10:00:00Z');
+
+  test('dice de dónde a dónde, con la fecha', () => {
+    const r = notaDelCambio('', 'Pendiente', 'Contactado', 'Le he llamado, se lo piensa', CUANDO);
+    assert.match(r, /Pendiente → Contactado/);
+    assert.match(r, /Le he llamado, se lo piensa/);
+    assert.match(r, /ago/, 'sin fecha, dentro de un mes nadie sabe cuándo fue');
+  });
+
+  test('se añade a lo que ya había: las notas son un cuaderno', () => {
+    const previas = '[29 ago 2026 · Pendiente → Contactado] Primera llamada';
+    const r = notaDelCambio(previas, 'Contactado', 'Fianza pagada', 'Ha pagado por transferencia', CUANDO);
+    assert.ok(r.startsWith(previas), 'lo de antes no se pisa');
+    assert.match(r, /Ha pagado por transferencia/);
+    assert.equal(r.split('\n').length, 2);
+  });
+
+  test('sin texto no se escribe nada', () => {
+    assert.equal(notaDelCambio('lo de antes', 'Pendiente', 'Contactado', '   ', CUANDO), 'lo de antes');
+  });
+
+  test('los espacios de más no cuentan como motivo', () => {
+    const r = notaDelCambio('', 'Pendiente', 'Contactado', '  vale  ', CUANDO);
+    assert.match(r, /\] vale$/, 'se guarda limpio');
   });
 });

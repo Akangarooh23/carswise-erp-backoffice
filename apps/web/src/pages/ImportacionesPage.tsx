@@ -3,7 +3,7 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
-  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde,
+  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio,
   type Etapa, type Expediente,
 } from '../lib/expedientes-importacion.js';
 
@@ -304,6 +304,9 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
   const [respuesta, setRespuesta] = useState("");
   const [notas, setNotas] = useState(x.meta?.erp_notes ?? "");
   const [notasGuardadas, setNotasGuardadas] = useState(false);
+  /** La etapa a la que se va a pasar, mientras se escribe por qué. */
+  const [aEtapa, setAEtapa] = useState<string | null>(null);
+  const [porQue, setPorQue] = useState("");
   const [historial, setHistorial] = useState<Apunte[] | null>(null);
 
   // El rastro se pide al abrirlo: quién tocó qué y cuándo.
@@ -367,27 +370,75 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           </div>
         </div>
 
-        {/* ── La etapa ── */}
+        {/* ── La etapa ──
+
+            Cambiarla pide decir qué ha pasado, y eso se guarda en las notas
+            internas. El historial ya deja constancia de quién la movió y cuándo,
+            pero no del motivo, que es justo lo que necesita el siguiente que coja
+            el teléfono: «le he llamado, se lo piensa» no está en ningún estado. */}
         <div className="mb-4">
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Etapa</div>
           <select
             value={x.status}
-            disabled={guardando}
-            onChange={(e) => onCambiar({ status: e.target.value })}
+            disabled={guardando || aEtapa !== null}
+            onChange={(e) => { setAEtapa(e.target.value); setPorQue(""); }}
             className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white"
           >
             {ETAPAS.map((e) => <option key={e} value={e}>{e}</option>)}
             {!ETAPAS.some((e) => e === x.status) && <option value={x.status}>{x.status}</option>}
           </select>
-          {siguiente && (
+          {siguiente && aEtapa === null && (
             <button
-              onClick={() => onCambiar({ status: siguiente })}
+              onClick={() => { setAEtapa(siguiente); setPorQue(""); }}
               disabled={guardando || (siguiente === 'Pedido a Alemania' && !pagada)}
               className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40"
             >
               Pasar a «{siguiente}»
             </button>
           )}
+
+          {aEtapa !== null && (
+            <div className="mt-2 p-3 rounded-lg border border-brand-300 bg-brand-50">
+              <div className="text-xs font-semibold text-brand-600 mb-1">
+                Pasar a «{aEtapa}». ¿Qué ha pasado?
+              </div>
+              <p className="text-[11px] text-brand-400 mb-2">
+                Se guarda en las notas internas. No lo ve el cliente.
+              </p>
+              <textarea
+                value={porQue}
+                onChange={(e) => setPorQue(e.target.value)}
+                rows={2}
+                autoFocus
+                placeholder="Le he llamado, entiende el proceso y se lo piensa…"
+                className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg resize-y bg-white"
+              />
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    onCambiar({
+                      status: aEtapa,
+                      notes: notaDelCambio(notas, x.status, aEtapa, porQue),
+                    });
+                    setNotas(notaDelCambio(notas, x.status, aEtapa, porQue));
+                    setAEtapa(null);
+                    setPorQue("");
+                  }}
+                  disabled={guardando || !porQue.trim()}
+                  className="flex-1 px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
+                >
+                  Guardar y pasar
+                </button>
+                <button
+                  onClick={() => { setAEtapa(null); setPorQue(""); }}
+                  className="px-3 py-2 text-xs font-semibold text-brand-500 border border-brand-200 rounded-lg bg-white"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
           {siguiente === 'Pedido a Alemania' && !pagada && (
             <p className="text-[11px] text-amber-700 mt-1.5">
               Hasta que la fianza no esté cobrada no se hace el pedido.
