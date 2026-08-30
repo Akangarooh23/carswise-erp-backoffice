@@ -208,9 +208,10 @@ botón de guardar —cuando está guardado, lo dice.
 | Al pagar la fianza | Su factura queda emitida y la tiene en Facturación |
 | Al darle a **Notificar** | Lo que hayas escrito, con su fianza |
 | Si **cambias** la fecha de entrega | Las dos fechas, la que era y la que es |
+| Al marcarlo **Entregado** | Que ya es suyo, con lo que hayas escrito en la respuesta |
 | Si se le **devuelve** la fianza | El motivo y su factura rectificativa |
 
-Cambiar el paso del expediente **no manda ningún correo**: lo ve en su panel
+Cambiar el paso **no manda ningún correo**, salvo el último: entregarlo sí se le dice. El resto lo ve en su panel
 cuando entre. Si quieres que se entere ya, llámale o usa Notificar.
 
 **Si quedas con él —para entregarle el coche, por ejemplo— pon la fecha y déjalo

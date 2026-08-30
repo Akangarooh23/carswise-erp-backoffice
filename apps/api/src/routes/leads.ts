@@ -159,6 +159,31 @@ function entregaEmailHtml(lead: Lead, antes: string): string {
   });
 }
 
+/**
+ * Ya lo tiene.
+ *
+ * Era el único paso del recorrido de una importación que no avisaba de nada, y
+ * justamente el que más se agradece saber: han pasado semanas desde que pagó la
+ * fianza. Que se entere porque entre en su panel es dejarlo al azar.
+ *
+ * No se promete nada que no haya pasado: se dice que se le ha entregado y dónde
+ * están sus facturas. Lo que haya que contarle además —dónde recogerlo, qué
+ * papeles lleva— se escribe en la respuesta y sale aquí dentro.
+ */
+function entregadoEmailHtml(lead: Lead): string {
+  return plantilla({
+    titulo: 'Tu coche ya es tuyo',
+    cuerpo:
+      parrafo(`Hola <strong>${esc(lead.contact_name) || 'cliente'}</strong>,`) +
+      parrafo(`Te hemos entregado <strong>${esc(lead.vehicle_title)}</strong>, matriculado y listo para circular.`) +
+      (lead.erp_response
+        ? datos([['Mensaje del equipo', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
+        : '') +
+      parrafo('Tienes las facturas de esta compra en tu panel, en Facturación.', 14) +
+      enlace('Ver mi panel', PANEL()),
+  });
+}
+
 function rentingNotifyEmailHtml(lead: Lead): string {
   return plantilla({
     titulo: 'Actualización de tu solicitud de renting',
@@ -457,6 +482,19 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
         `Cambia la fecha de tu coche — ${updatedLead.vehicle_title || 'PopCar'}`,
         entregaEmailHtml(updatedLead, fechaAntes)
       ).catch((e: Error) => console.error('[leads] aviso de entrega:', e.message));
+    }
+
+    // Entregado: el final del recorrido de una importación.
+    //
+    // Solo cuando de verdad acaba de pasar. Volver a guardar un expediente ya
+    // entregado no puede mandarle otra vez el mismo correo.
+    if (status === 'Entregado' && prev.status !== 'Entregado'
+        && updatedLead.lead_type === 'import' && updatedLead.user_email) {
+      alCliente(
+        updatedLead.user_email,
+        `Tu coche ya es tuyo — ${updatedLead.vehicle_title || 'PopCar'}`,
+        entregadoEmailHtml(updatedLead)
+      ).catch((e: Error) => console.error('[leads] aviso de entrega final:', e.message));
     }
 
     // Fire-and-forget emails + sale outcome processing

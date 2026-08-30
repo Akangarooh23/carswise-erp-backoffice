@@ -36,11 +36,14 @@ let pase: string;
 
 /** Las consultas que ha hecho la ruta. */
 let consultas: { sql: string; params: unknown[] }[] = [];
+/** Lo que ha salido hacia el cliente. */
+let correos: { to: string; subject: string; html: string }[] = [];
 /** Cómo está el expediente. */
 let expediente: Fila;
 
 function reinicia() {
   consultas = [];
+  correos = [];
   expediente = {
     id: LEAD,
     user_email: CLIENTE,
@@ -89,6 +92,10 @@ before(async () => {
   globalThis.fetch = (async (url: unknown, opciones?: unknown) => {
     const u = String(url);
     if (u.includes('resend.com') || u.includes('popcar.tech/api')) {
+      if (u.includes('resend.com')) {
+        const c = JSON.parse(String((opciones as { body?: string })?.body ?? '{}'));
+        correos.push({ to: String(c.to), subject: String(c.subject ?? ''), html: String(c.html ?? '') });
+      }
       return { ok: true, status: 200, json: async () => ({}), text: async () => '' };
     }
     return (fetchOriginal as never as typeof fetch)(u, opciones as never);
@@ -169,6 +176,33 @@ describe('el expediente de importación', { concurrency: 1 }, () => {
       const r = await api(`/leads/${LEAD}`, { status: etapa });
       assert.equal(r.codigo, 200, `«${etapa}» debería valer: ${JSON.stringify(r.cuerpo)}`);
     }
+  });
+
+  test('entregarlo se lo dice al cliente', async () => {
+    expediente.status = 'En trámites';
+    const r = await api(`/leads/${LEAD}`, { status: 'Entregado' });
+    assert.equal(r.codigo, 200);
+    // El envío no se espera dentro de la ruta: se le da un respiro.
+    await new Promise((listo) => setTimeout(listo, 50));
+    const suyo = correos.find((c) => c.to.includes(CLIENTE));
+    assert.ok(suyo, 'era el único paso del recorrido que no avisaba de nada');
+    assert.match(suyo.subject, /ya es tuyo/i);
+  });
+
+  test('volver a guardarlo entregado no le manda otro correo', async () => {
+    expediente.status = 'Entregado';
+    await api(`/leads/${LEAD}`, { status: 'Entregado' });
+    await new Promise((listo) => setTimeout(listo, 50));
+    assert.equal(correos.filter((c) => /ya es tuyo/i.test(c.subject)).length, 0,
+      'ya estaba entregado: no ha pasado nada nuevo que contar');
+  });
+
+  test('esto es solo de importación', async () => {
+    expediente.lead_type = 'visit';
+    expediente.status = 'En trámites';
+    await api(`/leads/${LEAD}`, { status: 'Entregado' });
+    await new Promise((listo) => setTimeout(listo, 50));
+    assert.equal(correos.filter((c) => /ya es tuyo/i.test(c.subject)).length, 0);
   });
 
   test('no se pone fecha de entrega antes de hacer el pedido', async () => {
