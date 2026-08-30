@@ -425,6 +425,11 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     const tracked: Array<[string, unknown, unknown]> = [
       ['status',           prev.status,           status ?? (finalStatus !== prev.status ? finalStatus : undefined)],
       ['erp_response',     prev.erp_response,      erp_response],
+      // Las notas internas también dejan rastro. Son el cuaderno del
+      // expediente y se van llenando solas al cambiar de etapa: sin esto, se ve
+      // lo que pone hoy pero no cuándo lo escribió nadie, y una nota sin fecha
+      // vale la mitad.
+      ['erp_notes',        prev.erp_notes,         notes],
       ['appointment_date', prev.appointment_date,  appointment_date],
       ['deposit_paid_at',  prev.deposit_paid_at,   deposit_paid === undefined ? undefined : (deposit_paid ? 'cobrada' : 'sin cobrar')],
       ['delivery_estimate', prev.delivery_estimate, delivery_estimate],

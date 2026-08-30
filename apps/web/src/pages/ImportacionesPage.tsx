@@ -268,6 +268,22 @@ export default function ImportacionesPage() {
   );
 }
 
+/**
+ * Cómo se lee un apunte del rastro.
+ *
+ * `status → «Contactado»` es el nombre de una columna, no algo que se le
+ * cuente a nadie. Y una nota entera dentro del historial lo llena de texto
+ * repetido: se dice que la escribió, y se lee arriba, que es donde vive.
+ */
+function apunteEnCristiano(a: Apunte): string {
+  if (a.field === "erp_notes")         return "escribió en las notas internas";
+  if (a.field === "erp_response")      return "escribió al cliente";
+  if (a.field === "deposit_paid_at")   return `marcó la fianza como ${a.new_value || "sin cobrar"}`;
+  if (a.field === "delivery_estimate") return `puso la fecha de entrega: ${a.new_value || "sin fecha"}`;
+  if (a.field === "status")            return `pasó el expediente a «${a.new_value}»`;
+  return `cambió ${a.field}${a.new_value ? ` a «${a.new_value}»` : ""}`;
+}
+
 /** Un apunte del rastro: quién tocó qué y cuándo. */
 interface Apunte {
   id: string;
@@ -303,7 +319,6 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
   const hechoElPedido = puedeDarFecha(x.status);
   const [respuesta, setRespuesta] = useState("");
   const [notas, setNotas] = useState(x.meta?.erp_notes ?? "");
-  const [notasGuardadas, setNotasGuardadas] = useState(false);
   /** La etapa a la que se va a pasar, mientras se escribe por qué. */
   const [aEtapa, setAEtapa] = useState<string | null>(null);
   const [porQue, setPorQue] = useState("");
@@ -524,7 +539,7 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Notas internas</div>
           <textarea
             value={notas}
-            onChange={(e) => { setNotas(e.target.value); setNotasGuardadas(false); }}
+            onChange={(e) => setNotas(e.target.value)}
             rows={2}
             placeholder="No se envían al cliente…"
             className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg resize-y"
@@ -537,13 +552,17 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
               si está guardada es una nota que vas a escribir dos veces. */}
           <div className="flex items-center gap-2 mt-2">
             <button
-              onClick={() => { onGuardarNotas(notas); setNotasGuardadas(true); }}
+              onClick={() => onGuardarNotas(notas)}
               disabled={guardando || notas === (x.meta?.erp_notes ?? "")}
               className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40"
             >
               Guardar nota
             </button>
-            {notasGuardadas && notas === (x.meta?.erp_notes ?? "") && (
+            {/* Sale siempre que lo de la pantalla y lo de la base coincidan, no
+                solo justo después de pulsar. Abrir un expediente y ver una nota
+                con el botón apagado y ninguna señal se lee como «no se ha
+                guardado», que es exactamente lo contrario de lo que pasa. */}
+            {notas.trim() !== "" && notas === (x.meta?.erp_notes ?? "") && (
               <span className="text-[11px] font-semibold text-emerald-700">Guardada</span>
             )}
           </div>
@@ -561,8 +580,8 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
               {historial.map((a) => (
                 <li key={a.id} className="text-[11px] text-brand-500 leading-snug">
                   <span className="text-brand-400">{dia(a.created_at)}</span>{" · "}
-                  <strong className="font-semibold">{a.operator}</strong>{" cambió "}
-                  {a.field}{a.new_value ? ` a «${a.new_value}»` : ""}
+                  <strong className="font-semibold">{a.operator}</strong>{" "}
+                  {apunteEnCristiano(a)}
                 </li>
               ))}
             </ul>

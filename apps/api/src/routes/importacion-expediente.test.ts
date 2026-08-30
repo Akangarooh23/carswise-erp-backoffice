@@ -154,6 +154,15 @@ describe('el expediente de importación', { concurrency: 1 }, () => {
     assert.match(elUpdate()!.sql, /deposit_paid_at = NULL/);
   });
 
+  test('una nota interna deja rastro en el historial', async () => {
+    const r = await api(`/leads/${LEAD}`, { notes: "Le he llamado, se lo piensa" });
+    assert.equal(r.codigo, 200);
+    const apunte = consultas.find((c) => /INSERT INTO erp_lead_history/i.test(c.sql));
+    assert.ok(apunte, 'sin rastro se ve lo que pone hoy, pero no cuándo lo escribió nadie');
+    assert.ok(apunte.params.some((x) => String(x) === 'erp_notes'),
+      `el apunte no es de las notas: ${JSON.stringify(apunte.params)}`);
+  });
+
   test('las etapas de importación son estados válidos', async () => {
     for (const etapa of ['Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado']) {
       reinicia();
