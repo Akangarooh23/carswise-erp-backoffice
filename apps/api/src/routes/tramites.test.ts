@@ -52,7 +52,9 @@ before(async () => {
       const columnas = /\(([^)]+)\)\s*VALUES/i.exec(t)?.[1].split(',').map((c) => c.trim()) ?? [];
       const fila: Fila = {};
       columnas.forEach((c, i) => { fila[c] = p[i]; });
-      if (tramites.some((x) => x.lead_id && x.lead_id === fila.lead_id && x.tipo === fila.tipo)) {
+      const mismoSitio = (x: Fila) =>
+        (fila.lead_id && x.lead_id === fila.lead_id) || (fila.pedido_id && x.pedido_id === fila.pedido_id);
+      if (tramites.some((x) => mismoSitio(x) && x.tipo === fila.tipo)) {
         const e = new Error('duplicate key') as Error & { code?: string };
         e.code = '23505';
         return Promise.reject(e);
@@ -75,8 +77,9 @@ before(async () => {
       return responde([fila]);
     }
     if (/FROM erp_tramite_history/i.test(t)) return responde(historial.filter((h) => h.tramite_id === p[0]));
-    if (/SELECT id FROM erp_tramites WHERE lead_id/i.test(t)) {
-      return responde(tramites.filter((x) => x.lead_id === p[0] && x.tipo === p[1]));
+    if (/SELECT id FROM erp_tramites WHERE (lead_id|pedido_id)/i.test(t)) {
+      const columna = /pedido_id/.test(t) ? 'pedido_id' : 'lead_id';
+      return responde(tramites.filter((x) => x[columna] === p[0] && x.tipo === p[1]));
     }
     if (/FROM erp_tramites WHERE id = \$1/i.test(t)) return responde(tramites.filter((x) => x.id === p[0]));
     if (/FROM erp_tramites/i.test(t)) return responde(tramites);
@@ -171,6 +174,56 @@ describe('gestoría', { concurrency: 1 }, () => {
     });
   });
 
+  describe('los que abre un pedido según su origen', { concurrency: 1 }, () => {
+    test('de un concesionario sale la transferencia', async () => {
+      const { abreTramitesDePedido } = await import('./tramites.js');
+      const creados = await abreTramitesDePedido({
+        pedidoId: 'PED-1', origen: 'concesionario', vehiculoTitulo: 'Peugeot 208',
+        matricula: '1234ABC', clienteEmail: 'cliente@ejemplo.es', creadoPor: 'Ana',
+      });
+      assert.equal(creados.length, 1);
+      assert.match(String(tramites[0].tipo), /Transferencia/);
+      assert.equal(tramites[0].pedido_id, 'PED-1');
+      assert.equal(tramites[0].matricula, '1234ABC');
+    });
+
+    test('de un particular salen dos: la transferencia y el impuesto', async () => {
+      const { abreTramitesDePedido } = await import('./tramites.js');
+      const creados = await abreTramitesDePedido({
+        pedidoId: 'PED-2', origen: 'particular', vehiculoTitulo: 'Golf', creadoPor: 'Ana',
+      });
+      assert.equal(creados.length, 2);
+      assert.ok(tramites.some((x) => /transmisiones/i.test(String(x.tipo))));
+    });
+
+    test('llamarlo dos veces no abre el doble', async () => {
+      const { abreTramitesDePedido } = await import('./tramites.js');
+      const datos = { pedidoId: 'PED-3', origen: 'particular', vehiculoTitulo: 'Golf', creadoPor: 'Ana' };
+      await abreTramitesDePedido(datos);
+      const segunda = await abreTramitesDePedido(datos);
+      assert.equal(segunda.length, 0);
+      assert.equal(tramites.length, 2);
+    });
+
+    test('un origen que no se conoce no abre nada', async () => {
+      const { abreTramitesDePedido } = await import('./tramites.js');
+      const creados = await abreTramitesDePedido({
+        pedidoId: 'PED-4', origen: 'subasta', vehiculoTitulo: 'Golf', creadoPor: 'Ana',
+      });
+      assert.equal(creados.length, 0);
+    });
+
+    test('vender uno nuestro abre su transferencia', async () => {
+      const { abreTramitesDeVenta } = await import('./tramites.js');
+      const creados = await abreTramitesDeVenta({
+        leadId: 'lead-1', vehiculoTitulo: 'Peugeot 208', clienteEmail: 'Cliente@Ejemplo.es', creadoPor: 'Ana',
+      });
+      assert.equal(creados.length, 1);
+      assert.equal(tramites[0].lead_id, 'lead-1');
+      assert.equal(tramites[0].cliente_email, 'cliente@ejemplo.es');
+    });
+  });
+
   describe('los que abre una importación', { concurrency: 1 }, () => {
     test('son los tres que necesita un coche traído de fuera', async () => {
       const { abreTramitesDeImportacion } = await import('./tramites.js');
@@ -200,8 +253,13 @@ describe('gestoría', { concurrency: 1 }, () => {
       // llamadas a la vez leen las dos que no hay nada y las dos insertan. Lo que
       // no puede fallar es el índice único.
       const fuente = readFileSync(new URL('./tramites.ts', import.meta.url), 'utf8');
-      assert.match(fuente, /CREATE UNIQUE INDEX[\s\S]*erp_tramites \(lead_id, tipo\)/,
+      // Atado al nombre de cada índice: buscando «CREATE UNIQUE INDEX … tipo» a
+      // secas, el de al lado tapaba al que faltaba y la prueba pasaba con uno de
+      // los dos sin «unique».
+      assert.match(fuente, /CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_lead_tipo/,
         'sin el índice, dos llamadas a la vez abren los mismos papeleos dos veces');
+      assert.match(fuente, /CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_pedido_tipo/,
+        'lo mismo con los que cuelgan de un pedido');
     });
 
     test('nacen pendientes y sin gestoría: eso lo decide quien los lleve', async () => {

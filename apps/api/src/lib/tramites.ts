@@ -110,3 +110,42 @@ export function notaDelCambio(
   const previas = (notasActuales ?? '').trim();
   return previas ? `${previas}\n${entrada}` : entrada;
 }
+
+/**
+ * Qué papeleos salen de comprar un coche, según a quién se le compre.
+ *
+ * No es lo mismo traerlo de fuera que comprarlo aquí. Un coche alemán hay que
+ * **matricularlo**: no existe en España todavía, así que se paga su impuesto, se
+ * homologa y se le da matrícula. Uno que ya está matriculado aquí solo cambia de
+ * dueño: se **transfiere**.
+ *
+ * Y comprarle a un particular añade uno que no aparece en ningún otro caso: el
+ * **impuesto de transmisiones**, que lo paga quien compra. Comprándole a una
+ * empresa no lo hay, porque esa venta lleva IVA en su factura.
+ */
+export const TRAMITES_POR_ORIGEN: Record<string, string[]> = {
+  importacion: [
+    'Impuesto de matriculación',
+    'ITV de homologación',
+    'Matriculación de importación',
+  ],
+  concesionario: ['Transferencia de titularidad'],
+  'ex-renting':  ['Transferencia de titularidad'],
+  particular:    ['Transferencia de titularidad', 'Impuesto de transmisiones'],
+  stock:         ['Transferencia de titularidad'],
+};
+
+/**
+ * Y el que sale de **vender**.
+ *
+ * Un coche que era nuestro y pasa a un cliente cambia de dueño otra vez. Si se
+ * compró para stock, eso son dos transferencias en la vida del mismo coche: una
+ * al comprarlo y otra al venderlo, cada una con su coste. Conviene saberlo antes
+ * de decidir a nombre de quién se compra.
+ */
+export const TRAMITES_AL_VENDER = ['Transferencia de titularidad'];
+
+/** Los que tocan al comprar de este origen. Vacío si el origen no se conoce. */
+export function tramitesQueTocan(origen: string): string[] {
+  return TRAMITES_POR_ORIGEN[origen] ?? [];
+}

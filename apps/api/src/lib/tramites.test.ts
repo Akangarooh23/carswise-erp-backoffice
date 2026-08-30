@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import {
   ESTADOS_TRAMITE, QUE_TOCA_TRAMITE, TRAMITES_HABITUALES, RECHAZADO,
   esEstadoTramiteValido, siguienteEstadoTramite, puedeEnviarse, estaFuera, diasFuera,
+  tramitesQueTocan, TRAMITES_AL_VENDER,
   notaDelCambio,
 } from './tramites.js';
 
@@ -99,5 +100,38 @@ describe('la nota de un cambio', () => {
     const r = notaDelCambio(previas, 'Enviado a gestoría', 'Rechazado', 'Falta el permiso alemán', new Date('2026-08-30T10:00:00Z'));
     assert.ok(r.startsWith(previas));
     assert.match(r, /Falta el permiso alemán/);
+  });
+});
+
+describe('qué papeleo sale de cada compra', () => {
+  test('un coche de Alemania se matricula: no existe aquí todavía', () => {
+    const tocan = tramitesQueTocan('importacion').join(' | ').toLowerCase();
+    assert.match(tocan, /matriculaci/);
+    assert.match(tocan, /itv/);
+    assert.ok(!/transferencia/.test(tocan),
+      'no se transfiere lo que nunca ha estado a nombre de nadie aquí');
+  });
+
+  test('uno de aquí solo cambia de dueño', () => {
+    for (const origen of ['concesionario', 'ex-renting', 'stock']) {
+      const tocan = tramitesQueTocan(origen);
+      assert.deepEqual(tocan, ['Transferencia de titularidad'], `falla con ${origen}`);
+    }
+  });
+
+  test('a un particular se le suma el impuesto de transmisiones', () => {
+    const tocan = tramitesQueTocan('particular').join(' | ').toLowerCase();
+    assert.match(tocan, /transferencia/);
+    assert.match(tocan, /transmisiones/,
+      'lo paga quien compra; a una empresa no, porque su venta lleva IVA');
+  });
+
+  test('un origen desconocido no abre papeleos inventados', () => {
+    assert.deepEqual(tramitesQueTocan('subasta'), []);
+  });
+
+  test('vender también cambia de dueño', () => {
+    assert.deepEqual(TRAMITES_AL_VENDER, ['Transferencia de titularidad'],
+      'comprado para stock y vendido después: dos transferencias del mismo coche');
   });
 });

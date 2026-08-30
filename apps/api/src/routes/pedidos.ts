@@ -23,6 +23,7 @@ import {
   ESTADOS_PEDIDO, CANCELADO, esEstadoValido, esOrigenPedido,
   puedeEncargarse, notaDelCambio,
 } from '../lib/pedidos.js';
+import { abreTramitesDePedido } from './tramites.js';
 
 export const pedidosRouter = Router();
 
@@ -230,6 +231,23 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         `INSERT INTO erp_pedido_history (pedido_id, operador, campo, antes, despues) VALUES ($1,$2,$3,$4,$5)`,
         [req.params.id, req.actor?.name ?? req.actor?.sub ?? 'desconocido', 'estado', String(previo.estado ?? ''), estado]
       ).catch(() => {});
+    }
+
+    // Con el coche aquí empieza el papeleo.
+    //
+    // Antes no se puede: la transferencia necesita el contrato firmado y la
+    // matriculación necesita el coche. Lo que se abre depende de a quién se le
+    // compró — uno de Alemania se matricula, uno de aquí cambia de dueño.
+    if (estado === 'Recibido' && previo.estado !== 'Recibido') {
+      const fila = (r.rows[0] ?? previo) as Record<string, unknown>;
+      abreTramitesDePedido({
+        pedidoId: req.params.id,
+        origen: String(fila.origen ?? ""),
+        vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
+        matricula: String(fila.matricula ?? ""),
+        clienteEmail: String(fila.cliente_email ?? ""),
+        creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
+      }).catch((e: Error) => console.error('[pedidos] trámites del pedido:', e.message));
     }
 
     res.json({ ok: true, data: r.rows[0] });

@@ -16,6 +16,7 @@ import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   RECHAZADO, esEstadoTramiteValido, puedeEnviarse, notaDelCambio, TRAMITES_HABITUALES,
+  tramitesQueTocan, TRAMITES_AL_VENDER,
 } from '../lib/tramites.js';
 
 export const tramitesRouter = Router();
@@ -67,6 +68,10 @@ const ENSURE_UNIQUE = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_lead_tipo
     ON erp_tramites (lead_id, tipo) WHERE lead_id IS NOT NULL`;
 
+const ENSURE_UNIQUE_PEDIDO = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_pedido_tipo
+    ON erp_tramites (pedido_id, tipo) WHERE pedido_id IS NOT NULL`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
@@ -74,6 +79,7 @@ async function prepara() {
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
+  await query(ENSURE_UNIQUE_PEDIDO, []).catch(() => {});
   preparado = true;
 }
 
@@ -247,6 +253,97 @@ tramitesRouter.get('/tramites/:id/history', requireRole(['admin', 'support', 'op
     res.status(500).json({ ok: false, error: 'tramites_failed' });
   }
 });
+
+/**
+ * Abre los trámites que le tocan a un pedido.
+ *
+ * Se llama cuando el coche llega a nuestras manos, que es cuando el papeleo
+ * empieza a poder hacerse. Lo que se abre depende de a quién se le compró: uno
+ * de Alemania hay que matricularlo, uno de aquí solo cambia de dueño.
+ *
+ * Si ya existen, no se duplican: el índice único lo garantiza aunque dos
+ * llamadas a la vez lean las dos que no hay nada.
+ */
+export async function abreTramitesDePedido(datos: {
+  pedidoId: string;
+  origen: string;
+  vehiculoTitulo: string;
+  matricula?: string;
+  clienteEmail?: string;
+  creadoPor: string;
+}): Promise<string[]> {
+  return abreTramites(tramitesQueTocan(datos.origen), {
+    pedidoId: datos.pedidoId,
+    vehiculoTitulo: datos.vehiculoTitulo,
+    matricula: datos.matricula ?? "",
+    clienteEmail: datos.clienteEmail ?? "",
+    creadoPor: datos.creadoPor,
+  });
+}
+
+/**
+ * Y el que sale de vender un coche que era nuestro.
+ *
+ * Cambia de dueño otra vez. Si se compró para stock, son dos transferencias en
+ * la vida del mismo coche, cada una con su coste.
+ */
+export async function abreTramitesDeVenta(datos: {
+  leadId: string;
+  vehiculoTitulo: string;
+  clienteEmail: string;
+  creadoPor: string;
+}): Promise<string[]> {
+  return abreTramites(TRAMITES_AL_VENDER, {
+    leadId: datos.leadId,
+    vehiculoTitulo: datos.vehiculoTitulo,
+    matricula: "",
+    clienteEmail: datos.clienteEmail,
+    creadoPor: datos.creadoPor,
+  });
+}
+
+/** Lo común: abrir una lista de trámites colgando de algo, sin repetir. */
+async function abreTramites(tipos: string[], datos: {
+  leadId?: string;
+  pedidoId?: string;
+  vehiculoTitulo: string;
+  matricula: string;
+  clienteEmail: string;
+  creadoPor: string;
+}): Promise<string[]> {
+  await prepara();
+  const creados: string[] = [];
+
+  for (const tipo of tipos) {
+    const columna = datos.pedidoId ? "pedido_id" : "lead_id";
+    const valor = datos.pedidoId ?? datos.leadId ?? "";
+    if (!valor) continue;
+
+    const yaHay = await query(
+      `SELECT id FROM erp_tramites WHERE ${columna} = $1 AND tipo = $2`,
+      [valor, tipo]
+    );
+    if (yaHay.rows.length) continue;
+
+    try {
+      const { id } = await guardaConIdUnico(
+        () => siguienteDeSerie('erp_tramites', prefijoAnual('TRA')),
+        async (nuevoId) => {
+          await query(
+            `INSERT INTO erp_tramites (id, tipo, vehiculo_titulo, matricula, cliente_email, ${columna}, creado_por)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [nuevoId, tipo, datos.vehiculoTitulo, datos.matricula,
+             String(datos.clienteEmail).toLowerCase(), valor, datos.creadoPor]
+          );
+        }
+      );
+      creados.push(id);
+    } catch (e) {
+      console.error('[tramites] no se ha podido abrir «%s»:', tipo, (e as Error).message);
+    }
+  }
+  return creados;
+}
 
 /**
  * Los trámites que abre una importación al llegar a «En trámites».

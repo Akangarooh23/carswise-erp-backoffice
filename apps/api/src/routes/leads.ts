@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
-import { abreTramitesDeImportacion } from './tramites.js';
+import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 
 export const leadsRouter = Router();
 
@@ -536,6 +536,22 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
         `Tu coche ya es tuyo — ${updatedLead.vehicle_title || 'PopCar'}`,
         entregadoEmailHtml(updatedLead)
       ).catch((e: Error) => console.error('[leads] aviso de entrega final:', e.message));
+    }
+
+    // Vender es cambiar de dueño: sale su transferencia.
+    //
+    // Un coche que era nuestro y pasa a un cliente cambia de nombre otra vez. Si
+    // se compró para stock, son dos transferencias en la vida del mismo coche,
+    // cada una con su coste. Las importaciones se quedan fuera: ese coche se
+    // matricula a nombre del cliente y no hay transferencia que hacer.
+    if (status === 'Vendido' && prev.status !== 'Vendido'
+        && updatedLead.lead_type !== 'import' && updatedLead.user_email) {
+      abreTramitesDeVenta({
+        leadId: req.params.id,
+        vehiculoTitulo: updatedLead.vehicle_title ?? '',
+        clienteEmail: updatedLead.user_email,
+        creadoPor: operator,
+      }).catch((e: Error) => console.error('[leads] transferencia de la venta:', e.message));
     }
 
     // Fire-and-forget emails + sale outcome processing

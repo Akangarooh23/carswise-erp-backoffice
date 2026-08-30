@@ -243,8 +243,8 @@ Por lo que más duele hoy, no por lo más bonito:
 1. ~~**Documentos donde toquen y lista por origen.**~~ **Hecho.** El almacén
    entiende de solicitudes, pedidos y trámites, cada papel se sube diciendo cuál
    es, y cada pedido enseña lo que falta según a quién se le compró.
-2. **Trámites de los otros orígenes**: transferencia al comprar y al vender. Hoy
-   solo hay importación, y transferir es lo que pasa en todas las ventas.
+2. ~~**Trámites de los otros orígenes.**~~ **Hecho.** Al recibir un coche se
+   abren los que le tocan según de dónde venga; al venderlo, su transferencia.
 3. **Comprobaciones del particular.** Poco código, evita el problema caro.
 4. **Transporte** con sus tramos, sus costes y sus fotos.
 5. **Recepción** del coche.
