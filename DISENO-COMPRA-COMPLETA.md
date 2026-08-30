@@ -250,7 +250,7 @@ Por lo que más duele hoy, no por lo más bonito:
 4. ~~**Transporte** con sus tramos, sus costes y sus fotos.~~ **Hecho.**
 5. ~~**Recepción** del coche.~~ **Hecho.**
 6. ~~**Coste y margen.**~~ **Hecho** por coche. Falta el resumen por origen en una pantalla.
-7. **Entrega y garantía.**
+7. ~~**Entrega y garantía.**~~ **Hecho.**
 
 Los tres primeros son de esta semana. Del cuarto en adelante, cada uno es un
 bloque en sí mismo.

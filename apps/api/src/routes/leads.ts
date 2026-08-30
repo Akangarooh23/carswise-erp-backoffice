@@ -5,6 +5,10 @@ import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
+import {
+  QUE_SE_ENTREGA, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
+  garantiaHasta, type Entrega,
+} from '../lib/entrega.js';
 
 export const leadsRouter = Router();
 
@@ -775,5 +779,83 @@ leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operatio
     res.json({ ok: true, data: updated.rows[0] });
   } catch (err) {
     falloInterno(res, 'notify_failed', err);
+  }
+});
+
+/**
+ * La entrega: el acto de darle el coche a alguien.
+ *
+ * No es un estado. Alguien está delante, recibe unas llaves y unos papeles, y
+ * firma. Lo que no se le dé ese día se convierte en una llamada la semana
+ * siguiente, y lo que no quede escrito se convierte en su palabra contra la
+ * nuestra.
+ *
+ * Y ahí empieza la garantía, que hasta ahora no llevaba nadie: se calcula al
+ * entregar y se guarda. Si mañana la política pasa a veinticuatro meses, los ya
+ * entregados siguen teniendo lo que se les prometió.
+ */
+const ENSURE_ENTREGA = `
+  ALTER TABLE moveadvisor_market_leads ADD COLUMN IF NOT EXISTS entrega JSONB NOT NULL DEFAULT '{}'::jsonb`;
+
+leadsRouter.get('/leads/:id/entrega', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    await query(ENSURE_ENTREGA, []).catch(() => {});
+    const r = await query(`SELECT entrega FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    if (!r.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+    const entrega = ((r.rows[0] as { entrega?: Entrega }).entrega ?? {}) as Entrega;
+    res.json({
+      ok: true,
+      data: entrega,
+      lista: QUE_SE_ENTREGA,
+      falta: faltaPorEntregar(entrega),
+      faltaParaCerrar: faltaParaCerrar(entrega),
+    });
+  } catch (err) {
+    console.error('[leads] entrega:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'entrega_failed' });
+  }
+});
+
+leadsRouter.patch('/leads/:id/entrega', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  try {
+    await query(ENSURE_ENTREGA, []).catch(() => {});
+    const antes = await query(`SELECT entrega, user_email, vehicle_title FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    const fila = antes.rows[0] as { entrega?: Entrega; user_email?: string; vehicle_title?: string } | undefined;
+    if (!fila) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    const previa = (fila.entrega ?? {}) as Entrega;
+    const cambios = (req.body ?? {}) as Entrega & { cerrar?: boolean };
+    const nueva: Entrega = {
+      ...previa,
+      ...cambios,
+      entregado: { ...(previa.entregado ?? {}), ...(cambios.entregado ?? {}) },
+      entregado_por: req.actor?.name ?? req.actor?.sub ?? previa.entregado_por,
+    };
+
+    // Cerrarla es el acto: hacen falta los kilómetros y la firma.
+    if (cambios.cerrar) {
+      if (!puedeCerrarseLaEntrega(nueva)) {
+        res.status(409).json({
+          ok: false, error: 'falta_para_cerrar',
+          detail: 'Sin kilómetros de salida no hay punto de partida para la garantía, y sin firma no hay entrega.',
+          faltan: faltaParaCerrar(nueva),
+        });
+        return;
+      }
+      nueva.fecha = nueva.fecha ?? new Date().toISOString();
+      // La garantía se calcula aquí y se queda quieta.
+      const meses = Number(nueva.garantia_meses ?? 12) || 12;
+      nueva.garantia_meses = meses;
+      nueva.garantia_hasta = garantiaHasta(new Date(nueva.fecha), meses);
+    }
+
+    const r = await query(
+      `UPDATE moveadvisor_market_leads SET entrega = $2 WHERE id = $1 RETURNING entrega`,
+      [req.params.id, JSON.stringify(nueva)]
+    );
+    res.json({ ok: true, data: (r.rows[0] as { entrega: Entrega }).entrega, falta: faltaPorEntregar(nueva) });
+  } catch (err) {
+    console.error('[leads] guardar entrega:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'entrega_failed' });
   }
 });

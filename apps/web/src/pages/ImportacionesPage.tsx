@@ -285,6 +285,130 @@ function apunteEnCristiano(a: Apunte): string {
   return `cambió ${a.field}${a.new_value ? ` a «${a.new_value}»` : ""}`;
 }
 
+interface Entrega {
+  fecha?: string;
+  km_salida?: number | null;
+  entregado_por?: string;
+  entregado?: Record<string, boolean>;
+  garantia_meses?: number | null;
+  garantia_hasta?: string | null;
+  firmado?: boolean;
+}
+
+/**
+ * La entrega, y la garantía que empieza ese día.
+ *
+ * Entregar no es un estado: alguien está delante, recibe unas llaves y unos
+ * papeles, y firma. Lo que no se le dé ese día se convierte en una llamada la
+ * semana siguiente.
+ *
+ * Que falte un papel no impide cerrarla —a veces la ficha llega después— pero
+ * se ve lo que falta, que es distinto de no saberlo.
+ */
+function LaEntrega({ leadId }: { leadId: string }) {
+  const [entrega, setEntrega] = useState<Entrega | null>(null);
+  const [lista, setLista] = useState<{ clave: string; que: string }[]>([]);
+  const [km, setKm] = useState("");
+  const [meses, setMeses] = useState("12");
+  const [fallo, setFallo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const carga = useCallback(async () => {
+    const r = await api.get<Entrega>(`/leads/${leadId}/entrega`);
+    if (!r.ok) return;
+    const e = (r.data ?? {}) as Entrega;
+    setEntrega(e);
+    setLista(((r as unknown as { lista?: { clave: string; que: string }[] }).lista) ?? []);
+    if (e.km_salida != null) setKm(String(e.km_salida));
+    if (e.garantia_meses != null) setMeses(String(e.garantia_meses));
+  }, [leadId]);
+
+  useEffect(() => { void carga(); }, [carga]);
+
+  async function guarda(cambios: Record<string, unknown>) {
+    setGuardando(true);
+    setFallo("");
+    const r = await api.patch<Entrega>(`/leads/${leadId}/entrega`, cambios);
+    setGuardando(false);
+    if (!r.ok) {
+      setFallo((r as unknown as { detail?: string }).detail || "No se ha podido guardar.");
+      return;
+    }
+    await carga();
+  }
+
+  if (!entrega || !lista.length) return null;
+
+  const dado = entrega.entregado ?? {};
+  const cerrada = Boolean(entrega.fecha && entrega.firmado);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1.5">La entrega</div>
+
+      {cerrada ? (
+        <div className="mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-800">
+          <span className="font-bold">Entregado el {new Date(entrega.fecha!).toLocaleDateString("es-ES")}</span>
+          {entrega.entregado_por && <span> · por {entrega.entregado_por}</span>}
+          {entrega.garantia_hasta && (
+            <span className="block">
+              Garantía de {entrega.garantia_meses} meses, hasta el{" "}
+              {new Date(entrega.garantia_hasta).toLocaleDateString("es-ES")}
+            </span>
+          )}
+        </div>
+      ) : (
+        <p className="text-[11px] text-brand-400 mb-2">
+          Se marca delante del cliente, uno a uno.
+        </p>
+      )}
+
+      <ul className="space-y-1 mb-2">
+        {lista.map((x) => (
+          <li key={x.clave} className="flex items-center gap-2 text-[12px]">
+            <input type="checkbox" checked={dado[x.clave] === true} disabled={guardando || cerrada}
+                   onChange={(e) => void guarda({ entregado: { [x.clave]: e.target.checked } })} />
+            <span className={dado[x.clave] ? "text-brand-500" : "text-brand-700 font-semibold"}>{x.que}</span>
+          </li>
+        ))}
+      </ul>
+
+      {!cerrada && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] text-brand-500">
+              Kilómetros de salida
+              <input value={km} inputMode="numeric" onChange={(e) => setKm(e.target.value)}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+            <label className="text-[11px] text-brand-500">
+              Garantía (meses)
+              <input value={meses} inputMode="numeric" onChange={(e) => setMeses(e.target.value)}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          </div>
+          <button
+            onClick={() => void guarda({
+              km_salida: km === "" ? null : Number(km),
+              garantia_meses: Number(meses) || 12,
+              firmado: true,
+              cerrar: true,
+            })}
+            disabled={guardando || !km.trim()}
+            className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
+          >
+            Firmado y entregado
+          </button>
+          <p className="text-[10px] text-brand-400 mt-1">
+            La garantía se calcula al entregar y se queda quieta.
+          </p>
+        </>
+      )}
+      {fallo && <p className="text-[11px] text-red-600 mt-1.5">{fallo}</p>}
+    </div>
+  );
+}
+
 /** Un apunte del rastro: quién tocó qué y cuándo. */
 interface Apunte {
   id: string;
@@ -612,6 +736,8 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
             Guardar el día de la entrega
           </button>
         </div>
+
+        <LaEntrega leadId={x.id} />
 
         <Documentos ambito="lead" id={x.id} origen="importacion" />
 
