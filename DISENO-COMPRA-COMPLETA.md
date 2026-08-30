@@ -252,5 +252,18 @@ Por lo que más duele hoy, no por lo más bonito:
 6. ~~**Coste y margen.**~~ **Hecho**, por coche y por origen.
 7. ~~**Entrega y garantía.**~~ **Hecho.**
 
+## Lo que falta y no estaba en la lista
+
+**Proveedores.** Hoy el transportista de un tramo, la gestoría de un trámite y
+el taller de un gasto se escriben a mano, uno por uno. Eso trae tres problemas:
+lo que se escribe mal se queda mal, el mismo proveedor aparece con tres nombres
+distintos, y no hay forma de contestar «cuánto llevamos gastado con este
+transportista» ni «cuánto tarda de media esta gestoría».
+
+Sería una tabla de proveedores con su tipo —transportista, gestoría, taller,
+vendedor—, sus datos de contacto, y elegirlos de una lista en los tres sitios
+donde hoy se escriben. Con lo escrito hasta ahora se puede migrar: los nombres
+que ya estén se convierten en proveedores y se enlazan.
+
 Los tres primeros son de esta semana. Del cuarto en adelante, cada uno es un
 bloque en sí mismo.

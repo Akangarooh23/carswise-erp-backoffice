@@ -18,6 +18,15 @@ fecha futura y cualquier CVC.
 
 - [ ] Está desplegado lo último en los dos proyectos.
 - [ ] Tienes NIF y dirección en tu perfil de PopCar. Sin eso el pago no arranca.
+- [ ] **Sabes a qué transportista y a qué gestoría vas a apuntar.** Hoy se
+      escriben a mano en cada tramo y en cada trámite: no hay lista de
+      proveedores todavía, así que ten los nombres a mano y escríbelos igual
+      siempre. Si no, «Transportes Gómez» y «transportes gomez» serán dos.
+
+> **Pendiente**: una sección de **Proveedores** —transportistas, gestorías,
+> talleres— para elegirlos de una lista en vez de escribirlos. Mientras no
+> exista, lo que se escriba mal se queda mal, y las cuentas por proveedor no se
+> pueden hacer.
 
 ---
 
@@ -92,7 +101,9 @@ Ve a **Transportes**. Tiene que haber un tramo **creado solo**, en *Por
 organizar*.
 
 - [ ] Intenta pasarlo a **Contratado** sin transportista. **Te lo impide.**
-- [ ] Pon transportista y precio, y contrátalo.
+- [ ] Escribe el transportista **tal cual lo vayas a escribir siempre** y su
+      precio, y contrátalo. Hoy es texto libre: no hay lista de proveedores.
+- [ ] Contrátalo.
 - [ ] Pásalo a **Recogido** y luego a **Entregado**.
 - [ ] Sube una foto en **Documentos** del transporte.
 
@@ -117,7 +128,8 @@ de matriculación, ITV de homologación y matriculación.
 - [ ] **No hay ninguna transferencia.** Un coche que nunca ha estado matriculado
       aquí no se transfiere.
 - [ ] Intenta mandar uno a gestoría sin decir cuál. **Te lo impide.**
-- [ ] Ponle gestoría y coste, mándalo, y luego márcalo **Resuelto**.
+- [ ] Ponle gestoría —también a mano, mismo cuidado con el nombre— y coste,
+      mándalo, y luego márcalo **Resuelto**.
 - [ ] Los que estén fuera salen arriba, con los días que llevan.
 
 ---
