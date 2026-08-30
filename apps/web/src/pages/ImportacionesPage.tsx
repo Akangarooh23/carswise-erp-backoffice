@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, descargaConSesion } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
+import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
@@ -633,13 +634,13 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
             <dt className="text-[11px] text-brand-400">Lo pidió</dt>
             <dd className="font-medium text-brand-600">{dia(x.created_at)}</dd>
           </div>
-          {x.meta?.vehicle_url && (
+          {enlaceAlAnuncio(x.meta?.vehicle_url) && (
             <div className="col-span-2">
               <dt className="text-[11px] text-brand-400">Anuncio</dt>
               <dd>
-                <a href={x.meta.vehicle_url} target="_blank" rel="noreferrer"
+                <a href={enlaceAlAnuncio(x.meta?.vehicle_url) ?? undefined} target="_blank" rel="noreferrer"
                    className="text-brand-500 underline underline-offset-2 break-all text-xs">
-                  {x.meta.vehicle_url}
+                  {enlaceAlAnuncio(x.meta?.vehicle_url)}
                 </a>
               </dd>
             </div>

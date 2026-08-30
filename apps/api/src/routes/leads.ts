@@ -14,6 +14,7 @@ export const leadsRouter = Router();
 
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
+import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 
 /** El panel del cliente, a donde apuntan casi todos los correos. */
 const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
@@ -104,7 +105,7 @@ function infoEmailHtml(lead: Lead): string {
       (lead.erp_response
         ? datos([['Respuesta', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
         : '') +
-      (lead.vehicle_url ? enlace('Ver el anuncio del vehículo', lead.vehicle_url) : ''),
+      (enlaceAlAnuncio(lead.vehicle_url) ? enlace('Ver el anuncio del vehículo', enlaceAlAnuncio(lead.vehicle_url)!) : ''),
   });
 }
 

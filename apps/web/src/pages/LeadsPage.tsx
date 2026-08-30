@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
+import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 
 // ─── Leads (solicitudes) types ────────────────────────────────────────────────
 
@@ -1337,8 +1338,8 @@ export default function LeadsPage() {
               <div><span className="text-brand-300 text-xs block">Email</span><span className="font-medium">{selected.user_email}</span></div>
               <div><span className="text-brand-300 text-xs block">Teléfono</span><span className="font-medium">{selected.meta?.phone ?? '—'}</span></div>
               <div className="col-span-2"><span className="text-brand-300 text-xs block">Vehículo</span><span className="font-medium">{selected.title}</span></div>
-              {selected.meta?.vehicle_url && (
-                <div className="col-span-2"><span className="text-brand-300 text-xs block">Enlace al anuncio</span><a href={selected.meta.vehicle_url} target="_blank" rel="noreferrer" className="text-brand-600 underline text-xs truncate block">{selected.meta.vehicle_url}</a></div>
+              {enlaceAlAnuncio(selected.meta?.vehicle_url) && (
+                <div className="col-span-2"><span className="text-brand-300 text-xs block">Enlace al anuncio</span><a href={enlaceAlAnuncio(selected.meta?.vehicle_url) ?? undefined} target="_blank" rel="noreferrer" className="text-brand-600 underline text-xs truncate block">{enlaceAlAnuncio(selected.meta?.vehicle_url)}</a></div>
               )}
               {selected.meta?.portal && (
                 <div><span className="text-brand-300 text-xs block">Portal</span><span className="font-medium capitalize">{selected.meta.portal}</span></div>

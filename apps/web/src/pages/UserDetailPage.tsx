@@ -5,6 +5,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import { StatusBadge } from '../components/ui/Badge.js';
 import type { User, Appointment, Ticket } from '../types/index.js';
+import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 
 interface LeadRecord {
   id: string;
@@ -360,8 +361,8 @@ export default function UserDetailPage() {
                 <tr key={l.id}>
                   <td className="text-xs capitalize text-brand-400">{l.lead_type === 'visit' ? 'Visita' : l.lead_type === 'info' ? 'Info' : 'Pregunta'}</td>
                   <td className="text-sm text-brand-500 max-w-[200px] truncate">
-                    {l.vehicle_url
-                      ? <a href={l.vehicle_url} target="_blank" rel="noreferrer" className="text-acento-texto hover:underline">{l.vehicle_title || '–'}</a>
+                    {enlaceAlAnuncio(l.vehicle_url)
+                      ? <a href={enlaceAlAnuncio(l.vehicle_url) ?? undefined} target="_blank" rel="noreferrer" className="text-acento-texto hover:underline">{l.vehicle_title || '–'}</a>
                       : (l.vehicle_title || '–')}
                   </td>
                   <td className="text-xs text-brand-400">
