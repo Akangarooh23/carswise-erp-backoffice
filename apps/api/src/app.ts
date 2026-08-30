@@ -20,6 +20,7 @@ import { leadsRouter } from './routes/leads.js';
 import { documentosRouter } from './routes/documentos.js';
 import { pedidosRouter } from './routes/pedidos.js';
 import { tramitesRouter } from './routes/tramites.js';
+import { transportesRouter } from './routes/transportes.js';
 import { funnelRouter } from './routes/funnel.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { contractsRouter } from './routes/contracts.js';
@@ -67,6 +68,7 @@ export function createApp() {
   app.use('/api', documentosRouter);
   app.use('/api', pedidosRouter);
   app.use('/api', tramitesRouter);
+  app.use('/api', transportesRouter);
   app.use('/api', funnelRouter);
   app.use('/api', analyticsRouter);
   app.use('/api', contractsRouter);

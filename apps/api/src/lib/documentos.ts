@@ -8,14 +8,15 @@
  * gestoría, el albarán lo trae el transportista—.
  *
  * Por eso un documento se guarda diciendo **de qué cuelga**: de una solicitud, de
- * un pedido o de un trámite.
+ * un pedido, de un trámite o de un transporte —las fotos de la recogida y de la
+ * entrega son de ese viaje, no del coche en general—.
  *
  * Y lo segundo, que es lo que de verdad faltaba: **saber cuáles no están**. Un
  * coche alemán no se matricula sin su ficha ni sin el COC, y eso hay que verlo
  * antes de tenerlo aparcado, no el día que la gestoría lo pide.
  */
 
-export const AMBITOS = ['lead', 'pedido', 'tramite'] as const;
+export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte'] as const;
 export type Ambito = (typeof AMBITOS)[number];
 
 export function esAmbito(v: string): v is Ambito {

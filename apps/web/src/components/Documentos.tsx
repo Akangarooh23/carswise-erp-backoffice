@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, descargaConSesion } from '../api/client.js';
 
 /**
- * Los papeles de algo: de una solicitud, de un pedido o de un trámite.
+ * Los papeles de algo: de una solicitud, de un pedido, de un trámite o de un
+ * transporte.
  *
  * Estaba dentro de la pantalla de Importaciones y solo servía para solicitudes.
  * Los papeles no son de una solicitud: son del coche, y aparecen en sitios
@@ -38,7 +39,7 @@ function pesa(bytes: number): string {
 }
 
 export default function Documentos({ ambito, id, origen }: {
-  ambito: 'lead' | 'pedido' | 'tramite';
+  ambito: 'lead' | 'pedido' | 'tramite' | 'transporte';
   id: string;
   /** Si se dice, sale la lista de lo que falta según a quién se le compró. */
   origen?: string;

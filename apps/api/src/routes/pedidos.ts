@@ -24,6 +24,7 @@ import {
   puedeEncargarse, notaDelCambio,
 } from '../lib/pedidos.js';
 import { abreTramitesDePedido } from './tramites.js';
+import { abreTransporteDePedido } from './transportes.js';
 import {
   comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
   type Comprobadas,
@@ -274,6 +275,23 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         `INSERT INTO erp_pedido_history (pedido_id, operador, campo, antes, despues) VALUES ($1,$2,$3,$4,$5)`,
         [req.params.id, req.actor?.name ?? req.actor?.sub ?? 'desconocido', 'estado', String(previo.estado ?? ''), estado]
       ).catch(() => {});
+    }
+
+    // Confirmado el pedido, hay que traerlo.
+    //
+    // Se abre el primer tramo, por organizar. Solo uno: cuántos hacen falta no lo
+    // sabe el sistema —del vendedor al almacén, del almacén al taller— y los
+    // añade quien los necesite.
+    if (estado === 'Confirmado' && previo.estado !== 'Confirmado') {
+      const fila = (r.rows[0] ?? previo) as Record<string, unknown>;
+      abreTransporteDePedido({
+        pedidoId: req.params.id,
+        vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
+        matricula: String(fila.matricula ?? ""),
+        desde: String(fila.proveedor ?? "") || "El proveedor",
+        hasta: "Nuestras instalaciones",
+        creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
+      }).catch((e: Error) => console.error('[pedidos] transporte del pedido:', e.message));
     }
 
     // Con el coche aquí empieza el papeleo.
