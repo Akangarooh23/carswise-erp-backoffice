@@ -254,7 +254,7 @@ Por lo que más duele hoy, no por lo más bonito:
 
 ## Lo que falta y no estaba en la lista
 
-**Proveedores.** Hoy el transportista de un tramo, la gestoría de un trámite y
+~~**Proveedores.**~~ **Hecho.** Hoy el transportista de un tramo, la gestoría de un trámite y
 el taller de un gasto se escriben a mano, uno por uno. Eso trae tres problemas:
 lo que se escribe mal se queda mal, el mismo proveedor aparece con tres nombres
 distintos, y no hay forma de contestar «cuánto llevamos gastado con este

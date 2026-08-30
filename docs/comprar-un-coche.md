@@ -190,6 +190,28 @@ prometió.
 
 ---
 
+## Proveedores
+
+Transportistas, gestorías, talleres y vendedores. Se eligen de una lista en el
+tramo, en el trámite y en el gasto — y si uno no está, se añade en el momento
+sin salir de la pantalla.
+
+Antes se escribían a mano, y el mismo proveedor acababa con tres nombres. Los
+que ya estaban se trajeron solos: los nombres se agruparon —«Transportes
+Gómez» y «transportes gomez» son uno— y se quedó la primera forma en que
+alguien lo tecleó.
+
+Un proveedor puede ser **varias cosas**: hay talleres que también traen coches.
+
+Al abrir uno sale **lo que llevamos con él**: cuántos transportes, cuántos
+trámites, cuánto reacondicionado, y el total. Esa es la pregunta que justifica
+tener la lista.
+
+Darlo de baja lo quita de las listas, pero **no borra nada**: lo que se le
+compró sigue siendo suyo.
+
+---
+
 ## Dónde está cada cosa
 
 | Qué | Dónde |
@@ -200,6 +222,7 @@ prometió.
 | Lo que se vio al llegar el coche | En su pedido, «Al llegar» |
 | Lo que ha costado y lo que se ha ganado | Abajo del pedido |
 | Quién trae cada coche y por cuánto | **Transportes** |
+| Con quién trabajamos, y cuánto llevamos | **Proveedores** |
 | Las fotos de la recogida y la entrega | Dentro del transporte |
 | Los papeleos y en qué gestoría están | **Gestoría** |
 | La entrega y la garantía | En el expediente del cliente |

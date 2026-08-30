@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
+import ElegirProveedor from '../components/ElegirProveedor.js';
 
 /**
  * Los transportes: cada viaje que hace un coche.
@@ -309,11 +310,14 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar }: {
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <label className="col-span-2 text-[11px] text-brand-400">
+          <div className="col-span-2 text-[11px] text-brand-400">
             Quién lo trae
-            <input value={datos.transportista} onChange={(e) => setDatos((d) => ({ ...d, transportista: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
+            <div className="mt-0.5">
+              <ElegirProveedor tipo="transportista" valor={datos.transportista}
+                               placeholder="Elegir transportista…"
+                               onCambio={(v) => setDatos((d) => ({ ...d, transportista: v }))} />
+            </div>
+          </div>
           <label className="text-[11px] text-brand-400">
             Coste
             <input value={datos.coste} inputMode="decimal"
@@ -390,9 +394,9 @@ function TramoNuevo({ onCerrar, onCreado, onError }: {
           <input placeholder="Pedido (si sale de uno)" value={datos.pedido_id}
                  onChange={(e) => setDatos((d) => ({ ...d, pedido_id: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          <input placeholder="Quién lo trae" value={datos.transportista}
-                 onChange={(e) => setDatos((d) => ({ ...d, transportista: e.target.value }))}
-                 className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <ElegirProveedor tipo="transportista" valor={datos.transportista}
+                           placeholder="Quién lo trae"
+                           onCambio={(v) => setDatos((d) => ({ ...d, transportista: v }))} />
           <input placeholder="Coste" value={datos.coste} inputMode="decimal"
                  onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />

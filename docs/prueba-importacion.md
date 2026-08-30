@@ -18,15 +18,9 @@ fecha futura y cualquier CVC.
 
 - [ ] Está desplegado lo último en los dos proyectos.
 - [ ] Tienes NIF y dirección en tu perfil de PopCar. Sin eso el pago no arranca.
-- [ ] **Sabes a qué transportista y a qué gestoría vas a apuntar.** Hoy se
-      escriben a mano en cada tramo y en cada trámite: no hay lista de
-      proveedores todavía, así que ten los nombres a mano y escríbelos igual
-      siempre. Si no, «Transportes Gómez» y «transportes gomez» serán dos.
-
-> **Pendiente**: una sección de **Proveedores** —transportistas, gestorías,
-> talleres— para elegirlos de una lista en vez de escribirlos. Mientras no
-> exista, lo que se escriba mal se queda mal, y las cuentas por proveedor no se
-> pueden hacer.
+- [ ] **Sabes a qué transportista y a qué gestoría vas a apuntar.** Se eligen
+      de una lista en **Proveedores**; si no está, se añade en el momento sin
+      salir de la pantalla.
 
 ---
 
@@ -101,9 +95,9 @@ Ve a **Transportes**. Tiene que haber un tramo **creado solo**, en *Por
 organizar*.
 
 - [ ] Intenta pasarlo a **Contratado** sin transportista. **Te lo impide.**
-- [ ] Escribe el transportista **tal cual lo vayas a escribir siempre** y su
-      precio, y contrátalo. Hoy es texto libre: no hay lista de proveedores.
-- [ ] Contrátalo.
+- [ ] Elige el transportista de la lista. Si no está, pulsa **+ Añadir uno
+      nuevo** y escríbelo: se queda dado de alta.
+- [ ] Pon el precio y contrátalo.
 - [ ] Pásalo a **Recogido** y luego a **Entregado**.
 - [ ] Sube una foto en **Documentos** del transporte.
 
@@ -128,8 +122,8 @@ de matriculación, ITV de homologación y matriculación.
 - [ ] **No hay ninguna transferencia.** Un coche que nunca ha estado matriculado
       aquí no se transfiere.
 - [ ] Intenta mandar uno a gestoría sin decir cuál. **Te lo impide.**
-- [ ] Ponle gestoría —también a mano, mismo cuidado con el nombre— y coste,
-      mándalo, y luego márcalo **Resuelto**.
+- [ ] Elígele gestoría de la lista y ponle coste, mándalo, y luego márcalo
+      **Resuelto**.
 - [ ] Los que estén fuera salen arriba, con los días que llevan.
 
 ---
@@ -168,6 +162,19 @@ Vuelve a PopCar, a su panel:
 - [ ] Ha ido cambiando de paso a lo largo de toda la prueba.
 - [ ] Sus facturas están en Facturación.
 - [ ] **No ve nada** del proveedor, ni del coste, ni de las notas internas.
+
+---
+
+## 11 · Con quién has trabajado · **en el ERP**
+
+Ve a **Proveedores**.
+
+- [ ] Están el transportista y la gestoría que has usado.
+- [ ] Abre el transportista: en **Lo que llevamos con él** tiene que salir ese
+      transporte con su importe.
+- [ ] Abre la gestoría: sus trámites y lo que han costado.
+
+Esa es la pregunta que justifica tener la lista: cuánto llevamos con cada uno.
 
 ---
 

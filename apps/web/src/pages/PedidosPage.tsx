@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
+import ElegirProveedor from '../components/ElegirProveedor.js';
 
 /**
  * Los pedidos: coches encargados a un proveedor.
@@ -652,11 +653,14 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <label className="col-span-2 text-[11px] text-brand-400">
+          <div className="col-span-2 text-[11px] text-brand-400">
             Proveedor
-            <input value={datos.proveedor} onChange={(e) => setDatos((d) => ({ ...d, proveedor: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
+            <div className="mt-0.5">
+              <ElegirProveedor tipo="vendedor" valor={datos.proveedor}
+                               placeholder="A quién se le compra…"
+                               onCambio={(v) => setDatos((d) => ({ ...d, proveedor: v }))} />
+            </div>
+          </div>
           <label className="text-[11px] text-brand-400">
             Importe
             <input value={datos.importe} inputMode="decimal"
@@ -894,9 +898,9 @@ function PedidoNuevo({ onCerrar, onCreado, onError }: {
           <input placeholder="Qué coche" value={datos.vehiculo_titulo}
                  onChange={(e) => setDatos((d) => ({ ...d, vehiculo_titulo: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          <input placeholder="A quién se le pide" value={datos.proveedor}
-                 onChange={(e) => setDatos((d) => ({ ...d, proveedor: e.target.value }))}
-                 className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <ElegirProveedor tipo="vendedor" valor={datos.proveedor}
+                           placeholder="A quién se le pide"
+                           onCambio={(v) => setDatos((d) => ({ ...d, proveedor: v }))} />
           <input placeholder="Importe" value={datos.importe} inputMode="decimal"
                  onChange={(e) => setDatos((d) => ({ ...d, importe: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
+import ElegirProveedor from '../components/ElegirProveedor.js';
 
 /**
  * Gestoría: los papeleos de los coches.
@@ -362,12 +363,14 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
               {habituales.map((h) => <option key={h} value={h} />)}
             </datalist>
           </label>
-          <label className="col-span-2 text-[11px] text-brand-400">
+          <div className="col-span-2 text-[11px] text-brand-400">
             Quién lo lleva
-            <input value={datos.gestoria} placeholder="Gestoría"
-                   onChange={(e) => setDatos((d) => ({ ...d, gestoria: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
+            <div className="mt-0.5">
+              <ElegirProveedor tipo="gestoria" valor={datos.gestoria}
+                               placeholder="Elegir gestoría…"
+                               onCambio={(v) => setDatos((d) => ({ ...d, gestoria: v }))} />
+            </div>
+          </div>
           <label className="text-[11px] text-brand-400">
             Matrícula
             <input value={datos.matricula} onChange={(e) => setDatos((d) => ({ ...d, matricula: e.target.value }))}
@@ -454,9 +457,9 @@ function TramiteNuevo({ habituales, onCerrar, onCreado, onError }: {
           <input placeholder="Coche (si no hay matrícula todavía)" value={datos.vehiculo_titulo}
                  onChange={(e) => setDatos((d) => ({ ...d, vehiculo_titulo: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          <input placeholder="Gestoría (si ya se sabe)" value={datos.gestoria}
-                 onChange={(e) => setDatos((d) => ({ ...d, gestoria: e.target.value }))}
-                 className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <ElegirProveedor tipo="gestoria" valor={datos.gestoria}
+                           placeholder="Gestoría (si ya se sabe)"
+                           onCambio={(v) => setDatos((d) => ({ ...d, gestoria: v }))} />
           <input placeholder="Correo del cliente" value={datos.cliente_email}
                  onChange={(e) => setDatos((d) => ({ ...d, cliente_email: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />

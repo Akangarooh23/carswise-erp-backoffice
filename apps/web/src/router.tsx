@@ -27,6 +27,7 @@ const ImportacionesPage = lazy(() => import('./pages/ImportacionesPage.js'));
 const PedidosPage       = lazy(() => import('./pages/PedidosPage.js'));
 const GestoriaPage      = lazy(() => import('./pages/GestoriaPage.js'));
 const TransportesPage   = lazy(() => import('./pages/TransportesPage.js'));
+const ProveedoresPage   = lazy(() => import('./pages/ProveedoresPage.js'));
 const FunnelPage            = lazy(() => import('./pages/FunnelPage.js'));
 const ConsentimientosPage       = lazy(() => import('./pages/ConsentimientosPage.js'));
 const MarketingAnalyticsPage    = lazy(() => import('./pages/MarketingAnalyticsPage.js'));
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'pedidos',           element: <Suspense fallback={<Loader />}><PedidosPage /></Suspense> },
       { path: 'gestoria',          element: <Suspense fallback={<Loader />}><GestoriaPage /></Suspense> },
       { path: 'transportes',       element: <Suspense fallback={<Loader />}><TransportesPage /></Suspense> },
+      { path: 'proveedores',       element: <Suspense fallback={<Loader />}><ProveedoresPage /></Suspense> },
       { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },
       { path: 'consentimientos',      element: <Suspense fallback={<Loader />}><ConsentimientosPage /></Suspense> },
       // La guia de estilo. Sin enlace en el menu: es para quien construye, no
