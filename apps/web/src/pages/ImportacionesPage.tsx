@@ -3,7 +3,7 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
-  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio,
+  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
 } from '../lib/expedientes-importacion.js';
 
@@ -276,7 +276,7 @@ export default function ImportacionesPage() {
  * repetido: se dice que la escribió, y se lee arriba, que es donde vive.
  */
 function apunteEnCristiano(a: Apunte): string {
-  if (a.field === "erp_notes")         return "escribió en las notas internas";
+  if (a.field === "erp_notes")         return "escribió:";
   if (a.field === "erp_response")      return "escribió al cliente";
   if (a.field === "deposit_paid_at")   return `marcó la fianza como ${a.new_value || "sin cobrar"}`;
   if (a.field === "delivery_estimate") return `puso la fecha de entrega: ${a.new_value || "sin fecha"}`;
@@ -582,6 +582,14 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                   <span className="text-brand-400">{dia(a.created_at)}</span>{" · "}
                   <strong className="font-semibold">{a.operator}</strong>{" "}
                   {apunteEnCristiano(a)}
+                  {/* La nota entera, aquí mismo. Un rastro que dice «escribió una
+                      nota» y te obliga a subir a buscarla no sirve de nada: lo
+                      que se quiere saber es qué se escribió aquel día. */}
+                  {a.field === "erp_notes" && loQueSeEscribio(a.old_value, a.new_value) && (
+                    <span className="block mt-0.5 pl-2 border-l-2 border-brand-200 text-brand-600 whitespace-pre-wrap">
+                      {loQueSeEscribio(a.old_value, a.new_value)}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

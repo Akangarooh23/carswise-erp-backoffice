@@ -10,7 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, puedePedirlo, puedeDarFecha,
-  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio,
+  agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Expediente,
 } from './expedientes-importacion.js';
 
@@ -167,5 +167,29 @@ describe('la nota que deja un cambio de etapa', () => {
   test('los espacios de más no cuentan como motivo', () => {
     const r = notaDelCambio('', 'Pendiente', 'Contactado', '  vale  ', CUANDO);
     assert.match(r, /\] vale$/, 'se guarda limpio');
+  });
+});
+
+describe('lo que se escribió esta vez', () => {
+  test('de un cuaderno que crece, solo la línea nueva', () => {
+    const antes = '[29 ago 2026 · Pendiente → Contactado] Primera llamada';
+    const linea = '[30 ago 2026 · Contactado → Fianza pagada] Ha pagado';
+    const despues = `${antes}\n${linea}`;
+    assert.equal(loQueSeEscribio(antes, despues), linea,
+      'enseñar el cuaderno entero en cada apunte lo repite una vez por línea');
+  });
+
+  test('la primera nota es la nota entera', () => {
+    assert.equal(loQueSeEscribio('', 'Le he llamado'), 'Le he llamado');
+    assert.equal(loQueSeEscribio(null, 'Le he llamado'), 'Le he llamado');
+  });
+
+  test('si alguien corrige lo que había, se enseña como quedó', () => {
+    assert.equal(loQueSeEscribio('Le he llamdo', 'Le he llamado'), 'Le he llamado',
+      'eso ya no es lo añadido: lo único cierto es cómo quedó');
+  });
+
+  test('borrar la nota no escribe nada', () => {
+    assert.equal(loQueSeEscribio('algo', ''), '');
   });
 });

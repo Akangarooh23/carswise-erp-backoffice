@@ -157,3 +157,22 @@ export function notaDelCambio(
   const previas = (notasActuales || '').trim();
   return previas ? `${previas}\n${entrada}` : entrada;
 }
+
+/**
+ * Lo que se escribió esta vez en las notas.
+ *
+ * El rastro guarda el antes y el después enteros, y las notas se van sumando:
+ * enseñar el después en cada apunte sería repetir el cuaderno entero una vez
+ * por línea, y cuanto más largo, peor. Lo que interesa de un apunte es lo que
+ * se añadió ese día.
+ *
+ * Si el texto no crece sino que cambia —alguien corrigió lo que había—, eso ya
+ * no es «lo añadido»: entonces se enseña como quedó, que es lo único cierto.
+ */
+export function loQueSeEscribio(antes: string | null, despues: string | null): string {
+  const viejo = (antes ?? '').trim();
+  const nuevo = (despues ?? '').trim();
+  if (!nuevo) return '';
+  if (viejo && nuevo.startsWith(viejo)) return nuevo.slice(viejo.length).trim();
+  return nuevo;
+}
