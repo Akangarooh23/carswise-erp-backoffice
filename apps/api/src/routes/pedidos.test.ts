@@ -73,6 +73,7 @@ before(async () => {
       // Los valores por defecto de la tabla, que aquí no los pone nadie.
       if (!fila.estado) fila.estado = 'Borrador';
       if (fila.comprobaciones === undefined) fila.comprobaciones = {};
+      if (fila.recepcion === undefined) fila.recepcion = {};
       if (fila.notas === undefined) fila.notas = '';
       pedidos.push(fila);
       siguiente += 1;
@@ -90,7 +91,8 @@ before(async () => {
         const [col, val] = a.split('=').map((x) => x.trim());
         if (val.startsWith('$')) {
           const v = p[Number(val.slice(1)) - 1];
-          fila[col] = col === 'comprobaciones' && typeof v === 'string' ? JSON.parse(v) : v;
+          const esJson = col === 'comprobaciones' || col === 'recepcion';
+          fila[col] = esJson && typeof v === 'string' ? JSON.parse(v) : v;
         }
         else if (/NOW\(\)/.test(val)) fila[col] = '2026-08-30T10:00:00Z';
       }
@@ -240,6 +242,65 @@ describe('comprarle a un particular', { concurrency: 1 }, () => {
     const id = (alta.cuerpo.data as Fila).id;
     const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Pedido', nota: 'encargado' });
     assert.equal(r.codigo, 200);
+  });
+});
+
+describe('mirar el coche al llegar', { concurrency: 1 }, () => {
+  async function pedidoListo() {
+    const alta = await api('/pedidos', 'POST', {
+      origen: 'concesionario', vehiculo_titulo: 'Peugeot 208', proveedor: 'Autos Paco',
+    });
+    return (alta.cuerpo.data as Fila).id as string;
+  }
+
+  test('no se da por recibido sin leer los kilómetros ni contar las llaves', async () => {
+    const id = await pedidoListo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Recibido', nota: 'ha llegado' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'falta_mirar_el_coche');
+    assert.equal((r.cuerpo.faltan as unknown[]).length, 2);
+  });
+
+  test('con lo mirado, sí, y queda quién lo miró', async () => {
+    const id = await pedidoListo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', {
+      estado: 'Recibido', nota: 'ha llegado',
+      recepcion: { km: 84000, llaves: 2, danos: 'Arañazo en el paragolpes' },
+    });
+    assert.equal(r.codigo, 200);
+    const fila = pedidos.find((x) => x.id === id)!;
+    const rec = fila.recepcion as Record<string, unknown>;
+    assert.equal(rec.km, 84000);
+    assert.equal(rec.llaves, 2);
+    assert.equal(rec.revisado_por, 'Ana');
+  });
+
+  test('decir que no es lo que se compró obliga a decir qué se reclama', async () => {
+    const id = await pedidoListo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', {
+      recepcion: { km: 84000, llaves: 1, conforme: false },
+    });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'falta_la_reclamacion');
+  });
+
+  test('con la reclamación escrita se guarda', async () => {
+    const id = await pedidoListo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', {
+      recepcion: { km: 84000, llaves: 1, conforme: false, reclamacion: 'Falta la segunda llave' },
+    });
+    assert.equal(r.codigo, 200);
+    const rec = pedidos.find((x) => x.id === id)!.recepcion as Record<string, unknown>;
+    assert.match(String(rec.reclamacion), /segunda llave/);
+  });
+
+  test('anotar algo después no borra lo de antes', async () => {
+    const id = await pedidoListo();
+    await api(`/pedidos/${id}`, 'PATCH', { recepcion: { km: 84000, llaves: 2 } });
+    await api(`/pedidos/${id}`, 'PATCH', { recepcion: { observaciones: 'Sin libro de mantenimiento' } });
+    const rec = pedidos.find((x) => x.id === id)!.recepcion as Record<string, unknown>;
+    assert.equal(rec.km, 84000);
+    assert.match(String(rec.observaciones), /Sin libro/);
   });
 });
 

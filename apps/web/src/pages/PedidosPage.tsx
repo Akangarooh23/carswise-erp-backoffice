@@ -51,6 +51,18 @@ interface Comprobacion {
 
 interface Marcada { ok?: boolean; por?: string; el?: string }
 
+interface Recepcion {
+  km?: number | null;
+  llaves?: number | null;
+  documentacion?: string;
+  danos?: string;
+  observaciones?: string;
+  conforme?: boolean;
+  reclamacion?: string;
+  revisado_por?: string;
+  revisado_el?: string;
+}
+
 interface Pedido {
   id: string;
   origen: string;
@@ -66,6 +78,7 @@ interface Pedido {
   fecha_estimada: string | null;
   notas: string;
   comprobaciones: Record<string, Marcada> | null;
+  recepcion: Recepcion | null;
   created_at: string;
 }
 
@@ -311,6 +324,104 @@ function Comprobaciones({ p, guardando, onCambiar }: {
 }
 
 /**
+ * Lo que se ve del coche al llegar.
+ *
+ * Kilómetros y llaves antes que nada: son los dos datos que pierden valor con
+ * el tiempo. Los kilómetros hay que leerlos antes de moverlo y las llaves hay
+ * que contarlas delante de quien lo trae — descubrir que falta una el día que
+ * se entrega al cliente es descubrirlo tarde, y cuesta cientos de euros.
+ *
+ * Y si no es lo que se compró, hay que poder decirlo aquí y ahora: pasada una
+ * semana ya no hay forma de sostener que el golpe venía de fábrica.
+ */
+function AlLlegar({ p, guardando, onCambiar }: {
+  p: Pedido; guardando: boolean; onCambiar: (c: Record<string, unknown>) => void;
+}) {
+  const r = p.recepcion ?? {};
+  const [datos, setDatos] = useState({
+    km: r.km != null ? String(r.km) : "",
+    llaves: r.llaves != null ? String(r.llaves) : "",
+    danos: r.danos ?? "",
+    observaciones: r.observaciones ?? "",
+    conforme: r.conforme !== false,
+    reclamacion: r.reclamacion ?? "",
+  });
+
+  const mirado = r.km != null && r.llaves != null;
+
+  return (
+    <div className={`mb-4 p-3 rounded-xl border ${mirado ? "bg-brand-50 border-brand-200" : "bg-amber-50 border-amber-200"}`}>
+      <div className={`text-xs font-bold mb-1 ${mirado ? "text-brand-700" : "text-amber-800"}`}>
+        {mirado ? "Al llegar" : "Al llegar: hay que mirarlo"}
+      </div>
+      <p className={`text-[11px] mb-2 ${mirado ? "text-brand-500" : "text-amber-700/80"}`}>
+        Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae.
+      </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-[11px] text-brand-500">
+          Kilómetros que marca
+          <input value={datos.km} inputMode="numeric"
+                 onChange={(e) => setDatos((d) => ({ ...d, km: e.target.value }))}
+                 className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+        </label>
+        <label className="text-[11px] text-brand-500">
+          Llaves
+          <input value={datos.llaves} inputMode="numeric"
+                 onChange={(e) => setDatos((d) => ({ ...d, llaves: e.target.value }))}
+                 className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+        </label>
+        <label className="col-span-2 text-[11px] text-brand-500">
+          Daños
+          <textarea value={datos.danos} rows={2}
+                    placeholder="Golpes, arañazos, ruedas…"
+                    onChange={(e) => setDatos((d) => ({ ...d, danos: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+        </label>
+        <label className="col-span-2 text-[11px] text-brand-500">
+          Otras observaciones
+          <textarea value={datos.observaciones} rows={2}
+                    placeholder="Libro de mantenimiento, ITV, documentación que traía…"
+                    onChange={(e) => setDatos((d) => ({ ...d, observaciones: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+        </label>
+      </div>
+
+      <label className="flex items-center gap-2 mt-2 text-[12px] text-brand-600">
+        <input type="checkbox" checked={!datos.conforme}
+               onChange={(e) => setDatos((d) => ({ ...d, conforme: !e.target.checked }))} />
+        No es lo que se compró
+      </label>
+      {!datos.conforme && (
+        <textarea value={datos.reclamacion} rows={2}
+                  placeholder="Qué se le reclama al proveedor…"
+                  onChange={(e) => setDatos((d) => ({ ...d, reclamacion: e.target.value }))}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-red-200 rounded-lg bg-white" />
+      )}
+
+      <button
+        onClick={() => onCambiar({ recepcion: {
+          km: datos.km === "" ? null : Number(datos.km),
+          llaves: datos.llaves === "" ? null : Number(datos.llaves),
+          danos: datos.danos, observaciones: datos.observaciones,
+          conforme: datos.conforme, reclamacion: datos.reclamacion,
+        } })}
+        disabled={guardando || (!datos.conforme && !datos.reclamacion.trim())}
+        className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
+      >
+        Guardar lo que se ha visto
+      </button>
+
+      {r.revisado_por && (
+        <p className="text-[10px] text-brand-400 mt-1.5">
+          Lo miró {r.revisado_por}{r.revisado_el ? ` · ${new Date(r.revisado_el).toLocaleDateString("es-ES")}` : ""}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * Un pedido abierto.
  *
  * Cambiar de estado pide decir qué ha pasado, igual que en un expediente: el
@@ -341,6 +452,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
         </div>
 
         <Comprobaciones p={p} guardando={guardando} onCambiar={onCambiar} />
+        <AlLlegar p={p} guardando={guardando} onCambiar={onCambiar} />
 
         <div className="mb-4">
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Estado</div>

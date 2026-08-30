@@ -29,6 +29,9 @@ import {
   comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
   type Comprobadas,
 } from '../lib/comprobaciones.js';
+import {
+  faltaPorMirar, puedeDarsePorRecibido, reclamacionCompleta, anota, type Recepcion,
+} from '../lib/recepcion.js';
 
 export const pedidosRouter = Router();
 
@@ -52,6 +55,8 @@ const ENSURE_TABLE = `
     notas          TEXT NOT NULL DEFAULT '',
     -- Lo que se miró antes de comprarle a un particular, con quién y cuándo.
     comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- Lo que se vio del coche al llegar: kilómetros, llaves, daños.
+    recepcion      JSONB NOT NULL DEFAULT '{}'::jsonb,
     creado_por     TEXT NOT NULL DEFAULT '',
     created_at     TIMESTAMPTZ DEFAULT NOW(),
     updated_at     TIMESTAMPTZ DEFAULT NOW()
@@ -87,11 +92,15 @@ const ENSURE_INDEX = `
 const ENSURE_COMPROBACIONES = `
   ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb`;
 
+const ENSURE_RECEPCION = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS recepcion JSONB NOT NULL DEFAULT '{}'::jsonb`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_COMPROBACIONES, []).catch(() => {});
+  await query(ENSURE_RECEPCION, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_UNIQUE_LEAD, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
@@ -106,7 +115,7 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
                 importe::numeric AS importe, cliente_email, lead_id,
                 TO_CHAR(fecha_estimada, 'YYYY-MM-DD') AS fecha_estimada,
                 fecha_pedido, fecha_confirmado, fecha_recepcion,
-                notas, comprobaciones, creado_por, created_at, updated_at`;
+                notas, comprobaciones, recepcion, creado_por, created_at, updated_at`;
 
 // ── Qué hay que comprobar antes de encargar, según el origen ───────────────
 pedidosRouter.get('/pedidos/comprobaciones/:origen', requireRole(['admin', 'support', 'operations', 'sales']), (req, res) => {
@@ -217,6 +226,37 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       return;
     }
 
+    /**
+     * Un coche no se da por recibido sin haberlo mirado.
+     *
+     * Los kilómetros hay que leerlos antes de moverlo y las llaves hay que
+     * contarlas delante de quien lo trae. Los dos datos pierden valor con el
+     * tiempo: dentro de una semana ya no hay forma de sostener que faltaba una
+     * llave o que el cuentakilómetros marcaba otra cosa.
+     */
+    const recepcionPrevia = (previo.recepcion ?? {}) as Recepcion;
+    const recepcionNueva = req.body?.recepcion
+      ? anota(recepcionPrevia, req.body.recepcion as Recepcion, req.actor?.name ?? req.actor?.sub ?? "desconocido")
+      : recepcionPrevia;
+
+    if (estado === 'Recibido' && !puedeDarsePorRecibido(recepcionNueva)) {
+      res.status(409).json({
+        ok: false, error: 'falta_mirar_el_coche',
+        detail: 'Antes de darlo por recibido hay que mirarlo: eso no se puede hacer después.',
+        faltan: faltaPorMirar(recepcionNueva),
+      });
+      return;
+    }
+
+    // Decir que no está conforme sin decir qué se reclama no sirve de nada.
+    if (!reclamacionCompleta(recepcionNueva)) {
+      res.status(409).json({
+        ok: false, error: 'falta_la_reclamacion',
+        detail: 'Has marcado que no es lo que se compró. Escribe qué se le reclama al proveedor.',
+      });
+      return;
+    }
+
     // Encargar un coche es encargárselo a alguien.
     if (estado && estado !== 'Borrador' && estado !== CANCELADO && !puedeEncargarse({
       proveedor: nt(req.body?.proveedor) || String(previo.proveedor ?? ''),
@@ -237,6 +277,8 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
     }
     if (req.body?.importe !== undefined) pon('importe', req.body.importe === '' || req.body.importe === null ? null : Number(req.body.importe));
     if (req.body?.fecha_estimada !== undefined) pon('fecha_estimada', nt(req.body.fecha_estimada) || null);
+
+    if (req.body?.recepcion) pon('recepcion', JSON.stringify(recepcionNueva));
 
     // Marcar o desmarcar una comprobación, con quién y cuándo.
     if (nt(req.body?.comprobacion)) {

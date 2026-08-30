@@ -248,7 +248,7 @@ Por lo que más duele hoy, no por lo más bonito:
 3. ~~**Comprobaciones del particular.**~~ **Hecho.** No se encarga un coche a
    una persona sin haber mirado las cuatro, y queda quién las miró.
 4. ~~**Transporte** con sus tramos, sus costes y sus fotos.~~ **Hecho.**
-5. **Recepción** del coche.
+5. ~~**Recepción** del coche.~~ **Hecho.**
 6. **Coste y margen.**
 7. **Entrega y garantía.**
 
