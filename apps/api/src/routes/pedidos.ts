@@ -25,6 +25,7 @@ import {
 } from '../lib/pedidos.js';
 import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
+import { costeDelCoche, margenDelCoche } from '../lib/coste.js';
 import {
   comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
   type Comprobadas,
@@ -438,3 +439,45 @@ export async function creaPedidoDeImportacion(datos: {
   return id;
 }
 export { ESTADOS_PEDIDO };
+
+/**
+ * Lo que ha costado un coche, y lo que se ha ganado con él.
+ *
+ * Se junta aquí porque las piezas viven en sitios distintos: el precio en el
+ * pedido, el transporte en sus tramos, la gestoría en sus trámites. Nadie tenía
+ * la suma, y sin ella no se sabe si un camino de compra deja dinero.
+ */
+pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  try {
+    await prepara();
+    const p = await query(`SELECT ${CAMPOS} FROM erp_pedidos WHERE id = $1`, [req.params.id]);
+    const pedido = p.rows[0] as Record<string, unknown> | undefined;
+    if (!pedido) { res.status(404).json({ ok: false, error: 'pedido_no_encontrado' }); return; }
+
+    const [transportes, tramites] = await Promise.all([
+      query(`SELECT coste::numeric AS coste FROM erp_transportes WHERE pedido_id = $1`, [req.params.id])
+        .catch(() => ({ rows: [] as { coste?: unknown }[] })),
+      query(`SELECT coste::numeric AS coste FROM erp_tramites WHERE pedido_id = $1`, [req.params.id])
+        .catch(() => ({ rows: [] as { coste?: unknown }[] })),
+    ]);
+
+    const coste = costeDelCoche({
+      precioProveedor: pedido.importe,
+      transportes: transportes.rows as { coste?: unknown }[],
+      tramites: tramites.rows as { coste?: unknown }[],
+    });
+
+    // Lo que se cobró, si este pedido salió de una solicitud que acabó en venta.
+    let venta: unknown = null;
+    if (pedido.lead_id) {
+      const l = await query(`SELECT sale_price FROM moveadvisor_market_leads WHERE id = $1`, [pedido.lead_id])
+        .catch(() => ({ rows: [] as { sale_price?: unknown }[] }));
+      venta = (l.rows[0] as { sale_price?: unknown } | undefined)?.sale_price ?? null;
+    }
+
+    res.json({ ok: true, data: { ...coste, margen: margenDelCoche(coste.total, venta) } });
+  } catch (err) {
+    console.error('[pedidos] coste:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'pedidos_failed' });
+  }
+});

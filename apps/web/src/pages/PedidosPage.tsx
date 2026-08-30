@@ -556,6 +556,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           )}
         </dl>
 
+        <LoQueCuesta id={p.id} />
+
         <Documentos ambito="pedido" id={p.id} origen={p.origen} />
 
         {p.notas && (
@@ -565,6 +567,64 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Lo que ha costado el coche.
+ *
+ * Las piezas viven en sitios distintos —el precio en el pedido, el transporte en
+ * sus tramos, la gestoría en sus trámites— y nadie tenía la suma. Sin ella no se
+ * sabe si un camino de compra deja dinero: Alemania parece barato hasta que se
+ * suman el transporte y el impuesto.
+ */
+function LoQueCuesta({ id }: { id: string }) {
+  const [coste, setCoste] = useState<{
+    partidas: { concepto: string; importe: number }[];
+    total: number;
+    margen: { coste: number; venta: number; margen: number; porcentaje: number | null } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    void api.get<typeof coste>(`/pedidos/${id}/coste`).then((r) => {
+      if (r.ok && r.data) setCoste(r.data as never);
+    });
+  }, [id]);
+
+  if (!coste) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-2">Lo que cuesta</div>
+      <table className="w-full text-[12px]">
+        <tbody>
+          {coste.partidas.map((x) => (
+            <tr key={x.concepto}>
+              <td className="py-0.5 text-brand-500">{x.concepto}</td>
+              <td className="py-0.5 text-right tabular-nums text-brand-600">{eur(x.importe)}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-brand-200">
+            <td className="pt-1 font-bold text-brand-600">Total</td>
+            <td className="pt-1 text-right tabular-nums font-bold text-brand-600">{eur(coste.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {coste.margen ? (
+        <div className={`mt-2 px-3 py-2 rounded-lg text-[12px] ${coste.margen.margen >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+          <span className="font-bold">
+            {coste.margen.margen >= 0 ? "Margen" : "Pérdida"}: {eur(Math.abs(coste.margen.margen))}
+          </span>
+          {coste.margen.porcentaje != null && <span> · {coste.margen.porcentaje} % sobre la venta</span>}
+          <span className="block opacity-80">Vendido por {eur(coste.margen.venta)}</span>
+        </div>
+      ) : (
+        <p className="text-[11px] text-brand-400 mt-1.5">
+          Todavía sin vender: esto es lo que llevamos puesto, no una pérdida.
+        </p>
+      )}
     </div>
   );
 }
