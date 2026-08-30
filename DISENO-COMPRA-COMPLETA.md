@@ -240,8 +240,9 @@ No todo. La regla, que ya se aplica hoy y conviene escribir:
 
 Por lo que más duele hoy, no por lo más bonito:
 
-1. **Documentos donde toquen y lista por origen.** Es lo que ya te ha faltado y
-   lo que bloquea todo lo demás.
+1. ~~**Documentos donde toquen y lista por origen.**~~ **Hecho.** El almacén
+   entiende de solicitudes, pedidos y trámites, cada papel se sube diciendo cuál
+   es, y cada pedido enseña lo que falta según a quién se le compró.
 2. **Trámites de los otros orígenes**: transferencia al comprar y al vender. Hoy
    solo hay importación, y transferir es lo que pasa en todas las ventas.
 3. **Comprobaciones del particular.** Poco código, evita el problema caro.

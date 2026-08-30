@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import Documentos from '../components/Documentos.js';
 
 /**
  * Los pedidos: coches encargados a un proveedor.
@@ -366,6 +367,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
             </div>
           )}
         </dl>
+
+        <Documentos ambito="pedido" id={p.id} origen={p.origen} />
 
         {p.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">

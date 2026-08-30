@@ -1,21 +1,16 @@
 /**
- * Los papeles de un expediente.
+ * Los papeles, colgados de donde toque.
  *
- * Una importación deja documentos por el camino: la factura del vendedor
- * alemán, la ficha técnica, el justificante del impuesto de matriculación, el
- * permiso de circulación. Hasta ahora no había dónde ponerlos, así que vivían en
- * el correo de quien los recibiera — y el día que esa persona no está, el
- * expediente no tiene nada.
+ * Sustituye al almacén que solo entendía de solicitudes. Un documento se guarda
+ * diciendo de qué cuelga —una solicitud, un pedido o un trámite— y **qué papel
+ * es**, para poder decir cuáles faltan.
+ *
+ * Lo de antes no se pierde: al arrancar se copian los que hubiera, marcados como
+ * de una solicitud, y la tabla vieja se queda donde está por si acaso.
  *
  * **No se sirven por su dirección pública.** El almacén de Supabase lo es, y
- * estos papeles llevan matrícula, nombre y dirección de una persona. Lo que se
- * guarda es la ruta; para verlos hay que pedirlos aquí, y aquí se exige sesión
- * del ERP. Mientras el cubo siga siendo público eso no es un candado perfecto
- * —quien acierte la ruta entra—, y por eso el nombre lleva un tramo aleatorio;
- * el candado de verdad es mudar el cubo, que está en Pendientes.
- *
- * Son internos: el cliente no los ve en su panel. Lo que tenga que llegarle se
- * le manda, que es lo que ya se hace.
+ * estos papeles llevan matrícula, nombre y dirección de una persona. Se guarda la
+ * ruta, y para verlos hay que pedirlos aquí, que exige sesión del ERP.
  */
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
@@ -23,15 +18,18 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64, TIPOS_ACEPTADOS } from '../lib/ficheros.js';
+import { esAmbito, papelesEsperados, papelesQueFaltan } from '../lib/documentos.js';
 
-export const leadDocumentosRouter = Router();
+export const documentosRouter = Router();
 
 const BUCKET = 'vehicle-files';
 
 const ENSURE_TABLE = `
-  CREATE TABLE IF NOT EXISTS erp_lead_documentos (
+  CREATE TABLE IF NOT EXISTS erp_documentos (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lead_id     TEXT NOT NULL,
+    ambito      TEXT NOT NULL,
+    ambito_id   TEXT NOT NULL,
+    papel       TEXT NOT NULL DEFAULT '',
     nombre      TEXT NOT NULL,
     tipo        TEXT NOT NULL,
     ruta        TEXT NOT NULL,
@@ -41,12 +39,29 @@ const ENSURE_TABLE = `
   )`;
 
 const ENSURE_INDEX = `
-  CREATE INDEX IF NOT EXISTS idx_lead_documentos_lead
-    ON erp_lead_documentos (lead_id, created_at DESC)`;
+  CREATE INDEX IF NOT EXISTS idx_documentos_ambito
+    ON erp_documentos (ambito, ambito_id, created_at DESC)`;
 
-async function preparaTabla() {
+/**
+ * Lo que hubiera en el almacén viejo, traído aquí.
+ *
+ * Con `ON CONFLICT` no importa cuántas veces se ejecute: la clave es la misma.
+ * La tabla de antes no se borra — copiar es reversible, borrar no.
+ */
+const MIGRA_LO_VIEJO = `
+  INSERT INTO erp_documentos (id, ambito, ambito_id, nombre, tipo, ruta, tamano, subido_por, created_at)
+  SELECT id, 'lead', lead_id, nombre, tipo, ruta, tamano, subido_por, created_at
+    FROM erp_lead_documentos
+  ON CONFLICT (id) DO NOTHING`;
+
+let preparado = false;
+async function prepara() {
+  if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
+  // Si la tabla vieja no existe, esto falla y da igual: no había nada que traer.
+  await query(MIGRA_LO_VIEJO, []).catch(() => {});
+  preparado = true;
 }
 
 function nt(v: unknown): string {
@@ -54,24 +69,45 @@ function nt(v: unknown): string {
 }
 
 /** Un nombre de fichero que no puede pisar nada ni escaparse de su carpeta. */
-function rutaDe(leadId: string, nombre: string): string {
+function rutaDe(ambito: string, ambitoId: string, nombre: string): string {
   const limpio = nombre.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
-  return `expedientes/${leadId.replace(/[^a-zA-Z0-9._-]/g, '_')}/${randomUUID()}-${limpio}`;
+  const carpeta = `${ambito}/${ambitoId.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  return `documentos/${carpeta}/${randomUUID()}-${limpio}`;
 }
 
+/** Los ámbitos válidos, con su mensaje. */
+function ambitoValido(v: string): boolean {
+  return esAmbito(v);
+}
+
+// ── Qué papeles se esperan de un origen ─────────────────────────────────────
+documentosRouter.get(
+  '/documentos/esperados/:origen',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  (req, res) => {
+    res.json({ ok: true, data: papelesEsperados(req.params.origen) });
+  }
+);
+
 // ── Listar ──────────────────────────────────────────────────────────────────
-leadDocumentosRouter.get(
-  '/leads/:id/documentos',
+documentosRouter.get(
+  '/documentos/:ambito/:id',
   requireRole(['admin', 'support', 'operations']),
   async (req, res) => {
+    if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
     try {
-      await preparaTabla();
+      await prepara();
       const r = await query(
-        `SELECT id, nombre, tipo, tamano, subido_por, created_at
-           FROM erp_lead_documentos WHERE lead_id = $1 ORDER BY created_at DESC`,
-        [req.params.id]
+        `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at
+           FROM erp_documentos WHERE ambito = $1 AND ambito_id = $2 ORDER BY created_at DESC`,
+        [req.params.ambito, req.params.id]
       );
-      res.json({ ok: true, data: r.rows });
+      // Lo que falta, si se dice de qué origen es. Sin origen, solo la lista.
+      const origen = nt(req.query.origen);
+      const faltan = origen
+        ? papelesQueFaltan(origen, r.rows.map((x) => String((x as { papel?: string }).papel ?? '')))
+        : [];
+      res.json({ ok: true, data: r.rows, faltan });
     } catch (err) {
       console.error('[documentos] listar:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'documentos_failed' });
@@ -80,12 +116,15 @@ leadDocumentosRouter.get(
 );
 
 // ── Subir ───────────────────────────────────────────────────────────────────
-leadDocumentosRouter.post(
-  '/leads/:id/documentos',
+documentosRouter.post(
+  '/documentos/:ambito/:id',
   requireRole(['admin', 'operations']),
   async (req, res) => {
+    if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
+
     const nombre = nt(req.body?.nombre);
     const tipo = nt(req.body?.tipo);
+    const papel = nt(req.body?.papel);
     const contenido = nt(req.body?.contenido_base64);
 
     if (!nombre || !contenido) {
@@ -100,14 +139,6 @@ leadDocumentosRouter.post(
       return;
     }
 
-    // Que el expediente exista. Colgar papeles de un identificador inventado
-    // deja ficheros que no son de nadie.
-    const existe = await query(`SELECT id FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
-    if (!existe.rows.length) {
-      res.status(404).json({ ok: false, error: 'lead_not_found' });
-      return;
-    }
-
     const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       console.error('[documentos] almacén sin configurar');
@@ -115,7 +146,7 @@ leadDocumentosRouter.post(
       return;
     }
 
-    const ruta = rutaDe(req.params.id, nombre);
+    const ruta = rutaDe(req.params.ambito, req.params.id, nombre);
     try {
       const subida = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${ruta}`, {
         method: 'POST',
@@ -129,8 +160,7 @@ leadDocumentosRouter.post(
         body: Buffer.from(contenido, 'base64'),
       });
       if (!subida.ok) {
-        const detalle = await subida.text().catch(() => '');
-        console.error('[documentos] subida fallida %d %s', subida.status, detalle);
+        console.error('[documentos] subida fallida %d %s', subida.status, await subida.text().catch(() => ''));
         res.status(502).json({ ok: false, error: 'subida_fallida' });
         return;
       }
@@ -141,12 +171,13 @@ leadDocumentosRouter.post(
     }
 
     try {
-      await preparaTabla();
+      await prepara();
       const r = await query(
-        `INSERT INTO erp_lead_documentos (lead_id, nombre, tipo, ruta, tamano, subido_por)
-         VALUES ($1,$2,$3,$4,$5,$6)
-         RETURNING id, nombre, tipo, tamano, subido_por, created_at`,
-        [req.params.id, nombre, tipo, ruta, tamano, req.actor?.name ?? req.actor?.sub ?? '']
+        `INSERT INTO erp_documentos (ambito, ambito_id, papel, nombre, tipo, ruta, tamano, subido_por)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING id, papel, nombre, tipo, tamano, subido_por, created_at`,
+        [req.params.ambito, req.params.id, papel, nombre, tipo, ruta, tamano,
+         req.actor?.name ?? req.actor?.sub ?? '']
       );
       res.json({ ok: true, data: r.rows[0] });
     } catch (err) {
@@ -157,24 +188,23 @@ leadDocumentosRouter.post(
 );
 
 // ── Ver uno ─────────────────────────────────────────────────────────────────
-leadDocumentosRouter.get(
-  '/leads/:id/documentos/:docId',
+documentosRouter.get(
+  '/documentos/:ambito/:id/:docId',
   requireRole(['admin', 'support', 'operations']),
   async (req, res) => {
+    if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
     try {
-      await preparaTabla();
+      await prepara();
       const r = await query(
-        `SELECT nombre, tipo, ruta FROM erp_lead_documentos WHERE id = $1 AND lead_id = $2`,
-        [req.params.docId, req.params.id]
+        `SELECT nombre, tipo, ruta FROM erp_documentos WHERE id = $1 AND ambito = $2 AND ambito_id = $3`,
+        [req.params.docId, req.params.ambito, req.params.id]
       );
-      const doc = r.rows[0];
+      const doc = r.rows[0] as { nombre: string; tipo: string; ruta: string } | undefined;
       if (!doc) { res.status(404).json({ ok: false, error: 'documento_no_encontrado' }); return; }
 
       const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
-      if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-        res.status(503).json({ ok: false, error: 'almacen_sin_configurar' });
-        return;
-      }
+      if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { res.status(503).json({ ok: false, error: 'almacen_sin_configurar' }); return; }
+
       const bajada = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${doc.ruta}`, {
         headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
       });
@@ -191,24 +221,22 @@ leadDocumentosRouter.get(
 );
 
 // ── Quitar ──────────────────────────────────────────────────────────────────
-//
-// Se borra la fila y el fichero. Un documento que sigue en el almacén después de
-// quitarlo de la pantalla es un papel con datos de alguien que ya nadie mira.
-leadDocumentosRouter.delete(
-  '/leads/:id/documentos/:docId',
+documentosRouter.delete(
+  '/documentos/:ambito/:id/:docId',
   requireRole(['admin', 'operations']),
   async (req, res) => {
+    if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
     try {
-      await preparaTabla();
+      await prepara();
       const r = await query(
-        `DELETE FROM erp_lead_documentos WHERE id = $1 AND lead_id = $2 RETURNING ruta`,
-        [req.params.docId, req.params.id]
+        `DELETE FROM erp_documentos WHERE id = $1 AND ambito = $2 AND ambito_id = $3 RETURNING ruta`,
+        [req.params.docId, req.params.ambito, req.params.id]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'documento_no_encontrado' }); return; }
 
       const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
       if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-        await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${r.rows[0].ruta}`, {
+        await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${(r.rows[0] as { ruta: string }).ruta}`, {
           method: 'DELETE',
           headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
         }).catch((e: Error) => console.error('[documentos] borrar del almacén:', e.message));

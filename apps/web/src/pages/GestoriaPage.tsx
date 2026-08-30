@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import Documentos from '../components/Documentos.js';
 
 /**
  * Gestoría: los papeleos de los coches.
@@ -406,6 +407,10 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
             </div>
           )}
         </dl>
+
+        {/* Lo que se le manda a la gestoría y lo que devuelve. Sin origen: un
+            trámite no compra nada, así que no hay lista que esperar. */}
+        <Documentos ambito="tramite" id={t.id} />
 
         {t.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">
