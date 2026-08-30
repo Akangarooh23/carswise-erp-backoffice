@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
+import { abreTramitesDeImportacion } from './tramites.js';
 
 export const leadsRouter = Router();
 
@@ -507,6 +508,21 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
         clienteEmail: updatedLead.user_email ?? "",
         creadoPor: operator,
       }).catch((e: Error) => console.error('[leads] pedido de importación:', e.message));
+    }
+
+    // Al entrar en trámites, se abren los que un coche de fuera necesita siempre.
+    //
+    // Impuesto, ITV de homologación y matrícula española. Son tres papeleos
+    // distintos, con su gestoría y sus fechas cada uno: en una sola casilla no se
+    // puede saber cuál es el que lleva tres semanas parado.
+    if (status === 'En trámites' && prev.status !== 'En trámites'
+        && updatedLead.lead_type === 'import') {
+      abreTramitesDeImportacion({
+        leadId: req.params.id,
+        vehiculoTitulo: updatedLead.vehicle_title ?? '',
+        clienteEmail: updatedLead.user_email ?? '',
+        creadoPor: operator,
+      }).catch((e: Error) => console.error('[leads] trámites de importación:', e.message));
     }
 
     // Entregado: el final del recorrido de una importación.
