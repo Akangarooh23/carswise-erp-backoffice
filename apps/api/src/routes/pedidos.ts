@@ -27,6 +27,9 @@ import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
 import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
 import {
+  esTitularidad, titularidadPorDefecto, vigilaElPlazo, revenderAntesDe, PLAZO_REVENTA_MESES,
+} from '../lib/titularidad.js';
+import {
   comprobacionesQueTocan, comprobacionesQueFaltan, puedeEncargarseConComprobaciones, marca,
   type Comprobadas,
 } from '../lib/comprobaciones.js';
@@ -56,6 +59,10 @@ const ENSURE_TABLE = `
     notas          TEXT NOT NULL DEFAULT '',
     -- Lo que se miró antes de comprarle a un particular, con quién y cuándo.
     comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- A nombre de quién va el coche. No es lo mismo que quién lo vende.
+    titularidad    TEXT NOT NULL DEFAULT 'popcar',
+    -- Hasta cuándo hay que revenderlo si está a nuestro nombre.
+    revender_antes_de DATE,
     -- Lo que se vio del coche al llegar: kilómetros, llaves, daños.
     recepcion      JSONB NOT NULL DEFAULT '{}'::jsonb,
     creado_por     TEXT NOT NULL DEFAULT '',
@@ -93,6 +100,12 @@ const ENSURE_INDEX = `
 const ENSURE_COMPROBACIONES = `
   ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS comprobaciones JSONB NOT NULL DEFAULT '{}'::jsonb`;
 
+const ENSURE_TITULARIDAD = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS titularidad TEXT NOT NULL DEFAULT 'popcar'`;
+
+const ENSURE_PLAZO = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS revender_antes_de DATE`;
+
 const ENSURE_RECEPCION = `
   ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS recepcion JSONB NOT NULL DEFAULT '{}'::jsonb`;
 
@@ -102,6 +115,8 @@ async function prepara() {
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_COMPROBACIONES, []).catch(() => {});
   await query(ENSURE_RECEPCION, []).catch(() => {});
+  await query(ENSURE_TITULARIDAD, []).catch(() => {});
+  await query(ENSURE_PLAZO, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_UNIQUE_LEAD, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
@@ -116,6 +131,7 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
                 importe::numeric AS importe, cliente_email, lead_id,
                 TO_CHAR(fecha_estimada, 'YYYY-MM-DD') AS fecha_estimada,
                 fecha_pedido, fecha_confirmado, fecha_recepcion,
+                titularidad, TO_CHAR(revender_antes_de, 'YYYY-MM-DD') AS revender_antes_de,
                 notas, comprobaciones, recepcion, creado_por, created_at, updated_at`;
 
 // ── Qué hay que comprobar antes de encargar, según el origen ───────────────
@@ -174,13 +190,16 @@ pedidosRouter.post('/pedidos', requireRole(['admin', 'operations', 'sales']), as
         await query(
           `INSERT INTO erp_pedidos
              (id, origen, proveedor, vehiculo_titulo, vehiculo_id, matricula, bastidor,
-              importe, cliente_email, lead_id, notas, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+              importe, cliente_email, lead_id, titularidad, notas, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [
             nuevoId, origen, nt(req.body?.proveedor), vehiculo, nt(req.body?.vehiculo_id),
             nt(req.body?.matricula), nt(req.body?.bastidor),
             req.body?.importe != null && req.body?.importe !== '' ? Number(req.body.importe) : null,
             nt(req.body?.cliente_email).toLowerCase(), nt(req.body?.lead_id) || null,
+            esTitularidad(nt(req.body?.titularidad))
+              ? nt(req.body.titularidad)
+              : titularidadPorDefecto(origen, nt(req.body?.cliente_email)),
             nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '',
           ]
         );
@@ -276,6 +295,12 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
     for (const campo of ['proveedor', 'vehiculo_titulo', 'matricula', 'bastidor', 'cliente_email'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
+    if (req.body?.titularidad !== undefined) {
+      const t = nt(req.body.titularidad);
+      if (!esTitularidad(t)) { res.status(400).json({ ok: false, error: 'titularidad_no_valida' }); return; }
+      pon('titularidad', t);
+    }
+    if (req.body?.revender_antes_de !== undefined) pon('revender_antes_de', nt(req.body.revender_antes_de) || null);
     if (req.body?.importe !== undefined) pon('importe', req.body.importe === '' || req.body.importe === null ? null : Number(req.body.importe));
     if (req.body?.fecha_estimada !== undefined) pon('fecha_estimada', nt(req.body.fecha_estimada) || null);
 
@@ -337,6 +362,20 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       }).catch((e: Error) => console.error('[pedidos] transporte del pedido:', e.message));
     }
 
+    /**
+     * Con el coche a nuestro nombre, empieza a correr el plazo de reventa.
+     *
+     * Comprar para revender no paga el impuesto de transmisiones **si se revende
+     * dentro de plazo**. Pasado, sí — y ese dinero aparece de golpe, meses
+     * después, sobre un coche que ya no interesa a nadie. El límite se guarda en
+     * el pedido, no en el código, porque el plazo lo dice la gestoría.
+     */
+    const titularidadAhora = nt(req.body?.titularidad) || String(previo.titularidad ?? "popcar");
+    if (estado === 'Recibido' && previo.estado !== 'Recibido'
+        && vigilaElPlazo(titularidadAhora) && !previo.revender_antes_de) {
+      pon('revender_antes_de', revenderAntesDe(new Date(), PLAZO_REVENTA_MESES));
+    }
+
     // Con el coche aquí empieza el papeleo.
     //
     // Antes no se puede: la transferencia necesita el contrato firmado y la
@@ -347,6 +386,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       abreTramitesDePedido({
         pedidoId: req.params.id,
         origen: String(fila.origen ?? ""),
+        titularidad: String(fila.titularidad ?? "popcar"),
         vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
         matricula: String(fila.matricula ?? ""),
         clienteEmail: String(fila.cliente_email ?? ""),

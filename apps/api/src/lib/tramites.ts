@@ -145,7 +145,25 @@ export const TRAMITES_POR_ORIGEN: Record<string, string[]> = {
  */
 export const TRAMITES_AL_VENDER = ['Transferencia de titularidad'];
 
-/** Los que tocan al comprar de este origen. Vacío si el origen no se conoce. */
-export function tramitesQueTocan(origen: string): string[] {
-  return TRAMITES_POR_ORIGEN[origen] ?? [];
+/**
+ * Los que tocan al comprar, según de dónde viene **y a nombre de quién va**.
+ *
+ * Aquí está la diferencia entre pagar un cambio de nombre o dos. PopCar vende
+ * siempre —su factura, su garantía— pero no tiene por qué ser el titular:
+ *
+ * - **A nombre del cliente**: el coche no pasa por el medio. De aquí, una sola
+ *   transferencia, y se hace al venderlo. De Alemania, **ninguna**: se matricula
+ *   ya a su nombre.
+ * - **A nombre de PopCar**: hay que ponerlo a nuestro nombre al comprarlo, y
+ *   quitarlo al venderlo. Dos.
+ *
+ * El impuesto de transmisiones de un particular va con la compra, no con la
+ * titularidad: se compra igual.
+ */
+export function tramitesQueTocan(origen: string, titularidad = 'popcar'): string[] {
+  const todos = TRAMITES_POR_ORIGEN[origen] ?? [];
+  if (titularidad !== 'cliente') return todos;
+  // A nombre del cliente, la transferencia de entrada no existe: el coche va
+  // del vendedor a él, y ese cambio de nombre se hace al venderlo.
+  return todos.filter((t) => !/^Transferencia/i.test(t));
 }

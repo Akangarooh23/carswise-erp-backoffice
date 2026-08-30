@@ -267,12 +267,13 @@ tramitesRouter.get('/tramites/:id/history', requireRole(['admin', 'support', 'op
 export async function abreTramitesDePedido(datos: {
   pedidoId: string;
   origen: string;
+  titularidad?: string;
   vehiculoTitulo: string;
   matricula?: string;
   clienteEmail?: string;
   creadoPor: string;
 }): Promise<string[]> {
-  return abreTramites(tramitesQueTocan(datos.origen), {
+  return abreTramites(tramitesQueTocan(datos.origen, datos.titularidad ?? 'popcar'), {
     pedidoId: datos.pedidoId,
     vehiculoTitulo: datos.vehiculoTitulo,
     matricula: datos.matricula ?? "",

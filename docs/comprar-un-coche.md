@@ -80,6 +80,31 @@ va a ser la pregunta.
 
 ---
 
+## A nombre de quién va el coche
+
+**No es lo mismo que quién lo vende.** PopCar vende siempre —su factura, su
+garantía— pero no tiene por qué ser el titular. Ahí está la diferencia entre
+pagar un cambio de nombre o dos.
+
+| | A nombre del cliente | A nombre de PopCar |
+|---|---|---|
+| Coche de aquí | **Una** transferencia, al venderlo | **Dos**: al comprarlo y al venderlo |
+| Importación | Se matricula ya a su nombre: **ninguna** | A nuestro nombre, y una al vender |
+
+El pedido lo propone solo: **con cliente detrás, a su nombre**; sin cliente, al
+nuestro, porque no hay otro sitio donde ponerlo. Se puede cambiar.
+
+**Si va a nuestro nombre**, al recibirlo empieza a correr el plazo para
+revenderlo. Comprar para revender no paga el impuesto de transmisiones **si se
+revende dentro de plazo**; pasado, sí, y ese dinero aparece de golpe meses
+después sobre un coche que ya no interesa a nadie.
+
+El pedido enseña la fecha límite y avisa **dos meses antes**, que es lo que da
+margen para bajarlo de precio en vez de descubrirlo tarde. **Vender el mismo día
+del límite está en plazo**: el último día cuenta.
+
+---
+
 ## 3 · Transportes
 
 Cada viaje del coche es un **tramo**: del vendedor al almacén, del almacén al

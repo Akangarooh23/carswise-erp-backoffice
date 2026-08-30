@@ -78,6 +78,8 @@ interface Pedido {
   fecha_estimada: string | null;
   notas: string;
   comprobaciones: Record<string, Marcada> | null;
+  titularidad: string;
+  revender_antes_de: string | null;
   recepcion: Recepcion | null;
   created_at: string;
 }
@@ -255,6 +257,82 @@ export default function PedidosPage() {
           onCreado={() => { setNuevo(false); void carga(); }}
           onError={(m) => setError(m)}
         />
+      )}
+    </div>
+  );
+}
+
+/** Cuántos días quedan, contados por días enteros: el último cuenta. */
+function diasHasta(limite?: string | null): number | null {
+  if (!limite) return null;
+  const d = new Date(limite);
+  if (Number.isNaN(d.getTime())) return null;
+  const soloDia = (x: Date) => Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate());
+  return Math.round((soloDia(d) - soloDia(new Date())) / 86_400_000);
+}
+
+/**
+ * A nombre de quién va el coche.
+ *
+ * No es lo mismo que quién lo vende. PopCar vende siempre —su factura, su
+ * garantía— pero no tiene por qué ser el titular, y ahí está la diferencia entre
+ * pagar un cambio de nombre o dos.
+ *
+ * Si va a nuestro nombre, empieza a correr el plazo para revenderlo sin que el
+ * impuesto de la compra se quede. Pasado, aparece de golpe meses después sobre
+ * un coche que ya no interesa a nadie: por eso avisa dos meses antes, que da
+ * margen para bajarlo de precio.
+ */
+function ANombreDeQuien({ p, guardando, onCambiar }: {
+  p: Pedido; guardando: boolean; onCambiar: (c: Record<string, unknown>) => void;
+}) {
+  const aNuestroNombre = p.titularidad === "popcar";
+  const dias = diasHasta(p.revender_antes_de);
+  const apremia = dias != null && dias <= 60;
+  const pasado = dias != null && dias < 0;
+
+  return (
+    <div className="mb-4 p-3 rounded-xl border border-brand-200 bg-white">
+      <div className="text-xs font-semibold text-brand-500 mb-1">A nombre de</div>
+      <div className="flex gap-2">
+        {[["cliente", "El cliente"], ["popcar", "PopCar"]].map(([valor, texto]) => (
+          <button
+            key={valor}
+            onClick={() => onCambiar({ titularidad: valor })}
+            disabled={guardando || p.titularidad === valor}
+            className={`flex-1 px-3 py-2 text-xs font-bold rounded-lg border ${
+              p.titularidad === valor
+                ? "bg-brand-600 text-white border-brand-600"
+                : "bg-white text-brand-600 border-brand-200 hover:bg-brand-50"
+            }`}
+          >
+            {texto}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-brand-400 mt-1.5">
+        {aNuestroNombre
+          ? "Se pone a nuestro nombre al comprarlo y al del cliente al venderlo: dos cambios de nombre."
+          : "Va del vendedor al cliente: un solo cambio de nombre, al venderlo."}
+      </p>
+
+      {p.revender_antes_de && (
+        <div className={`mt-2 px-3 py-2 rounded-lg text-[12px] ${
+          pasado ? "bg-red-50 text-red-800 border border-red-200"
+                 : apremia ? "bg-amber-50 text-amber-800 border border-amber-200"
+                           : "bg-brand-50 text-brand-600"
+        }`}>
+          <span className="font-bold">
+            {pasado ? "Plazo de reventa pasado" : "Revender antes del"}{" "}
+            {new Date(p.revender_antes_de).toLocaleDateString("es-ES")}
+          </span>
+          {dias != null && !pasado && <span> · quedan {dias} días</span>}
+          <span className="block opacity-80">
+            {pasado
+              ? "El impuesto de la compra ya no se recupera."
+              : "Vender ese mismo día está en plazo."}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -521,6 +599,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
+        <ANombreDeQuien p={p} guardando={guardando} onCambiar={onCambiar} />
         <Comprobaciones p={p} guardando={guardando} onCambiar={onCambiar} />
         <AlLlegar p={p} guardando={guardando} onCambiar={onCambiar} />
 
@@ -703,7 +782,10 @@ function LoQueCuesta({ id }: { id: string }) {
 function PedidoNuevo({ onCerrar, onCreado, onError }: {
   onCerrar: () => void; onCreado: () => void; onError: (m: string) => void;
 }) {
-  const [datos, setDatos] = useState({ origen: 'concesionario', vehiculo_titulo: '', proveedor: '', importe: '', cliente_email: '' });
+  const [datos, setDatos] = useState({
+    origen: 'concesionario', vehiculo_titulo: '', proveedor: '', importe: '', cliente_email: '',
+    titularidad: '',
+  });
   const [guardando, setGuardando] = useState(false);
 
   async function crea() {
@@ -735,6 +817,13 @@ function PedidoNuevo({ onCerrar, onCreado, onError }: {
           <input placeholder="Correo del cliente (si lo hay)" value={datos.cliente_email}
                  onChange={(e) => setDatos((d) => ({ ...d, cliente_email: e.target.value }))}
                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <select value={datos.titularidad}
+                  onChange={(e) => setDatos((d) => ({ ...d, titularidad: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+            <option value="">A nombre de… (con cliente, el suyo)</option>
+            <option value="cliente">El cliente</option>
+            <option value="popcar">PopCar</option>
+          </select>
         </div>
         <p className="text-[11px] text-brand-400 mt-2">
           Nace en borrador. Para encargarlo hace falta decir a quién.
