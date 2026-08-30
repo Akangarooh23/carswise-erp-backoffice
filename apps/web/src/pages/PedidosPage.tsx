@@ -705,6 +705,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           )}
         </dl>
 
+        <Reacondicionado id={p.id} />
         <LoQueCuesta id={p.id} />
 
         <Documentos ambito="pedido" id={p.id} origen={p.origen} />
@@ -716,6 +717,91 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Lo que se gasta en dejarlo listo.
+ *
+ * Taller, ruedas, ITV, chapa, limpieza. Era la partida que faltaba en el coste,
+ * y sin ella el margen que se enseñaba era optimista: un coche que llega con las
+ * ruedas gastadas y una revisión pendiente lleva mil euros encima antes de
+ * ponerse a la venta.
+ */
+function Reacondicionado({ id }: { id: string }) {
+  const [gastos, setGastos] = useState<{ id: string; concepto: string; importe: number; proveedor: string }[]>([]);
+  const [habituales, setHabituales] = useState<string[]>([]);
+  const [nuevo, setNuevo] = useState({ concepto: "", importe: "", proveedor: "" });
+  const [fallo, setFallo] = useState("");
+
+  const carga = useCallback(async () => {
+    const r = await api.get<typeof gastos>(`/pedidos/${id}/gastos`);
+    if (r.ok && Array.isArray(r.data)) setGastos(r.data as never);
+  }, [id]);
+
+  useEffect(() => { void carga(); }, [carga]);
+  useEffect(() => {
+    void api.get<string[]>('/gastos/habituales').then((r) => {
+      if (r.ok && Array.isArray(r.data)) setHabituales(r.data);
+    });
+  }, []);
+
+  async function anade() {
+    setFallo("");
+    const r = await api.post(`/pedidos/${id}/gastos`, nuevo);
+    if (!r.ok) {
+      setFallo((r as unknown as { detail?: string }).detail || "No se ha podido guardar.");
+      return;
+    }
+    setNuevo({ concepto: "", importe: "", proveedor: "" });
+    await carga();
+  }
+
+  async function quita(gastoId: string) {
+    await api.delete(`/pedidos/${id}/gastos/${gastoId}`);
+    await carga();
+  }
+
+  const total = gastos.reduce((s, g) => s + Number(g.importe || 0), 0);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1.5">
+        Reacondicionado {total > 0 && <span className="text-brand-400">· {eur(total)}</span>}
+      </div>
+
+      {gastos.length > 0 && (
+        <ul className="space-y-1 mb-2">
+          {gastos.map((g) => (
+            <li key={g.id} className="flex items-center gap-2 text-[12px]">
+              <span className="flex-1 text-brand-600 truncate">
+                {g.concepto}{g.proveedor ? ` · ${g.proveedor}` : ""}
+              </span>
+              <span className="tabular-nums text-brand-600">{eur(g.importe)}</span>
+              <button onClick={() => void quita(g.id)} className="text-[10px] text-red-600 hover:underline">quitar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-3 gap-2">
+        <input list="gastos-habituales" placeholder="En qué" value={nuevo.concepto}
+               onChange={(e) => setNuevo((d) => ({ ...d, concepto: e.target.value }))}
+               className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+        <datalist id="gastos-habituales">
+          {habituales.map((h) => <option key={h} value={h} />)}
+        </datalist>
+        <input placeholder="€" value={nuevo.importe} inputMode="decimal"
+               onChange={(e) => setNuevo((d) => ({ ...d, importe: e.target.value }))}
+               className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+      </div>
+      <button onClick={() => void anade()}
+              disabled={!nuevo.concepto.trim() || !Number(nuevo.importe)}
+              className="mt-2 w-full px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
+        Añadir gasto
+      </button>
+      {fallo && <p className="text-[11px] text-red-600 mt-1.5">{fallo}</p>}
     </div>
   );
 }

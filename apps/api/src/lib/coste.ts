@@ -37,11 +37,13 @@ export function costeDelCoche(datos: {
   precioProveedor?: unknown;
   transportes?: { coste?: unknown }[];
   tramites?: { coste?: unknown }[];
+  gastos?: { importe?: unknown }[];
 }): Coste {
   const partidas: Partida[] = [
     { concepto: 'Precio al proveedor', importe: Number(datos.precioProveedor) || 0 },
     { concepto: 'Transporte', importe: suma((datos.transportes ?? []).map((t) => t.coste)) },
     { concepto: 'Gestoría e impuestos', importe: suma((datos.tramites ?? []).map((t) => t.coste)) },
+    { concepto: 'Reacondicionado', importe: suma((datos.gastos ?? []).map((g) => g.importe)) },
   ];
   return { partidas, total: suma(partidas.map((p) => p.importe)) };
 }

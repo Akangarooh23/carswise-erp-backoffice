@@ -10,19 +10,27 @@ import assert from 'node:assert/strict';
 import { costeDelCoche, margenDelCoche, margenPorOrigen } from './coste.js';
 
 describe('lo que cuesta un coche', () => {
-  test('suma el proveedor, el transporte y la gestoría', () => {
+  test('suma el proveedor, el transporte, la gestoría y el reacondicionado', () => {
     const c = costeDelCoche({
       precioProveedor: 9000,
       transportes: [{ coste: 450 }, { coste: 120 }],
       tramites: [{ coste: 1200 }, { coste: 180 }],
+      gastos: [{ importe: 620 }, { importe: 240 }],
     });
-    assert.equal(c.total, 10950);
+    assert.equal(c.total, 11810);
+  });
+
+  test('sin el reacondicionado el margen sale optimista', () => {
+    const sinTaller = costeDelCoche({ precioProveedor: 9000 });
+    const conTaller = costeDelCoche({ precioProveedor: 9000, gastos: [{ importe: 860 }] });
+    assert.equal(conTaller.total - sinTaller.total, 860,
+      'un coche que llega con las ruedas gastadas lleva mil euros encima');
   });
 
   test('lo que todavía no hay suma cero, pero sale la línea', () => {
     const c = costeDelCoche({ precioProveedor: 9000 });
     assert.equal(c.total, 9000);
-    assert.equal(c.partidas.length, 3,
+    assert.equal(c.partidas.length, 4,
       'decir «transporte: 0» es más honesto que esconder la línea');
     assert.equal(c.partidas.find((p) => /transporte/i.test(p.concepto))?.importe, 0);
   });

@@ -494,17 +494,20 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
     const pedido = p.rows[0] as Record<string, unknown> | undefined;
     if (!pedido) { res.status(404).json({ ok: false, error: 'pedido_no_encontrado' }); return; }
 
-    const [transportes, tramites] = await Promise.all([
+    const [transportes, tramites, gastos] = await Promise.all([
       query(`SELECT coste::numeric AS coste FROM erp_transportes WHERE pedido_id = $1`, [req.params.id])
         .catch(() => ({ rows: [] as { coste?: unknown }[] })),
       query(`SELECT coste::numeric AS coste FROM erp_tramites WHERE pedido_id = $1`, [req.params.id])
         .catch(() => ({ rows: [] as { coste?: unknown }[] })),
+      query(`SELECT importe::numeric AS importe FROM erp_gastos_pedido WHERE pedido_id = $1`, [req.params.id])
+        .catch(() => ({ rows: [] as { importe?: unknown }[] })),
     ]);
 
     const coste = costeDelCoche({
       precioProveedor: pedido.importe,
       transportes: transportes.rows as { coste?: unknown }[],
       tramites: tramites.rows as { coste?: unknown }[],
+      gastos: gastos.rows as { importe?: unknown }[],
     });
 
     // Lo que se cobró, si este pedido salió de una solicitud que acabó en venta.
@@ -537,13 +540,16 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
 pedidosRouter.get('/pedidos/margen-por-origen', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   try {
     await prepara();
-    const [pedidos, transportes, tramites] = await Promise.all([
+    const [pedidos, transportes, tramites, gastos] = await Promise.all([
       query(`SELECT id, origen, importe::numeric AS importe, lead_id FROM erp_pedidos`),
       query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_transportes
               WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
         .catch(() => ({ rows: [] as Record<string, unknown>[] })),
       query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_tramites
               WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
+        .catch(() => ({ rows: [] as Record<string, unknown>[] })),
+      query(`SELECT pedido_id, SUM(importe)::numeric AS coste FROM erp_gastos_pedido
+              GROUP BY pedido_id`)
         .catch(() => ({ rows: [] as Record<string, unknown>[] })),
     ]);
 
@@ -554,6 +560,7 @@ pedidosRouter.get('/pedidos/margen-por-origen', requireRole(['admin', 'operation
     };
     const transporte = porPedido(transportes.rows as Record<string, unknown>[]);
     const gestoria = porPedido(tramites.rows as Record<string, unknown>[]);
+    const reacondicionado = porPedido(gastos.rows as Record<string, unknown>[]);
 
     // Lo que se cobró por cada uno, de las solicitudes que acabaron en venta.
     const leadIds = (pedidos.rows as Record<string, unknown>[])
@@ -573,6 +580,7 @@ pedidosRouter.get('/pedidos/margen-por-origen', requireRole(['admin', 'operation
         precioProveedor: p.importe,
         transportes: [{ coste: transporte.get(String(p.id)) ?? 0 }],
         tramites: [{ coste: gestoria.get(String(p.id)) ?? 0 }],
+        gastos: [{ importe: reacondicionado.get(String(p.id)) ?? 0 }],
       }).total,
       venta: p.lead_id ? ventas.get(String(p.lead_id)) : null,
     }));
