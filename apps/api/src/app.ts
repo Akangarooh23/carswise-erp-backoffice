@@ -18,6 +18,7 @@ import { idcarsRouter } from './routes/idcars.js';
 import { billingRouter } from './routes/billing.js';
 import { leadsRouter } from './routes/leads.js';
 import { leadDocumentosRouter } from './routes/lead-documentos.js';
+import { pedidosRouter } from './routes/pedidos.js';
 import { funnelRouter } from './routes/funnel.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { contractsRouter } from './routes/contracts.js';
@@ -63,6 +64,7 @@ export function createApp() {
   app.use('/api', billingRouter);
   app.use('/api', leadsRouter);
   app.use('/api', leadDocumentosRouter);
+  app.use('/api', pedidosRouter);
   app.use('/api', funnelRouter);
   app.use('/api', analyticsRouter);
   app.use('/api', contractsRouter);

@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
+import { creaPedidoDeImportacion } from './pedidos.js';
 
 export const leadsRouter = Router();
 
@@ -490,6 +491,22 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
         `Cambia la fecha de tu coche — ${updatedLead.vehicle_title || 'PopCar'}`,
         entregaEmailHtml(updatedLead, fechaAntes)
       ).catch((e: Error) => console.error('[leads] aviso de entrega:', e.message));
+    }
+
+    // Al hacer el pedido a Alemania, nace su pedido.
+    //
+    // El expediente sigue teniendo sus etapas, que son las que ve el cliente. El
+    // pedido es el registro interno: a quién se le encarga, cuánto cuesta y las
+    // fechas de verdad. Si ya existe uno de esta solicitud no se crea otro.
+    if (status === 'Pedido a Alemania' && prev.status !== 'Pedido a Alemania'
+        && updatedLead.lead_type === 'import') {
+      creaPedidoDeImportacion({
+        leadId: req.params.id,
+        vehiculoTitulo: updatedLead.vehicle_title ?? "",
+        vehiculoId: updatedLead.vehicle_id ?? "",
+        clienteEmail: updatedLead.user_email ?? "",
+        creadoPor: operator,
+      }).catch((e: Error) => console.error('[leads] pedido de importación:', e.message));
     }
 
     // Entregado: el final del recorrido de una importación.
