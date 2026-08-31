@@ -305,6 +305,33 @@ mirar cuáles se abren sin usuario: varios piden credenciales.
 
 ---
 
+## 9 · El segundo viaje del coche, ¿siempre? — **para confirmar**
+
+Un coche de importación hace hoy **dos viajes**: de la ciudad alemana de la
+oferta a vuestras instalaciones, y de ahí a casa del cliente. El primero se abre
+al confirmar el pedido; el segundo, al marcarlo *Recibido*.
+
+Son dos y no uno porque el coche llega con matrícula alemana: tiene que pasar
+por aquí para la **ITV de homologación**, para **matricularlo** y para mirarlo
+—kilómetros, llaves, daños—, que es lo que decide si hay que reacondicionarlo.
+Un camión que descargara en el portal del cliente dejaría allí un coche que no
+puede circular y que nadie ha visto.
+
+**Lo que hay que confirmar:** si el cliente va a **recogerlo él** en vuestras
+instalaciones el día de la entrega —y si eso va a ser lo habitual—, el segundo
+tramo se queda abierto sin usar y ensucia la pantalla de Transportes.
+
+Dos formas de resolverlo, y la que elijas se monta en un rato:
+
+| Si… | Lo que se hace |
+|---|---|
+| Casi siempre se lo lleváis | Se queda como está: se abre solo |
+| Casi siempre lo recoge él | Solo se abre si ha pedido que se lo llevéis |
+
+No corre prisa: hasta que no haya un coche real llegando, no molesta.
+
+---
+
 ## Lo que ya se decidió y no hay que volver a mirar
 
 **Avisar al vendedor automáticamente: no.** No tenemos su correo, y el
