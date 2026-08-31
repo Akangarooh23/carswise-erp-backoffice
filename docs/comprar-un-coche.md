@@ -309,6 +309,17 @@ Se exporta **lo que estás viendo**, no el catálogo entero: si filtras por gest
 y exportas, el fichero trae gestorías. Y el nombre del fichero lleva el filtro y la
 fecha, para que dos exportaciones del mismo día no se pisen en Descargas.
 
+**Lo que se ve al abrir un proveedor**, según lo que sea:
+
+| Si es | Sale |
+|---|---|
+| Transportista | Sus **tarifas por corredor**, con el precio por coche en cada tramo |
+| Gestoría | Sus **tarifas por trámite**, con honorarios, IVA, tasas y el total de cada uno |
+| Garantías | Los **productos que da**, con lo que cuesta cada uno al cliente, **lo que nos cuesta a nosotros y lo que deja**, a qué coches se puede ofrecer y qué cubre |
+
+Esos dos últimos números —el coste y el margen— no salen nunca en la oferta del
+cliente. Están aquí porque son los que dicen si el producto tiene sentido.
+
 Darlo de baja lo quita de las listas, pero **no borra nada**: lo que se le
 compró sigue siendo suyo.
 

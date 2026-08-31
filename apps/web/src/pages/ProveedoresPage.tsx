@@ -388,6 +388,7 @@ function ProveedorAbierto({ p, onCerrar, onGuardado }: {
 
         {tipos.includes('transportista') && <Tarifas proveedorId={p.id} />}
         {tipos.includes('gestoria') && <TarifasGestoria proveedorId={p.id} />}
+        {tipos.includes('garantia') && <GarantiasDelProveedor proveedorId={p.id} />}
         <button onClick={() => { void api.patch(`/proveedores/${p.id}`, { activo: false }).then(onGuardado); }}
                 className="mt-2 w-full px-3 py-2 text-xs font-semibold text-red-700 border border-red-200 rounded-lg">
           Dar de baja
@@ -778,3 +779,115 @@ const TRAMITES_DE_COCHE = [
   'Cambio de servicio en la ficha técnica',
   'Baja temporal por entrega a compraventa',
 ];
+
+/**
+ * Los productos de garantía que da este proveedor.
+ *
+ * Se enseñan aquí porque es donde se busca: cuando hay que reclamar una, lo
+ * primero es el proveedor. Y porque hasta ahora **no había dónde verlos** — se
+ * cargaban en la base y solo se veían desde la oferta del cliente.
+ *
+ * Lo que se enseña y en la oferta no: **lo que nos cuesta** y lo que deja. Esos
+ * dos números no salen nunca en público, y son los que dicen si el producto
+ * tiene sentido.
+ */
+function GarantiasDelProveedor({ proveedorId }: { proveedorId: string }) {
+  const [lista, setLista] = useState<GarantiaFila[] | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+    void (async () => {
+      const r = await api.get<GarantiaFila[]>('/garantias');
+      if (!vigente) return;
+      const todas = r.ok && Array.isArray(r.data) ? r.data : [];
+      setLista(todas.filter((g) => g.proveedor_id === proveedorId));
+    })();
+    return () => { vigente = false; };
+  }, [proveedorId]);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1">Garantías que da</div>
+
+      {lista === null && <p className="text-[11px] text-brand-300">Cargando…</p>}
+      {lista?.length === 0 && (
+        <p className="text-[11px] text-brand-400">
+          Ninguna todavía. Los productos se cargan desde un guion mientras no haya
+          bastantes como para montar una pantalla de gestión.
+        </p>
+      )}
+
+      <div className="space-y-1.5">
+        {(lista ?? []).map((g) => {
+          const precio = Number(g.precio) || 0;
+          const coste = g.coste == null ? null : Number(g.coste);
+          return (
+            <div key={g.id}
+                 className={`px-3 py-2 rounded-lg border bg-white ${g.activo ? "border-brand-200" : "border-brand-100 opacity-60"}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold text-brand-600">
+                    {g.nombre}
+                    {g.es_base && (
+                      <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-100 text-brand-600">
+                        base
+                      </span>
+                    )}
+                    {!g.activo && <span className="ml-1.5 text-[10px] text-brand-400">de baja</span>}
+                  </div>
+                  <div className="text-[11px] text-brand-500 mt-0.5">
+                    {g.meses ? `${g.meses} meses` : 'sin plazo'}
+                    {g.km_cubiertos ? ` · hasta ${Number(g.km_cubiertos).toLocaleString('es-ES')} km` : ''}
+                    {g.renunciable ? '' : ' · no se puede renunciar'}
+                  </div>
+                  <div className="text-[10px] text-brand-400 mt-0.5">
+                    Se ofrece a coches de hasta {g.antiguedad_max_anios ?? '—'} años
+                    {g.km_max_vehiculo ? ` y ${Number(g.km_max_vehiculo).toLocaleString('es-ES')} km` : ''}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-xs font-bold text-brand-600">{eur(precio)}</div>
+                  {coste != null && (
+                    <div className="text-[10px] text-brand-400">
+                      nos cuesta {eur(coste)} · deja {eur(precio - coste)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {(g.coberturas ?? []).length > 0 && (
+                <ul className="mt-1.5 pl-4 list-disc text-[10.5px] text-brand-500 space-y-0.5">
+                  {(g.coberturas ?? []).map((c) => (
+                    <li key={c.texto} className={c.incluida === false ? "line-through text-brand-300" : ""}>
+                      {c.texto}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[10px] text-brand-400 mt-2">
+        Lo que nos cuesta y lo que deja <strong>no salen</strong> en la oferta del cliente.
+      </p>
+    </div>
+  );
+}
+
+interface GarantiaFila {
+  id: string;
+  nombre: string;
+  proveedor_id: string | null;
+  es_base: boolean;
+  renunciable: boolean;
+  meses: number | null;
+  km_cubiertos: number | null;
+  precio: number | string;
+  coste: number | string | null;
+  antiguedad_max_anios: number | null;
+  km_max_vehiculo: number | null;
+  activo: boolean;
+  coberturas?: { texto: string; incluida: boolean }[];
+}
