@@ -655,6 +655,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         matricula: String(fila.matricula ?? ""),
         desde: "Nuestras instalaciones",
         hasta: aDondeVa,
+        tramo: 2,
         creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
       }).catch((e: Error) => console.error('[pedidos] tramo de entrega:', e.message));
     }

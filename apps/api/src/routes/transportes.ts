@@ -249,9 +249,22 @@ export async function abreTransporteDePedido(datos: {
   desde: string;
   hasta: string;
   creadoPor: string;
+  /**
+   * Qué viaje de los suyos es. El primero por defecto.
+   *
+   * Un coche de fuera hace dos: de Alemania a nuestras instalaciones, y de aquí
+   * a casa del cliente. Antes esto se saltaba en cuanto el pedido tenía **algún**
+   * tramo, así que el segundo no llegaba a abrirse nunca.
+   */
+  tramo?: number;
 }): Promise<string | null> {
   await prepara();
-  const yaHay = await query(`SELECT id FROM erp_transportes WHERE pedido_id = $1`, [datos.pedidoId]);
+  const tramo = Math.max(1, Math.floor(Number(datos.tramo) || 1));
+  // Se mira ese tramo, no si hay alguno: si no, el segundo viaje no cabría.
+  const yaHay = await query(
+    `SELECT id FROM erp_transportes WHERE pedido_id = $1 AND tramo = $2`,
+    [datos.pedidoId, tramo]
+  );
   if (yaHay.rows.length) return String((yaHay.rows[0] as { id: string }).id);
 
   try {
@@ -259,9 +272,10 @@ export async function abreTransporteDePedido(datos: {
       () => siguienteDeSerie('erp_transportes', prefijoAnual('TRP')),
       async (nuevoId) => {
         await query(
+          // En orden: un $8 metido en medio se lee mal y se copia peor.
           `INSERT INTO erp_transportes (id, pedido_id, tramo, vehiculo_titulo, matricula, desde, hasta, creado_por)
-           VALUES ($1,$2,1,$3,$4,$5,$6,$7)`,
-          [nuevoId, datos.pedidoId, datos.vehiculoTitulo, datos.matricula ?? '',
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [nuevoId, datos.pedidoId, tramo, datos.vehiculoTitulo, datos.matricula ?? '',
            datos.desde, datos.hasta, datos.creadoPor]
         );
       }

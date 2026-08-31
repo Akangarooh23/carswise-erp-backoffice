@@ -60,6 +60,11 @@ function reinicia() {
     deposit_paid_at: '2026-08-30T10:00:00Z',
     delivery_estimate: null,
     entrega: {},
+    // Lo que el cliente dijo en su panel: es el destino del segundo tramo.
+    entrega_direccion: 'Calle Mauricio Legendre 45 G2B',
+    entrega_cp: '28046',
+    entrega_ciudad: 'Madrid',
+    entrega_provincia: 'Madrid',
   });
 }
 
@@ -168,6 +173,12 @@ before(async () => {
       if (/pedido_id = \$1 AND tipo = \$2|lead_id = \$1 AND tipo = \$2/i.test(t)) {
         const col = /pedido_id/.test(t) ? 'pedido_id' : 'lead_id';
         return responde(tablas[destino].filter((x) => x[col] === p[0] && x.tipo === p[1]));
+      }
+      // El tramo también, o el segundo viaje parecería que ya existe.
+      if (/WHERE pedido_id = \$1 AND tramo = \$2/i.test(t)) {
+        return responde(tablas[destino].filter(
+          (x) => x.pedido_id === p[0] && Number(x.tramo) === Number(p[1])
+        ));
       }
       if (/WHERE pedido_id = \$1/i.test(t)) return responde(tablas[destino].filter((x) => x.pedido_id === p[0]));
       if (/WHERE lead_id = \$1/i.test(t)) return responde(tablas[destino].filter((x) => x.lead_id === p[0]));
@@ -321,6 +332,19 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     });
     assert.equal(recibido.codigo, 200);
     await esperaEnvios();
+
+    /**
+     * Y con el coche aquí se abre el tramo que lo lleva a su casa.
+     *
+     * Son dos viajes y no uno: de Alemania no puede ir directo, tiene que estar
+     * aquí para la ITV de homologación y para matricularlo.
+     */
+    const tramoDeEntrega = tablas.transportes[1];
+    assert.ok(tramoDeEntrega, 'al recibirlo se abre el tramo de entrega');
+    assert.equal(tramoDeEntrega.desde, 'Nuestras instalaciones');
+    assert.match(String(tramoDeEntrega.hasta), /Mauricio Legendre/,
+      'el destino sale de la dirección que puso el cliente, no de un texto fijo');
+    assert.match(String(tramoDeEntrega.hasta), /28046 Madrid/);
 
     // ── 7. Con el coche aquí, se abren sus papeleos ────────────────────────
     const tipos = tablas.tramites.map((x) => String(x.tipo));
