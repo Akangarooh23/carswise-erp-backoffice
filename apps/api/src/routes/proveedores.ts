@@ -51,6 +51,16 @@ async function prepara() {
   preparado = true;
 }
 
+/**
+ * Para quien dé de alta proveedores desde fuera de aquí.
+ *
+ * La tabla se crea sola la primera vez que alguien abre Proveedores. Un alta
+ * hecha con un guion puede llegar antes que esa primera visita.
+ */
+export async function preparaProveedores(): Promise<void> {
+  await prepara();
+}
+
 function nt(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
