@@ -14,6 +14,7 @@
     "test": "tsx --test \"apps/api/src/**/*.test.ts\" \"apps/web/src/**/*.test.ts\"",
     "alta:transportistas": "tsx apps/api/src/scripts/alta-transportistas.ts",
     "alta:bernal": "tsx apps/api/src/scripts/alta-gestoria-bernal.ts",
+    "garantias:muestra": "tsx apps/api/src/scripts/garantias-de-muestra.ts",
     "test:facturacion": "node scripts/comprueba-facturacion.js",
     "test:datos": "node scripts/comprueba-datos.js",
     "test:contratos": "node scripts/comprueba-contratos.js",
