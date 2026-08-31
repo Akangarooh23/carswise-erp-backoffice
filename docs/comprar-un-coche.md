@@ -147,8 +147,28 @@ del límite está en plazo**: el último día cuenta.
 ## 3 · Transportes
 
 Cada viaje del coche es un **tramo**: del vendedor al almacén, del almacén al
-taller, del taller al cliente. Al confirmar un pedido se abre el primero; los
+taller, del taller al cliente. Los que hacen falta sí o sí se abren solos; los
 demás los añades tú.
+
+### Un coche de fuera hace dos viajes, no uno
+
+No puede ir de Alemania a casa del cliente de un tirón: tiene que pasar por aquí
+para la ITV de homologación y para matricularlo. Así que se abren dos tramos, y
+cada uno en su momento:
+
+| Tramo | Cuándo se abre | Desde | Hasta |
+|---|---|---|---|
+| **1 · Traerlo** | Al **confirmar** el pedido | La ciudad alemana de la oferta | Nuestras instalaciones |
+| **2 · Entregarlo** | Al marcarlo **Recibido** | Nuestras instalaciones | La dirección del cliente |
+
+Ninguna de las dos direcciones se escribe a mano. La de salida sale de la propia
+oferta —la ciudad del vendedor alemán— y la de llegada, de lo que el cliente
+dijo en su solicitud o cambió después en su panel, con calle y código postal.
+
+El segundo se abre **al recibirlo y no antes** porque hasta ese momento no se
+sabe si hay algo que arreglar. Si el cliente todavía no ha dicho dónde quiere
+recibirlo, el tramo se abre **sin destino**: se ve que falta, en vez de
+inventarse uno.
 
 | Estado | Qué quiere decir |
 |---|---|

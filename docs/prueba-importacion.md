@@ -45,6 +45,21 @@ fecha futura y cualquier CVC.
 - [ ] Pincha otra: **cambia el total** de arriba.
 - [ ] Abre un coche de **más de ocho años** y mira que la premium **no sale**. No
       es un fallo: es su tope de antigüedad.
+- [ ] Al cambiar de garantía cambian **los cinco números**, no solo el del
+      desglose: el precio grande, la cuota del mes, la fianza y el ahorro.
+
+**Y el transporte: de dónde a dónde**
+
+- [ ] Debajo del desglose hay una sección **Transporte**, con **Desde** y **Hasta**.
+- [ ] En *Desde* sale la **ciudad alemana de este coche**, no «Alemania» a secas.
+      Compárala con la que pone la oferta.
+- [ ] En *Hasta* sale **tu dirección entre comillas**, con calle y código postal,
+      cogida de tus datos de facturación sin que la escribas.
+- [ ] Pulsa **Cambiar dirección de envío**: se abren cuatro campos —calle, C. P.,
+      ciudad y provincia—. Cambia algo y mira que el *Hasta* lo recoge.
+- [ ] Pon una provincia de **fuera de la península** (Illes Balears): sale el
+      aviso de recargo, **y sin ninguna cifra**. Vuelve a poner Madrid.
+- [ ] Abre otro coche: la dirección que escribiste **sigue puesta**.
 
 2. Pulsa **Solicitar importación** y rellena.
 
@@ -62,6 +77,11 @@ fecha futura y cualquier CVC.
 **Prueba también esto**: cierra el modal y vuelve a pedir el mismo coche. **No
 debe crearse una segunda solicitud**, ni llegarte otro correo.
 
+**Y esto**: vuelve al coche, **cambia de garantía** y pídelo otra vez. Sigue sin
+crearse una segunda solicitud, pero la tarjeta de *Solicitudes* tiene que
+enseñar **la fianza nueva**, no la de la primera vez. Lo que se cobra es siempre
+lo último que se enseñó.
+
 ---
 
 ## 2 · Pagar la fianza · **en PopCar**
@@ -75,6 +95,10 @@ Pulsa **Pagar la fianza ahora** y paga con la tarjeta de prueba.
 - [ ] El Resumen dice «Importación en curso: Fianza pagada».
 - [ ] Te llega **la factura por correo, con su PDF**.
 - [ ] La factura está en **Facturación**, con número de la serie FIA.
+- [ ] El importe cobrado es **el que ponía el botón**, con la garantía que
+      elegiste. Míralo en la factura, no de memoria.
+- [ ] Vuelve a la ficha del coche e intenta **cambiar la dirección de envío**: ya
+      no se deja, y te dice que escribas. Con la fianza pagada queda fijada.
 
 Si algo de esto falla, abre la consola con F12 y busca `[fianza] no consta pagada`.
 
@@ -217,6 +241,11 @@ es el paso siguiente.
 Ve a **Transportes**. Tiene que haber un tramo **creado solo**, en *Por
 organizar*.
 
+- [ ] En **Desde** sale la **ciudad alemana de la oferta** —Fürth, Aachen, la que
+      sea—, no el nombre del vendedor ni «Alemania». Es el mismo sitio que veías
+      en la ficha de PopCar.
+- [ ] En **Hasta**, «Nuestras instalaciones». Este es solo el primer viaje: el
+      coche tiene que pasar por aquí para la ITV de homologación.
 - [ ] Intenta pasarlo a **Contratado** sin transportista. **Te lo impide.**
 - [ ] Elige el transportista de la lista. Si no está, pulsa **+ Añadir uno
       nuevo** y escríbelo: se queda dado de alta.
@@ -242,6 +271,11 @@ Vuelve al pedido.
       kilómetros y las llaves.
 - [ ] Rellena **Al llegar** —kilómetros, llaves, algún daño— y guarda.
 - [ ] Ahora sí pasa a **Recibido**.
+- [ ] Vuelve a **Transportes**: hay un **segundo tramo**, creado solo, de
+      «Nuestras instalaciones» a **tu dirección**, con la calle y el código
+      postal que pusiste en la ficha. Es el viaje de entrega.
+- [ ] El primero **sigue estando**: son dos tramos del mismo coche, no uno
+      reescrito.
 - [ ] Marca **«No es lo que se compró»** sin escribir nada y guarda. **Te lo
       impide**: decir que algo está mal sin decir qué se reclama no sirve de
       nada dentro de un mes. Escríbelo o desmárcalo.

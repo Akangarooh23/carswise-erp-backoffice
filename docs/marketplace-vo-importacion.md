@@ -88,6 +88,10 @@ precios de hoy son unos 2.900 € de media.
 Si el cliente elige otra garantía, cambia el total y cambia la fianza. La que
 vale es la del momento en que la pidió.
 
+Y si vuelve a la ficha, cambia de garantía y **lo pide otra vez**, no se abre un
+segundo expediente: se reutiliza el suyo, con la fianza nueva. Lo que se le
+cobra es siempre lo último que se le enseñó.
+
 Si alguien discute la cifra, la que vale es la que pone ahí.
 
 **Es lo primero que se cobra, y hasta que no está no se pide nada a Alemania.**
@@ -192,6 +196,37 @@ sin proveedor.
 
 Lo que **no** entra en el precio y se factura aparte: el **reacondicionado**, que
 solo se sabe cuando el coche llega y se le presupuesta antes, y el **seguro**.
+
+## Dónde se lo llevamos
+
+En la ficha del coche, debajo del desglose, hay una sección de **Transporte** con
+las dos puntas del viaje:
+
+| | De dónde sale |
+|---|---|
+| **Desde** | La ciudad alemana donde está el coche, sacada de la propia oferta |
+| **Hasta** | La dirección del cliente, entre comillas, con calle y código postal |
+
+**Un precio para toda la península.** El transporte va dentro del precio y no
+cambia si vive en Cádiz o en Girona. Fuera de la península —Baleares, Canarias,
+Ceuta y Melilla— sale un aviso de que **puede** llevar recargo, sin cifra: no hay
+tarifa de nadie para esos viajes y poner un número sería adivinar. Se le confirma
+antes de que pague.
+
+**La dirección se la rellenamos.** Si tiene una puesta en sus datos de
+facturación, sale ya escrita: volver a pedírsela es preguntarle algo que ya nos
+dijo. Debajo hay **Cambiar dirección de envío** por si quiere recibirlo en otro
+sitio, y lo que escriba se recuerda entre coches — quien compara cinco no la
+escribe cinco veces.
+
+**Se puede cambiar hasta que pague la fianza. Después no.** Lo que se le cobró
+incluye llevárselo a donde dijo; dejarle cambiarla luego sería dejarle pagar
+precio de península y pedir la entrega en Palma. Al intentarlo se le dice que
+escriba, no un «no se puede» a secas. Si hay que cambiarla igualmente, se hace
+desde el ERP.
+
+También la puede poner o cambiar **desde su panel**, en la tarjeta de la
+solicitud, con las mismas reglas.
 
 ## Cuándo le hemos dicho que lo tendrá
 
