@@ -98,6 +98,12 @@ factura con el pedido y la ficha la devuelve la gestoría— ni «Al llegar» an
 de que el coche llegue. Y **cancelar no pide nada**: renunciar a comprar es lo
 contrario de avanzar.
 
+Por lo mismo, **el pedido abierto solo enseña lo de su fase**: en *Pedido* no
+salen los kilómetros de un coche que sigue en Alemania, ni lo que cuesta
+reacondicionar uno que nadie ha visto. No se pierde nada — abajo del todo hay
+**«Ver todos los datos del pedido»** para corregir cualquier cosa en cualquier
+momento.
+
 Saltarse fases tampoco vale de atajo: ir de *Borrador* a *En camino* de una vez
 exige lo mismo que haber ido paso a paso.
 
@@ -120,22 +126,47 @@ factura aparece meses después sobre un coche que ya no interesa a nadie.
 
 ### Recórrelo
 
+Va por fases, y **el orden importa**: cada bloque comprueba lo que pide *esa*
+fase. Hazlos seguidos y sin adelantarte, o las puertas no dan lo que dicen aquí.
+
+- [ ] Fíjate primero en **lo que sale y lo que no**: en fase *Pedido* solo hay
+      «A nombre de», los datos y el estado. Ni «Al llegar» ni el
+      reacondicionado, que son de cuando el coche esté aquí. Pulsa abajo **«Ver
+      todos los datos del pedido»** y comprueba que aparece todo; vuelve a
+      dejarlo como estaba.
+
+**Antes de nada, a nombre de quién va**
+
 - [ ] Mira **«A nombre de»**: debería estar en *El cliente*, porque hay cliente.
       Púlsalo en *PopCar* y mira que aparece el **plazo de reventa**; déjalo
-      luego como estaba.
-- [ ] En **Documentos**, arriba, salen los papeles que faltan: la ficha del
-      vehículo y el COC en rojo.
-- [ ] Sube cualquier PDF diciendo que es la **ficha del vehículo**. Ese hueco se
-      cierra.
-- [ ] Sube otro **sin decir qué papel es**. **No debe cerrar ningún hueco.**
-- [ ] Borra el importe y prueba a pasarlo a **Confirmado**. **Te lo impide**, y
-      te dice que falta por cuánto se ha cerrado.
-- [ ] Vuelve a poner el importe y pásalo a **Confirmado**.
-- [ ] Ahora prueba a pasarlo a **En camino** sin los papeles. **Te lo impide**, y
-      **te los nombra**: la ficha (partes I y II), el COC y la factura del
-      vendedor.
-- [ ] Súbelos —vale cualquier PDF, lo que cuenta es decir qué papel es— y pásalo
-      a **En camino**.
+      luego como estaba. Esto no es de ninguna fase: se puede cambiar cuando sea.
+
+**Para confirmarlo: solo el precio**
+
+- [ ] Borra el importe y pulsa **Guardar los datos**. El botón de **«Pasar a
+      Confirmado»** se apaga, y encima sale en ámbar **«Por cuánto se ha
+      cerrado»** con el motivo.
+- [ ] Vuelve a poner el importe y guarda. El botón se enciende: pásalo a
+      **Confirmado**.
+- [ ] Fíjate en lo que **no** ha hecho falta: no has subido ni un papel. Es a
+      propósito — la factura llega con el pedido y la ficha la devuelve la
+      gestoría, así que pedirlos aquí sería pedir algo que todavía no existe.
+
+**Para moverlo: los papeles**
+
+- [ ] Sin subir nada aún, mira el botón de **«Pasar a En camino»**: está apagado,
+      y el aviso de arriba **nombra los cuatro** que faltan — la ficha del
+      vehículo partes I y II, el COC y la factura del vendedor.
+- [ ] Baja a **Documentos** —que aparece justo al confirmarlo, no antes—: arriba
+      está la lista de lo que se espera de un coche alemán, con esos cuatro
+      marcados como imprescindibles.
+- [ ] Sube un PDF cualquiera diciendo que es la **ficha del vehículo (parte II)**.
+      Ese hueco se cierra, y **sin recargar** el aviso de arriba pasa a nombrar
+      solo tres.
+- [ ] Sube otro **sin decir qué papel es**. **No debe cerrar ningún hueco**: si
+      cerrara, bastaría con subir cualquier cosa para ponerlo todo en verde.
+- [ ] Sube los tres que faltan: el aviso desaparece y el botón se enciende.
+      Pásalo a **En camino**.
 
 ---
 

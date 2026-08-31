@@ -67,6 +67,12 @@ Lo que **no** se pide: papeles para confirmar —llegan en momentos distintos—
 mirar un coche que todavía no ha llegado. Cancelar no pide nada. Y saltarse
 fases no sirve de atajo: llegar a una exige lo de todas las anteriores.
 
+Por la misma razón, **un pedido abierto solo enseña lo de su fase**: los
+kilómetros y las llaves aparecen cuando el coche viene de camino, los papeles
+cuando ya sirven para moverlo, y el reacondicionado cuando está aquí. Abajo hay
+**«Ver todos los datos del pedido»** para lo que haya que corregir fuera de
+sitio.
+
 **Los papeles.** Cada pedido enseña lo que falta según de dónde venga: de
 Alemania la ficha del vehículo y el COC, de un particular el informe de la DGT y
 el recibo del impuesto. En rojo lo que bloquea, en ámbar lo que solo conviene.

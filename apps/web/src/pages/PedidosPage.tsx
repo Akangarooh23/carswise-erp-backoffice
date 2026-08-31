@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
+import { toca as tocaEnFase, type Bloque } from '../lib/fases-pedido.js';
 
 /**
  * Los pedidos: coches encargados a un proveedor.
@@ -141,6 +142,12 @@ export default function PedidosPage() {
   const enMarcha = pedidos.filter((p) => p.estado !== 'Recibido' && p.estado !== CANCELADO);
   const comprometido = enMarcha.reduce((s, p) => s + Number(p.importe || 0), 0);
 
+  /** Vuelve a leer el pedido abierto: lo que le falta lo dice el servidor. */
+  async function refresca(id: string) {
+    const lista = await carga();
+    setAbierto((previo) => (previo && previo.id === id ? (lista.find((x) => x.id === id) ?? previo) : previo));
+  }
+
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
     const r = await api.patch<Pedido>(`/pedidos/${id}`, cambios);
@@ -149,8 +156,7 @@ export default function PedidosPage() {
       setError((r as unknown as { detail?: string }).detail || r.error || 'No se ha podido guardar.');
       return;
     }
-    const lista = await carga();
-    setAbierto((previo) => (previo && previo.id === id ? (lista.find((x) => x.id === id) ?? previo) : previo));
+    await refresca(id);
   }
 
   return (
@@ -253,6 +259,7 @@ export default function PedidosPage() {
           guardando={guardando}
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
+          onPapeles={() => void refresca(abierto.id)}
         />
       )}
 
@@ -613,8 +620,10 @@ const POR_QUE_SE_PIDE: Record<string, string> = {
   'Recibido': 'Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae. Eso no se puede hacer después.',
 };
 
-function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
+function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   p: Pedido; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
+  /** Subir o quitar un papel cambia lo que falta para moverlo. */
+  onPapeles: () => void;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
   const [porQue, setPorQue] = useState('');
@@ -624,6 +633,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
     fecha_estimada: p.fecha_estimada ?? '',
   });
   const siguiente = siguienteEstado(p.estado);
+  const [verTodo, setVerTodo] = useState(false);
+  const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo);
 
   /**
    * Lo que falta para poder pasar a un estado.
@@ -646,9 +657,9 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
-        <ANombreDeQuien p={p} guardando={guardando} onCambiar={onCambiar} />
-        <Comprobaciones p={p} guardando={guardando} onCambiar={onCambiar} />
-        <AlLlegar p={p} guardando={guardando} onCambiar={onCambiar} />
+        {toca('titular') && <ANombreDeQuien p={p} guardando={guardando} onCambiar={onCambiar} />}
+        {toca('comprobaciones') && <Comprobaciones p={p} guardando={guardando} onCambiar={onCambiar} />}
+        {toca('alLlegar') && <AlLlegar p={p} guardando={guardando} onCambiar={onCambiar} />}
 
         <div className="mb-4">
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Estado</div>
@@ -700,6 +711,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           )}
         </div>
 
+        {toca('datos') && (<>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="col-span-2 text-[11px] text-brand-400">
             Proveedor
@@ -739,6 +751,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
         >
           Guardar los datos
         </button>
+        </>)}
 
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm border-t border-brand-100 pt-4 mt-4">
           <div>
@@ -757,10 +770,18 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           )}
         </dl>
 
-        <Reacondicionado id={p.id} />
-        <LoQueCuesta id={p.id} />
+        {toca('gastos') && <><Reacondicionado id={p.id} /><LoQueCuesta id={p.id} /></>}
 
-        <Documentos ambito="pedido" id={p.id} origen={p.origen} />
+        {toca('papeles') && (
+          <Documentos ambito="pedido" id={p.id} origen={p.origen} onCambio={onPapeles} />
+        )}
+
+        <button
+          onClick={() => setVerTodo((v) => !v)}
+          className="mt-4 w-full px-3 py-2 text-[11px] font-semibold text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50"
+        >
+          {verTodo ? 'Ver solo lo de esta fase' : 'Ver todos los datos del pedido'}
+        </button>
 
         {p.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">

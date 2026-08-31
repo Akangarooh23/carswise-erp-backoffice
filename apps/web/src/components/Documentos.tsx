@@ -38,11 +38,19 @@ function pesa(bytes: number): string {
   return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export default function Documentos({ ambito, id, origen }: {
+export default function Documentos({ ambito, id, origen, onCambio }: {
   ambito: 'lead' | 'pedido' | 'tramite' | 'transporte';
   id: string;
   /** Si se dice, sale la lista de lo que falta según a quién se le compró. */
   origen?: string;
+  /**
+   * Que subir o quitar un papel se note fuera de aquí.
+   *
+   * Un pedido no se mueve sin sus papeles imprescindibles, y ese aviso lo pinta
+   * la pantalla de arriba con lo que le dijo el servidor. Sin avisarla, subes el
+   * que falta y el aviso sigue diciendo que falta hasta recargar.
+   */
+  onCambio?: () => void;
 }) {
   const [lista, setLista] = useState<Documento[] | null>(null);
   const [faltan, setFaltan] = useState<PapelEsperado[]>([]);
@@ -87,6 +95,7 @@ export default function Documentos({ ambito, id, origen }: {
       } else {
         setPapel('');
         await carga();
+        onCambio?.();
       }
     } catch {
       setFallo('No se ha podido leer el fichero.');
@@ -99,6 +108,7 @@ export default function Documentos({ ambito, id, origen }: {
     const r = await api.delete(`/documentos/${ambito}/${id}/${doc.id}`);
     if (!r.ok) { setFallo('No se ha podido quitar.'); return; }
     await carga();
+    onCambio?.();
   }
 
   return (
