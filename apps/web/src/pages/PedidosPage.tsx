@@ -83,6 +83,10 @@ interface Pedido {
   revender_antes_de: string | null;
   recepcion: Recepcion | null;
   created_at: string;
+  /** Lo que falta para cada estado. Lo calcula el servidor con sus mismas reglas. */
+  falta_por_estado?: Record<string, string[]>;
+  /** Los papeles imprescindibles del origen que aún no están subidos. */
+  papeles_faltan?: string[];
 }
 
 const etiquetaOrigen = (v: string) => ORIGENES.find(([k]) => k === v)?.[1] ?? v;
@@ -577,6 +581,38 @@ function AlLlegar({ p, guardando, onCambiar }: {
  * rastro guarda quién lo movió, pero «el proveedor no confirma hasta el lunes»
  * solo lo sabe quien lo escriba.
  */
+/**
+ * Lo que falta para pasar de fase, dicho antes de intentarlo.
+ *
+ * El servidor lo bloquea igual. Pero enterarse después de haber escrito la
+ * nota, y con un mensaje de error, es enterarse tarde y mal: aquí se ve qué
+ * falta y por qué se pide en este punto y no en otro.
+ */
+function LoQueFalta({ estado, falta }: { estado: string | null; falta: string[] }) {
+  if (!estado || !falta.length) return null;
+  return (
+    <div className="mt-2 p-3 rounded-lg border border-amber-300 bg-amber-50">
+      <div className="text-xs font-bold text-amber-900 mb-1">
+        Para pasar a «{estado}», falta esto
+      </div>
+      <ul className="text-[11px] text-amber-800 list-disc pl-4 space-y-0.5">
+        {falta.map((x) => <li key={x}>{x}</li>)}
+      </ul>
+      <p className="text-[11px] text-amber-700/80 mt-1.5">
+        {POR_QUE_SE_PIDE[estado] ?? ''}
+      </p>
+    </div>
+  );
+}
+
+/** Por qué cada fase pide lo que pide. Sin esto, una puerta cerrada es solo un estorbo. */
+const POR_QUE_SE_PIDE: Record<string, string> = {
+  'Pedido': 'Encargarlo es comprometerse: hay que saber a quién se le reclama, y con un particular mirar antes lo que no se arregla después.',
+  'Confirmado': 'Confirmado quiere decir que hay precio cerrado. Sin importe, el coste y el margen de este coche salen mal.',
+  'En camino': 'Ponerlo en camino es contratar un transporte y pagarlo. Sin los papeles que lo hacen nuestro, lo que se mueve es un coche de otro.',
+  'Recibido': 'Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae. Eso no se puede hacer después.',
+};
+
 function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
   p: Pedido; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
 }) {
@@ -588,6 +624,16 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
     fecha_estimada: p.fecha_estimada ?? '',
   });
   const siguiente = siguienteEstado(p.estado);
+
+  /**
+   * Lo que falta para poder pasar a un estado.
+   *
+   * Lo dice el servidor, que es quien lo bloquea: aquí solo se enseña. Así no
+   * hay dos versiones de la regla, y lo que se lee en pantalla es exactamente
+   * lo que va a permitir o no la próxima llamada.
+   */
+  const faltaPara = (estado: string | null): string[] =>
+    estado ? (p.falta_por_estado?.[estado] ?? []) : [];
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
@@ -618,12 +664,14 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
           {siguiente && aEstado === null && (
             <button
               onClick={() => { setAEstado(siguiente); setPorQue(''); }}
-              disabled={guardando}
+              disabled={guardando || faltaPara(siguiente).length > 0}
               className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
             >
               Pasar a «{siguiente}»
             </button>
           )}
+
+          <LoQueFalta estado={aEstado ?? siguiente} falta={faltaPara(aEstado ?? siguiente)} />
 
           {aEstado !== null && (
             <div className="mt-2 p-3 rounded-lg border border-brand-300 bg-brand-50">
@@ -636,7 +684,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar }: {
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => { onCambiar({ estado: aEstado, nota: porQue, proveedor: datos.proveedor }); setAEstado(null); setPorQue(''); }}
-                  disabled={guardando || !porQue.trim()}
+                  disabled={guardando || !porQue.trim() || faltaPara(aEstado).length > 0}
                   className="flex-1 px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
                 >
                   Guardar y pasar

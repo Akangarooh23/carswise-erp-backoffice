@@ -14,6 +14,7 @@ import type { Server } from 'http';
 import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { papelesEsperados } from '../lib/documentos.js';
 
 interface Fila { [k: string]: unknown }
 
@@ -26,12 +27,22 @@ let pase: string;
 let pedidos: Fila[] = [];
 let historial: Fila[] = [];
 let ofertas: Fila[] = [];
+/** Los papeles subidos, que es lo que mira la puerta de «En camino». */
+let documentos: Fila[] = [];
 let siguiente = 1;
+
+/** Sube los imprescindibles de ese origen, para poder mover el coche. */
+function conSusPapeles(pedidoId: string, origen: string) {
+  for (const papel of papelesEsperados(origen).filter((x) => x.imprescindible)) {
+    documentos.push({ ambito: 'pedido', ambito_id: pedidoId, papel: papel.papel });
+  }
+}
 
 function reinicia() {
   pedidos = [];
   historial = [];
   ofertas = [{ id: 'of-1', dealer_name: 'Autohaus Müller', price: '9000' }];
+  documentos = [];
   siguiente = 1;
 }
 
@@ -98,6 +109,7 @@ before(async () => {
       }
       return responde([fila]);
     }
+    if (/^SELECT papel FROM erp_documentos/i.test(t)) return responde(documentos.filter((d) => d.ambito_id === p[0]));
     if (/FROM erp_pedido_history/i.test(t)) return responde(historial.filter((h) => h.pedido_id === p[0]));
     if (/FROM erp_pedidos WHERE id = \$1/i.test(t)) return responde(pedidos.filter((x) => x.id === p[0]));
     if (/SELECT id FROM erp_pedidos WHERE lead_id/i.test(t)) return responde(pedidos.filter((x) => x.lead_id === p[0]));
@@ -246,11 +258,15 @@ describe('comprarle a un particular', { concurrency: 1 }, () => {
 });
 
 describe('mirar el coche al llegar', { concurrency: 1 }, () => {
+  /** Un pedido al que solo le falta mirarlo: proveedor, precio y papeles. */
   async function pedidoListo() {
     const alta = await api('/pedidos', 'POST', {
       origen: 'concesionario', vehiculo_titulo: 'Peugeot 208', proveedor: 'Autos Paco',
+      importe: 9000,
     });
-    return (alta.cuerpo.data as Fila).id as string;
+    const id = (alta.cuerpo.data as Fila).id as string;
+    conSusPapeles(id, 'concesionario');
+    return id;
   }
 
   test('no se da por recibido sin leer los kilómetros ni contar las llaves', async () => {
@@ -343,4 +359,106 @@ describe('el pedido que nace de una importación', { concurrency: 1 }, () => {
     assert.ok(id, 'que la oferta ya no esté no puede impedir registrar el pedido');
   });
 });
+});
+
+/**
+ * Las puertas de cada fase, desde fuera.
+ *
+ * Que la regla esté escrita no basta: lo que cuenta es que la ruta no deje
+ * pasar. Y que no pida cosas antes de tiempo, que es la forma de conseguir que
+ * alguien escriba un número cualquiera para poder seguir.
+ */
+describe('no se pasa de fase sin lo que hace falta', { concurrency: 1 }, () => {
+  async function nuevo(extra: Record<string, unknown> = {}) {
+    const alta = await api('/pedidos', 'POST', {
+      origen: 'concesionario', vehiculo_titulo: 'Peugeot 208', proveedor: 'Autos Paco',
+      ...extra,
+    });
+    return (alta.cuerpo.data as Fila).id as string;
+  }
+
+  test('confirmar sin importe no se puede', async () => {
+    const id = await nuevo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'dicen que sí' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'sin_importe');
+  });
+
+  test('un importe de cero tampoco es un precio cerrado', async () => {
+    const id = await nuevo({ importe: 0 });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'dicen que sí' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'sin_importe');
+  });
+
+  test('con importe, sí', async () => {
+    const id = await nuevo({ importe: 9000 });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'dicen que sí' });
+    assert.equal(r.codigo, 200);
+    assert.equal((r.cuerpo.data as Fila).estado, 'Confirmado');
+  });
+
+  test('el importe puede llegar en el mismo cambio', async () => {
+    const id = await nuevo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', {
+      estado: 'Confirmado', nota: 'cerrado en 9.000', importe: 9000,
+    });
+    assert.equal(r.codigo, 200);
+  });
+
+  test('confirmar no pide papeles: llegan en momentos distintos', async () => {
+    const id = await nuevo({ importe: 9000 });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'sin papeles todavía' });
+    assert.equal(r.codigo, 200, 'la factura llega con el pedido, la ficha la devuelve la gestoría');
+  });
+
+  test('mover el coche sin sus papeles, no', async () => {
+    const id = await nuevo({ importe: 9000 });
+    await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'cerrado' });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'faltan_papeles');
+    // Los imprescindibles de un concesionario: factura, permiso y ficha técnica.
+    assert.deepEqual(r.cuerpo.faltan, ['Factura', 'Permiso de circulación', 'Ficha técnica']);
+  });
+
+  test('con los papeles, sí', async () => {
+    const id = await nuevo({ importe: 9000 });
+    conSusPapeles(id, 'concesionario');
+    await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'cerrado' });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 200);
+  });
+
+  test('los convenientes no hacen falta para moverlo', async () => {
+    const id = await nuevo({ importe: 9000 });
+    conSusPapeles(id, 'concesionario');
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 200, 'el contrato y las cargas son convenientes, no imprescindibles');
+  });
+
+  test('el atajo no salta las puertas', async () => {
+    const id = await nuevo({ importe: 9000 });
+    // De Borrador a «En camino» de una vez, sin haber subido nada.
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'que salga ya' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'faltan_papeles');
+  });
+
+  test('cancelar no pide nada: no es avanzar', async () => {
+    const id = await nuevo();
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Cancelado', nota: 'se lo han vendido a otro' });
+    assert.equal(r.codigo, 200);
+  });
+
+  test('la lista dice lo que falta para cada fase, sin tener que intentarlo', async () => {
+    await nuevo();
+    const r = await api('/pedidos');
+    const fila = (r.cuerpo.data as Fila[])[0];
+    const falta = fila.falta_por_estado as Record<string, string[]>;
+    assert.deepEqual(falta['Pedido'], []);
+    assert.deepEqual(falta['Confirmado'], ['Por cuánto se ha cerrado']);
+    assert.ok(falta['En camino'].includes('Factura'));
+    assert.ok(falta['Recibido'].includes('Los kilómetros que marca'));
+  });
 });

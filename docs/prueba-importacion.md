@@ -79,13 +79,63 @@ y su importe contado en «Fianzas cobradas».
 Ve a **Pedidos**. Tiene que haber uno **creado solo**, con el proveedor alemán y
 su precio — que **no** es la cifra que ve el cliente.
 
+### Qué hace falta en cada fase
+
+Un pedido no pasa de fase si le falta lo que esa fase **significa**. No es
+papeleo por papeleo: cada cosa se pide en el momento en que se sabe, y ni antes
+ni después. Si falta algo, la pantalla te lo dice **antes** de que lo intentes,
+y el botón se queda apagado.
+
+| Para pasar a | Hace falta | Por qué ahí |
+|---|---|---|
+| **Pedido** | A quién se le encarga. Si es un particular, además las cuatro comprobaciones | Encargarlo es comprometerse: sin proveedor no hay a quién reclamar, y a una persona no se le paga sin mirar cargas y deudas |
+| **Confirmado** | Por cuánto se ha cerrado | Confirmado quiere decir que hay precio acordado. Sin importe, el coste y el margen de ese coche salen mal desde el primer día |
+| **En camino** | Los papeles imprescindibles de su origen | Es cuando se contrata el transporte y se paga. Sin lo que hace nuestro el coche, lo que se mueve es un coche de otro |
+| **Recibido** | Kilómetros y llaves | Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae. Después ya no se puede |
+
+Lo que **no** se pide: papeles para confirmar —llegan en momentos distintos, la
+factura con el pedido y la ficha la devuelve la gestoría— ni «Al llegar» antes
+de que el coche llegue. Y **cancelar no pide nada**: renunciar a comprar es lo
+contrario de avanzar.
+
+Saltarse fases tampoco vale de atajo: ir de *Borrador* a *En camino* de una vez
+exige lo mismo que haber ido paso a paso.
+
+### «A nombre de»: *El cliente* o *PopCar*
+
+Son los dos botones de arriba del pedido, y **no** son quién vende. PopCar vende
+siempre —su factura y su garantía—; esto es **a nombre de quién se pone el
+coche**, y ahí está la diferencia entre pagar un cambio de nombre o dos.
+
+| | *El cliente* | *PopCar* |
+|---|---|---|
+| Cambios de nombre | **Uno**: del vendedor al cliente | **Dos**: al vendedor→PopCar al comprarlo, y PopCar→cliente al venderlo |
+| Cuándo | Al venderlo | Al comprarlo, y otra vez al venderlo |
+| Plazo de reventa | No corre | **Sí**: el pedido enseña hasta cuándo, y avisa dos meses antes |
+| Cuándo se usa | Hay un cliente esperando ese coche concreto | El coche entra en stock sin comprador |
+
+Lo del plazo es lo que importa: si el coche se pone a nuestro nombre, hay un
+límite para revenderlo sin que el impuesto de la compra se quede. Pasado, la
+factura aparece meses después sobre un coche que ya no interesa a nadie.
+
+### Recórrelo
+
 - [ ] Mira **«A nombre de»**: debería estar en *El cliente*, porque hay cliente.
+      Púlsalo en *PopCar* y mira que aparece el **plazo de reventa**; déjalo
+      luego como estaba.
 - [ ] En **Documentos**, arriba, salen los papeles que faltan: la ficha del
       vehículo y el COC en rojo.
 - [ ] Sube cualquier PDF diciendo que es la **ficha del vehículo**. Ese hueco se
       cierra.
 - [ ] Sube otro **sin decir qué papel es**. **No debe cerrar ningún hueco.**
-- [ ] Pasa el pedido a **Confirmado**.
+- [ ] Borra el importe y prueba a pasarlo a **Confirmado**. **Te lo impide**, y
+      te dice que falta por cuánto se ha cerrado.
+- [ ] Vuelve a poner el importe y pásalo a **Confirmado**.
+- [ ] Ahora prueba a pasarlo a **En camino** sin los papeles. **Te lo impide**, y
+      **te los nombra**: la ficha (partes I y II), el COC y la factura del
+      vendedor.
+- [ ] Súbelos —vale cualquier PDF, lo que cuenta es decir qué papel es— y pásalo
+      a **En camino**.
 
 ---
 
@@ -111,6 +161,9 @@ Vuelve al pedido.
       kilómetros y las llaves.
 - [ ] Rellena **Al llegar** —kilómetros, llaves, algún daño— y guarda.
 - [ ] Ahora sí pasa a **Recibido**.
+- [ ] Marca **«No es lo que se compró»** sin escribir nada y guarda. **Te lo
+      impide**: decir que algo está mal sin decir qué se reclama no sirve de
+      nada dentro de un mes. Escríbelo o desmárcalo.
 
 ---
 

@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   ESTADOS_PEDIDO, QUE_TOCA_PEDIDO, ORIGENES_PEDIDO, ETIQUETA_ORIGEN, CANCELADO,
   esEstadoValido, esOrigenPedido, siguienteEstado, puedeEncargarse, notaDelCambio,
+  faltaParaLlegarA, faltaPorEstado, alMenos, importeAcordado,
 } from './pedidos.js';
 
 describe('el camino de un pedido', () => {
@@ -84,5 +85,108 @@ describe('la nota de un cambio', () => {
 
   test('sin texto no se escribe nada', () => {
     assert.equal(notaDelCambio('lo de antes', 'Pedido', 'Confirmado', '  ', CUANDO), 'lo de antes');
+  });
+});
+
+/**
+ * Las puertas de cada fase.
+ *
+ * Cada cosa se pide en el estado que la define, no antes: pedir los kilómetros
+ * de un coche que sigue en Alemania solo consigue que alguien escriba un número
+ * para poder pasar, y entonces hay un dato falso donde antes había un hueco
+ * honesto.
+ */
+describe('qué falta para llegar a cada fase', () => {
+  const listo = { proveedor: 'Autohero GmbH', importe: 14310 };
+
+  test('sin proveedor no se encarga', () => {
+    assert.deepEqual(faltaParaLlegarA('Pedido', { importe: 100 }), ['A quién se le encarga']);
+  });
+
+  test('sin importe no se confirma', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('Confirmado', { proveedor: 'Autohero GmbH' }),
+      ['Por cuánto se ha cerrado']
+    );
+  });
+
+  test('un importe de cero no es un precio cerrado', () => {
+    assert.deepEqual(faltaParaLlegarA('Confirmado', { proveedor: 'X', importe: 0 }),
+      ['Por cuánto se ha cerrado']);
+    assert.deepEqual(faltaParaLlegarA('Confirmado', { proveedor: 'X', importe: '' }),
+      ['Por cuánto se ha cerrado']);
+  });
+
+  test('confirmar no pide papeles: llegan en momentos distintos', () => {
+    assert.deepEqual(faltaParaLlegarA('Confirmado', listo, { papeles: ['COC'] }), []);
+  });
+
+  test('pero mover el coche sí', () => {
+    assert.deepEqual(faltaParaLlegarA('En camino', listo, { papeles: ['COC'] }), ['COC']);
+  });
+
+  test('confirmar tampoco pide mirar un coche que no ha llegado', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('Confirmado', listo, { recepcion: ['Los kilómetros que marca'] }),
+      []
+    );
+  });
+
+  test('darlo por recibido sí', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('Recibido', listo, { recepcion: ['Los kilómetros que marca'] }),
+      ['Los kilómetros que marca']
+    );
+  });
+
+  test('el atajo exige lo mismo que ir paso a paso', () => {
+    // De Borrador a «En camino» de una vez: sin esto, saltar sería la forma de
+    // saltarse las puertas.
+    assert.deepEqual(
+      faltaParaLlegarA('En camino', {}, { papeles: ['COC'], comprobaciones: ['Mirar cargas'] }),
+      ['A quién se le encarga', 'Mirar cargas', 'Por cuánto se ha cerrado', 'COC']
+    );
+  });
+
+  test('un borrador no pide nada: para eso existe', () => {
+    assert.deepEqual(faltaParaLlegarA('Borrador', {}, { papeles: ['COC'] }), []);
+  });
+
+  test('cancelar no pide nada: no es avanzar', () => {
+    assert.deepEqual(faltaParaLlegarA('Cancelado', {}, { papeles: ['COC'] }), []);
+  });
+
+  test('con todo, no falta nada', () => {
+    assert.deepEqual(faltaParaLlegarA('Recibido', listo), []);
+  });
+});
+
+describe('lo que falta, fase por fase', () => {
+  test('cada estado con lo suyo, para poder enseñarlo antes de intentarlo', () => {
+    const mapa = faltaPorEstado({ proveedor: '', importe: null }, {
+      papeles: ['COC'], recepcion: ['Cuántas llaves vienen'],
+    });
+    assert.deepEqual(mapa['Borrador'], []);
+    assert.deepEqual(mapa['Pedido'], ['A quién se le encarga']);
+    assert.deepEqual(mapa['Confirmado'], ['A quién se le encarga', 'Por cuánto se ha cerrado']);
+    assert.ok(mapa['En camino'].includes('COC'));
+    assert.ok(mapa['Recibido'].includes('Cuántas llaves vienen'));
+  });
+});
+
+describe('el punto del camino', () => {
+  test('llegar a un estado es haber pasado por los de antes', () => {
+    assert.equal(alMenos('Recibido', 'Confirmado'), true);
+    assert.equal(alMenos('Pedido', 'Confirmado'), false);
+    assert.equal(alMenos('Confirmado', 'Confirmado'), true);
+    assert.equal(alMenos('Cancelado', 'Pedido'), false, 'cancelar no es avanzar');
+  });
+
+  test('un precio es un número mayor que cero', () => {
+    assert.equal(importeAcordado(14310), true);
+    assert.equal(importeAcordado('14310'), true);
+    assert.equal(importeAcordado(0), false);
+    assert.equal(importeAcordado(null), false);
+    assert.equal(importeAcordado('no sé'), false);
   });
 });

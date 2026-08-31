@@ -46,11 +46,26 @@ Cambiar de estado **pide decir qué ha pasado**, y eso se guarda en las notas co
 la fecha delante. No es burocracia: el siguiente que coja el teléfono necesita
 saber por qué está donde está.
 
-**Dos cosas que no te va a dejar hacer**
+**Lo que hace falta para pasar de fase**
 
-- **Encargarlo sin decir a quién.** Un pedido sin proveedor es un coche esperando
-  sin que nadie sepa a quién reclamar.
-- **Comprarle a un particular sin comprobar cuatro cosas.** Ver más abajo.
+Cada cosa se pide en el estado que la significa, ni antes ni después. Si falta,
+el pedido te lo dice **antes** de que lo intentes y no te deja pasar.
+
+| Para pasar a | Hace falta |
+|---|---|
+| Pedido | A quién se le encarga. Si es un particular, las cuatro comprobaciones |
+| Confirmado | Por cuánto se ha cerrado |
+| En camino | Los papeles imprescindibles de su origen |
+| Recibido | Kilómetros y llaves |
+
+Un pedido sin proveedor es un coche esperando sin que nadie sepa a quién
+reclamar. Sin importe, el coste y el margen de ese coche salen mal desde el
+primer día. Y ponerlo en camino es contratar un transporte y pagarlo: sin los
+papeles que lo hacen nuestro, lo que se mueve es un coche de otro.
+
+Lo que **no** se pide: papeles para confirmar —llegan en momentos distintos— ni
+mirar un coche que todavía no ha llegado. Cancelar no pide nada. Y saltarse
+fases no sirve de atajo: llegar a una exige lo de todas las anteriores.
 
 **Los papeles.** Cada pedido enseña lo que falta según de dónde venga: de
 Alemania la ficha del vehículo y el COC, de un particular el informe de la DGT y

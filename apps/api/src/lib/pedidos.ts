@@ -101,3 +101,93 @@ export function notaDelCambio(
   const previas = (notasActuales ?? '').trim();
   return previas ? `${previas}\n${entrada}` : entrada;
 }
+
+/**
+ * En qué punto del camino está un estado. -1 si no es del camino.
+ */
+function paso(estado: string): number {
+  return (ESTADOS_PEDIDO as readonly string[]).indexOf(estado);
+}
+
+/** Si llegar a `estado` supone haber pasado ya por `hito`. */
+export function alMenos(estado: string, hito: EstadoPedido): boolean {
+  const i = paso(estado);
+  const j = paso(hito);
+  return i >= 0 && j >= 0 && i >= j;
+}
+
+/**
+ * Confirmado quiere decir que hay precio acordado.
+ *
+ * Sin importe no hay coste, y el margen de ese coche sale mal desde el primer
+ * día: la cuenta de lo que ha costado de verdad se hace sumando partidas sobre
+ * el precio de compra, y si ese precio es cero, todo lo que se calcule encima es
+ * mentira. Es el único dato que **define** el estado, no que lo acompaña.
+ */
+export function importeAcordado(importe: unknown): boolean {
+  const n = Number(importe);
+  return Number.isFinite(n) && n > 0;
+}
+
+/**
+ * Lo que falta para llegar a un estado.
+ *
+ * Se mira por el punto del camino, no por el salto: pasar de Borrador a «En
+ * camino» de una vez exige lo mismo que haber ido paso a paso. Si no, el propio
+ * atajo sería la forma de saltarse las puertas.
+ *
+ * Cada cosa se pide en el estado que la **define**, no antes:
+ *
+ * - **Pedido** es comprometerse: a quién, y con un particular lo que no se
+ *   arregla después —cargas, deudas, que quien firma sea el titular—.
+ * - **Confirmado** es que hay precio cerrado.
+ * - **En camino** es contratar un transporte y pagarlo. Ahí sí hacen falta los
+ *   papeles imprescindibles: lo que se mueve, si no, es un coche de otro.
+ * - **Recibido** son los dos datos que solo se pueden tomar ese día: los
+ *   kilómetros antes de moverlo y las llaves delante de quien lo trae.
+ *
+ * Lo que viene de fuera —papeles, comprobaciones, recepción— entra como listas
+ * ya calculadas: esta función no sabe de base de datos, y así se puede
+ * comprobar entera sin levantar nada.
+ */
+export interface LoQueYaHay {
+  /** Comprobaciones del origen que aún no se han hecho. */
+  comprobaciones?: string[];
+  /** Papeles imprescindibles del origen que no están subidos. */
+  papeles?: string[];
+  /** Lo que falta por mirar del coche al llegar. */
+  recepcion?: string[];
+}
+
+export function faltaParaLlegarA(
+  estado: string,
+  pedido: { proveedor?: string | null; importe?: unknown },
+  pendiente: LoQueYaHay = {}
+): string[] {
+  if (estado === CANCELADO) return [];
+  const falta: string[] = [];
+  if (alMenos(estado, 'Pedido')) {
+    if (!puedeEncargarse(pedido)) falta.push('A quién se le encarga');
+    falta.push(...(pendiente.comprobaciones ?? []));
+  }
+  if (alMenos(estado, 'Confirmado') && !importeAcordado(pedido.importe)) {
+    falta.push('Por cuánto se ha cerrado');
+  }
+  if (alMenos(estado, 'En camino')) {
+    falta.push(...(pendiente.papeles ?? []));
+  }
+  if (alMenos(estado, 'Recibido')) {
+    falta.push(...(pendiente.recepcion ?? []));
+  }
+  return falta;
+}
+
+/** Lo que falta para cada estado del camino, para poder enseñarlo antes de intentarlo. */
+export function faltaPorEstado(
+  pedido: { proveedor?: string | null; importe?: unknown },
+  pendiente: LoQueYaHay = {}
+): Record<EstadoPedido, string[]> {
+  const mapa = {} as Record<EstadoPedido, string[]>;
+  for (const e of ESTADOS_PEDIDO) mapa[e] = faltaParaLlegarA(e, pedido, pendiente);
+  return mapa;
+}

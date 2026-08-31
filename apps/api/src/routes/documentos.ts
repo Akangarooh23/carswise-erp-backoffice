@@ -64,6 +64,16 @@ async function prepara() {
   preparado = true;
 }
 
+/**
+ * Para quien mire los papeles desde fuera de aquí.
+ *
+ * Los pedidos no dejan mover un coche sin sus papeles imprescindibles, y esa
+ * consulta puede ser la primera que toque la tabla en todo el arranque.
+ */
+export async function preparaDocumentos(): Promise<void> {
+  await prepara();
+}
+
 function nt(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }

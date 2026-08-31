@@ -21,8 +21,10 @@ import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   ESTADOS_PEDIDO, CANCELADO, esEstadoValido, esOrigenPedido,
-  puedeEncargarse, notaDelCambio,
+  puedeEncargarse, notaDelCambio, alMenos, importeAcordado, faltaPorEstado,
 } from '../lib/pedidos.js';
+import { papelesQueFaltan } from '../lib/documentos.js';
+import { preparaDocumentos } from './documentos.js';
 import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
 import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
@@ -120,6 +122,8 @@ async function prepara() {
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_UNIQUE_LEAD, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
+  // La lista de pedidos consulta los papeles para decir qué falta.
+  await preparaDocumentos().catch(() => {});
   preparado = true;
 }
 
@@ -133,6 +137,54 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
                 fecha_pedido, fecha_confirmado, fecha_recepcion,
                 titularidad, TO_CHAR(revender_antes_de, 'YYYY-MM-DD') AS revender_antes_de,
                 notas, comprobaciones, recepcion, creado_por, created_at, updated_at`;
+
+/**
+ * Los papeles de cada pedido, en la misma consulta que la lista.
+ *
+ * Uno por uno serían doscientas consultas para pintar una tabla. Va aparte de
+ * `CAMPOS` porque este trozo lleva su propio `WHERE`, y en un `RETURNING` eso
+ * confunde a cualquiera que lea el SQL.
+ */
+const PAPELES_DEL_PEDIDO = `,
+  COALESCE((SELECT array_agg(d.papel) FROM erp_documentos d
+             WHERE d.ambito = 'pedido' AND d.ambito_id = erp_pedidos.id), '{}') AS papeles`;
+
+/** Los papeles subidos a un pedido. Para las respuestas de una sola fila. */
+async function papelesDe(id: string): Promise<string[]> {
+  const r = await query(
+    `SELECT papel FROM erp_documentos WHERE ambito = 'pedido' AND ambito_id = $1`,
+    [id]
+  ).catch(() => ({ rows: [] as { papel?: string }[] }));
+  return (r.rows as { papel?: string }[]).map((x) => String(x.papel ?? ''));
+}
+
+/**
+ * Lo que le falta a un pedido para cada estado.
+ *
+ * Va en la propia fila para que la pantalla pueda **decirlo antes** de que
+ * alguien lo intente, en vez de dejarle escribir la nota y contestarle que no.
+ * Las reglas siguen siendo las del servidor: esto es la misma función.
+ */
+function conLoQueFalta(fila: Record<string, unknown>, papelesSubidos?: string[]): Record<string, unknown> {
+  const { papeles, ...resto } = fila;
+  const subidos = papelesSubidos
+    ?? (Array.isArray(papeles) ? (papeles as unknown[]).map((x) => String(x ?? '')) : []);
+  const origen = String(fila.origen ?? '');
+  return {
+    ...resto,
+    papeles_faltan: papelesQueFaltan(origen, subidos)
+      .filter((x) => x.imprescindible).map((x) => x.papel),
+    falta_por_estado: faltaPorEstado(
+      { proveedor: fila.proveedor as string | null, importe: fila.importe },
+      {
+        comprobaciones: comprobacionesQueFaltan(origen, (fila.comprobaciones ?? {}) as Comprobadas)
+          .map((c) => c.que),
+        papeles: papelesQueFaltan(origen, subidos).filter((x) => x.imprescindible).map((x) => x.papel),
+        recepcion: faltaPorMirar((fila.recepcion ?? {}) as Recepcion),
+      }
+    ),
+  };
+}
 
 // ── Qué hay que comprobar antes de encargar, según el origen ───────────────
 pedidosRouter.get('/pedidos/comprobaciones/:origen', requireRole(['admin', 'support', 'operations', 'sales']), (req, res) => {
@@ -161,8 +213,11 @@ pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sa
 
   try {
     await prepara();
-    const r = await query(`SELECT ${CAMPOS} FROM erp_pedidos ${where} ORDER BY created_at DESC LIMIT 200`, valores);
-    res.json({ ok: true, data: r.rows });
+    const r = await query(
+      `SELECT ${CAMPOS}${PAPELES_DEL_PEDIDO} FROM erp_pedidos ${where} ORDER BY created_at DESC LIMIT 200`,
+      valores
+    );
+    res.json({ ok: true, data: r.rows.map((f) => conLoQueFalta(f)) });
   } catch (err) {
     console.error('[pedidos] listar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
@@ -206,7 +261,7 @@ pedidosRouter.post('/pedidos', requireRole(['admin', 'operations', 'sales']), as
       }
     );
     const r = await query(`SELECT ${CAMPOS} FROM erp_pedidos WHERE id = $1`, [id]);
-    res.json({ ok: true, data: r.rows[0] });
+    res.json({ ok: true, data: conLoQueFalta(r.rows[0], await papelesDe(id)) });
   } catch (err) {
     console.error('[pedidos] crear:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
@@ -286,6 +341,53 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         detail: 'Dile a quién se le encarga: sin proveedor no hay a quién reclamar.',
       });
       return;
+    }
+
+    /**
+     * Confirmado es que hay precio acordado.
+     *
+     * Sin importe, el coste de ese coche se calcula sobre cero y el margen que
+     * salga es mentira. Y el número se sabe justo ahí: confirmar es que el
+     * proveedor ha aceptado, y ha aceptado por una cifra.
+     */
+    const importeFinal = req.body?.importe !== undefined ? req.body.importe : previo.importe;
+    if (estado && estado !== CANCELADO && alMenos(estado, 'Confirmado') && !importeAcordado(importeFinal)) {
+      res.status(409).json({
+        ok: false, error: 'sin_importe',
+        detail: 'Pon por cuánto se ha cerrado: sin importe, el coste y el margen de este coche salen mal.',
+        faltan: ['Por cuánto se ha cerrado'],
+      });
+      return;
+    }
+
+    /**
+     * Un coche no se mueve sin los papeles que lo hacen nuestro.
+     *
+     * Hasta aquí no había nada irreversible: se preparaba, se encargaba, el
+     * proveedor decía que sí. Ponerlo en camino es contratar un transporte y
+     * pagarlo. Si el título no está, lo que se mueve es un coche de otro.
+     *
+     * Solo los imprescindibles del origen. Los demás son convenientes y llegan
+     * cuando llegan.
+     */
+    if (estado && estado !== CANCELADO && alMenos(estado, 'En camino')) {
+      await preparaDocumentos();
+      const subidos = await query(
+        `SELECT papel FROM erp_documentos WHERE ambito = 'pedido' AND ambito_id = $1`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] as { papel?: string }[] }));
+      const faltan = papelesQueFaltan(
+        String(previo.origen ?? ''),
+        (subidos.rows as { papel?: string }[]).map((x) => String(x.papel ?? ''))
+      ).filter((x) => x.imprescindible);
+      if (faltan.length) {
+        res.status(409).json({
+          ok: false, error: 'faltan_papeles',
+          detail: 'Antes de moverlo hacen falta los papeles que dicen que el coche es nuestro.',
+          faltan: faltan.map((x) => x.papel),
+        });
+        return;
+      }
     }
 
     const sets: string[] = [];
@@ -394,7 +496,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       }).catch((e: Error) => console.error('[pedidos] trámites del pedido:', e.message));
     }
 
-    res.json({ ok: true, data: r.rows[0] });
+    res.json({ ok: true, data: conLoQueFalta(r.rows[0], await papelesDe(req.params.id)) });
   } catch (err) {
     console.error('[pedidos] cambiar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
