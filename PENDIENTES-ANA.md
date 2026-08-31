@@ -120,6 +120,34 @@ INTERNAL_API_SECRET=<una cadena larga al azar, la misma en ERP y en PopCar>
 Sin ella el botón de devolver dice que no está configurado, y todo lo demás
 —cobrar, facturar— sigue funcionando igual.
 
+## 5b · Importar el flujo de precios en n8n — **el catálogo no cambia sin esto**
+
+El precio de un coche de importación se rehízo entero: el transporte pasó de 700
+a 1.500 € —un coche por pedido—, el impuesto de matriculación dejó de calcularse
+sobre el precio alemán, y por primera vez el precio lleva **margen de PopCar**.
+Hasta ahora se vendía al coste sin que nadie lo hubiera decidido.
+
+El código ya está desplegado, pero **el flujo de n8n no se actualiza solo**: la
+copia del repositorio (`n8n-workflows/importacion-scoring.json`) es solo un
+fichero. El que corre vive dentro de n8n.
+
+Mientras no lo importes:
+
+- Los **precios ya salen bien** —los calcula la web, no el flujo—.
+- Pero **el catálogo sigue teniendo 1.568 coches**, elegidos con los números
+  viejos. Hay coches publicados que ya no le ahorran nada al cliente.
+
+Qué hacer, cuando puedas mirar el resultado y no de madrugada:
+
+1. n8n → flujo **«Importación – Scoring (selección inteligente DE)»**
+2. Importar `n8n-workflows/importacion-scoring.json`
+3. Ejecutarlo a mano, o esperar a la pasada de las 05:00
+
+**El catálogo pasará de 1.568 coches a unos 295.** Está medido ejecutando la
+consulta nueva contra la base, y es lo que se busca: los 1.273 que se caen se
+estaban enseñando a un precio que no cubría traerlos. Que se reduzca es la señal
+de que ahora cubren.
+
 ## 6 · En Vercel
 
 Todo lo que hay que tocar fuera del código está aquí. Nada de esto se despliega
