@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   zonaComparable, paisComparable, sirvePara, concrecion, precioPorCoche,
   loQueCuestaTraerlo, laMejor, seSaleDeTarifa, estaVigente, MARGEN_AVISO,
+  transportePorDefecto, POR_DEFECTO,
   type Tarifa,
 } from './tarifas.js';
 
@@ -112,18 +113,18 @@ describe('cuál gana cuando valen varias', () => {
 
   test('la más concreta, aunque sea más cara', () => {
     const mejor = laMejor([general, deMunich], { ...DE_A_ES, origenZona: 'Múnich' });
-    assert.equal(mejor?.tarifa.id, 'TRF-munich',
+    assert.equal(mejor?.tarifa?.id, 'TRF-munich',
       'alguien cerró ese corredor a propósito: eso vale más que un precio general más bajo');
   });
 
   test('a igual concreción, la más barata', () => {
     const mejor = laMejor([general, otroBarato], DE_A_ES);
-    assert.equal(mejor?.tarifa.id, 'TRF-barato');
+    assert.equal(mejor?.tarifa?.id, 'TRF-barato');
   });
 
   test('salen todas las que valen, para poder comparar', () => {
     const todas = loQueCuestaTraerlo([general, deMunich, otroBarato], { ...DE_A_ES, origenZona: 'Múnich' });
-    assert.deepEqual(todas.map((x) => x.tarifa.id), ['TRF-munich', 'TRF-barato', 'TRF-general']);
+    assert.deepEqual(todas.map((x) => x.tarifa?.id), ['TRF-munich', 'TRF-barato', 'TRF-general']);
   });
 
   test('el total es por los coches que van', () => {
@@ -133,9 +134,25 @@ describe('cuál gana cuando valen varias', () => {
     assert.equal(mejor?.total, 2250);
   });
 
-  test('sin ninguna tarifa que sirva, no se inventa un número', () => {
-    assert.equal(laMejor([tarifa({ origen_pais: 'FR' })], DE_A_ES), null);
-    assert.equal(laMejor([], DE_A_ES), null);
+  test('sin ninguna tarifa que sirva, se dice lo que suponemos', () => {
+    // Devolver nada dejaba el coste a cero, que es la peor respuesta: un coche
+    // que parece que se trae gratis.
+    const sin = laMejor([], DE_A_ES);
+    assert.equal(sin?.precio, 1500);
+    assert.equal(sin?.tarifa, null);
+    assert.equal(sin?.porDefecto, true, 'un supuesto no se puede prometer: va marcado');
+  });
+
+  test('una tarifa de verdad manda sobre el supuesto, aunque sea más cara', () => {
+    const cara = tarifa({ precio_1: 1800 });
+    const mejor = laMejor([cara], DE_A_ES);
+    assert.equal(mejor?.precio, 1800);
+    assert.ok(!mejor?.porDefecto);
+  });
+
+  test('de un corredor que no suponemos nada, nada', () => {
+    assert.equal(laMejor([], { origenPais: 'IT', destinoPais: 'ES' }), null,
+      'inventar un número para un viaje que nunca hemos hecho es peor que no dar ninguno');
   });
 });
 
@@ -181,5 +198,44 @@ describe('una tarifa caducada', () => {
 
   test('una fecha ilegible no invalida la tarifa por sorpresa', () => {
     assert.equal(estaVigente(tarifa({ vigente_hasta: 'el mes que viene' }), HOY), true);
+  });
+});
+
+/**
+ * Lo que se supone mientras no haya presupuestos.
+ *
+ * Son decisiones de Ana, no medias de nada. Se comprueban porque un número
+ * provisional que se cuela sin querer en el sitio equivocado deja de ser
+ * provisional: nadie vuelve a mirarlo.
+ */
+describe('lo que se supone que cuesta traerlo', () => {
+  test('dentro de España, 700; desde Alemania, 1.500', () => {
+    assert.equal(transportePorDefecto({ origenPais: 'ES', destinoPais: 'ES' }), 700);
+    assert.equal(transportePorDefecto({ origenPais: 'DE', destinoPais: 'ES' }), 1500);
+  });
+
+  test('traer de Alemania cuesta más que mover por España', () => {
+    const dentro = transportePorDefecto({ origenPais: 'ES', destinoPais: 'ES' }) ?? 0;
+    const desde = transportePorDefecto({ origenPais: 'DE', destinoPais: 'ES' }) ?? 0;
+    assert.ok(desde > dentro);
+  });
+
+  test('de un corredor que no está, no se supone nada', () => {
+    assert.equal(transportePorDefecto({ origenPais: 'FR', destinoPais: 'ES' }), null);
+    assert.equal(transportePorDefecto({ origenPais: 'ES', destinoPais: 'DE' }), null,
+      'llevar un coche a Alemania no es lo mismo que traerlo');
+  });
+
+  test('escrito de otra forma sigue valiendo', () => {
+    assert.equal(transportePorDefecto({ origenPais: ' de ', destinoPais: 'es' }), 1500);
+  });
+
+  test('ninguno es cero: un transporte gratis no existe', () => {
+    for (const x of POR_DEFECTO) assert.ok(x.precio > 0, `${x.origen}→${x.destino} sale gratis`);
+  });
+
+  test('el supuesto también se multiplica por los coches que van', () => {
+    const r = laMejor([], { origenPais: 'DE', destinoPais: 'ES', coches: 3 });
+    assert.equal(r?.total, 4500);
   });
 });

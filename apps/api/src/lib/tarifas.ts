@@ -112,12 +112,38 @@ export function precioPorCoche(t: Tarifa, coches = 1): number | null {
 }
 
 export interface Estimacion {
-  tarifa: Tarifa;
+  /** Nula cuando el precio no viene de nadie, sino del valor por defecto. */
+  tarifa: Tarifa | null;
   /** Por coche. */
   precio: number;
   /** Por los que van, que es lo que se factura. */
   total: number;
   coches: number;
+  /** Si el precio es una suposición nuestra y no lo que alguien ha ofrecido. */
+  porDefecto?: boolean;
+}
+
+/**
+ * Lo que se supone que cuesta traer un coche cuando nadie lo ha tarifado.
+ *
+ * Dentro de España, 700 €. Desde Alemania, 1.500 €. Son números de Ana, no
+ * medias de nada: hasta que haya presupuestos de verdad, es lo que ella espera
+ * pagar.
+ *
+ * Están aquí y no dentro de una fórmula porque **son provisionales**. El día que
+ * un corredor tenga tarifa, la tarifa manda y este número no se usa para ese
+ * viaje. Y lo que salga de aquí va marcado como supuesto, no como precio: lo
+ * segundo se puede prometer, lo primero no.
+ */
+export const POR_DEFECTO: { origen: string; destino: string; precio: number }[] = [
+  { origen: 'ES', destino: 'ES', precio: 700 },
+  { origen: 'DE', destino: 'ES', precio: 1500 },
+];
+
+export function transportePorDefecto(viaje: Viaje): number | null {
+  const o = paisComparable(viaje.origenPais);
+  const d = paisComparable(viaje.destinoPais);
+  return POR_DEFECTO.find((x) => x.origen === o && x.destino === d)?.precio ?? null;
 }
 
 /**
@@ -141,14 +167,27 @@ export function loQueCuestaTraerlo(tarifas: Tarifa[], viaje: Viaje): Estimacion[
     valen.push({ tarifa: t, precio, total: precio * coches, coches });
   }
 
+  // Aquí todas llevan tarifa: el supuesto solo aparece en `laMejor`.
   return valen.sort((a, b) =>
-    concrecion(b.tarifa) - concrecion(a.tarifa) || a.precio - b.precio
+    concrecion(b.tarifa as Tarifa) - concrecion(a.tarifa as Tarifa) || a.precio - b.precio
   );
 }
 
-/** La mejor, si hay alguna. */
+/**
+ * La mejor, y si no hay ninguna, lo que suponemos.
+ *
+ * Devolver null cuando no hay tarifa dejaba el coste a cero, que es la peor de
+ * las respuestas: un coche que parece que se trae gratis. Con el supuesto al
+ * menos hay un número, y va marcado como lo que es.
+ */
 export function laMejor(tarifas: Tarifa[], viaje: Viaje): Estimacion | null {
-  return loQueCuestaTraerlo(tarifas, viaje)[0] ?? null;
+  const conTarifa = loQueCuestaTraerlo(tarifas, viaje)[0];
+  if (conTarifa) return conTarifa;
+
+  const supuesto = transportePorDefecto(viaje);
+  if (supuesto == null) return null;
+  const coches = Math.max(1, Math.floor(Number(viaje.coches) || 1));
+  return { tarifa: null, precio: supuesto, total: supuesto * coches, coches, porDefecto: true };
 }
 
 /**
