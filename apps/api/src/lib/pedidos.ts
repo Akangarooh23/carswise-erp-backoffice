@@ -157,11 +157,37 @@ export interface LoQueYaHay {
   papeles?: string[];
   /** Lo que falta por mirar del coche al llegar. */
   recepcion?: string[];
+  /** Si ningún tramo de transporte ha salido todavía. */
+  transporteSinSalir?: boolean;
+}
+
+/**
+ * La compra pagada.
+ *
+ * Un coche que se mueve sin pagar es un coche que sigue siendo del vendedor,
+ * viajando por nuestra cuenta y a nuestro riesgo. Y el número de su factura es
+ * lo que ata el gasto a este coche: sin él, meses después hay un pago sin
+ * concepto y un coche sin coste.
+ */
+export function compraPagada(pedido: {
+  factura_proveedor?: unknown; factura_pagada_el?: unknown;
+}): string[] {
+  const falta: string[] = [];
+  if (!String(pedido.factura_proveedor ?? '').trim()) falta.push('El número de la factura del vendedor');
+  if (!String(pedido.factura_pagada_el ?? '').trim()) falta.push('Que esté pagada');
+  return falta;
+}
+
+export interface DatosDelPedido {
+  proveedor?: string | null;
+  importe?: unknown;
+  factura_proveedor?: unknown;
+  factura_pagada_el?: unknown;
 }
 
 export function faltaParaLlegarA(
   estado: string,
-  pedido: { proveedor?: string | null; importe?: unknown },
+  pedido: DatosDelPedido,
   pendiente: LoQueYaHay = {}
 ): string[] {
   if (estado === CANCELADO) return [];
@@ -175,6 +201,8 @@ export function faltaParaLlegarA(
   }
   if (alMenos(estado, 'En camino')) {
     falta.push(...(pendiente.papeles ?? []));
+    falta.push(...compraPagada(pedido));
+    if (pendiente.transporteSinSalir) falta.push('Que alguien lo haya recogido: el transporte, contratado y de camino');
   }
   if (alMenos(estado, 'Recibido')) {
     falta.push(...(pendiente.recepcion ?? []));
@@ -184,7 +212,7 @@ export function faltaParaLlegarA(
 
 /** Lo que falta para cada estado del camino, para poder enseñarlo antes de intentarlo. */
 export function faltaPorEstado(
-  pedido: { proveedor?: string | null; importe?: unknown },
+  pedido: DatosDelPedido,
   pendiente: LoQueYaHay = {}
 ): Record<EstadoPedido, string[]> {
   const mapa = {} as Record<EstadoPedido, string[]>;

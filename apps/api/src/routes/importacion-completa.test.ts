@@ -293,7 +293,20 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
       tablas.documentos.push({ ambito: 'pedido', ambito_id: pedido.id, papel });
     }
 
-    // ── 5. Al llegar, hay que mirarlo antes de darlo por recibido ──────────
+    // ── 5. Y pagado: un coche sin pagar sigue siendo del vendedor ──────────
+    const sinPagar = await api(`/pedidos/${pedido.id}`, 'PATCH', {
+      estado: 'Recibido', nota: 'llegó',
+      recepcion: { km: 84000, llaves: 2 },
+    });
+    assert.equal(sinPagar.codigo, 409);
+    assert.equal(sinPagar.cuerpo.error, 'compra_sin_pagar');
+
+    const pagado = await api(`/pedidos/${pedido.id}`, 'PATCH', {
+      factura_proveedor: 'RE-2026-4471', factura_pagada_el: '2026-09-02',
+    });
+    assert.equal(pagado.codigo, 200);
+
+    // ── 6. Al llegar, hay que mirarlo antes de darlo por recibido ──────────
     const sinMirar = await api(`/pedidos/${pedido.id}`, 'PATCH', { estado: 'Recibido', nota: 'llegó' });
     assert.equal(sinMirar.codigo, 409, 'los kilómetros y las llaves se miran antes de moverlo');
 
@@ -304,14 +317,14 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     assert.equal(recibido.codigo, 200);
     await esperaEnvios();
 
-    // ── 6. Con el coche aquí, se abren sus papeleos ────────────────────────
+    // ── 7. Con el coche aquí, se abren sus papeleos ────────────────────────
     const tipos = tablas.tramites.map((x) => String(x.tipo));
     assert.equal(tipos.length, 3, 'un coche de fuera necesita impuesto, ITV de homologación y matrícula');
     assert.ok(tipos.some((x) => /matriculaci/i.test(x)));
     assert.ok(!tipos.some((x) => /transferencia/i.test(x)),
       'no se transfiere lo que nunca ha estado a nombre de nadie aquí');
 
-    // ── 7. La gestoría: no sale de casa sin decir a quién ──────────────────
+    // ── 8. La gestoría: no sale de casa sin decir a quién ──────────────────
     const unTramite = tablas.tramites[0];
     const sinGestoria = await api(`/tramites/${unTramite.id}`, 'PATCH', {
       estado: 'Enviado a gestoría', nota: 'va',
@@ -326,7 +339,7 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     }
     assert.ok(tablas.tramites.every((x) => x.estado === 'Resuelto'));
 
-    // ── 8. Lo que se gasta en dejarlo listo ───────────────────────────────
+    // ── 9. Lo que se gasta en dejarlo listo ───────────────────────────────
     const gasto = await api(`/pedidos/${pedido.id}/gastos`, 'POST', {
       concepto: 'Neumáticos', importe: 480, proveedor: 'Taller Paco',
     });
@@ -334,7 +347,7 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     const sinImporte = await api(`/pedidos/${pedido.id}/gastos`, 'POST', { concepto: 'Limpieza' });
     assert.equal(sinImporte.codigo, 400, 'un gasto sin importe no suma nada al coste');
 
-    // ── 9. Lo que ha costado de verdad ────────────────────────────────────
+    // ── 10. Lo que ha costado de verdad ───────────────────────────────────
     const coste = await api(`/pedidos/${pedido.id}/coste`);
     assert.equal(coste.codigo, 200);
     const partidas = (coste.cuerpo.data as { partidas: { concepto: string; importe: number }[]; total: number });
@@ -342,7 +355,7 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
       'proveedor, transporte, tres trámites a 400 y los neumáticos');
     assert.equal(partidas.partidas.length, 4);
 
-    // ── 10. La entrega, y la garantía que empieza ese día ───────────────────
+    // ── 11. La entrega, y la garantía que empieza ese día ──────────────────
     const sinFirma = await api(`/leads/${LEAD}/entrega`, 'PATCH', { km_salida: 84200, cerrar: true });
     assert.equal(sinFirma.codigo, 409, 'sin firma no hay entrega: hay un coche que ya no está');
 

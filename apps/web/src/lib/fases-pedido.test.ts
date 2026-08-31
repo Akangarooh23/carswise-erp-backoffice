@@ -76,11 +76,14 @@ describe('qué campos se rellenan en cada fase', () => {
     assert.equal(tocaCampo('matricula', 'Recibido'), true);
   });
 
-  test('solo dos campos cierran el paso, y cada uno a una fase', () => {
+  test('qué campo cierra el paso a qué fase', () => {
     const obligan = CAMPOS.filter((c) => c.haceFaltaPara);
     assert.deepEqual(obligan.map((c) => [c.campo, c.haceFaltaPara]), [
       ['proveedor', 'Pedido'],
       ['importe', 'Confirmado'],
+      // Mover un coche sin pagarlo es moverlo siendo todavía del vendedor.
+      ['factura_proveedor', 'En camino'],
+      ['factura_pagada_el', 'En camino'],
     ]);
   });
 

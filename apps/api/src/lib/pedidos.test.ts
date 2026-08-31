@@ -97,7 +97,11 @@ describe('la nota de un cambio', () => {
  * honesto.
  */
 describe('qué falta para llegar a cada fase', () => {
-  const listo = { proveedor: 'Autohero GmbH', importe: 14310 };
+  // Un pedido al que no le falta ninguno de sus propios datos.
+  const listo = {
+    proveedor: 'Autohero GmbH', importe: 14310,
+    factura_proveedor: 'RE-2026-4471', factura_pagada_el: '2026-09-02',
+  };
 
   test('sin proveedor no se encarga', () => {
     assert.deepEqual(faltaParaLlegarA('Pedido', { importe: 100 }), ['A quién se le encarga']);
@@ -144,8 +148,47 @@ describe('qué falta para llegar a cada fase', () => {
     // saltarse las puertas.
     assert.deepEqual(
       faltaParaLlegarA('En camino', {}, { papeles: ['COC'], comprobaciones: ['Mirar cargas'] }),
-      ['A quién se le encarga', 'Mirar cargas', 'Por cuánto se ha cerrado', 'COC']
+      [
+        'A quién se le encarga', 'Mirar cargas', 'Por cuánto se ha cerrado', 'COC',
+        'El número de la factura del vendedor', 'Que esté pagada',
+      ]
     );
+  });
+
+  test('mover un coche sin pagarlo, no: sigue siendo del vendedor', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('En camino', { proveedor: 'X', importe: 100 }),
+      ['El número de la factura del vendedor', 'Que esté pagada']
+    );
+  });
+
+  test('la factura sin pagar tampoco vale', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('En camino', { ...listo, factura_pagada_el: null }),
+      ['Que esté pagada']
+    );
+  });
+
+  test('pagada sin número de factura tampoco: sería un cargo sin concepto', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('En camino', { ...listo, factura_proveedor: '  ' }),
+      ['El número de la factura del vendedor']
+    );
+  });
+
+  test('confirmar no pide ni factura ni pago: todavía no hay nada que pagar', () => {
+    assert.deepEqual(faltaParaLlegarA('Confirmado', { proveedor: 'X', importe: 100 }), []);
+  });
+
+  test('sin nadie que lo haya recogido no está en camino', () => {
+    assert.deepEqual(
+      faltaParaLlegarA('En camino', listo, { transporteSinSalir: true }),
+      ['Que alguien lo haya recogido: el transporte, contratado y de camino']
+    );
+  });
+
+  test('y para confirmarlo no hace falta transporte: aún no hay qué mover', () => {
+    assert.deepEqual(faltaParaLlegarA('Confirmado', listo, { transporteSinSalir: true }), []);
   });
 
   test('un borrador no pide nada: para eso existe', () => {

@@ -64,6 +64,20 @@ export function estaEnCamino(estado: string): boolean {
 }
 
 /**
+ * El coche ya no está donde estaba.
+ *
+ * No es lo mismo que `estaEnCamino`: uno entregado también salió, y un pedido
+ * no puede dejar de cumplir una condición por haberla cumplido del todo. Se usa
+ * para no dejar poner un pedido en camino sin que nadie lo haya recogido.
+ *
+ * Una incidencia no cuenta: puede ser de antes de recogerlo. Si el coche ya
+ * había salido, el tramo se mueve al estado que corresponda y se sigue.
+ */
+export function haSalido(estado: string): boolean {
+  return estado === 'Recogido' || estado === 'En tránsito' || estado === 'Entregado';
+}
+
+/**
  * Las fotos que tienen que existir en cada momento.
  *
  * Al recoger, para saber cómo salió. Al entregar, para saber cómo llegó. Sin las

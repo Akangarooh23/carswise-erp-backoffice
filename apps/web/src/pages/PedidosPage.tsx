@@ -86,6 +86,8 @@ interface Pedido {
   titularidad: string;
   revender_antes_de: string | null;
   recepcion: Recepcion | null;
+  factura_proveedor: string;
+  factura_pagada_el: string | null;
   created_at: string;
   /** Lo que falta para cada estado. Lo calcula el servidor con sus mismas reglas. */
   falta_por_estado?: Record<string, string[]>;
@@ -655,6 +657,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
     proveedor: p.proveedor ?? '', importe: String(p.importe ?? ''),
     matricula: p.matricula ?? '', bastidor: p.bastidor ?? '',
     fecha_estimada: p.fecha_estimada ?? '',
+    factura_proveedor: p.factura_proveedor ?? '',
+    factura_pagada_el: p.factura_pagada_el ?? '',
   });
   const siguiente = siguienteEstado(p.estado);
   const [verTodo, setVerTodo] = useState(false);
@@ -762,6 +766,22 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
               <Etiqueta campo="fecha_estimada" campos={campos} />
               <input type="date" value={datos.fecha_estimada}
                      onChange={(e) => setDatos((d) => ({ ...d, fecha_estimada: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
+          {sale('factura_proveedor') && (
+            <label className="block">
+              <Etiqueta campo="factura_proveedor" campos={campos} />
+              <input value={datos.factura_proveedor} placeholder="RE-2026-4471"
+                     onChange={(e) => setDatos((d) => ({ ...d, factura_proveedor: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
+          {sale('factura_pagada_el') && (
+            <label className="block">
+              <Etiqueta campo="factura_pagada_el" campos={campos} />
+              <input type="date" value={datos.factura_pagada_el}
+                     onChange={(e) => setDatos((d) => ({ ...d, factura_pagada_el: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             </label>
           )}

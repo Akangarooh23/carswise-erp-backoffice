@@ -29,6 +29,8 @@ let historial: Fila[] = [];
 let ofertas: Fila[] = [];
 /** Los papeles subidos, que es lo que mira la puerta de «En camino». */
 let documentos: Fila[] = [];
+/** Los tramos de transporte: un pedido no está en camino si nadie lo ha recogido. */
+let transportes: Fila[] = [];
 let siguiente = 1;
 
 /** Sube los imprescindibles de ese origen, para poder mover el coche. */
@@ -38,11 +40,20 @@ function conSusPapeles(pedidoId: string, origen: string) {
   }
 }
 
+/** Alguien lo ha recogido: es lo que hace que un pedido esté de verdad en camino. */
+function yaLoHanRecogido(pedidoId: string) {
+  transportes.push({ pedido_id: pedidoId, estado: 'Recogido' });
+}
+
+/** Todo lo que hace falta para mover el coche, menos los papeles. */
+const COMPRA_PAGADA = { factura_proveedor: 'RE-1', factura_pagada_el: '2026-09-02' };
+
 function reinicia() {
   pedidos = [];
   historial = [];
   ofertas = [{ id: 'of-1', dealer_name: 'Autohaus Müller', price: '9000' }];
   documentos = [];
+  transportes = [];
   siguiente = 1;
 }
 
@@ -110,6 +121,10 @@ before(async () => {
       return responde([fila]);
     }
     if (/^SELECT papel FROM erp_documentos/i.test(t)) return responde(documentos.filter((d) => d.ambito_id === p[0]));
+    if (/FROM erp_transportes/i.test(t)) {
+      const ids = (p[0] ?? []) as string[];
+      return responde(transportes.filter((x) => ids.includes(String(x.pedido_id))));
+    }
     if (/FROM erp_pedido_history/i.test(t)) return responde(historial.filter((h) => h.pedido_id === p[0]));
     if (/FROM erp_pedidos WHERE id = \$1/i.test(t)) return responde(pedidos.filter((x) => x.id === p[0]));
     if (/SELECT id FROM erp_pedidos WHERE lead_id/i.test(t)) return responde(pedidos.filter((x) => x.lead_id === p[0]));
@@ -258,7 +273,7 @@ describe('comprarle a un particular', { concurrency: 1 }, () => {
 });
 
 describe('mirar el coche al llegar', { concurrency: 1 }, () => {
-  /** Un pedido al que solo le falta mirarlo: proveedor, precio y papeles. */
+  /** Un pedido al que solo le falta mirarlo: pagado, con papeles y recogido. */
   async function pedidoListo() {
     const alta = await api('/pedidos', 'POST', {
       origen: 'concesionario', vehiculo_titulo: 'Peugeot 208', proveedor: 'Autos Paco',
@@ -266,6 +281,8 @@ describe('mirar el coche al llegar', { concurrency: 1 }, () => {
     });
     const id = (alta.cuerpo.data as Fila).id as string;
     conSusPapeles(id, 'concesionario');
+    yaLoHanRecogido(id);
+    await api(`/pedidos/${id}`, 'PATCH', COMPRA_PAGADA);
     return id;
   }
 
@@ -422,19 +439,71 @@ describe('no se pasa de fase sin lo que hace falta', { concurrency: 1 }, () => {
     assert.deepEqual(r.cuerpo.faltan, ['Factura', 'Permiso de circulación', 'Ficha técnica']);
   });
 
-  test('con los papeles, sí', async () => {
-    const id = await nuevo({ importe: 9000 });
+  test('con papeles, pagado y recogido, sí', async () => {
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
     conSusPapeles(id, 'concesionario');
+    yaLoHanRecogido(id);
     await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'cerrado' });
     const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
     assert.equal(r.codigo, 200);
   });
 
   test('los convenientes no hacen falta para moverlo', async () => {
-    const id = await nuevo({ importe: 9000 });
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
     conSusPapeles(id, 'concesionario');
+    yaLoHanRecogido(id);
     const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
     assert.equal(r.codigo, 200, 'el contrato y las cargas son convenientes, no imprescindibles');
+  });
+
+  test('sin pagar la compra no se mueve: seguiría siendo del vendedor', async () => {
+    const id = await nuevo({ importe: 9000 });
+    conSusPapeles(id, 'concesionario');
+    yaLoHanRecogido(id);
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'compra_sin_pagar');
+    assert.deepEqual(r.cuerpo.faltan, ['El número de la factura del vendedor', 'Que esté pagada']);
+  });
+
+  test('sin que nadie lo haya recogido tampoco: nadie lo está moviendo', async () => {
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
+    conSusPapeles(id, 'concesionario');
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'transporte_sin_salir');
+  });
+
+  test('un transporte contratado pero sin recoger no basta', async () => {
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
+    conSusPapeles(id, 'concesionario');
+    transportes.push({ pedido_id: id, estado: 'Contratado' });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'transporte_sin_salir');
+  });
+
+  test('uno ya entregado sí: haber llegado es haber salido', async () => {
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
+    conSusPapeles(id, 'concesionario');
+    transportes.push({ pedido_id: id, estado: 'Entregado' });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'ya está aquí' });
+    assert.equal(r.codigo, 200);
+  });
+
+  test('el transporte de otro coche no cuenta', async () => {
+    const id = await nuevo({ importe: 9000, ...COMPRA_PAGADA });
+    conSusPapeles(id, 'concesionario');
+    transportes.push({ pedido_id: 'otro-pedido', estado: 'Recogido' });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'En camino', nota: 'sale el lunes' });
+    assert.equal(r.codigo, 409);
+    assert.equal(r.cuerpo.error, 'transporte_sin_salir');
+  });
+
+  test('confirmar no pide ni pago ni transporte', async () => {
+    const id = await nuevo({ importe: 9000 });
+    const r = await api(`/pedidos/${id}`, 'PATCH', { estado: 'Confirmado', nota: 'dicen que sí' });
+    assert.equal(r.codigo, 200, 'todavía no hay nada que pagar ni nada que mover');
   });
 
   test('el atajo no salta las puertas', async () => {

@@ -21,12 +21,13 @@ import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   ESTADOS_PEDIDO, CANCELADO, esEstadoValido, esOrigenPedido,
-  puedeEncargarse, notaDelCambio, alMenos, importeAcordado, faltaPorEstado,
+  puedeEncargarse, notaDelCambio, alMenos, importeAcordado, faltaPorEstado, compraPagada,
 } from '../lib/pedidos.js';
 import { papelesQueFaltan } from '../lib/documentos.js';
 import { preparaDocumentos } from './documentos.js';
 import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
+import { haSalido } from '../lib/transportes.js';
 import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
 import {
   esTitularidad, titularidadPorDefecto, vigilaElPlazo, revenderAntesDe, PLAZO_REVENTA_MESES,
@@ -108,6 +109,18 @@ const ENSURE_TITULARIDAD = `
 const ENSURE_PLAZO = `
   ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS revender_antes_de DATE`;
 
+/**
+ * La factura del vendedor y su pago.
+ *
+ * Sin esto no se sabía si el coche estaba pagado. Un coche que se mueve sin
+ * pagar sigue siendo del vendedor, viajando a nuestro riesgo.
+ */
+const ENSURE_COMPRA = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS factura_proveedor TEXT NOT NULL DEFAULT ''`;
+
+const ENSURE_PAGO = `
+  ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS factura_pagada_el DATE`;
+
 const ENSURE_RECEPCION = `
   ALTER TABLE erp_pedidos ADD COLUMN IF NOT EXISTS recepcion JSONB NOT NULL DEFAULT '{}'::jsonb`;
 
@@ -117,6 +130,8 @@ async function prepara() {
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_COMPROBACIONES, []).catch(() => {});
   await query(ENSURE_RECEPCION, []).catch(() => {});
+  await query(ENSURE_COMPRA, []).catch(() => {});
+  await query(ENSURE_PAGO, []).catch(() => {});
   await query(ENSURE_TITULARIDAD, []).catch(() => {});
   await query(ENSURE_PLAZO, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
@@ -133,6 +148,7 @@ function nt(v: unknown): string {
 
 const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, matricula, bastidor,
                 importe::numeric AS importe, cliente_email, lead_id,
+                factura_proveedor, TO_CHAR(factura_pagada_el, 'YYYY-MM-DD') AS factura_pagada_el,
                 TO_CHAR(fecha_estimada, 'YYYY-MM-DD') AS fecha_estimada,
                 fecha_pedido, fecha_confirmado, fecha_recepcion,
                 titularidad, TO_CHAR(revender_antes_de, 'YYYY-MM-DD') AS revender_antes_de,
@@ -148,6 +164,25 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
 const PAPELES_DEL_PEDIDO = `,
   COALESCE((SELECT array_agg(d.papel) FROM erp_documentos d
              WHERE d.ambito = 'pedido' AND d.ambito_id = erp_pedidos.id), '{}') AS papeles`;
+
+/**
+ * Los pedidos cuyo coche ya ha salido, de una vez.
+ *
+ * Se pregunta por todos los de la pantalla en una consulta: uno por uno serían
+ * doscientas más solo para saber si el botón va encendido.
+ */
+async function pedidosConTransporteSalido(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const r = await query(
+    `SELECT DISTINCT pedido_id, estado FROM erp_transportes WHERE pedido_id = ANY($1)`,
+    [ids]
+  ).catch(() => ({ rows: [] as { pedido_id?: string; estado?: string }[] }));
+  const salidos = new Set<string>();
+  for (const f of r.rows as { pedido_id?: string; estado?: string }[]) {
+    if (haSalido(String(f.estado ?? ''))) salidos.add(String(f.pedido_id ?? ''));
+  }
+  return salidos;
+}
 
 /** Los papeles subidos a un pedido. Para las respuestas de una sola fila. */
 async function papelesDe(id: string): Promise<string[]> {
@@ -165,7 +200,11 @@ async function papelesDe(id: string): Promise<string[]> {
  * alguien lo intente, en vez de dejarle escribir la nota y contestarle que no.
  * Las reglas siguen siendo las del servidor: esto es la misma función.
  */
-function conLoQueFalta(fila: Record<string, unknown>, papelesSubidos?: string[]): Record<string, unknown> {
+function conLoQueFalta(
+  fila: Record<string, unknown>,
+  papelesSubidos?: string[],
+  transporteSalido = false
+): Record<string, unknown> {
   const { papeles, ...resto } = fila;
   const subidos = papelesSubidos
     ?? (Array.isArray(papeles) ? (papeles as unknown[]).map((x) => String(x ?? '')) : []);
@@ -175,12 +214,16 @@ function conLoQueFalta(fila: Record<string, unknown>, papelesSubidos?: string[])
     papeles_faltan: papelesQueFaltan(origen, subidos)
       .filter((x) => x.imprescindible).map((x) => x.papel),
     falta_por_estado: faltaPorEstado(
-      { proveedor: fila.proveedor as string | null, importe: fila.importe },
+      {
+        proveedor: fila.proveedor as string | null, importe: fila.importe,
+        factura_proveedor: fila.factura_proveedor, factura_pagada_el: fila.factura_pagada_el,
+      },
       {
         comprobaciones: comprobacionesQueFaltan(origen, (fila.comprobaciones ?? {}) as Comprobadas)
           .map((c) => c.que),
         papeles: papelesQueFaltan(origen, subidos).filter((x) => x.imprescindible).map((x) => x.papel),
         recepcion: faltaPorMirar((fila.recepcion ?? {}) as Recepcion),
+        transporteSinSalir: !transporteSalido,
       }
     ),
   };
@@ -217,7 +260,8 @@ pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sa
       `SELECT ${CAMPOS}${PAPELES_DEL_PEDIDO} FROM erp_pedidos ${where} ORDER BY created_at DESC LIMIT 200`,
       valores
     );
-    res.json({ ok: true, data: r.rows.map((f) => conLoQueFalta(f)) });
+    const salidos = await pedidosConTransporteSalido(r.rows.map((f) => String(f.id)));
+    res.json({ ok: true, data: r.rows.map((f) => conLoQueFalta(f, undefined, salidos.has(String(f.id)))) });
   } catch (err) {
     console.error('[pedidos] listar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
@@ -245,8 +289,9 @@ pedidosRouter.post('/pedidos', requireRole(['admin', 'operations', 'sales']), as
         await query(
           `INSERT INTO erp_pedidos
              (id, origen, proveedor, vehiculo_titulo, vehiculo_id, matricula, bastidor,
-              importe, cliente_email, lead_id, titularidad, notas, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+              importe, cliente_email, lead_id, titularidad, notas, creado_por,
+              factura_proveedor, factura_pagada_el)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
           [
             nuevoId, origen, nt(req.body?.proveedor), vehiculo, nt(req.body?.vehiculo_id),
             nt(req.body?.matricula), nt(req.body?.bastidor),
@@ -256,12 +301,17 @@ pedidosRouter.post('/pedidos', requireRole(['admin', 'operations', 'sales']), as
               ? nt(req.body.titularidad)
               : titularidadPorDefecto(origen, nt(req.body?.cliente_email)),
             nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '',
+            // Comprando a un concesionario de aquí, la factura suele venir en el acto.
+            nt(req.body?.factura_proveedor), nt(req.body?.factura_pagada_el) || null,
           ]
         );
       }
     );
     const r = await query(`SELECT ${CAMPOS} FROM erp_pedidos WHERE id = $1`, [id]);
-    res.json({ ok: true, data: conLoQueFalta(r.rows[0], await papelesDe(id)) });
+    res.json({
+      ok: true,
+      data: conLoQueFalta(r.rows[0], await papelesDe(id), (await pedidosConTransporteSalido([id])).has(id)),
+    });
   } catch (err) {
     console.error('[pedidos] crear:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });
@@ -388,13 +438,53 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         });
         return;
       }
+
+      /**
+       * Y pagado.
+       *
+       * Un coche que se mueve sin pagar sigue siendo del vendedor, viajando por
+       * nuestra cuenta y a nuestro riesgo. El número de la factura es lo que ata
+       * el pago a este coche: sin él, meses después hay un cargo sin concepto.
+       */
+      const sinPagar = compraPagada({
+        factura_proveedor: req.body?.factura_proveedor !== undefined
+          ? req.body.factura_proveedor : previo.factura_proveedor,
+        factura_pagada_el: req.body?.factura_pagada_el !== undefined
+          ? req.body.factura_pagada_el : previo.factura_pagada_el,
+      });
+      if (sinPagar.length) {
+        res.status(409).json({
+          ok: false, error: 'compra_sin_pagar',
+          detail: 'La compra tiene que estar facturada y pagada antes de mover el coche.',
+          faltan: sinPagar,
+        });
+        return;
+      }
+
+      /**
+       * Y que alguien lo haya recogido de verdad.
+       *
+       * «En camino» era una casilla que se marcaba sola: el pedido decía que el
+       * coche venía sin que existiera ningún transporte contratado. Ahora lo dice
+       * quien lo lleva — un tramo recogido, en tránsito o ya entregado—, no una
+       * suposición.
+       */
+      if (!(await pedidosConTransporteSalido([req.params.id])).has(req.params.id)) {
+        res.status(409).json({
+          ok: false, error: 'transporte_sin_salir',
+          detail: 'Ningún transporte de este coche ha salido todavía. Contrátalo y márcalo como recogido.',
+          faltan: ['Que alguien lo haya recogido: el transporte, contratado y de camino'],
+        });
+        return;
+      }
     }
 
     const sets: string[] = [];
     const valores: unknown[] = [];
     const pon = (columna: string, valor: unknown) => { valores.push(valor); sets.push(`${columna} = $${valores.length}`); };
 
-    for (const campo of ['proveedor', 'vehiculo_titulo', 'matricula', 'bastidor', 'cliente_email'] as const) {
+    for (const campo of ['proveedor', 'vehiculo_titulo', 'matricula', 'bastidor', 'cliente_email',
+                         'factura_proveedor'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.titularidad !== undefined) {
@@ -403,6 +493,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       pon('titularidad', t);
     }
     if (req.body?.revender_antes_de !== undefined) pon('revender_antes_de', nt(req.body.revender_antes_de) || null);
+    if (req.body?.factura_pagada_el !== undefined) pon('factura_pagada_el', nt(req.body.factura_pagada_el) || null);
     if (req.body?.importe !== undefined) pon('importe', req.body.importe === '' || req.body.importe === null ? null : Number(req.body.importe));
     if (req.body?.fecha_estimada !== undefined) pon('fecha_estimada', nt(req.body.fecha_estimada) || null);
 
@@ -496,7 +587,13 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
       }).catch((e: Error) => console.error('[pedidos] trámites del pedido:', e.message));
     }
 
-    res.json({ ok: true, data: conLoQueFalta(r.rows[0], await papelesDe(req.params.id)) });
+    res.json({
+      ok: true,
+      data: conLoQueFalta(
+        r.rows[0], await papelesDe(req.params.id),
+        (await pedidosConTransporteSalido([req.params.id])).has(req.params.id)
+      ),
+    });
   } catch (err) {
     console.error('[pedidos] cambiar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });

@@ -29,7 +29,9 @@ export const LO_DE_CADA_FASE: Record<string, Bloque[]> = {
   'Cancelado':  [],
 };
 
-export type Campo = 'proveedor' | 'importe' | 'fecha_estimada' | 'matricula' | 'bastidor';
+export type Campo =
+  | 'proveedor' | 'importe' | 'fecha_estimada' | 'matricula' | 'bastidor'
+  | 'factura_proveedor' | 'factura_pagada_el';
 
 export interface CampoDePedido {
   campo: Campo;
@@ -59,6 +61,18 @@ export const CAMPOS: CampoDePedido[] = [
     campo: 'fecha_estimada', etiqueta: 'Lo esperamos para',
     fases: ['Pedido', 'Confirmado', 'En camino'],
     pista: 'Cuando lo diga el proveedor. Si aún no lo ha dicho, déjalo vacío.',
+  },
+  {
+    campo: 'factura_proveedor', etiqueta: 'Factura del vendedor (número)',
+    fases: ['Confirmado', 'En camino', 'Recibido'],
+    haceFaltaPara: 'En camino',
+    pista: 'Es lo que ata el pago a este coche. Sin él queda un cargo sin concepto.',
+  },
+  {
+    campo: 'factura_pagada_el', etiqueta: 'Pagada el',
+    fases: ['Confirmado', 'En camino', 'Recibido'],
+    haceFaltaPara: 'En camino',
+    pista: 'Un coche que se mueve sin pagar sigue siendo del vendedor.',
   },
   {
     campo: 'bastidor', etiqueta: 'Bastidor',

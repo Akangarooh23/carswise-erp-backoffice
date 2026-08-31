@@ -90,7 +90,7 @@ y el botón se queda apagado.
 |---|---|---|
 | **Pedido** | A quién se le encarga. Si es un particular, además las cuatro comprobaciones | Encargarlo es comprometerse: sin proveedor no hay a quién reclamar, y a una persona no se le paga sin mirar cargas y deudas |
 | **Confirmado** | Por cuánto se ha cerrado | Confirmado quiere decir que hay precio acordado. Sin importe, el coste y el margen de ese coche salen mal desde el primer día |
-| **En camino** | Los papeles imprescindibles de su origen | Es cuando se contrata el transporte y se paga. Sin lo que hace nuestro el coche, lo que se mueve es un coche de otro |
+| **En camino** | Los papeles imprescindibles de su origen, la compra pagada, y que alguien lo haya recogido | Es el momento en que el coche se mueve de verdad. Sin sus papeles y sin pagar, lo que viaja es un coche de otro; y «en camino» sin transporte era una casilla que se marcaba sola |
 | **Recibido** | Kilómetros y llaves | Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae. Después ya no se puede |
 
 Lo que **no** se pide: papeles para confirmar —llegan en momentos distintos, la
@@ -164,11 +164,15 @@ fase. Hazlos seguidos y sin adelantarte, o las puertas no dan lo que dicen aquí
       propósito — la factura llega con el pedido y la ficha la devuelve la
       gestoría, así que pedirlos aquí sería pedir algo que todavía no existe.
 
-**Para moverlo: los papeles**
+**Para moverlo: papeles, pagado y recogido**
 
-- [ ] Sin subir nada aún, mira el botón de **«Pasar a En camino»**: está apagado,
-      y el aviso de arriba **nombra los cuatro** que faltan — la ficha del
-      vehículo partes I y II, el COC y la factura del vendedor.
+Tres cosas, y las tres son la misma idea: que el coche sea nuestro y que se esté
+moviendo de verdad.
+
+- [ ] Sin hacer nada aún, mira el botón de **«Pasar a En camino»**: está apagado,
+      y el aviso de arriba lo nombra todo — los cuatro papeles (ficha partes I y
+      II, COC y factura del vendedor), el número de la factura, que esté pagada,
+      y que alguien lo haya recogido.
 - [ ] Baja a **Documentos** —que aparece justo al confirmarlo, no antes—: arriba
       está la lista de lo que se espera de un coche alemán, con esos cuatro
       marcados como imprescindibles.
@@ -177,8 +181,13 @@ fase. Hazlos seguidos y sin adelantarte, o las puertas no dan lo que dicen aquí
       solo tres.
 - [ ] Sube otro **sin decir qué papel es**. **No debe cerrar ningún hueco**: si
       cerrara, bastaría con subir cualquier cosa para ponerlo todo en verde.
-- [ ] Sube los tres que faltan: el aviso desaparece y el botón se enciende.
-      Pásalo a **En camino**.
+- [ ] Sube los tres que faltan. El aviso se acorta, pero el botón **sigue
+      apagado**: falta pagar y falta que salga.
+- [ ] Rellena **«Factura del vendedor (número)»** y **«Pagada el»**, y guarda.
+      El aviso se queda con una sola cosa: que nadie lo ha recogido.
+
+Ahí se queda el pedido. Lo que falta no se hace aquí: se hace en Transportes, que
+es el paso siguiente.
 
 ---
 
@@ -191,8 +200,16 @@ organizar*.
 - [ ] Elige el transportista de la lista. Si no está, pulsa **+ Añadir uno
       nuevo** y escríbelo: se queda dado de alta.
 - [ ] Pon el precio y contrátalo.
-- [ ] Pásalo a **Recogido** y luego a **Entregado**.
+- [ ] **Vuelve al pedido sin tocar nada más.** El botón de «Pasar a En camino»
+      sigue apagado: contratado no es recogido, y un camión reservado no mueve
+      ningún coche.
+- [ ] Vuelve al transporte y pásalo a **Recogido**.
+- [ ] Vuelve al pedido: ahora sí. Pásalo a **En camino**.
+- [ ] Vuelve al transporte y pásalo a **Entregado**.
 - [ ] Sube una foto en **Documentos** del transporte.
+
+> Si algún día te lo encuentras al revés —el coche ya entregado y el pedido
+> todavía en *Confirmado*— también deja pasarlo: haber llegado es haber salido.
 
 ---
 

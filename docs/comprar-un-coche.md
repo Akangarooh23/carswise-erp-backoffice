@@ -55,13 +55,23 @@ el pedido te lo dice **antes** de que lo intentes y no te deja pasar.
 |---|---|
 | Pedido | A quién se le encarga. Si es un particular, las cuatro comprobaciones |
 | Confirmado | Por cuánto se ha cerrado |
-| En camino | Los papeles imprescindibles de su origen |
+| En camino | Los papeles imprescindibles de su origen, la factura del vendedor pagada, y un transporte que ya lo haya recogido |
 | Recibido | Kilómetros y llaves |
 
 Un pedido sin proveedor es un coche esperando sin que nadie sepa a quién
 reclamar. Sin importe, el coste y el margen de ese coche salen mal desde el
-primer día. Y ponerlo en camino es contratar un transporte y pagarlo: sin los
-papeles que lo hacen nuestro, lo que se mueve es un coche de otro.
+primer día.
+
+**En camino** es el que más pide, porque es el momento en que el coche se mueve
+de verdad. Sin los papeles que lo hacen nuestro y sin haberlo pagado, lo que
+viaja es un coche del vendedor, por nuestra cuenta y a nuestro riesgo. Y hasta
+ahora «en camino» era una casilla que se marcaba sola: el pedido decía que el
+coche venía sin que existiera ningún transporte. Ahora lo dice quien lo lleva —
+un tramo recogido, en tránsito o ya entregado.
+
+El número de la factura del vendedor no es burocracia: es lo que ata el pago a
+este coche. Sin él, meses después hay un cargo sin concepto y un coche sin
+coste.
 
 Lo que **no** se pide: papeles para confirmar —llegan en momentos distintos— ni
 mirar un coche que todavía no ha llegado. Cancelar no pide nada. Y saltarse
