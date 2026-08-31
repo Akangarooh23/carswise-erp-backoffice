@@ -175,7 +175,8 @@ before(async () => {
     }
 
     if (/moveadvisor_market_offers/i.test(t)) {
-      return responde([{ dealer_name: 'Autohaus Müller', price: '9000' }]);
+      // La ciudad va aquí porque de ahí sale el «desde» del tramo de transporte.
+      return responde([{ dealer_name: 'Autohaus Müller', price: '9000', ciudad: 'Múnich' }]);
     }
     return responde([]);
   } as never;
@@ -258,6 +259,10 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     const transporte = tablas.transportes[0];
     assert.ok(transporte, 'confirmado el pedido, se abre su primer tramo');
     assert.equal(transporte.estado, 'Por organizar');
+    // De dónde sale: la ciudad alemana de la oferta, no el nombre del vendedor.
+    // Sin ciudad no se puede casar con ninguna tarifa por corredor.
+    assert.equal(transporte.desde, 'Múnich',
+      'el tramo tiene que salir de una ciudad, no de «Autohaus Müller»');
 
     // ── 3. El transporte: no se contrata sin decir quién y por cuánto ──────
     const sinDatos = await api(`/transportes/${transporte.id}`, 'PATCH', {

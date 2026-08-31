@@ -184,6 +184,22 @@ async function pedidosConTransporteSalido(ids: string[]): Promise<Set<string>> {
   return salidos;
 }
 
+/**
+ * La ciudad alemana donde está el coche.
+ *
+ * Vive en la oferta del marketplace, no en el pedido. Las 1.568 publicadas la
+ * tienen, así que casi siempre se encuentra.
+ */
+async function ciudadDeLaOferta(ofertaId: string): Promise<string> {
+  if (!ofertaId) return '';
+  const r = await query(
+    `SELECT COALESCE(province, location, '') AS ciudad
+       FROM moveadvisor_market_offers WHERE id = $1`,
+    [ofertaId]
+  ).catch(() => ({ rows: [] as { ciudad?: string }[] }));
+  return String((r.rows[0] as { ciudad?: string } | undefined)?.ciudad ?? '').trim();
+}
+
 /** Los papeles subidos a un pedido. Para las respuestas de una sola fila. */
 async function papelesDe(id: string): Promise<string[]> {
   const r = await query(
@@ -545,11 +561,23 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
     // añade quien los necesite.
     if (estado === 'Confirmado' && previo.estado !== 'Confirmado') {
       const fila = (r.rows[0] ?? previo) as Record<string, unknown>;
+      /**
+       * De dónde sale el coche: la ciudad, no el nombre del vendedor.
+       *
+       * El tramo ponía «Autohero GmbH → Nuestras instalaciones», que no es un
+       * viaje: es un nombre y un sitio. Sin ciudad de salida no se puede casar
+       * con ninguna tarifa por corredor ni pedir presupuesto de nada.
+       *
+       * La ciudad está en la oferta de la que salió el pedido. Si no se
+       * encuentra —un pedido creado a mano, sin oferta detrás— se queda el
+       * proveedor, que es mejor que dejarlo vacío.
+       */
+      const ciudadDeSalida = await ciudadDeLaOferta(String(fila.vehiculo_id ?? ""));
       abreTransporteDePedido({
         pedidoId: req.params.id,
         vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
         matricula: String(fila.matricula ?? ""),
-        desde: String(fila.proveedor ?? "") || "El proveedor",
+        desde: ciudadDeSalida || String(fila.proveedor ?? "") || "El proveedor",
         hasta: "Nuestras instalaciones",
         creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
       }).catch((e: Error) => console.error('[pedidos] transporte del pedido:', e.message));
