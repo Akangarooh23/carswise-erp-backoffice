@@ -148,6 +148,50 @@ consulta nueva contra la base, y es lo que se busca: los 1.273 que se caen se
 estaban enseñando a un precio que no cubría traerlos. Que se reduzca es la señal
 de que ahora cubren.
 
+## 5c · Los productos de garantía — **la estructura ya está esperando**
+
+La oferta ya sabe enseñar la garantía: la base va dentro del precio y las demás
+salen debajo como diferencia, con lo que cubre cada una. Las tablas están
+creadas y vacías, así que **hoy no se ve nada** — la ficha se ve como siempre
+hasta que haya productos cargados. Es a propósito: mientras no los haya, no hay
+nada que prometer.
+
+Por cada garantía que ofrezcáis necesito:
+
+| Dato | Para qué |
+|---|---|
+| Nombre | Es lo que ve el cliente |
+| Meses y km cubiertos | Sale al lado del nombre |
+| **Precio al cliente** | Sin esto no se puede sumar ni restar de un total |
+| **Lo que nos cuesta** | Para saber si deja margen. No se enseña nunca |
+| Quién la da | Vosotros o una aseguradora |
+| Antigüedad y km máximos del coche | Con 12,8 años de media en el catálogo, muchas no se van a poder ofrecer. Enseñar una que luego se cae es peor que no enseñarla |
+| Qué cubre **y qué no** | Poder decir lo que no cubre evita la discusión del día que algo se rompe |
+| Cuál es la base | La que va incluida en el precio |
+
+### Y una pregunta que hay que contestar antes
+
+**¿Tu producto base está por encima del mínimo legal, o es el mínimo?**
+
+Vendiendo como empresa a un particular, la garantía legal de conformidad no se
+puede quitar: el cliente no puede renunciar a ella ni queriendo. Lo que sí se
+puede mejorar o rechazar es una garantía comercial por encima de ese mínimo.
+
+Cada producto lleva una marca de **renunciable**, y la opción de «sin garantía»
+solo aparece si la base lo es. Si la base es el mínimo legal, esa opción no se
+enseña — ofrecer renunciar a algo irrenunciable es ofrecer lo que no se puede
+cumplir, y esto lo mira una inspección de consumo.
+
+### Lo que arrastra
+
+La fianza es el 30 % del total. Si el cliente cambia de garantía, cambia el
+total y cambia la fianza — se calcula sobre lo que él acepta y se congela en su
+solicitud, igual que ya se congela el precio. Eso ya está montado.
+
+Lo que **no** está: una pantalla en el ERP para gestionarlos. Cuando me pases
+los productos los cargo yo, como hice con los transportistas y con Bernal; la
+pantalla la monto cuando haya suficientes como para que compense.
+
 ## 6 · En Vercel
 
 Todo lo que hay que tocar fuera del código está aquí. Nada de esto se despliega

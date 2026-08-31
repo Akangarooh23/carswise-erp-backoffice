@@ -24,6 +24,7 @@ import { transportesRouter } from './routes/transportes.js';
 import { gastosRouter } from './routes/gastos.js';
 import { proveedoresRouter } from './routes/proveedores.js';
 import { tarifasRouter } from './routes/tarifas.js';
+import { garantiasRouter } from './routes/garantias.js';
 import { funnelRouter } from './routes/funnel.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { contractsRouter } from './routes/contracts.js';
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api', gastosRouter);
   app.use('/api', proveedoresRouter);
   app.use('/api', tarifasRouter);
+  app.use('/api', garantiasRouter);
   app.use('/api', funnelRouter);
   app.use('/api', analyticsRouter);
   app.use('/api', contractsRouter);
