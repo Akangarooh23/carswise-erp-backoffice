@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import { COLUMNAS, escapaCsv, nombreDelFichero } from '../lib/proveedores-tabla.js';
 
 /**
  * Con quién trabajamos.
@@ -67,25 +68,74 @@ export default function ProveedoresPage() {
 
   useEffect(() => { void carga(); }, [carga]);
 
+  /**
+   * Se exporta **lo que se está viendo**, no todo.
+   *
+   * Si el fichero trajera siempre el catálogo entero, filtrar por gestorías y
+   * exportar daría una lista con transportistas dentro, y nadie lo miraría dos
+   * veces. El nombre del fichero lleva el filtro por lo mismo.
+   */
+  function exporta() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    descargaCsv(
+      nombreDelFichero(filtro, hoy),
+      COLUMNAS.map((c) => c.titulo),
+      lista.map((p) => COLUMNAS.map((c) => escapaCsv(c.valor(p)))),
+    );
+  }
+
+  /** Lo único que no vive en `lib`: esto toca el navegador. */
+  function descargaCsv(nombre: string, cabeceras: string[], filas: string[][]) {
+    // La marca de orden de bytes: sin ella, Excel se come las tildes.
+    const bom = '\ufeff';
+    const texto = [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
+    const blob = new Blob([bom + texto], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
       <PageHeader
         title="Proveedores"
         subtitle="Con quién trabajamos, y cuánto llevamos con cada uno"
         actions={
-          <>
-            <select value={filtro} onChange={(e) => setFiltro(e.target.value)}
-                    className="px-3 py-1.5 text-xs border border-brand-200 rounded-lg bg-white">
-              <option value="">Todos</option>
-              {TIPOS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <button onClick={() => setNuevo(true)}
-                    className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700">
-              Nuevo proveedor
-            </button>
-          </>
+          <button onClick={() => setNuevo(true)}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700">
+            Nuevo proveedor
+          </button>
         }
       />
+
+      {/*
+        * El filtro, arriba y con su sitio.
+        *
+        * Estaba metido entre los botones de la cabecera, donde parece un ajuste
+        * más que algo que cambia lo que estás mirando. Aquí se ve que manda sobre
+        * las dos cosas de abajo: las cajas y la tabla enseñan lo mismo.
+        */}
+      <div className="mb-4 p-3 rounded-xl border border-brand-200 bg-white flex flex-wrap items-end gap-3">
+        <label className="text-[11px] text-brand-400">
+          Tipo de proveedor
+          <select value={filtro} onChange={(e) => setFiltro(e.target.value)}
+                  className="block mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white min-w-[200px]">
+            <option value="">Todos</option>
+            {TIPOS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <div className="text-[11px] text-brand-400 pb-2">
+          {cargando ? "Cargando…" : `${lista.length} ${lista.length === 1 ? "proveedor" : "proveedores"}`}
+          {filtro ? ` · ${TIPOS.find(([k]) => k === filtro)?.[1] ?? filtro}` : " · todos los tipos"}
+        </div>
+        <button onClick={exporta} disabled={!lista.length}
+                className="ml-auto px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
+          Exportar a CSV
+        </button>
+      </div>
 
       {error && <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">{error}</div>}
 
@@ -111,6 +161,42 @@ export default function ProveedoresPage() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/*
+        * Lo mismo, en tabla.
+        *
+        * Las cajas sirven para buscar uno y abrirlo; la tabla, para mirarlos
+        * todos a la vez y sacarlos. Son la misma lista, filtrada igual: si
+        * enseñaran cosas distintas, no se sabría cuál creer.
+        */}
+      {!cargando && lista.length > 0 && (
+        <div className="mt-5">
+          <div className="text-xs font-semibold text-brand-500 mb-2">En tabla</div>
+          <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-brand-200 text-[11px] text-brand-400 text-left">
+                  {COLUMNAS.map((c) => (
+                    <th key={c.titulo} className="px-3 py-2 font-semibold whitespace-nowrap">{c.titulo}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map((p) => (
+                  <tr key={p.id} onClick={() => setAbierto(p)}
+                      className="border-b border-brand-100 last:border-0 hover:bg-brand-50 cursor-pointer">
+                    {COLUMNAS.map((c) => (
+                      <td key={c.titulo} className="px-3 py-2 text-[12.5px] text-brand-600 align-top">
+                        {c.valor(p) || <span className="text-brand-300">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

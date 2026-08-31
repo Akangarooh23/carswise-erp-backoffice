@@ -294,6 +294,15 @@ lista trae la transferencia dos veces, una al comprarlo y otra al venderlo.
 Lo que **no** tenga tarifa sale aparte, por su nombre, en vez de sumar cero. Un
 total al que le falta un trámite y no lo dice es peor que no tener total.
 
+**Buscarlos y sacarlos.** Arriba hay un filtro por tipo, con la opción de todos.
+Filtra a las dos cosas de abajo a la vez: las fichas y la tabla enseñan siempre lo
+mismo. Debajo de las fichas está la misma lista en tabla, con NIF, teléfono,
+correo, dirección y notas, y un botón para **exportarla a CSV**.
+
+Se exporta **lo que estás viendo**, no el catálogo entero: si filtras por gestorías
+y exportas, el fichero trae gestorías. Y el nombre del fichero lleva el filtro y la
+fecha, para que dos exportaciones del mismo día no se pisen en Descargas.
+
 Darlo de baja lo quita de las listas, pero **no borra nada**: lo que se le
 compró sigue siendo suyo.
 
