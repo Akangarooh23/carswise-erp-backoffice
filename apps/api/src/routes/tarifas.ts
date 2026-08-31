@@ -16,6 +16,10 @@ import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.
 import {
   loQueCuestaTraerlo, estaVigente, paisComparable, type Tarifa,
 } from '../lib/tarifas.js';
+import {
+  loQueCuestaElPapeleo, desglosaTramite, type TarifaGestoria,
+} from '../lib/tarifas-gestoria.js';
+import { tramitesQueTocan, TRAMITES_AL_VENDER } from '../lib/tramites.js';
 
 export const tarifasRouter = Router();
 
@@ -41,12 +45,51 @@ const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_tarifas_corredor
     ON erp_tarifas_transporte (origen_pais, destino_pais, proveedor_id)`;
 
+/**
+ * Las de gestoría van aparte porque no se parecen.
+ *
+ * Un transporte se tarifa por corredor; un trámite, por trámite. Y una factura
+ * de gestoría tiene tres partes que no llevan el mismo IVA: los honorarios sí,
+ * las tasas de la DGT no. Guardarlas juntas obliga a suponer, y suponer aquí
+ * infla el coste del coche.
+ */
+const ENSURE_GESTORIA = `
+  CREATE TABLE IF NOT EXISTS erp_tarifas_gestoria (
+    id            TEXT PRIMARY KEY,
+    proveedor_id  TEXT NOT NULL,
+    tramite       TEXT NOT NULL,
+    honorarios    NUMERIC(10,2),
+    tasas         NUMERIC(10,2),
+    tasa_colegio  NUMERIC(10,2),
+    colegio_con_iva BOOLEAN NOT NULL DEFAULT FALSE,
+    vigente_hasta DATE,
+    notas         TEXT NOT NULL DEFAULT '',
+    creado_por    TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
+const ENSURE_GESTORIA_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_tarifas_gestoria_prov
+    ON erp_tarifas_gestoria (proveedor_id, tramite)`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
+  await query(ENSURE_GESTORIA, []).catch(() => {});
+  await query(ENSURE_GESTORIA_INDEX, []).catch(() => {});
   preparado = true;
+}
+
+/**
+ * Para quien cargue tarifas desde fuera de aquí.
+ *
+ * Las tablas se crean solas la primera vez que alguien abre un proveedor. Un
+ * guion de alta puede llegar antes que esa primera visita.
+ */
+export async function preparaTarifas(): Promise<void> {
+  await prepara();
 }
 
 const CAMPOS = `t.id, t.proveedor_id, t.origen_pais, t.origen_zona, t.destino_pais, t.destino_zona,
@@ -218,6 +261,160 @@ tarifasRouter.get(
       });
     } catch (err) {
       console.error('[tarifas] estimación:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'tarifas_failed' });
+    }
+  }
+);
+
+const CAMPOS_GESTORIA = `g.id, g.proveedor_id, g.tramite,
+                g.honorarios::numeric AS honorarios, g.tasas::numeric AS tasas,
+                g.tasa_colegio::numeric AS tasa_colegio, g.colegio_con_iva,
+                TO_CHAR(g.vigente_hasta, 'YYYY-MM-DD') AS vigente_hasta, g.notas`;
+
+async function gestoriaCon(where: string, valores: unknown[]): Promise<TarifaGestoria[]> {
+  const r = await query(
+    `SELECT ${CAMPOS_GESTORIA}, p.nombre AS proveedor
+       FROM erp_tarifas_gestoria g
+       LEFT JOIN erp_proveedores p ON p.id = g.proveedor_id
+      ${where}
+      ORDER BY g.tramite`,
+    valores
+  );
+  return r.rows as unknown as TarifaGestoria[];
+}
+
+// ── Las tarifas de una gestoría ─────────────────────────────────────────────
+tarifasRouter.get(
+  '/proveedores/:id/tarifas-gestoria',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const filas = await gestoriaCon('WHERE g.proveedor_id = $1', [req.params.id]);
+      res.json({
+        ok: true,
+        // Con el desglose hecho: el IVA solo va sobre los honorarios, y eso no
+        // se puede dejar a que lo recalcule cada pantalla a su manera.
+        data: filas.map((t) => ({ ...t, desglose: desglosaTramite(t) })),
+      });
+    } catch (err) {
+      console.error('[tarifas] gestoría:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'tarifas_failed' });
+    }
+  }
+);
+
+// ── Añadir una ──────────────────────────────────────────────────────────────
+tarifasRouter.post(
+  '/proveedores/:id/tarifas-gestoria',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    const tramite = nt(req.body?.tramite);
+    if (!tramite) {
+      res.status(400).json({ ok: false, error: 'sin_tramite', detail: 'Di de qué trámite es el precio.' });
+      return;
+    }
+
+    const honorarios = precio(req.body?.honorarios);
+    const tasas = precio(req.body?.tasas);
+    const colegio = precio(req.body?.tasa_colegio);
+    if (honorarios == null && tasas == null && colegio == null) {
+      res.status(400).json({
+        ok: false, error: 'sin_precio',
+        detail: 'Pon al menos un importe. Un trámite sin precio parece cubierto y no lo está.',
+      });
+      return;
+    }
+
+    try {
+      await prepara();
+      const hay = await query(`SELECT id FROM erp_proveedores WHERE id = $1`, [req.params.id]);
+      if (!hay.rows.length) {
+        res.status(404).json({ ok: false, error: 'proveedor_no_encontrado' });
+        return;
+      }
+
+      const { id } = await guardaConIdUnico(
+        () => siguienteDeSerie('erp_tarifas_gestoria', prefijoAnual('TGE')),
+        async (nuevoId) => {
+          await query(
+            `INSERT INTO erp_tarifas_gestoria
+               (id, proveedor_id, tramite, honorarios, tasas, tasa_colegio,
+                colegio_con_iva, vigente_hasta, notas, creado_por)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [
+              nuevoId, req.params.id, tramite, honorarios, tasas, colegio,
+              req.body?.colegio_con_iva === true,
+              nt(req.body?.vigente_hasta) || null, nt(req.body?.notas),
+              req.actor?.name ?? req.actor?.sub ?? '',
+            ]
+          );
+        }
+      );
+
+      const [fila] = await gestoriaCon('WHERE g.id = $1', [id]);
+      res.json({ ok: true, data: { ...fila, desglose: desglosaTramite(fila) } });
+    } catch (err) {
+      console.error('[tarifas] gestoría crear:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'tarifas_failed' });
+    }
+  }
+);
+
+// ── Quitar una ──────────────────────────────────────────────────────────────
+tarifasRouter.delete(
+  '/proveedores/:id/tarifas-gestoria/:tarifaId',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `DELETE FROM erp_tarifas_gestoria WHERE id = $1 AND proveedor_id = $2 RETURNING id`,
+        [req.params.tarifaId, req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'tarifa_no_encontrada' }); return; }
+      res.json({ ok: true, data: { id: req.params.tarifaId } });
+    } catch (err) {
+      console.error('[tarifas] gestoría borrar:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'tarifas_failed' });
+    }
+  }
+);
+
+// ── Lo que costaría el papeleo de un coche ──────────────────────────────────
+/**
+ * El papeleo de un coche, según de dónde viene y a nombre de quién va.
+ *
+ * Los trámites no se piden: los decide el ERP con las mismas reglas que abren
+ * los expedientes. Por eso **dos cambios de nombre salen el doble** sin que
+ * nadie multiplique nada: la lista trae la transferencia dos veces.
+ *
+ * Lo que no tenga tarifa sale aparte, por su nombre. Un total al que le falta
+ * un trámite y no lo dice es peor que no tener total.
+ */
+tarifasRouter.get(
+  '/tarifas-gestoria/estimacion',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (req, res) => {
+    const origen = nt(req.query.origen) || 'importacion';
+    const titularidad = nt(req.query.titularidad) || 'popcar';
+    const proveedorId = nt(req.query.proveedor_id);
+
+    // Al comprarlo y, si es nuestro, otra vez al venderlo.
+    const tramites = [
+      ...tramitesQueTocan(origen, titularidad),
+      ...(titularidad === 'popcar' ? TRAMITES_AL_VENDER : []),
+    ];
+
+    try {
+      await prepara();
+      const tarifas = proveedorId
+        ? await gestoriaCon('WHERE g.proveedor_id = $1', [proveedorId])
+        : await gestoriaCon('', []);
+      const vigentes = tarifas.filter((t) => estaVigente(t as never));
+      res.json({ ok: true, data: { tramites, ...loQueCuestaElPapeleo(tramites, vigentes) } });
+    } catch (err) {
+      console.error('[tarifas] papeleo:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'tarifas_failed' });
     }
   }

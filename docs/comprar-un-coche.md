@@ -266,6 +266,24 @@ para poder compararlas antes de escribirlo. No se rellena solo: el tramo guarda
 corredor sería adivinar. La comparación la haces tú, que sabes de qué viaje se
 trata.
 
+**Las tarifas de una gestoría** van por trámite, no por corredor, y se guardan en
+tres partes: **honorarios**, **tasas de la DGT** y **tasa del colegio**. No es
+por gusto: el IVA va sobre los honorarios, y las tasas no lo llevan —son dinero
+público que la gestoría adelanta—. Metidas en un solo número, el 21 % se aplicaría
+también sobre ellas y el coche saldría más caro de lo que es.
+
+Los nombres de los trámites son **los mismos con los que el ERP abre un**
+**expediente**. Si no coinciden, el precio no se casa con el trámite y la tarifa
+no sirve para calcular nada; por eso se eligen de una lista en vez de escribirse.
+
+Y el papeleo de un coche sale de sumar **los trámites que le tocan**, que ya los
+decide el ERP según de dónde viene y a nombre de quién va. Por eso un coche a
+nombre de PopCar cuesta dos cambios de nombre sin que nadie multiplique nada: la
+lista trae la transferencia dos veces, una al comprarlo y otra al venderlo.
+
+Lo que **no** tenga tarifa sale aparte, por su nombre, en vez de sumar cero. Un
+total al que le falta un trámite y no lo dice es peor que no tener total.
+
 Darlo de baja lo quita de las listas, pero **no borra nada**: lo que se le
 compró sigue siendo suyo.
 

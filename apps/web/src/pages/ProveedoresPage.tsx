@@ -226,6 +226,7 @@ function ProveedorAbierto({ p, onCerrar, onGuardado }: {
         </button>
 
         {tipos.includes('transportista') && <Tarifas proveedorId={p.id} />}
+        {tipos.includes('gestoria') && <TarifasGestoria proveedorId={p.id} />}
         <button onClick={() => { void api.patch(`/proveedores/${p.id}`, { activo: false }).then(onGuardado); }}
                 className="mt-2 w-full px-3 py-2 text-xs font-semibold text-red-700 border border-red-200 rounded-lg">
           Dar de baja
@@ -449,3 +450,170 @@ const PAISES: Record<string, string> = {
 function nombrePais(codigo: string): string {
   return PAISES[(codigo ?? '').toUpperCase()] ?? codigo;
 }
+
+/**
+ * Lo que cobra esta gestoría, trámite a trámite.
+ *
+ * Va por trámite y no por corredor: un papeleo no se parece a un viaje. Y se
+ * guardan por separado los honorarios y las tasas de la DGT, porque **el IVA
+ * solo va sobre los honorarios**: las tasas son dinero público que la gestoría
+ * adelanta. Aplicar el 21 % al total infla el coste del coche, y ese coste va
+ * sumado al precio que ve el cliente.
+ */
+function TarifasGestoria({ proveedorId }: { proveedorId: string }) {
+  const [lista, setLista] = useState<TarifaGestoriaFila[] | null>(null);
+  const [nueva, setNueva] = useState(GESTORIA_VACIA);
+  const [fallo, setFallo] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  const carga = useCallback(async () => {
+    const r = await api.get<TarifaGestoriaFila[]>(`/proveedores/${proveedorId}/tarifas-gestoria`);
+    setLista(r.ok && Array.isArray(r.data) ? r.data : []);
+  }, [proveedorId]);
+
+  useEffect(() => { void carga(); }, [carga]);
+
+  async function anade() {
+    setFallo('');
+    setGuardando(true);
+    const r = await api.post(`/proveedores/${proveedorId}/tarifas-gestoria`, nueva);
+    setGuardando(false);
+    if (!r.ok) {
+      setFallo((r as unknown as { detail?: string }).detail || 'No se ha podido guardar.');
+      return;
+    }
+    setNueva(GESTORIA_VACIA);
+    await carga();
+  }
+
+  async function quita(id: string) {
+    if (!window.confirm(`¿Quitar la tarifa ${id}?`)) return;
+    await api.delete(`/proveedores/${proveedorId}/tarifas-gestoria/${id}`);
+    await carga();
+  }
+
+  const faltan = TRAMITES_DE_COCHE.filter(
+    (t) => !(lista ?? []).some((x) => x.tramite === t)
+  );
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1">Tarifas de gestoría</div>
+      <p className="text-[11px] text-brand-400 mb-2">
+        El IVA va sobre los honorarios. Las tasas de la DGT no lo llevan: son un suplido.
+      </p>
+
+      {lista === null && <p className="text-[11px] text-brand-300">Cargando…</p>}
+
+      <div className="space-y-1.5">
+        {(lista ?? []).map((t) => (
+          <div key={t.id} className="px-3 py-2 rounded-lg border border-brand-200 bg-white">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="text-xs font-bold text-brand-600">{t.tramite}</div>
+                <div className="text-[11px] text-brand-500 mt-0.5">
+                  <span className="font-semibold">{eur(t.desglose?.total)}</span>
+                  {' · '}{eur(t.honorarios)} honorarios + {eur(t.desglose?.iva)} IVA
+                  {Number(t.tasas) > 0 ? ` + ${eur(t.tasas)} tasas` : ''}
+                  {Number(t.tasa_colegio) > 0 ? ` + ${eur(t.tasa_colegio)} colegio` : ''}
+                </div>
+                {t.notas && <div className="text-[10px] text-brand-400 mt-0.5 whitespace-pre-wrap">{t.notas}</div>}
+              </div>
+              <button onClick={() => void quita(t.id)}
+                      className="text-[11px] text-red-700 hover:underline shrink-0">Quitar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {lista !== null && faltan.length > 0 && (
+        <div className="mt-2 p-2.5 rounded-lg border border-amber-300 bg-amber-50">
+          <div className="text-[11px] font-bold text-amber-900 mb-0.5">Sin precio suyo</div>
+          <ul className="text-[11px] text-amber-800 list-disc pl-4">
+            {faltan.map((t) => <li key={t}>{t}</li>)}
+          </ul>
+          <p className="text-[10px] text-amber-700/80 mt-1">
+            Mientras falte alguno, el papeleo de un coche que lo necesite no se puede calcular entero.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-3 p-3 rounded-lg border border-brand-200 bg-brand-50">
+        <div className="text-[11px] font-semibold text-brand-600 mb-1.5">Añadir un trámite</div>
+        <label className="block text-[10px] text-brand-400">
+          Trámite
+          <select value={nueva.tramite}
+                  onChange={(e) => setNueva((n) => ({ ...n, tramite: e.target.value }))}
+                  className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white">
+            <option value="">Elegir…</option>
+            {TRAMITES_DE_COCHE.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {([
+            ['honorarios', 'Honorarios €', '20'],
+            ['tasas', 'Tasas DGT €', '55,70'],
+            ['tasa_colegio', 'Colegio €', '7,90'],
+          ] as const).map(([campo, etiqueta, ejemplo]) => (
+            <label key={campo} className="text-[10px] text-brand-400">
+              {etiqueta}
+              <input value={nueva[campo]} placeholder={ejemplo}
+                     onChange={(e) => setNueva((n) => ({ ...n, [campo]: e.target.value }))}
+                     className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white" />
+            </label>
+          ))}
+        </div>
+        <label className="flex items-center gap-1.5 mt-2 text-[10px] text-brand-400">
+          <input type="checkbox" checked={nueva.colegio_con_iva}
+                 onChange={(e) => setNueva((n) => ({ ...n, colegio_con_iva: e.target.checked }))} />
+          La tasa del colegio lleva IVA
+        </label>
+        <label className="block text-[10px] text-brand-400 mt-1.5">
+          Notas
+          <input value={nueva.notas} placeholder="Cómo lo llaman ellos en su tarifa…"
+                 onChange={(e) => setNueva((n) => ({ ...n, notas: e.target.value }))}
+                 className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white" />
+        </label>
+        {fallo && <p className="text-[11px] text-red-700 mt-1.5">{fallo}</p>}
+        <button onClick={() => void anade()} disabled={guardando || !nueva.tramite}
+                className="mt-2 w-full px-3 py-1.5 text-[11px] font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40">
+          Añadir tarifa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface TarifaGestoriaFila {
+  id: string;
+  tramite: string;
+  honorarios: number | null; tasas: number | null; tasa_colegio: number | null;
+  colegio_con_iva: boolean; notas: string;
+  desglose?: { honorarios: number; iva: number; tasas: number; colegio: number; total: number };
+}
+
+const GESTORIA_VACIA = {
+  tramite: '', honorarios: '', tasas: '', tasa_colegio: '',
+  colegio_con_iva: false, notas: '',
+};
+
+/**
+ * Los trámites que puede necesitar un coche.
+ *
+ * Son los mismos nombres con los que el ERP abre un expediente: si no coinciden,
+ * el precio no se casa con el trámite y la tarifa no sirve para calcular nada.
+ */
+const TRAMITES_DE_COCHE = [
+  'Transferencia de titularidad',
+  'Impuesto de transmisiones',
+  'Impuesto de matriculación',
+  'ITV de homologación',
+  'Matriculación de importación',
+  'Baja por exportación o tránsito comunitario',
+  'Informe de la DGT',
+  'Duplicado del permiso de circulación',
+  'Duplicado de la ficha técnica',
+  'Cambio de domicilio',
+  'Cambio de servicio en la ficha técnica',
+  'Baja temporal por entrega a compraventa',
+];
