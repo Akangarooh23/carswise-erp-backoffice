@@ -185,6 +185,29 @@ async function pedidosConTransporteSalido(ids: string[]): Promise<Set<string>> {
 }
 
 /**
+ * A dónde se lo llevamos: lo que dijo el cliente en su solicitud.
+ *
+ * La pone él desde su panel y la puede cambiar hasta que paga la fianza. Si no
+ * ha dicho nada todavía, se devuelve vacío y el tramo se abre sin destino, para
+ * que se vea que falta en vez de inventarse uno.
+ */
+async function direccionDelCliente(leadId: string): Promise<string> {
+  if (!leadId) return '';
+  const r = await query(
+    `SELECT entrega_direccion, entrega_cp, entrega_ciudad, entrega_provincia
+       FROM moveadvisor_market_leads WHERE id = $1`,
+    [leadId]
+  ).catch(() => ({ rows: [] as Record<string, string>[] }));
+  const f = (r.rows[0] ?? {}) as Record<string, string | null>;
+  const partes = [
+    f.entrega_direccion,
+    [f.entrega_cp, f.entrega_ciudad].filter(Boolean).join(' '),
+    f.entrega_provincia ? `(${f.entrega_provincia})` : '',
+  ].map((x) => String(x ?? '').trim()).filter(Boolean);
+  return partes.join(', ');
+}
+
+/**
  * La ciudad alemana donde está el coche.
  *
  * Vive en la oferta del marketplace, no en el pedido. Las 1.568 publicadas la
@@ -613,6 +636,27 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         clienteEmail: String(fila.cliente_email ?? ""),
         creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
       }).catch((e: Error) => console.error('[pedidos] trámites del pedido:', e.message));
+
+      /**
+       * Y el viaje que falta: de aquí a su casa.
+       *
+       * Un coche de fuera **no puede ir de Alemania al cliente de un tirón**:
+       * tiene que estar aquí para la ITV de homologación y para matricularlo.
+       * Son dos tramos, y este es el segundo.
+       *
+       * Se abre al recibirlo y no antes porque hasta ese momento no se sabe si
+       * hay algo que arreglar. El destino sale de lo que dijo el cliente; si no
+       * ha dicho nada, el tramo se queda sin destino y se ve que falta.
+       */
+      const aDondeVa = await direccionDelCliente(String(fila.lead_id ?? ""));
+      abreTransporteDePedido({
+        pedidoId: req.params.id,
+        vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
+        matricula: String(fila.matricula ?? ""),
+        desde: "Nuestras instalaciones",
+        hasta: aDondeVa,
+        creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
+      }).catch((e: Error) => console.error('[pedidos] tramo de entrega:', e.message));
     }
 
     res.json({
