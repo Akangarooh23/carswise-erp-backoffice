@@ -48,6 +48,22 @@ function eur(v: unknown): string {
   return n ? `${n.toLocaleString('es-ES')} €` : '0 €';
 }
 
+const VISTA_GUARDADA = 'cw_erp_proveedores_vista';
+
+/**
+ * La vista que se dejó puesta la última vez.
+ *
+ * En cajas si no hay nada guardado o si el navegador no deja leerlo: es la de
+ * siempre, y ninguna pantalla puede caerse porque no se pueda guardar un gusto.
+ */
+function leeVista(): 'cajas' | 'tabla' {
+  try {
+    return localStorage.getItem(VISTA_GUARDADA) === 'tabla' ? 'tabla' : 'cajas';
+  } catch {
+    return 'cajas';
+  }
+}
+
 export default function ProveedoresPage() {
   const [lista, setLista] = useState<Proveedor[]>([]);
   const [filtro, setFiltro] = useState('');
@@ -55,6 +71,22 @@ export default function ProveedoresPage() {
   const [error, setError] = useState('');
   const [abierto, setAbierto] = useState<Proveedor | null>(null);
   const [nuevo, setNuevo] = useState(false);
+
+  /**
+   * Cajas o tabla, y se recuerda.
+   *
+   * Quien mira proveedores mira siempre igual: uno los busca de un vistazo y
+   * otro los repasa en filas. Volver a la vista que no es cada vez que se entra
+   * es de las cosas que más cansan de una herramienta interna.
+   *
+   * Si el navegador no deja guardar —modo privado, cookies capadas—, se queda en
+   * cajas y no pasa nada.
+   */
+  const [vista, setVista] = useState<'cajas' | 'tabla'>(() => leeVista());
+
+  useEffect(() => {
+    try { localStorage.setItem(VISTA_GUARDADA, vista); } catch { /* da igual */ }
+  }, [vista]);
 
   const carga = useCallback(async () => {
     setCargando(true);
@@ -131,10 +163,26 @@ export default function ProveedoresPage() {
           {cargando ? "Cargando…" : `${lista.length} ${lista.length === 1 ? "proveedor" : "proveedores"}`}
           {filtro ? ` · ${TIPOS.find(([k]) => k === filtro)?.[1] ?? filtro}` : " · todos los tipos"}
         </div>
-        <button onClick={exporta} disabled={!lista.length}
-                className="ml-auto px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
-          Exportar a CSV
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex rounded-lg border border-brand-200 overflow-hidden">
+            {([['cajas', 'Cajas'], ['tabla', 'Tabla']] as const).map(([modo, texto]) => (
+              <button
+                key={modo}
+                onClick={() => setVista(modo)}
+                aria-pressed={vista === modo}
+                className={`px-3 py-2 text-xs font-bold transition ${
+                  vista === modo ? 'bg-brand-600 text-white' : 'bg-white text-brand-500 hover:bg-brand-50'
+                }`}
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+          <button onClick={exporta} disabled={!lista.length}
+                  className="px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
+            Exportar a CSV
+          </button>
+        </div>
       </div>
 
       {error && <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">{error}</div>}
@@ -145,7 +193,7 @@ export default function ProveedoresPage() {
         <div className="px-4 py-8 rounded-xl border border-brand-200 bg-white text-center text-sm text-brand-400">
           Todavía no hay ninguno. Se añaden aquí, o desde el propio tramo o trámite al elegirlos.
         </div>
-      ) : (
+      ) : vista === 'cajas' ? (
         <div className="grid gap-2 md:grid-cols-2">
           {lista.map((p) => (
             <button key={p.id} onClick={() => setAbierto(p)}
@@ -162,18 +210,8 @@ export default function ProveedoresPage() {
             </button>
           ))}
         </div>
-      )}
-
-      {/*
-        * Lo mismo, en tabla.
-        *
-        * Las cajas sirven para buscar uno y abrirlo; la tabla, para mirarlos
-        * todos a la vez y sacarlos. Son la misma lista, filtrada igual: si
-        * enseñaran cosas distintas, no se sabría cuál creer.
-        */}
-      {!cargando && lista.length > 0 && (
-        <div className="mt-5">
-          <div className="text-xs font-semibold text-brand-500 mb-2">En tabla</div>
+      ) : (
+        <div>
           <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
               <thead>

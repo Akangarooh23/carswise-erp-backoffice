@@ -102,7 +102,11 @@ const MUESTRAS: Muestra[] = [
 async function quita(): Promise<void> {
   await query(`DELETE FROM market_garantia_coberturas WHERE garantia_id LIKE $1`, [`${PREFIJO}%`]);
   const r = await query(`DELETE FROM market_garantias WHERE id LIKE $1 RETURNING id`, [`${PREFIJO}%`]);
-  console.log(`quitadas ${r.rows.length} garantías de muestra`);
+  // Se dice si no había ninguna en vez de «quitadas 0», que parece que ha
+  // fallado cuando lo que pasa es que ya estaban fuera.
+  console.log(r.rows.length
+    ? `quitadas ${r.rows.length} garantías de muestra`
+    : 'no había ninguna garantía de muestra que quitar');
 }
 
 async function pon(): Promise<void> {
