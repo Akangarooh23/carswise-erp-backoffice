@@ -24,14 +24,23 @@ export function esTitularidad(v: string): v is Titularidad {
 }
 
 /**
- * La que le toca a un pedido si nadie dice otra cosa.
+ * La que le toca a un pedido si nadie dice otra cosa: **PopCar**.
  *
- * Con cliente detrás, a su nombre: es lo que menos cambios de nombre cuesta.
- * Sin cliente, a nombre de PopCar, porque no hay otro sitio donde ponerlo.
+ * Aunque haya un cliente esperando. Lo normal del negocio es comprar el coche y
+ * luego vendérselo: PopCar lo recibe, lo matricula si viene de fuera, lo deja a
+ * punto y lo entrega con su factura y su garantía. Todo eso se hace sobre un
+ * coche que es nuestro.
+ *
+ * A nombre del cliente es el caso raro —el coche va del vendedor directo a él y
+ * nos ahorramos un cambio de nombre—, y por eso se elige a mano. Ponerlo por
+ * defecto hacía lo contrario: daba por hecho lo excepcional.
+ *
+ * El precio de esto es el plazo de reventa, que empieza a correr al recibirlo.
+ * No es un efecto secundario que se nos escape: el pedido lo enseña y avisa dos
+ * meses antes.
  */
-export function titularidadPorDefecto(origen: string, clienteEmail?: string | null): Titularidad {
-  if (origen === 'stock') return 'popcar';
-  return (clienteEmail ?? '').trim() ? 'cliente' : 'popcar';
+export function titularidadPorDefecto(_origen?: string, _clienteEmail?: string | null): Titularidad {
+  return 'popcar';
 }
 
 /**

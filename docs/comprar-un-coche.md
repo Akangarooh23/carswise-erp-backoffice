@@ -69,9 +69,17 @@ fases no sirve de atajo: llegar a una exige lo de todas las anteriores.
 
 Por la misma razón, **un pedido abierto solo enseña lo de su fase**: los
 kilómetros y las llaves aparecen cuando el coche viene de camino, los papeles
-cuando ya sirven para moverlo, y el reacondicionado cuando está aquí. Abajo hay
-**«Ver todos los datos del pedido»** para lo que haya que corregir fuera de
+cuando ya sirven para moverlo, el reacondicionado cuando está aquí, y la
+matrícula cuando el coche ya la tiene. Cada campo dice además si hace falta o es
+opcional, porque un hueco vacío puesto delante parece una tarea pendiente. Abajo
+hay **«Ver todos los datos del pedido»** para lo que haya que corregir fuera de
 sitio.
+
+**A nombre de quién va.** Viene en *PopCar* siempre, también cuando hay un
+cliente esperando: lo normal es comprar el coche y luego vendérselo, con nuestra
+factura y nuestra garantía. *El cliente* es el caso raro —el coche va del
+vendedor directo a él— y por eso se elige a mano. Con el coche a nuestro nombre
+empieza a correr el plazo de reventa, que el pedido enseña al recibirlo.
 
 **Los papeles.** Cada pedido enseña lo que falta según de dónde venga: de
 Alemania la ficha del vehículo y el COC, de un particular el informe de la DGT y

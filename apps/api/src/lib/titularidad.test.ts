@@ -20,18 +20,22 @@ describe('a nombre de quién', () => {
     assert.equal(esTitularidad('gestoria'), false);
   });
 
-  test('con cliente detrás, a su nombre: es lo que menos cuesta', () => {
-    assert.equal(titularidadPorDefecto('concesionario', 'cliente@ejemplo.es'), 'cliente');
-    assert.equal(titularidadPorDefecto('importacion', 'cliente@ejemplo.es'), 'cliente');
+  test('por defecto al nuestro, aunque haya un cliente esperando', () => {
+    // Lo normal es comprar el coche y luego vendérselo: se recibe, se matricula,
+    // se deja a punto y se entrega con nuestra factura. Todo eso sobre un coche
+    // que es nuestro.
+    assert.equal(titularidadPorDefecto('concesionario', 'cliente@ejemplo.es'), 'popcar');
+    assert.equal(titularidadPorDefecto('importacion', 'cliente@ejemplo.es'), 'popcar');
   });
 
-  test('sin cliente, al nuestro: no hay otro sitio', () => {
+  test('sin cliente, igual: no hay otro sitio donde ponerlo', () => {
     assert.equal(titularidadPorDefecto('concesionario', ''), 'popcar');
     assert.equal(titularidadPorDefecto('particular', null), 'popcar');
+    assert.equal(titularidadPorDefecto('stock', 'alguien@ejemplo.es'), 'popcar');
   });
 
-  test('lo comprado para stock va al nuestro aunque haya un correo suelto', () => {
-    assert.equal(titularidadPorDefecto('stock', 'alguien@ejemplo.es'), 'popcar');
+  test('a nombre del cliente sigue existiendo: se elige a mano', () => {
+    assert.equal(esTitularidad('cliente'), true);
   });
 });
 

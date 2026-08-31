@@ -113,33 +113,45 @@ Son los dos botones de arriba del pedido, y **no** son quién vende. PopCar vend
 siempre —su factura y su garantía—; esto es **a nombre de quién se pone el
 coche**, y ahí está la diferencia entre pagar un cambio de nombre o dos.
 
-| | *El cliente* | *PopCar* |
+| | *PopCar* — lo normal | *El cliente* — el caso raro |
 |---|---|---|
-| Cambios de nombre | **Uno**: del vendedor al cliente | **Dos**: al vendedor→PopCar al comprarlo, y PopCar→cliente al venderlo |
-| Cuándo | Al venderlo | Al comprarlo, y otra vez al venderlo |
-| Plazo de reventa | No corre | **Sí**: el pedido enseña hasta cuándo, y avisa dos meses antes |
-| Cuándo se usa | Hay un cliente esperando ese coche concreto | El coche entra en stock sin comprador |
+| Cambios de nombre | **Dos**: vendedor→PopCar al comprarlo, PopCar→cliente al venderlo | **Uno**: del vendedor al cliente |
+| Cuándo | Al comprarlo, y otra vez al venderlo | Al venderlo |
+| Plazo de reventa | **Sí**: el pedido enseña hasta cuándo, y avisa dos meses antes | No corre |
+| Cuándo se usa | Casi siempre: el coche se compra, se recibe, se matricula, se deja a punto y se vende | El coche va del vendedor directo al cliente y nos ahorramos un cambio de nombre |
 
-Lo del plazo es lo que importa: si el coche se pone a nuestro nombre, hay un
-límite para revenderlo sin que el impuesto de la compra se quede. Pasado, la
-factura aparece meses después sobre un coche que ya no interesa a nadie.
+**Viene puesto en *PopCar*, aunque haya un cliente esperando**, porque es lo
+normal del negocio: PopCar compra el coche y luego se lo vende, con su factura y
+su garantía, y todo eso se hace sobre un coche que es nuestro.
+
+El precio de eso es el plazo: con el coche a nuestro nombre hay un límite para
+revenderlo sin que el impuesto de la compra se quede. Pasado, la factura aparece
+meses después sobre un coche que ya no interesa a nadie. Por eso el pedido enseña
+la fecha límite en cuanto lo recibes, y avisa dos meses antes.
 
 ### Recórrelo
 
 Va por fases, y **el orden importa**: cada bloque comprueba lo que pide *esa*
 fase. Hazlos seguidos y sin adelantarte, o las puertas no dan lo que dicen aquí.
 
-- [ ] Fíjate primero en **lo que sale y lo que no**: en fase *Pedido* solo hay
-      «A nombre de», los datos y el estado. Ni «Al llegar» ni el
-      reacondicionado, que son de cuando el coche esté aquí. Pulsa abajo **«Ver
-      todos los datos del pedido»** y comprueba que aparece todo; vuelve a
-      dejarlo como estaba.
+- [ ] Fíjate primero en **lo que sale y lo que no**: en fase *Pedido* solo están
+      «A nombre de», el estado, y tres campos — proveedor, importe y para cuándo
+      lo esperamos. **No** salen la matrícula ni el bastidor, que un coche de
+      importación todavía no tiene o no hace falta, ni «Al llegar», ni el
+      reacondicionado.
+- [ ] Mira las etiquetas de esos tres campos: solo el **importe** dice «hace
+      falta para Confirmado». Los otros ponen **opcional**, y debajo cuándo se
+      saben. Si un hueco está vacío no es que falte: es que aún no toca.
+- [ ] Pulsa abajo **«Ver todos los datos del pedido»**: aparece todo, los cinco
+      campos incluidos. Vuelve a dejarlo como estaba.
 
 **Antes de nada, a nombre de quién va**
 
-- [ ] Mira **«A nombre de»**: debería estar en *El cliente*, porque hay cliente.
-      Púlsalo en *PopCar* y mira que aparece el **plazo de reventa**; déjalo
-      luego como estaba. Esto no es de ninguna fase: se puede cambiar cuando sea.
+- [ ] Mira **«A nombre de»**: viene en ***PopCar***, que es lo normal — lo
+      compramos nosotros y luego se lo vendemos. Púlsalo en *El cliente* para ver
+      cómo cambia la explicación de debajo, y **déjalo otra vez en *PopCar***.
+      Esto no es de ninguna fase: se puede cambiar cuando sea, y el plazo de
+      reventa no aparece hasta que el coche se recibe.
 
 **Para confirmarlo: solo el precio**
 

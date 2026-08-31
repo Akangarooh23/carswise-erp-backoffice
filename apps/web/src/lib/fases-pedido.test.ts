@@ -1,13 +1,13 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LO_DE_CADA_FASE, toca } from './fases-pedido.js';
+import { LO_DE_CADA_FASE, CAMPOS, toca, tocaCampo, camposDe } from './fases-pedido.js';
 
 /**
  * Lo que se enseña en cada fase.
  *
- * Lo que se comprueba aquí no es la maqueta: es que no se pida antes de tiempo
- * algo que solo se puede saber después. Un campo obligatorio a destiempo se
- * rellena con lo primero que sirva para pasar.
+ * Lo que se comprueba aquí no es la maqueta: es que no se ponga delante, en la
+ * fase que no toca, algo que solo se puede saber después. Un hueco vacío parece
+ * una tarea pendiente, y se rellena con lo primero que sirva.
  */
 describe('cada fase enseña lo suyo', () => {
   test('un coche que sigue en Alemania no pide kilómetros ni llaves', () => {
@@ -21,12 +21,8 @@ describe('cada fase enseña lo suyo', () => {
     assert.equal(toca('alLlegar', 'Recibido'), true);
   });
 
-  test('para confirmar, lo que hace falta es el precio, no los papeles', () => {
-    assert.equal(toca('datos', 'Pedido'), true);
-    assert.equal(toca('papeles', 'Pedido'), false);
-  });
-
   test('los papeles salen cuando ya sirven para algo: moverlo', () => {
+    assert.equal(toca('papeles', 'Pedido'), false);
     assert.equal(toca('papeles', 'Confirmado'), true);
     assert.equal(toca('papeles', 'En camino'), true);
   });
@@ -47,13 +43,71 @@ describe('cada fase enseña lo suyo', () => {
   });
 
   test('un estado que no conocemos no enseña nada, pero no rompe', () => {
-    assert.equal(toca('datos', 'Inventado'), false);
-    assert.equal(toca('datos', 'Inventado', true), true);
+    assert.equal(toca('papeles', 'Inventado'), false);
+    assert.equal(toca('papeles', 'Inventado', true), true);
   });
 
   test('todas las fases del camino están contempladas', () => {
     for (const e of ['Borrador', 'Pedido', 'Confirmado', 'En camino', 'Recibido', 'Cancelado']) {
-      assert.ok(LO_DE_CADA_FASE[e]?.length, `${e} no enseña nada`);
+      assert.ok(LO_DE_CADA_FASE[e], `${e} no está en la tabla`);
+    }
+  });
+});
+
+/**
+ * Los campos, uno por uno.
+ *
+ * La pregunta que resuelve esto es «¿esto hay que rellenarlo ahora?». Salían los
+ * cinco en todas las fases, así que la respuesta parecía que sí siempre: hasta
+ * la matrícula de un coche de importación, que todavía no existe.
+ */
+describe('qué campos se rellenan en cada fase', () => {
+  test('en Pedido, a quién y por cuánto — nada más', () => {
+    assert.deepEqual(
+      camposDe('Pedido').map((c) => c.campo),
+      ['proveedor', 'importe', 'fecha_estimada']
+    );
+  });
+
+  test('la matrícula no sale hasta que el coche está aquí', () => {
+    assert.equal(tocaCampo('matricula', 'Pedido'), false);
+    assert.equal(tocaCampo('matricula', 'Confirmado'), false);
+    assert.equal(tocaCampo('matricula', 'En camino'), false);
+    assert.equal(tocaCampo('matricula', 'Recibido'), true);
+  });
+
+  test('solo dos campos cierran el paso, y cada uno a una fase', () => {
+    const obligan = CAMPOS.filter((c) => c.haceFaltaPara);
+    assert.deepEqual(obligan.map((c) => [c.campo, c.haceFaltaPara]), [
+      ['proveedor', 'Pedido'],
+      ['importe', 'Confirmado'],
+    ]);
+  });
+
+  test('el importe se puede poner desde el principio, y sigue estando al confirmar', () => {
+    assert.equal(tocaCampo('importe', 'Borrador'), true);
+    assert.equal(tocaCampo('importe', 'Pedido'), true);
+    assert.equal(tocaCampo('importe', 'Confirmado'), true);
+  });
+
+  test('cada campo dice cuándo se sabe: si no, se rellena a ojo', () => {
+    for (const c of CAMPOS) {
+      assert.ok(c.pista && c.pista.length > 10, `${c.campo} no explica cuándo se sabe`);
+    }
+  });
+
+  test('con «ver todo» salen los cinco, en cualquier fase', () => {
+    assert.equal(camposDe('Recibido', true).length, CAMPOS.length);
+    assert.equal(camposDe('Cancelado', true).length, CAMPOS.length);
+  });
+
+  test('lo que obliga a una fase se enseña en esa fase y en las de antes', () => {
+    // Si el importe hace falta para Confirmado pero no saliera hasta después, la
+    // puerta sería imposible de abrir desde la pantalla.
+    for (const c of CAMPOS) {
+      if (!c.haceFaltaPara) continue;
+      assert.ok(c.fases.includes(c.haceFaltaPara),
+        `${c.campo} hace falta para ${c.haceFaltaPara} y no sale en esa fase`);
     }
   });
 });

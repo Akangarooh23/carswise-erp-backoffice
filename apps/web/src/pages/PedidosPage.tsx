@@ -3,7 +3,10 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
-import { toca as tocaEnFase, type Bloque } from '../lib/fases-pedido.js';
+import {
+  toca as tocaEnFase, camposDe,
+  type Bloque, type Campo, type CampoDePedido,
+} from '../lib/fases-pedido.js';
 
 /**
  * Los pedidos: coches encargados a un proveedor.
@@ -620,6 +623,27 @@ const POR_QUE_SE_PIDE: Record<string, string> = {
   'Recibido': 'Los kilómetros se leen antes de moverlo y las llaves se cuentan delante de quien lo trae. Eso no se puede hacer después.',
 };
 
+/**
+ * El nombre de un campo, con si hace falta o no.
+ *
+ * Un hueco vacío puesto delante parece una tarea pendiente. Casi ninguno de
+ * estos lo es: solo el proveedor y el importe cierran el paso, y cada uno a una
+ * fase distinta. Decirlo aquí ahorra rellenar a ojo lo que todavía no se sabe.
+ */
+function Etiqueta({ campo, campos }: { campo: Campo; campos: CampoDePedido[] }) {
+  const c = campos.find((x) => x.campo === campo);
+  if (!c) return null;
+  return (
+    <span className="block text-[11px] text-brand-400">
+      {c.etiqueta}
+      {c.haceFaltaPara
+        ? <span className="ml-1 font-semibold text-amber-700">· hace falta para «{c.haceFaltaPara}»</span>
+        : <span className="ml-1 text-brand-300">· opcional</span>}
+      {c.pista && <span className="block text-[10px] text-brand-300 leading-tight">{c.pista}</span>}
+    </span>
+  );
+}
+
 function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   p: Pedido; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
   /** Subir o quitar un papel cambia lo que falta para moverlo. */
@@ -635,6 +659,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   const siguiente = siguienteEstado(p.estado);
   const [verTodo, setVerTodo] = useState(false);
   const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo);
+  const campos = camposDe(p.estado, verTodo);
+  const sale = (c: Campo) => campos.some((x) => x.campo === c);
 
   /**
    * Lo que falta para poder pasar a un estado.
@@ -711,38 +737,48 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
           )}
         </div>
 
-        {toca('datos') && (<>
+        {campos.length > 0 && (<>
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="col-span-2 text-[11px] text-brand-400">
-            Proveedor
-            <div className="mt-0.5">
-              <ElegirProveedor tipo="vendedor" valor={datos.proveedor}
-                               placeholder="A quién se le compra…"
-                               onCambio={(v) => setDatos((d) => ({ ...d, proveedor: v }))} />
+          {sale('proveedor') && (
+            <div className="col-span-2">
+              <Etiqueta campo="proveedor" campos={campos} />
+              <div className="mt-0.5">
+                <ElegirProveedor tipo="vendedor" valor={datos.proveedor}
+                                 placeholder="A quién se le compra…"
+                                 onCambio={(v) => setDatos((d) => ({ ...d, proveedor: v }))} />
+              </div>
             </div>
-          </div>
-          <label className="text-[11px] text-brand-400">
-            Importe
-            <input value={datos.importe} inputMode="decimal"
-                   onChange={(e) => setDatos((d) => ({ ...d, importe: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
-          <label className="text-[11px] text-brand-400">
-            Lo esperamos para
-            <input type="date" value={datos.fecha_estimada}
-                   onChange={(e) => setDatos((d) => ({ ...d, fecha_estimada: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
-          <label className="text-[11px] text-brand-400">
-            Matrícula
-            <input value={datos.matricula} onChange={(e) => setDatos((d) => ({ ...d, matricula: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
-          <label className="text-[11px] text-brand-400">
-            Bastidor
-            <input value={datos.bastidor} onChange={(e) => setDatos((d) => ({ ...d, bastidor: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
+          )}
+          {sale('importe') && (
+            <label className="block">
+              <Etiqueta campo="importe" campos={campos} />
+              <input value={datos.importe} inputMode="decimal"
+                     onChange={(e) => setDatos((d) => ({ ...d, importe: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
+          {sale('fecha_estimada') && (
+            <label className="block">
+              <Etiqueta campo="fecha_estimada" campos={campos} />
+              <input type="date" value={datos.fecha_estimada}
+                     onChange={(e) => setDatos((d) => ({ ...d, fecha_estimada: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
+          {sale('bastidor') && (
+            <label className="block">
+              <Etiqueta campo="bastidor" campos={campos} />
+              <input value={datos.bastidor} onChange={(e) => setDatos((d) => ({ ...d, bastidor: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
+          {sale('matricula') && (
+            <label className="block">
+              <Etiqueta campo="matricula" campos={campos} />
+              <input value={datos.matricula} onChange={(e) => setDatos((d) => ({ ...d, matricula: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
         </div>
         <button
           onClick={() => onCambiar(datos)}
