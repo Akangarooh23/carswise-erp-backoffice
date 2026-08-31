@@ -16,6 +16,7 @@ import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   TIPOS_PROVEEDOR, ETIQUETA_TIPO, tiposLimpios, nombreComparable, agrupaNombresSueltos,
+  fallaLaMatriz, EXPLICA_FALLO_DE_MATRIZ, elYLosSuyos,
   type TipoProveedor,
 } from '../lib/proveedores.js';
 
@@ -42,11 +43,22 @@ const ENSURE_TABLE = `
 const ENSURE_UNIQUE = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_proveedores_clave ON erp_proveedores (clave)`;
 
+/**
+ * De qué grupo es, si es de alguno.
+ *
+ * No se fusionan las filas: la factura la emite la filial, con su CIF. Esto
+ * solo dice que van juntas, para poder sumar lo del grupo y para que una tarifa
+ * negociada con él valga para las sociedades que facturan.
+ */
+const ENSURE_MATRIZ = `
+  ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS matriz_id TEXT`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
+  await query(ENSURE_MATRIZ, []).catch(() => {});
   await traeLoQueYaEstaba();
   preparado = true;
 }
@@ -106,7 +118,9 @@ async function traeLoQueYaEstaba() {
   }
 }
 
-const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, notas, activo, created_at`;
+const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, notas, activo, created_at,
+                matriz_id,
+                (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz`;
 
 // ── Los tipos que hay ───────────────────────────────────────────────────────
 proveedoresRouter.get('/proveedores/tipos', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
@@ -201,6 +215,38 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
     // Dar de baja, no borrar: lo que se le compró sigue siendo suyo.
     if (req.body?.activo !== undefined) pon('activo', req.body.activo !== false);
 
+    /**
+     * De qué grupo cuelga.
+     *
+     * Se comprueba contra los que hay, no contra lo que llegue: una cadena de
+     * tres niveles o un ciclo dejarían «lo que llevamos con el grupo» sin una
+     * respuesta, y la suma podría no terminar.
+     */
+    if (req.body?.matriz_id !== undefined) {
+      const matrizId = nt(req.body.matriz_id);
+      if (matrizId) {
+        const todos = await query(`SELECT id, matriz_id FROM erp_proveedores`, []);
+        const fallo = fallaLaMatriz(
+          req.params.id, matrizId,
+          todos.rows as { id: string; matriz_id?: string | null }[]
+        );
+        if (fallo) {
+          res.status(400).json({
+            ok: false, error: 'matriz_no_valida', detail: EXPLICA_FALLO_DE_MATRIZ[fallo],
+          });
+          return;
+        }
+        if (!todos.rows.some((x) => (x as { id: string }).id === matrizId)) {
+          res.status(404).json({
+            ok: false, error: 'matriz_no_encontrada',
+            detail: 'Esa matriz no existe. Dala de alta como proveedor antes de colgarle una filial.',
+          });
+          return;
+        }
+      }
+      pon('matriz_id', matrizId || null);
+    }
+
     if (!sets.length) { res.status(400).json({ ok: false, error: 'nada_que_cambiar' }); return; }
     valores.push(req.params.id);
     const r = await query(
@@ -225,19 +271,31 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
 proveedoresRouter.get('/proveedores/:id/cuentas', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     await prepara();
-    const p = await query(`SELECT nombre FROM erp_proveedores WHERE id = $1`, [req.params.id]);
-    if (!p.rows.length) { res.status(404).json({ ok: false, error: 'proveedor_no_encontrado' }); return; }
-    const nombre = String((p.rows[0] as { nombre: string }).nombre);
+    /**
+     * Se suma por nombre, y con los del grupo.
+     *
+     * Lo que hay escrito en cada tramo y en cada trámite es el nombre de quien
+     * facturó. Al abrir un grupo se suman también sus filiales —es el número con
+     * el que se negocia—; al abrir una filial, solo lo suyo, o el mismo gasto se
+     * contaría dos veces.
+     */
+    const todos = await query(`SELECT id, nombre, matriz_id FROM erp_proveedores`, []);
+    const suyos = elYLosSuyos(
+      req.params.id,
+      todos.rows as { id: string; nombre: string; matriz_id?: string | null }[]
+    );
+    if (!suyos.length) { res.status(404).json({ ok: false, error: 'proveedor_no_encontrado' }); return; }
+    const nombres = suyos.map((x) => x.nombre.toLowerCase());
 
     const [transportes, tramites, gastos] = await Promise.all([
       query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(coste),0)::numeric AS total
-               FROM erp_transportes WHERE lower(transportista) = lower($1)`, [nombre])
+               FROM erp_transportes WHERE lower(transportista) = ANY($1)`, [nombres])
         .catch(() => ({ rows: [{ n: 0, total: 0 }] })),
       query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(coste),0)::numeric AS total
-               FROM erp_tramites WHERE lower(gestoria) = lower($1)`, [nombre])
+               FROM erp_tramites WHERE lower(gestoria) = ANY($1)`, [nombres])
         .catch(() => ({ rows: [{ n: 0, total: 0 }] })),
       query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(importe),0)::numeric AS total
-               FROM erp_gastos_pedido WHERE lower(proveedor) = lower($1)`, [nombre])
+               FROM erp_gastos_pedido WHERE lower(proveedor) = ANY($1)`, [nombres])
         .catch(() => ({ rows: [{ n: 0, total: 0 }] })),
     ]);
 
@@ -248,7 +306,12 @@ proveedoresRouter.get('/proveedores/:id/cuentas', requireRole(['admin', 'operati
     const partes = { transportes: lee(transportes), tramites: lee(tramites), gastos: lee(gastos) };
     res.json({
       ok: true,
-      data: { ...partes, total: partes.transportes.total + partes.tramites.total + partes.gastos.total },
+      data: {
+        ...partes,
+        total: partes.transportes.total + partes.tramites.total + partes.gastos.total,
+        // Cuántas sociedades se han sumado, para que un total grande se explique.
+        sociedades: suyos.length,
+      },
     });
   } catch (err) {
     console.error('[proveedores] cuentas:', (err as Error).message);

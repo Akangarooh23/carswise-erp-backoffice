@@ -10,6 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TIPOS_PROVEEDOR, ETIQUETA_TIPO, esTipoProveedor, tiposLimpios,
+  fallaLaMatriz, EXPLICA_FALLO_DE_MATRIZ, elYLosSuyos,
   nombreComparable, esElMismo, agrupaNombresSueltos,
 } from './proveedores.js';
 
@@ -105,5 +106,84 @@ describe('el proveedor de garantías', () => {
 
   test('y se puede combinar: un taller que además da garantías', () => {
     assert.deepEqual(tiposLimpios(['taller', 'garantia']), ['taller', 'garantia']);
+  });
+});
+
+/**
+ * Grupos y filiales.
+ *
+ * Lo que se vigila es que no se pueda montar una cadena. Con tres niveles, «lo
+ * que llevamos con el grupo» dejaría de tener una respuesta clara, y peor: la
+ * consulta que suma podría no terminar nunca.
+ */
+describe('un grupo con filiales', () => {
+  const todos = [
+    { id: 'PRV-grupo', nombre: 'Higueral Grupo' },
+    { id: 'PRV-filial', nombre: 'Higueral Cars Logistics', matriz_id: 'PRV-grupo' },
+    { id: 'PRV-suelto', nombre: 'Becker Solutions' },
+  ];
+
+  test('una sociedad puede colgar de un grupo', () => {
+    assert.equal(fallaLaMatriz('PRV-suelto', 'PRV-grupo', todos), null);
+  });
+
+  test('sin matriz no falla nada: la mayoría no son de ningún grupo', () => {
+    assert.equal(fallaLaMatriz('PRV-suelto', '', todos), null);
+  });
+
+  test('nadie es su propia matriz', () => {
+    assert.equal(fallaLaMatriz('PRV-grupo', 'PRV-grupo', todos), 'ella_misma');
+  });
+
+  test('una filial no puede ser matriz de otra: sería un tercer nivel', () => {
+    assert.equal(fallaLaMatriz('PRV-suelto', 'PRV-filial', todos), 'la_matriz_es_filial');
+  });
+
+  test('y un grupo con filiales no puede colgar de otro', () => {
+    assert.equal(fallaLaMatriz('PRV-grupo', 'PRV-suelto', todos), 'tiene_filiales');
+  });
+
+  test('un ciclo de dos no se puede montar', () => {
+    // A cuelga de B; que B cuelgue de A tiene que fallar, o la suma no acaba.
+    const conVinculo = [
+      { id: 'A', nombre: 'A', matriz_id: 'B' },
+      { id: 'B', nombre: 'B' },
+    ];
+    assert.ok(fallaLaMatriz('B', 'A', conVinculo) !== null);
+  });
+
+  test('cada fallo se explica: un «no se puede» a secas no dice qué hacer', () => {
+    for (const fallo of ['ella_misma', 'la_matriz_es_filial', 'tiene_filiales'] as const) {
+      assert.ok(EXPLICA_FALLO_DE_MATRIZ[fallo].length > 20);
+    }
+  });
+});
+
+describe('con quién hay que sumar', () => {
+  const todos = [
+    { id: 'PRV-grupo', nombre: 'Higueral Grupo' },
+    { id: 'PRV-filial', nombre: 'Higueral Cars Logistics', matriz_id: 'PRV-grupo' },
+    { id: 'PRV-otra', nombre: 'Higueral Transportes', matriz_id: 'PRV-grupo' },
+    { id: 'PRV-suelto', nombre: 'Becker Solutions' },
+  ];
+
+  test('el grupo suma lo suyo y lo de sus filiales', () => {
+    assert.deepEqual(elYLosSuyos('PRV-grupo', todos).map((x) => x.nombre), [
+      'Higueral Grupo', 'Higueral Cars Logistics', 'Higueral Transportes',
+    ]);
+  });
+
+  test('una filial suma solo lo suyo', () => {
+    assert.deepEqual(elYLosSuyos('PRV-filial', todos).map((x) => x.nombre),
+      ['Higueral Cars Logistics'],
+      'lo del grupo no es suyo: si lo sumara, el mismo gasto se contaría dos veces');
+  });
+
+  test('uno sin grupo, él solo', () => {
+    assert.equal(elYLosSuyos('PRV-suelto', todos).length, 1);
+  });
+
+  test('uno que no existe no suma nada', () => {
+    assert.deepEqual(elYLosSuyos('PRV-inventado', todos), []);
   });
 });

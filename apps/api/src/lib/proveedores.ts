@@ -81,3 +81,77 @@ export function agrupaNombresSueltos(
   }
   return [...grupos.values()].map((g) => ({ nombre: g.nombre, tipos: [...g.tipos] }));
 }
+
+/**
+ * Grupos y filiales.
+ *
+ * Un proveedor puede ser un grupo con varias sociedades debajo, y eso no se
+ * arregla juntándolos en una fila: **la factura la emite la filial**, con su
+ * CIF. Lo que hace falta es saber que van juntos, para dos cosas:
+ *
+ * - Contestar **cuánto llevamos con el grupo**, que es el número con el que se
+ *   negocia. Repartido en tres sociedades, no existe en ninguna parte.
+ * - Que una tarifa negociada con el grupo valga para las filiales que facturan,
+ *   en vez de tener que copiarla y que luego se separen.
+ *
+ * Dos niveles y no más: grupo → filial. Un árbol de cinco pisos aquí no lo va a
+ * usar nadie y complica todas las consultas.
+ */
+
+export interface Vinculo {
+  id: string;
+  matriz_id?: string | null;
+}
+
+export type FalloDeMatriz =
+  | 'ella_misma'
+  | 'la_matriz_es_filial'
+  | 'tiene_filiales';
+
+/**
+ * Si este proveedor puede colgar de esa matriz.
+ *
+ * `todos` son los proveedores tal y como están ahora, para poder mirar quién
+ * cuelga de quién sin volver a la base.
+ */
+export function fallaLaMatriz(
+  proveedorId: string,
+  matrizId: string,
+  todos: Vinculo[]
+): FalloDeMatriz | null {
+  if (!matrizId) return null;
+  if (matrizId === proveedorId) return 'ella_misma';
+
+  const matriz = todos.find((x) => x.id === matrizId);
+  // Una filial no puede ser matriz de otra: eso sería un tercer nivel.
+  if (matriz?.matriz_id) return 'la_matriz_es_filial';
+
+  // Y un grupo que ya tiene filiales no puede pasar a colgar de otro.
+  if (todos.some((x) => x.matriz_id === proveedorId)) return 'tiene_filiales';
+
+  return null;
+}
+
+export const EXPLICA_FALLO_DE_MATRIZ: Record<FalloDeMatriz, string> = {
+  ella_misma: 'Un proveedor no puede ser su propia matriz.',
+  la_matriz_es_filial:
+    'Esa sociedad ya cuelga de otra. Solo hay dos niveles: grupo y filial, no una cadena.',
+  tiene_filiales:
+    'Este proveedor ya tiene filiales colgando. Si además colgara de otro, habría tres niveles.',
+};
+
+/**
+ * El proveedor y los suyos: él mismo y sus filiales.
+ *
+ * Es la lista de nombres con los que hay que sumar, porque en cada tramo y en
+ * cada trámite lo que está escrito es el nombre de quien facturó.
+ */
+export function elYLosSuyos(
+  proveedorId: string,
+  todos: { id: string; nombre: string; matriz_id?: string | null }[]
+): { id: string; nombre: string }[] {
+  const el = todos.find((x) => x.id === proveedorId);
+  if (!el) return [];
+  const filiales = todos.filter((x) => x.matriz_id === proveedorId);
+  return [el, ...filiales].map((x) => ({ id: x.id, nombre: x.nombre }));
+}

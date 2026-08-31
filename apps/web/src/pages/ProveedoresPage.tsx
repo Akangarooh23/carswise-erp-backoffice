@@ -30,6 +30,8 @@ const TIPOS = [
 interface Proveedor {
   id: string;
   nombre: string;
+  matriz_id: string | null;
+  matriz: string | null;
   tipos: string[];
   nif: string;
   telefono: string;
@@ -40,6 +42,8 @@ interface Proveedor {
 }
 
 interface Cuentas {
+  /** Cuántas sociedades se han sumado. Más de una es que es un grupo. */
+  sociedades?: number;
   transportes: { cuantos: number; total: number };
   tramites: { cuantos: number; total: number };
   gastos: { cuantos: number; total: number };
@@ -276,8 +280,9 @@ export default function ProveedoresPage() {
       )}
 
       {abierto && (
-        <ProveedorAbierto p={abierto} onCerrar={() => setAbierto(null)}
-                          onGuardado={() => { setAbierto(null); void carga(); }} />
+        <ProveedorAbierto p={abierto} todos={lista} onCerrar={() => setAbierto(null)}
+                          onGuardado={() => { setAbierto(null); void carga(); }}
+                          onError={setError} />
       )}
       {nuevo && (
         <ProveedorNuevo onCerrar={() => setNuevo(false)}
@@ -287,13 +292,29 @@ export default function ProveedoresPage() {
   );
 }
 
-function ProveedorAbierto({ p, onCerrar, onGuardado }: {
-  p: Proveedor; onCerrar: () => void; onGuardado: () => void;
+/**
+ * Los que pueden ser matriz de éste.
+ *
+ * Fuera él mismo, fuera los que ya cuelgan de otro y fuera si él ya tiene
+ * filiales: solo hay dos niveles. Se filtra aquí además de en el servidor para
+ * no ofrecer una opción que se va a rechazar.
+ */
+function posiblesMatrices(p: Proveedor, todos: Proveedor[]): Proveedor[] {
+  if (todos.some((x) => x.matriz_id === p.id)) return [];
+  return todos.filter((x) => x.id !== p.id && !x.matriz_id && x.activo);
+}
+
+function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
+  p: Proveedor; todos: Proveedor[];
+  onCerrar: () => void; onGuardado: () => void; onError: (m: string) => void;
 }) {
   const [datos, setDatos] = useState({
     nombre: p.nombre, nif: p.nif ?? '', telefono: p.telefono ?? '',
     email: p.email ?? '', direccion: p.direccion ?? '', notas: p.notas ?? '',
+    matriz_id: p.matriz_id ?? '',
   });
+  const matricesPosibles = posiblesMatrices(p, todos);
+  const filiales = todos.filter((x) => x.matriz_id === p.id);
   const [tipos, setTipos] = useState<string[]>(p.tipos ?? []);
   const [cuentas, setCuentas] = useState<Cuentas | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -306,7 +327,12 @@ function ProveedorAbierto({ p, onCerrar, onGuardado }: {
 
   async function guarda() {
     setGuardando(true);
-    await api.patch(`/proveedores/${p.id}`, { ...datos, tipos });
+    const r = await api.patch(`/proveedores/${p.id}`, { ...datos, tipos });
+    if (!r.ok) {
+      onError((r as unknown as { detail?: string }).detail || r.error || 'No se ha podido guardar.');
+      setGuardando(false);
+      return;
+    }
     setGuardando(false);
     onGuardado();
   }
@@ -385,6 +411,30 @@ function ProveedorAbierto({ p, onCerrar, onGuardado }: {
                 className="mt-3 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40">
           Guardar
         </button>
+
+        <div className="mt-3">
+          <label className="block text-[11px] text-brand-400">
+            Grupo del que forma parte
+            <select value={datos.matriz_id}
+                    disabled={filiales.length > 0}
+                    onChange={(e) => setDatos((d) => ({ ...d, matriz_id: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white disabled:bg-brand-50">
+              <option value="">Ninguno, es independiente</option>
+              {matricesPosibles.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            </select>
+          </label>
+          {filiales.length > 0 && (
+            <p className="text-[10px] text-brand-400 mt-1">
+              Es un grupo: cuelgan de él {filiales.map((f) => f.nombre).join(', ')}.
+              Por eso no puede colgar de otro — solo hay dos niveles.
+            </p>
+          )}
+          {!filiales.length && !matricesPosibles.length && (
+            <p className="text-[10px] text-brand-400 mt-1">
+              No hay ningún proveedor que pueda ser su grupo todavía.
+            </p>
+          )}
+        </div>
 
         {tipos.includes('transportista') && <Tarifas proveedorId={p.id} />}
         {tipos.includes('gestoria') && <TarifasGestoria proveedorId={p.id} />}

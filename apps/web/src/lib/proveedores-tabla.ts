@@ -14,6 +14,8 @@
 
 export interface FilaProveedor {
   nombre: string;
+  /** El nombre del grupo del que cuelga, si cuelga de alguno. */
+  matriz?: string | null;
   tipos?: string[];
   nif?: string;
   telefono?: string;
@@ -40,6 +42,13 @@ export interface Columna {
 
 export const COLUMNAS: Columna[] = [
   { titulo: 'Nombre', valor: (p) => p.nombre ?? '' },
+  /**
+   * De qué grupo es.
+   *
+   * Se enseña porque cambia lo que significa el resto de la fila: dos filiales
+   * del mismo grupo son dos facturas distintas y una sola negociación.
+   */
+  { titulo: 'Grupo', valor: (p) => p.matriz ?? '' },
   {
     titulo: 'Tipos',
     valor: (p) => (p.tipos ?? []).map((t) => ETIQUETA_TIPO[t] ?? t).join(', '),

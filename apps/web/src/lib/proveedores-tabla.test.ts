@@ -144,3 +144,25 @@ describe('filtrar por columna', () => {
     assert.equal(uno.id, 'PRV-1', 'sin el id no se podría abrir la ficha al pinchar la fila');
   });
 });
+
+describe('la columna de grupo', () => {
+  test('sale en la tabla y en el fichero', () => {
+    assert.ok(COLUMNAS_TABLA.some((c) => c.titulo === 'Grupo'));
+    assert.ok(COLUMNAS.some((c) => c.titulo === 'Grupo'));
+  });
+
+  test('vacía en quien no es de ningún grupo, y sin inventarse nada', () => {
+    const grupo = COLUMNAS.find((c) => c.titulo === 'Grupo');
+    assert.equal(grupo?.valor({ nombre: 'Suelto' }), '');
+    assert.equal(grupo?.valor({ nombre: 'Filial', matriz: 'Higueral Grupo' }), 'Higueral Grupo');
+  });
+
+  test('se puede filtrar por grupo, que es para lo que está', () => {
+    const filas = [
+      { nombre: 'Higueral Cars', matriz: 'Higueral Grupo' },
+      { nombre: 'Higueral Transportes', matriz: 'Higueral Grupo' },
+      { nombre: 'Becker Solutions' },
+    ];
+    assert.equal(filtraFilas(filas, { Grupo: 'higueral' }).length, 2);
+  });
+});

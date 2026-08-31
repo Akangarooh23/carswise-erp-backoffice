@@ -309,6 +309,20 @@ Se exporta **lo que estás viendo**, no el catálogo entero: si filtras por gest
 y exportas, el fichero trae gestorías. Y el nombre del fichero lleva el filtro y la
 fecha, para que dos exportaciones del mismo día no se pisen en Descargas.
 
+**Grupos y filiales.** Un proveedor puede formar parte de un grupo. No se juntan
+en una sola ficha —**la factura la emite la filial**, con su CIF— pero al abrir el
+grupo, «lo que llevamos con él» **suma también lo de sus filiales**: ese es el
+número con el que se negocia. Al abrir una filial sale solo lo suyo, o el mismo
+gasto se contaría dos veces.
+
+Solo hay **dos niveles**: grupo y filial. Una filial no puede tener filiales, y un
+grupo que ya las tiene no puede pasar a colgar de otro — el desplegable no lo
+ofrece, y si se intenta desde fuera se rechaza explicando por qué. Una cadena más
+larga dejaría «cuánto llevamos con ellos» sin una respuesta clara.
+
+En la tabla y en el fichero hay una columna de **Grupo**, y se puede filtrar por
+ella.
+
 **Lo que se ve al abrir un proveedor**, según lo que sea:
 
 | Si es | Sale |
