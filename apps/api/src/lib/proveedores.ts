@@ -15,7 +15,8 @@
  * también traen coches. Por eso el tipo es una lista, no un valor.
  */
 
-export const TIPOS_PROVEEDOR = ['transportista', 'gestoria', 'taller', 'vendedor', 'otro'] as const;
+export const TIPOS_PROVEEDOR =
+  ['transportista', 'gestoria', 'taller', 'vendedor', 'garantia', 'otro'] as const;
 export type TipoProveedor = (typeof TIPOS_PROVEEDOR)[number];
 
 export const ETIQUETA_TIPO: Record<TipoProveedor, string> = {
@@ -23,6 +24,7 @@ export const ETIQUETA_TIPO: Record<TipoProveedor, string> = {
   gestoria: 'Gestoría',
   taller: 'Taller',
   vendedor: 'Vendedor',
+  garantia: 'Garantías',
   otro: 'Otro',
 };
 

@@ -164,7 +164,7 @@ Por cada garantía que ofrezcáis necesito:
 | Meses y km cubiertos | Sale al lado del nombre |
 | **Precio al cliente** | Sin esto no se puede sumar ni restar de un total |
 | **Lo que nos cuesta** | Para saber si deja margen. No se enseña nunca |
-| Quién la da | Vosotros o una aseguradora |
+| Quién la da | Vosotros o una aseguradora. Si es una aseguradora, **hay que darla de alta en Proveedores** con el tipo *Garantías*: el ERP no deja colgar un producto de alguien que no existe |
 | Antigüedad y km máximos del coche | Con 12,8 años de media en el catálogo, muchas no se van a poder ofrecer. Enseñar una que luego se cae es peor que no enseñarla |
 | Qué cubre **y qué no** | Poder decir lo que no cubre evita la discusión del día que algo se rompe |
 | Cuál es la base | La que va incluida en el precio |

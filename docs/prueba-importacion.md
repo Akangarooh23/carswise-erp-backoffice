@@ -27,6 +27,25 @@ fecha futura y cualquier CVC.
 ## 1 · Pedir el coche · **en PopCar**
 
 1. Entra en **Marketplace VO → Importación** y abre cualquier coche.
+
+**Antes de pedirlo, mira el precio**
+
+- [ ] Debajo del precio sale **de qué se compone**: el coche, el transporte y la
+      matriculación, y el total. Las tres líneas **suman exactamente** el precio
+      de arriba.
+- [ ] No hay ninguna línea de margen ni de comisión: va dentro del precio del
+      coche, como en cualquier compraventa.
+- [ ] Debajo dice **qué se factura aparte**: el reacondicionado y el seguro.
+
+**Y la garantía**
+
+- [ ] La base sale en el desglose como **incluida**.
+- [ ] Las otras salen como **diferencia**, no como precio entero: «+240 €», no
+      «420 €».
+- [ ] Pincha otra: **cambia el total** de arriba.
+- [ ] Abre un coche de **más de ocho años** y mira que la premium **no sale**. No
+      es un fallo: es su tope de antigüedad.
+
 2. Pulsa **Solicitar importación** y rellena.
 
 **Qué tiene que pasar**
@@ -35,6 +54,8 @@ fecha futura y cualquier CVC.
 - [ ] El botón de pagar la fianza **se lee** (texto blanco sobre negro).
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
 - [ ] Te llega un correo con la cifra de la fianza.
+- [ ] La fianza es el **30 % del total con la garantía que elegiste**. Si elegiste
+      una más cara, la fianza sube.
 - [ ] En **Solicitudes** aparece una tarjeta, en la pestaña *Pendiente*.
 - [ ] En el **Resumen** sale «Importación pendiente de fianza».
 

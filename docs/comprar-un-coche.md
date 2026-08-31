@@ -242,6 +242,16 @@ alguien lo tecleó.
 
 Un proveedor puede ser **varias cosas**: hay talleres que también traen coches.
 
+Los tipos son **transportista, gestoría, taller, vendedor, garantías y otro**. El
+de garantías no está por completar la lista: un producto de garantía **tiene que**
+**colgar de un proveedor dado de alta**, y el ERP no deja guardarlo apuntando a
+alguien que no existe o que no está marcado como de garantías.
+
+La razón es la de siempre: el día que haya que reclamar una, lo primero que se
+busca es a quién. Un nombre escrito suelto dentro del producto no tiene teléfono,
+ni CIF, ni sirve para contestar cuánto llevamos con ellos. Si la garantía la dais
+vosotros, se deja sin proveedor.
+
 Al abrir uno sale **lo que llevamos con él**: cuántos transportes, cuántos
 trámites, cuánto reacondicionado, y el total. Esa es la pregunta que justifica
 tener la lista.

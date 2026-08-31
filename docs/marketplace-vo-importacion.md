@@ -82,8 +82,11 @@ Es lo primero que hay que mirar al abrir un expediente, y sale arriba del todo.
 pedirlo: si el precio del anuncio cambia después, o el coche deja de estar
 publicado, la suya sigue siendo la que se le prometió. Nunca se recalcula.
 
-Sale de sumar el precio del coche y lo que cuesta traerlo, y coger el 30 %. Con
-los precios de hoy son unos 2.200 € de media.
+Es el **30 % del precio puesto aquí**, con todo lo que lleva dentro. Con los
+precios de hoy son unos 2.900 € de media.
+
+Si el cliente elige otra garantía, cambia el total y cambia la fianza. La que
+vale es la del momento en que la pidió.
 
 Si alguien discute la cifra, la que vale es la que pone ahí.
 
@@ -130,6 +133,65 @@ pantalla lo dice y se puede devolver desde Stripe a mano.
 
 El cobro y la devolución **quedan los dos**, cada uno con su fecha y su factura.
 No se borra lo que pasó.
+
+## De qué se compone el precio
+
+Un coche de importación cuesta más que su anuncio alemán, y al cliente se le
+enseña por qué. En la ficha salen tres líneas y un total:
+
+| Línea | Qué lleva |
+|---|---|
+| **Precio del coche** | Lo que cuesta en Alemania **más lo que gana PopCar** |
+| **Transporte desde Alemania** | Un coche por pedido |
+| **Matriculación y papeleo** | Los trámites y el impuesto de matriculación |
+| **Puesto en tu casa** | La suma |
+
+El margen va **dentro del precio del coche**, no en una línea suya. Nadie
+desglosa lo que gana quien le vende, y sacarlo aparte solo invita a discutirlo.
+Lo que sí se separa es lo que el cliente reconoce como un servicio.
+
+Va por tramos del coste: 1.000 € en un coche de hasta 10.000, y subiendo hasta
+2.500 € a partir de 30.000; por encima de 40.000, un 6 %. Por tramos y no por
+porcentaje porque traer un coche de 6.000 € y uno de 25.000 € da casi el mismo
+trabajo.
+
+**Dos números siguen siendo estimaciones**, y conviene saberlo antes de
+prometerle nada a nadie:
+
+- El **transporte** es lo que esperamos pagar mientras no haya tarifas cerradas
+  con los transportistas. En cuanto un corredor tenga tarifa, manda la tarifa.
+- El **impuesto de matriculación** se aproxima con una de las cuatro bandas de
+  CO₂ sobre el precio español de coches comparables. No se puede calcular bien
+  todavía: ninguna oferta alemana trae el CO₂. Se equivoca hacia arriba a
+  propósito — en un precio público, pasarse es recuperable y quedarse corto es
+  una promesa que no se puede cumplir.
+
+## La garantía
+
+La **base va dentro del precio** y sale en el desglose como «incluida». Debajo,
+el cliente puede elegir otra: se le enseña **la diferencia** con la base, no el
+precio entero. Sumar o restar sobre un total que ya ha visto se entiende;
+recalcularlo entero delante, no.
+
+Tres cosas que hace sola la pantalla, y que conviene conocer porque explican
+huecos que si no parecen fallos:
+
+- **No ofrece una garantía que a ese coche no se le pueda dar.** Cada producto
+  tiene tope de antigüedad y de kilómetros. Con la media del catálogo en doce
+  años, en muchos coches solo saldrán las básicas.
+- **«Sin garantía» solo aparece si la base es renunciable.** Si la base es el
+  mínimo legal no se puede quitar, y ofrecerlo sería ofrecer lo que no se puede
+  cumplir.
+- **El precio lo calcula el servidor.** Si llega una garantía que no le
+  corresponde, se cae a la base en vez de aceptarla.
+
+Cada garantía **cuelga de un proveedor** de Proveedores, del tipo *Garantías*.
+No se puede guardar una apuntando a alguien que no esté dado de alta: el día que
+haya que reclamarla, lo primero que se busca es a quién. Si la dais vosotros, va
+sin proveedor.
+
+Lo que **no** entra en el precio y se factura aparte: el **reacondicionado**, que
+solo se sabe cuando el coche llega y se le presupuesta antes, y el **seguro**.
 
 ## Cuándo le hemos dicho que lo tendrá
 

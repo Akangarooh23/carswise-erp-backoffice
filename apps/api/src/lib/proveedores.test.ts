@@ -89,3 +89,21 @@ describe('traerse lo que ya estaba escrito', () => {
     assert.deepEqual(agrupaNombresSueltos([{ nombre: '  ', tipo: 'taller' }]), []);
   });
 });
+
+/**
+ * Quién da una garantía.
+ *
+ * Sin este tipo, el proveedor de una garantía sería un nombre suelto dentro del
+ * producto: sin teléfono, sin CIF y sin poder contestar a quién se le reclama el
+ * día que algo se rompe.
+ */
+describe('el proveedor de garantías', () => {
+  test('es un tipo de proveedor como los demás', () => {
+    assert.equal(esTipoProveedor('garantia'), true);
+    assert.equal(ETIQUETA_TIPO.garantia, 'Garantías');
+  });
+
+  test('y se puede combinar: un taller que además da garantías', () => {
+    assert.deepEqual(tiposLimpios(['taller', 'garantia']), ['taller', 'garantia']);
+  });
+});

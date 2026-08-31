@@ -14,6 +14,40 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 
+/**
+ * Quién da la garantía tiene que estar en Proveedores, y como tal.
+ *
+ * El día que haya que reclamar una, lo primero que se busca es a quién. Un
+ * nombre escrito suelto en un producto no sirve: no tiene teléfono, ni CIF, ni
+ * se puede contestar «cuánto llevamos con ellos».
+ *
+ * Se admite que no lo haya —la damos nosotros— pero no que apunte a alguien que
+ * no existe o que no da garantías.
+ */
+async function proveedorDeGarantiaValido(id: string): Promise<'ok' | 'no_existe' | 'no_es_de_garantias'> {
+  const r = await query(
+    `SELECT tipos FROM erp_proveedores WHERE id = $1 AND activo`, [id]
+  ).catch(() => ({ rows: [] as { tipos?: string[] }[] }));
+  if (!r.rows.length) return 'no_existe';
+  const tipos = (r.rows[0] as { tipos?: string[] }).tipos ?? [];
+  return tipos.includes('garantia') ? 'ok' : 'no_es_de_garantias';
+}
+
+async function fallaElProveedor(id: string) {
+  if (!id) return null;
+  const estado = await proveedorDeGarantiaValido(id);
+  if (estado === 'ok') return null;
+  return estado === 'no_existe'
+    ? {
+        error: 'proveedor_no_encontrado',
+        detail: 'Ese proveedor no existe. Dalo de alta en Proveedores antes de colgarle una garantía.',
+      }
+    : {
+        error: 'proveedor_no_es_de_garantias',
+        detail: 'Ese proveedor no está marcado como de garantías. Añádele el tipo en su ficha.',
+      };
+}
+
 export const garantiasRouter = Router();
 
 const ENSURE_TABLE = `
@@ -142,8 +176,14 @@ garantiasRouter.post('/garantias', requireRole(['admin', 'operations']), async (
     return;
   }
 
+  const proveedorId = nt(req.body?.proveedor_id);
+
   try {
     await prepara();
+
+    const falla = await fallaElProveedor(proveedorId);
+    if (falla) { res.status(400).json({ ok: false, ...falla }); return; }
+
     const { id } = await guardaConIdUnico(
       () => siguienteDeSerie('market_garantias', prefijoAnual('GAR')),
       async (nuevoId) => {
@@ -156,7 +196,7 @@ garantiasRouter.post('/garantias', requireRole(['admin', 'operations']), async (
             nuevoId, nombre, entero(req.body?.nivel) ?? 1,
             req.body?.es_base === true, req.body?.renunciable !== false,
             entero(req.body?.meses), entero(req.body?.km_cubiertos),
-            precio, importe(req.body?.coste), nt(req.body?.proveedor_id) || null,
+            precio, importe(req.body?.coste), proveedorId || null,
             entero(req.body?.antiguedad_max_anios), entero(req.body?.km_max_vehiculo),
             nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '',
           ]
@@ -185,9 +225,10 @@ garantiasRouter.patch('/garantias/:id', requireRole(['admin', 'operations']), as
   const valores: unknown[] = [];
   const pon = (col: string, v: unknown) => { valores.push(v); sets.push(`${col} = $${valores.length}`); };
 
-  for (const campo of ['nombre', 'notas', 'proveedor_id'] as const) {
+  for (const campo of ['nombre', 'notas'] as const) {
     if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
   }
+  if (req.body?.proveedor_id !== undefined) pon('proveedor_id', nt(req.body.proveedor_id) || null);
   for (const campo of ['nivel', 'meses', 'km_cubiertos', 'antiguedad_max_anios', 'km_max_vehiculo'] as const) {
     if (req.body?.[campo] !== undefined) pon(campo, entero(req.body[campo]));
   }
@@ -201,6 +242,12 @@ garantiasRouter.patch('/garantias/:id', requireRole(['admin', 'operations']), as
 
   try {
     await prepara();
+
+    if (req.body?.proveedor_id !== undefined) {
+      const falla = await fallaElProveedor(nt(req.body.proveedor_id));
+      if (falla) { res.status(400).json({ ok: false, ...falla }); return; }
+    }
+
     valores.push(req.params.id);
     const r = await query(
       `UPDATE market_garantias SET ${sets.join(', ')} WHERE id = $${valores.length} RETURNING ${CAMPOS}`,
