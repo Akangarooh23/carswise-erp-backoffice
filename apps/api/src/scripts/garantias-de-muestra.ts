@@ -19,6 +19,8 @@
  */
 import { query } from '../db/pool.js';
 import { preparaGarantias } from '../routes/garantias.js';
+import { preparaProveedores } from '../routes/proveedores.js';
+import { nombreComparable } from '../lib/proveedores.js';
 
 interface Muestra {
   id: string;
@@ -38,6 +40,29 @@ interface Muestra {
 
 /** Todas llevan este prefijo para poder borrarlas sin tocar nada de verdad. */
 const PREFIJO = 'GAR-MUESTRA-';
+
+/**
+ * Quien da estas garantías, también inventado.
+ *
+ * Sin él la cadena queda a medias: hay un tipo de proveedor «Garantías» y
+ * ningún proveedor que lo sea, así que no se ve lo que de verdad va a pasar —un
+ * producto colgando de alguien a quien se le puede reclamar—.
+ *
+ * El identificador **no sigue la serie PRV-AÑO-NNN** a propósito: nadie tiene
+ * que poder confundirlo con un proveedor real, y el nombre lo dice también.
+ */
+const PROVEEDOR = {
+  id: 'PRV-MUESTRA-GARANTIAS',
+  nombre: 'Garantías de muestra (inventado)',
+  telefono: '900 000 000',
+  email: 'inventado@example.com',
+  notas: [
+    'INVENTADO. Está aquí solo para que las garantías de muestra cuelguen de',
+    'alguien, como colgarán las de verdad.',
+    '',
+    'Se va con: npm run garantias:muestra -- --quitar',
+  ].join('\n'),
+};
 
 const MUESTRAS: Muestra[] = [
   {
@@ -102,6 +127,9 @@ const MUESTRAS: Muestra[] = [
 async function quita(): Promise<void> {
   await query(`DELETE FROM market_garantia_coberturas WHERE garantia_id LIKE $1`, [`${PREFIJO}%`]);
   const r = await query(`DELETE FROM market_garantias WHERE id LIKE $1 RETURNING id`, [`${PREFIJO}%`]);
+  // Y el proveedor inventado, que sin sus productos no pinta nada.
+  const q = await query(`DELETE FROM erp_proveedores WHERE id = $1 RETURNING id`, [PROVEEDOR.id]);
+  if (q.rows.length) console.log('quitado el proveedor de muestra');
   // Se dice si no había ninguna en vez de «quitadas 0», que parece que ha
   // fallado cuando lo que pasa es que ya estaban fuera.
   console.log(r.rows.length
@@ -110,16 +138,25 @@ async function quita(): Promise<void> {
 }
 
 async function pon(): Promise<void> {
+  await query(
+    `INSERT INTO erp_proveedores (id, nombre, clave, tipos, telefono, email, notas, creado_por)
+     VALUES ($1,$2,$3,ARRAY['garantia'],$4,$5,$6,'muestra')
+     ON CONFLICT (id) DO NOTHING`,
+    [PROVEEDOR.id, PROVEEDOR.nombre, nombreComparable(PROVEEDOR.nombre),
+     PROVEEDOR.telefono, PROVEEDOR.email, PROVEEDOR.notas]
+  );
+  console.log(`  ${PROVEEDOR.id} · ${PROVEEDOR.nombre}`);
+
   for (const m of MUESTRAS) {
     await query(
       `INSERT INTO market_garantias
          (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, coste,
-          antiguedad_max_anios, km_max_vehiculo, notas, creado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'muestra')
+          proveedor_id, antiguedad_max_anios, km_max_vehiculo, notas, creado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'muestra')
        ON CONFLICT (id) DO NOTHING`,
       [
         m.id, m.nombre, m.nivel, m.es_base, m.renunciable, m.meses, m.km_cubiertos,
-        m.precio, m.coste, m.antiguedad_max_anios, m.km_max_vehiculo,
+        m.precio, m.coste, PROVEEDOR.id, m.antiguedad_max_anios, m.km_max_vehiculo,
         'INVENTADA, para ver cómo queda la oferta. Quitar con: npm run garantias:muestra -- --quitar',
       ]
     );
@@ -150,6 +187,7 @@ async function pon(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await preparaProveedores();
   await preparaGarantias();
   // Siempre se limpian antes: así volver a ejecutarlo no duplica coberturas.
   await quita();

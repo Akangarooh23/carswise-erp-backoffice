@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
-import { COLUMNAS, escapaCsv, nombreDelFichero } from '../lib/proveedores-tabla.js';
+import {
+  COLUMNAS, COLUMNAS_TABLA, escapaCsv, nombreDelFichero, filtraFilas,
+} from '../lib/proveedores-tabla.js';
 
 /**
  * Con quién trabajamos.
@@ -21,6 +23,7 @@ const TIPOS = [
   ['gestoria', 'Gestorías'],
   ['taller', 'Talleres'],
   ['vendedor', 'Vendedores'],
+  ['garantia', 'Garantías'],
   ['otro', 'Otros'],
 ] as const;
 
@@ -84,6 +87,17 @@ export default function ProveedoresPage() {
    */
   const [vista, setVista] = useState<'cajas' | 'tabla'>(() => leeVista());
 
+  /**
+   * Un filtro por columna, además del de tipo.
+   *
+   * El de arriba lo resuelve el servidor y trae menos filas; estos afinan sobre
+   * lo que ya está en pantalla. Se aplican **todos a la vez**: escribir en dos
+   * columnas es acotar más, no cambiar de búsqueda.
+   */
+  const [porColumna, setPorColumna] = useState<Record<string, string>>({});
+  const visibles = filtraFilas(lista, porColumna);
+  const hayFiltroDeColumna = Object.values(porColumna).some((v) => v.trim());
+
   useEffect(() => {
     try { localStorage.setItem(VISTA_GUARDADA, vista); } catch { /* da igual */ }
   }, [vista]);
@@ -112,7 +126,7 @@ export default function ProveedoresPage() {
     descargaCsv(
       nombreDelFichero(filtro, hoy),
       COLUMNAS.map((c) => c.titulo),
-      lista.map((p) => COLUMNAS.map((c) => escapaCsv(c.valor(p)))),
+      visibles.map((p) => COLUMNAS.map((c) => escapaCsv(c.valor(p)))),
     );
   }
 
@@ -160,8 +174,10 @@ export default function ProveedoresPage() {
           </select>
         </label>
         <div className="text-[11px] text-brand-400 pb-2">
-          {cargando ? "Cargando…" : `${lista.length} ${lista.length === 1 ? "proveedor" : "proveedores"}`}
+          {cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "proveedor" : "proveedores"}`}
           {filtro ? ` · ${TIPOS.find(([k]) => k === filtro)?.[1] ?? filtro}` : " · todos los tipos"}
+          {hayFiltroDeColumna && ` · de ${lista.length}`}
+          <span className="block text-brand-300">El fichero lleva además las notas</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex rounded-lg border border-brand-200 overflow-hidden">
@@ -178,7 +194,7 @@ export default function ProveedoresPage() {
               </button>
             ))}
           </div>
-          <button onClick={exporta} disabled={!lista.length}
+          <button onClick={exporta} disabled={!visibles.length}
                   className="px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
             Exportar a CSV
           </button>
@@ -216,22 +232,43 @@ export default function ProveedoresPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brand-200 text-[11px] text-brand-400 text-left">
-                  {COLUMNAS.map((c) => (
+                  {COLUMNAS_TABLA.map((c) => (
                     <th key={c.titulo} className="px-3 py-2 font-semibold whitespace-nowrap">{c.titulo}</th>
+                  ))}
+                </tr>
+                <tr className="border-b border-brand-200">
+                  {COLUMNAS_TABLA.map((c) => (
+                    <th key={c.titulo} className="px-2 py-1.5">
+                      <input
+                        value={porColumna[c.titulo] ?? ''}
+                        onChange={(e) => setPorColumna((f) => ({ ...f, [c.titulo]: e.target.value }))}
+                        placeholder="Filtrar…"
+                        aria-label={`Filtrar por ${c.titulo}`}
+                        className="w-full px-2 py-1 text-[11px] font-normal border border-brand-200 rounded bg-white"
+                      />
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {lista.map((p) => (
+                {visibles.map((p) => (
                   <tr key={p.id} onClick={() => setAbierto(p)}
                       className="border-b border-brand-100 last:border-0 hover:bg-brand-50 cursor-pointer">
-                    {COLUMNAS.map((c) => (
+                    {COLUMNAS_TABLA.map((c) => (
                       <td key={c.titulo} className="px-3 py-2 text-[12.5px] text-brand-600 align-top">
                         {c.valor(p) || <span className="text-brand-300">—</span>}
                       </td>
                     ))}
                   </tr>
                 ))}
+                {visibles.length === 0 && (
+                  <tr>
+                    <td colSpan={COLUMNAS_TABLA.length}
+                        className="px-3 py-6 text-center text-[12px] text-brand-400">
+                      Ninguno cuadra con lo que has escrito.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -294,10 +294,16 @@ lista trae la transferencia dos veces, una al comprarlo y otra al venderlo.
 Lo que **no** tenga tarifa sale aparte, por su nombre, en vez de sumar cero. Un
 total al que le falta un trámite y no lo dice es peor que no tener total.
 
-**Buscarlos y sacarlos.** Arriba hay un filtro por tipo, con la opción de todos.
-Filtra a las dos cosas de abajo a la vez: las fichas y la tabla enseñan siempre lo
-mismo. Debajo de las fichas está la misma lista en tabla, con NIF, teléfono,
-correo, dirección y notas, y un botón para **exportarla a CSV**.
+**Buscarlos y sacarlos.** Arriba hay un filtro por tipo, con la opción de todos, y
+dos botones para verlos en **cajas** o en **tabla** — la vista elegida se recuerda.
+
+En la tabla, cada columna tiene su propia casilla de filtro. Se aplican todas a la
+vez: escribir en dos columnas es acotar más, no cambiar de búsqueda. Y no hace
+falta poner tildes — buscar «gestoria» encuentra «Gestorías».
+
+El botón **exportar a CSV** saca lo que estás viendo, con una diferencia: el
+fichero lleva **además las notas**, que en la tabla no salen porque ocupan párrafos
+y ahí no se leen. En el fichero son justo lo que interesa.
 
 Se exporta **lo que estás viendo**, no el catálogo entero: si filtras por gestorías
 y exportas, el fichero trae gestorías. Y el nombre del fichero lleva el filtro y la

@@ -5,6 +5,11 @@
  * exportación tienen que enseñar lo mismo**. Separarlas acaba con un fichero que
  * no se parece a lo que había delante, y eso es lo que hace que nadie se fíe de
  * una exportación.
+ *
+ * La única que se sale de esa regla son las **notas**, y va marcada: ocupan
+ * párrafos y en una tabla no se leen, pero en el fichero son justo lo que
+ * interesa —lo comprobado de cada proveedor y lo que falta por pedirle—. Se
+ * avisa en pantalla para que nadie se lo encuentre por sorpresa.
  */
 
 export interface FilaProveedor {
@@ -26,7 +31,14 @@ export const ETIQUETA_TIPO: Record<string, string> = {
   otro: 'Otros',
 };
 
-export const COLUMNAS: { titulo: string; valor: (p: FilaProveedor) => string }[] = [
+export interface Columna {
+  titulo: string;
+  valor: (p: FilaProveedor) => string;
+  /** Falso para lo que va al fichero pero no cabe en pantalla. */
+  enTabla?: boolean;
+}
+
+export const COLUMNAS: Columna[] = [
   { titulo: 'Nombre', valor: (p) => p.nombre ?? '' },
   {
     titulo: 'Tipos',
@@ -37,14 +49,53 @@ export const COLUMNAS: { titulo: string; valor: (p: FilaProveedor) => string }[]
   { titulo: 'Correo', valor: (p) => p.email ?? '' },
   { titulo: 'Dirección', valor: (p) => p.direccion ?? '' },
   /**
-   * Las notas van en una sola celda.
+   * Las notas van al fichero, no a la tabla.
    *
-   * Llevan saltos de línea —lo comprobado de cada proveedor, lo que falta por
-   * pedirles— y un salto sin escapar parte la fila en dos: la mitad de un
-   * proveedor aparecería como si fuera otro.
+   * Y aplanadas: llevan saltos de línea, y uno suelto deja una celda a medias en
+   * cualquier hoja de cálculo que lo abra.
    */
-  { titulo: 'Notas', valor: (p) => (p.notas ?? '').replace(/\s*\n\s*/g, ' · ') },
+  {
+    titulo: 'Notas',
+    valor: (p) => (p.notas ?? '').replace(/\s*\n\s*/g, ' · '),
+    enTabla: false,
+  },
 ];
+
+/** Las que se pintan. El fichero lleva todas. */
+export const COLUMNAS_TABLA = COLUMNAS.filter((c) => c.enTabla !== false);
+
+/**
+ * Buscar sin pelearse con las tildes ni con las mayúsculas.
+ *
+ * Quien busca «gestoria» quiere encontrar «Gestorías». Obligar a escribirlo con
+ * tilde convierte un filtro en un acertijo.
+ */
+export function normaliza(texto: string): string {
+  return (texto ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim();
+}
+
+export function coincide(valor: string, busqueda: string): boolean {
+  const b = normaliza(busqueda);
+  if (!b) return true;
+  return normaliza(valor).includes(b);
+}
+
+/**
+ * Las filas que quedan al filtrar por columna.
+ *
+ * Todos los filtros a la vez, no el último: escribir en dos columnas es acotar
+ * más, no cambiar de búsqueda.
+ */
+export function filtraFilas<T extends FilaProveedor>(
+  filas: T[],
+  filtros: Record<string, string>
+): T[] {
+  const activos = COLUMNAS_TABLA.filter((c) => normaliza(filtros[c.titulo] ?? ''));
+  if (!activos.length) return filas;
+  return filas.filter((p) => activos.every((c) => coincide(c.valor(p), filtros[c.titulo])));
+}
 
 /** Con punto y coma, que es lo que abre Excel en español sin preguntar. */
 export function escapaCsv(valor: string): string {

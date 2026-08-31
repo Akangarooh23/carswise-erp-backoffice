@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLUMNAS, escapaCsv, csvDeProveedores, nombreDelFichero,
+  COLUMNAS, COLUMNAS_TABLA, escapaCsv, csvDeProveedores, nombreDelFichero, filtraFilas,
 } from './proveedores-tabla.js';
 
 /**
@@ -76,5 +76,71 @@ describe('cómo se llama el fichero', () => {
       nombreDelFichero('gestoria', '2026-09-01'),
       nombreDelFichero('transportista', '2026-09-01'),
     );
+  });
+});
+
+/**
+ * Las notas, y los filtros por columna.
+ *
+ * Lo que se vigila: que las notas sigan yendo al fichero aunque no salgan en la
+ * tabla —son lo comprobado de cada proveedor, y perderlas al exportar sería
+ * perder el trabajo—, y que buscar «gestoria» encuentre «Gestorías».
+ */
+describe('lo que sale en la tabla y lo que sale en el fichero', () => {
+  test('las notas no se pintan, pero sí se exportan', () => {
+    assert.ok(!COLUMNAS_TABLA.some((c) => c.titulo === 'Notas'),
+      'las notas ocupan párrafos: en una tabla no se leen');
+    assert.ok(COLUMNAS.some((c) => c.titulo === 'Notas'),
+      'en el fichero son justo lo que interesa');
+  });
+
+  test('lo demás sale en los dos sitios', () => {
+    const enTabla = COLUMNAS_TABLA.map((c) => c.titulo);
+    const enFichero = COLUMNAS.map((c) => c.titulo);
+    for (const titulo of enTabla) assert.ok(enFichero.includes(titulo));
+    assert.equal(enFichero.length, enTabla.length + 1);
+  });
+});
+
+describe('filtrar por columna', () => {
+  const filas = [
+    { nombre: 'Gestoría Bernal', tipos: ['gestoria'], telefono: '915610386' },
+    { nombre: 'Trans-Frío Higueral, S.L.', tipos: ['transportista'], telefono: '+34 950 420 129' },
+    { nombre: 'Becker Solutions, S.L.', tipos: ['transportista'], telefono: '+34 919 49 66 36' },
+  ];
+
+  test('sin escribir nada, salen todos', () => {
+    assert.equal(filtraFilas(filas, {}).length, 3);
+    assert.equal(filtraFilas(filas, { Nombre: '   ' }).length, 3);
+  });
+
+  test('encuentra sin tildes y sin mayúsculas', () => {
+    assert.equal(filtraFilas(filas, { Nombre: 'gestoria' }).length, 1);
+    assert.equal(filtraFilas(filas, { Nombre: 'TRANS' }).length, 1);
+  });
+
+  test('busca dentro, no solo por el principio', () => {
+    assert.equal(filtraFilas(filas, { Nombre: 'solutions' }).length, 1);
+  });
+
+  test('dos columnas a la vez acotan más, no cambian la búsqueda', () => {
+    const r = filtraFilas(filas, { Tipos: 'transportista', Teléfono: '950' });
+    assert.equal(r.length, 1);
+    assert.equal(r[0].nombre, 'Trans-Frío Higueral, S.L.');
+  });
+
+  test('si no cuadra ninguno, ninguno: no se cae al último que sí', () => {
+    assert.deepEqual(filtraFilas(filas, { Nombre: 'no existe' }), []);
+  });
+
+  test('filtrar por una columna que no se pinta no hace nada', () => {
+    // Las notas no están en la tabla, así que no tienen casilla que rellenar.
+    assert.equal(filtraFilas(filas, { Notas: 'lo que sea' }).length, 3);
+  });
+
+  test('lo que sale conserva sus datos, no solo las columnas', () => {
+    const conId = [{ ...filas[0], id: 'PRV-1' }];
+    const [uno] = filtraFilas(conId, { Nombre: 'bernal' });
+    assert.equal(uno.id, 'PRV-1', 'sin el id no se podría abrir la ficha al pinchar la fila');
   });
 });
