@@ -287,6 +287,18 @@ Ve a **Proveedores**.
       transporte con su importe.
 - [ ] Abre la gestoría: sus trámites y lo que han costado.
 
+**Y sus tarifas** — en el transportista, más abajo:
+
+- [ ] Intenta añadir una tarifa **sin ningún precio**. **Te lo impide**: un
+      corredor que parece cubierto y no lo está es peor que no tenerlo.
+- [ ] Añade una de **Alemania → España** sin ciudades, con 900 / 750 / 620.
+- [ ] Añade otra de **Múnich → Madrid** con 850.
+- [ ] Vuelve a un tramo de transporte de ese mismo transportista: las dos salen
+      al lado del coste, para compararlas antes de escribirlo.
+
+> De las dos, para un coche que está en Múnich gana la de Múnich aunque sea más
+> cara: alguien cerró ese corredor a propósito. Para uno en Hamburgo, la general.
+
 Esa es la pregunta que justifica tener la lista: cuánto llevamos con cada uno.
 
 ---

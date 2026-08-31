@@ -324,6 +324,9 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar }: {
                    onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+          <div className="col-span-2">
+            <LoQueTieneAcordado nombre={datos.transportista} />
+          </div>
           <label className="text-[11px] text-brand-400">
             Recogida prevista
             <input type="date" value={datos.recogida_prevista}
@@ -416,4 +419,82 @@ function TramoNuevo({ onCerrar, onCreado, onError }: {
       </div>
     </div>
   );
+}
+
+/**
+ * Lo que este transportista tiene acordado.
+ *
+ * Se enseña al lado del coste para poder compararlo antes de escribirlo. No se
+ * rellena solo ni se avisa de una desviación: el tramo guarda «de dónde» y «a
+ * dónde» como texto libre, sin país, así que casarlo con un corredor sería
+ * adivinar. Con las tarifas delante, la comparación la hace quien lo escribe,
+ * que sí sabe de qué viaje se trata.
+ */
+function LoQueTieneAcordado({ nombre }: { nombre: string }) {
+  const [tarifas, setTarifas] = useState<TarifaFila[] | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+    const quien = (nombre ?? "").trim();
+    if (!quien) { setTarifas(null); return; }
+
+    void (async () => {
+      // El tramo guarda el nombre, no el id: hay que encontrarlo en la lista.
+      const prov = await api.get<{ id: string; nombre: string }[]>("/proveedores?tipo=transportista");
+      const suyo = (prov.ok && Array.isArray(prov.data) ? prov.data : [])
+        .find((x) => comparable(x.nombre) === comparable(quien));
+      if (!suyo) { if (vigente) setTarifas([]); return; }
+      const r = await api.get<TarifaFila[]>(`/proveedores/${suyo.id}/tarifas`);
+      if (vigente) setTarifas(r.ok && Array.isArray(r.data) ? r.data : []);
+    })();
+
+    return () => { vigente = false; };
+  }, [nombre]);
+
+  if (!tarifas?.length) return null;
+
+  return (
+    <div className="p-2.5 rounded-lg border border-brand-200 bg-brand-50">
+      <div className="text-[11px] font-semibold text-brand-600 mb-1">Lo que tiene acordado</div>
+      <ul className="space-y-0.5">
+        {tarifas.map((t) => (
+          <li key={t.id} className="text-[11px] text-brand-500">
+            <span className="font-semibold">{corredorCorto(t)}</span>{" · "}
+            {[[t.precio_1, "1"], [t.precio_2_3, "2-3"], [t.precio_4_8, "4-8"]]
+              .filter(([v]) => v != null)
+              .map(([v, n]) => `${eur(v)} (${n})`)
+              .join("  ")}
+            {t.dias_transito ? ` · ${t.dias_transito} días` : ""}
+          </li>
+        ))}
+      </ul>
+      <p className="text-[10px] text-brand-400 mt-1">Por coche. Compáralo antes de escribir el coste.</p>
+    </div>
+  );
+}
+
+interface TarifaFila {
+  id: string;
+  origen_pais: string; origen_zona: string;
+  destino_pais: string; destino_zona: string;
+  precio_1: number | null; precio_2_3: number | null; precio_4_8: number | null;
+  dias_transito: number | null;
+}
+
+/** El mismo nombre escrito de otra forma sigue siendo el mismo proveedor. */
+function comparable(nombre: string): string {
+  return (nombre ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+const PAISES: Record<string, string> = {
+  DE: "Alemania", ES: "España", FR: "Francia", IT: "Italia", BE: "Bélgica",
+  NL: "Países Bajos", AT: "Austria", PT: "Portugal", CH: "Suiza", PL: "Polonia",
+};
+
+function corredorCorto(t: TarifaFila): string {
+  const de = t.origen_zona || PAISES[t.origen_pais] || t.origen_pais;
+  const a = t.destino_zona || PAISES[t.destino_pais] || t.destino_pais;
+  return `${de} → ${a}`;
 }

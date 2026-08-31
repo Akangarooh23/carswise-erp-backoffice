@@ -246,6 +246,26 @@ Al abrir uno sale **lo que llevamos con él**: cuántos transportes, cuántos
 trámites, cuánto reacondicionado, y el total. Esa es la pregunta que justifica
 tener la lista.
 
+**Las tarifas de un transportista.** Al abrir uno de tipo transportista aparece
+su tabla de tarifas: qué cobra por cada corredor —de dónde a dónde— y por
+cuántos coches van juntos. El precio es siempre **por coche**.
+
+Una tarifa **sin ciudad vale para todo el país**: «de Alemania a España, 900 €».
+Con ciudad vale solo para esa: «de Múnich a Madrid, 850 €». Cuando las dos
+sirven, gana la de la ciudad aunque sea más cara — alguien se molestó en cerrar
+ese corredor, y eso vale más que un precio general.
+
+Una tarifa **sin ningún precio no se guarda**: dejaría un corredor que parece
+cubierto y no lo está, que es peor que no tener nada. Y si le pones fecha de fin,
+pasada esa fecha deja de aplicarse: un precio que ya nadie sostiene no sirve para
+estimar.
+
+Al contratar un tramo, las tarifas de ese transportista salen al lado del coste
+para poder compararlas antes de escribirlo. No se rellena solo: el tramo guarda
+«de dónde» y «a dónde» como texto libre, sin país, así que casarlo con un
+corredor sería adivinar. La comparación la haces tú, que sabes de qué viaje se
+trata.
+
 Darlo de baja lo quita de las listas, pero **no borra nada**: lo que se le
 compró sigue siendo suyo.
 

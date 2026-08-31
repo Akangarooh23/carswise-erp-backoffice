@@ -224,6 +224,8 @@ function ProveedorAbierto({ p, onCerrar, onGuardado }: {
                 className="mt-3 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40">
           Guardar
         </button>
+
+        {tipos.includes('transportista') && <Tarifas proveedorId={p.id} />}
         <button onClick={() => { void api.patch(`/proveedores/${p.id}`, { activo: false }).then(onGuardado); }}
                 className="mt-2 w-full px-3 py-2 text-xs font-semibold text-red-700 border border-red-200 rounded-lg">
           Dar de baja
@@ -285,4 +287,165 @@ function ProveedorNuevo({ onCerrar, onCreado, onError }: {
       </div>
     </div>
   );
+}
+
+/**
+ * Lo que cobra este transportista, por corredor.
+ *
+ * Antes el coste de traer un coche era un número fijo igual para Múnich que
+ * para Hamburgo, y ese número se le suma al precio que ve el cliente. Aquí se
+ * guarda lo que cada uno ha dicho que cobra, para que deje de ser una
+ * suposición.
+ *
+ * Sin zona, la tarifa vale para todo el país. Con zona, solo para esa ciudad —y
+ * gana a la general, porque alguien se molestó en cerrar ese corredor.
+ */
+function Tarifas({ proveedorId }: { proveedorId: string }) {
+  const [lista, setLista] = useState<TarifaFila[] | null>(null);
+  const [nueva, setNueva] = useState(TARIFA_VACIA);
+  const [fallo, setFallo] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  const carga = useCallback(async () => {
+    const r = await api.get<TarifaFila[]>(`/proveedores/${proveedorId}/tarifas`);
+    setLista(r.ok && Array.isArray(r.data) ? r.data : []);
+  }, [proveedorId]);
+
+  useEffect(() => { void carga(); }, [carga]);
+
+  async function anade() {
+    setFallo('');
+    setGuardando(true);
+    const r = await api.post(`/proveedores/${proveedorId}/tarifas`, nueva);
+    setGuardando(false);
+    if (!r.ok) {
+      setFallo((r as unknown as { detail?: string }).detail || 'No se ha podido guardar.');
+      return;
+    }
+    setNueva(TARIFA_VACIA);
+    await carga();
+  }
+
+  async function quita(id: string) {
+    if (!window.confirm(`¿Quitar la tarifa ${id}?`)) return;
+    await api.delete(`/proveedores/${proveedorId}/tarifas/${id}`);
+    await carga();
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-brand-100">
+      <div className="text-xs font-semibold text-brand-500 mb-1">Tarifas de transporte</div>
+      <p className="text-[11px] text-brand-400 mb-2">
+        Precio <strong>por coche</strong>. Sin ciudad, la tarifa vale para todo el país.
+      </p>
+
+      {lista === null && <p className="text-[11px] text-brand-300">Cargando…</p>}
+      {lista?.length === 0 && (
+        <p className="text-[11px] text-brand-400">
+          Todavía ninguna. Mientras no las haya, el coste de traer un coche se sigue
+          estimando con un número fijo igual para todas las ciudades.
+        </p>
+      )}
+
+      <div className="space-y-1.5">
+        {(lista ?? []).map((t) => (
+          <div key={t.id} className="px-3 py-2 rounded-lg border border-brand-200 bg-white">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="text-xs font-bold text-brand-600">
+                  {corredor(t)}
+                </div>
+                <div className="text-[11px] text-brand-500 mt-0.5">
+                  {[[t.precio_1, '1 coche'], [t.precio_2_3, '2-3'], [t.precio_4_8, '4-8']]
+                    .filter(([v]) => v != null)
+                    .map(([v, cuantos]) => `${eur(v)} · ${cuantos}`)
+                    .join('   ')}
+                </div>
+                {(t.dias_transito || t.vigente_hasta) && (
+                  <div className="text-[10px] text-brand-400 mt-0.5">
+                    {t.dias_transito ? `${t.dias_transito} días de tránsito` : ''}
+                    {t.dias_transito && t.vigente_hasta ? ' · ' : ''}
+                    {t.vigente_hasta ? `vale hasta el ${t.vigente_hasta}` : ''}
+                  </div>
+                )}
+                {t.notas && <div className="text-[10px] text-brand-400 mt-0.5 whitespace-pre-wrap">{t.notas}</div>}
+              </div>
+              <button onClick={() => void quita(t.id)}
+                      className="text-[11px] text-red-700 hover:underline shrink-0">Quitar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 p-3 rounded-lg border border-brand-200 bg-brand-50">
+        <div className="text-[11px] font-semibold text-brand-600 mb-1.5">Añadir una</div>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            ['origen_pais', 'País de origen', 'DE'],
+            ['origen_zona', 'Ciudad de origen (opcional)', 'Múnich'],
+            ['destino_pais', 'País de destino', 'ES'],
+            ['destino_zona', 'Ciudad de destino (opcional)', 'Madrid'],
+            ['precio_1', '€ por 1 coche', '900'],
+            ['precio_2_3', '€ por coche, 2-3', '750'],
+            ['precio_4_8', '€ por coche, 4-8', '620'],
+            ['dias_transito', 'Días de tránsito', '7'],
+          ] as const).map(([campo, etiqueta, ejemplo]) => (
+            <label key={campo} className="text-[10px] text-brand-400">
+              {etiqueta}
+              <input value={nueva[campo]} placeholder={ejemplo}
+                     onChange={(e) => setNueva((n) => ({ ...n, [campo]: e.target.value }))}
+                     className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white" />
+            </label>
+          ))}
+          <label className="text-[10px] text-brand-400">
+            Vale hasta (opcional)
+            <input type="date" value={nueva.vigente_hasta}
+                   onChange={(e) => setNueva((n) => ({ ...n, vigente_hasta: e.target.value }))}
+                   className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white" />
+          </label>
+          <label className="col-span-2 text-[10px] text-brand-400">
+            Notas
+            <input value={nueva.notas} placeholder="Grupaje, sale los lunes, seguro hasta 50.000 €…"
+                   onChange={(e) => setNueva((n) => ({ ...n, notas: e.target.value }))}
+                   className="w-full mt-0.5 px-2 py-1.5 text-xs border border-brand-200 rounded-lg bg-white" />
+          </label>
+        </div>
+        {fallo && <p className="text-[11px] text-red-700 mt-1.5">{fallo}</p>}
+        <button onClick={() => void anade()} disabled={guardando}
+                className="mt-2 w-full px-3 py-1.5 text-[11px] font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40">
+          Añadir tarifa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface TarifaFila {
+  id: string;
+  origen_pais: string; origen_zona: string;
+  destino_pais: string; destino_zona: string;
+  precio_1: number | null; precio_2_3: number | null; precio_4_8: number | null;
+  dias_transito: number | null; vigente_hasta: string | null; notas: string;
+}
+
+const TARIFA_VACIA = {
+  origen_pais: 'DE', origen_zona: '', destino_pais: 'ES', destino_zona: '',
+  precio_1: '', precio_2_3: '', precio_4_8: '', dias_transito: '',
+  vigente_hasta: '', notas: '',
+};
+
+/** «Alemania → Madrid», o «Múnich → Madrid» si la tarifa es de una ciudad. */
+function corredor(t: TarifaFila): string {
+  const de = t.origen_zona || nombrePais(t.origen_pais);
+  const a = t.destino_zona || nombrePais(t.destino_pais);
+  return `${de} → ${a}`;
+}
+
+const PAISES: Record<string, string> = {
+  DE: 'Alemania', ES: 'España', FR: 'Francia', IT: 'Italia', BE: 'Bélgica',
+  NL: 'Países Bajos', AT: 'Austria', PT: 'Portugal', CH: 'Suiza', PL: 'Polonia',
+};
+
+function nombrePais(codigo: string): string {
+  return PAISES[(codigo ?? '').toUpperCase()] ?? codigo;
 }
