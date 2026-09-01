@@ -6,7 +6,7 @@ Alemania y que traemos nosotros.
 ## Lo primero, porque cambia todo lo demás
 
 **PopCar no compra el coche.** Lo compra el cliente al concesionario alemán, y
-nosotros cobramos **2.999 €** por encargarnos de todo lo de en medio: ir a verlo
+nosotros cobramos **3.000 €** por encargarnos de todo lo de en medio: ir a verlo
 allí, recogerlo, traerlo, pasar la ITV de homologación, hacer la documentación,
 revisarlo al llegar y entregárselo en casa.
 
@@ -196,7 +196,7 @@ este negocio y lo que la ficha deja claro:
 | Línea | Qué es | Va a |
 |---|---|---|
 | **Precio del coche** | Lo que cuesta en Alemania, sin nada encima | El vendedor alemán |
-| **Servicio PopCar** | 2.999 €, siempre el mismo | Nosotros |
+| **Servicio PopCar** | 3.000 €, siempre el mismo | Nosotros |
 | **Impuesto de matriculación** | Una estimación | Hacienda |
 
 El fee va suelto y con su nombre, al revés que el margen de antes, que iba
@@ -215,7 +215,7 @@ mismas gestiones. Cobrar más por un coche caro sería cobrar por el coche, y el
 coche no lo vendemos nosotros.
 
 Lo que sí depende del precio es si al cliente le compensa, y eso se resuelve con
-un mínimo: **por debajo de 12.000 € no se publica**. Con un fee de 2.999 €, un
+un mínimo: **por debajo de 12.000 € no se publica**. Con un fee de 3.000 €, un
 coche de 5.000 sale por 8.000 antes del impuesto, y la diferencia con comprarlo
 aquí no da para pagarlo. Está medido: por debajo de 10.000 € la brecha mediana
 con España son 2.050 €, y el fee más el impuesto se la comen entera.

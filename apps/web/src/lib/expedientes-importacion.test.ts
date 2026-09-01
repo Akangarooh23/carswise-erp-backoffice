@@ -241,16 +241,16 @@ describe('el reparto del depósito', () => {
   test('cada parte con quien la cobra', () => {
     // El día que se libera hay que soltar lo del vendedor y no lo demás. Quien
     // lo haga tiene que verlo, no calcularlo.
-    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 2999, escrow_garantia: 590 }));
+    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 3000, escrow_garantia: 590 }));
     assert.deepEqual(r.map((l) => [l.concepto, l.importe, l.a]), [
       ['Coche', 18000, 'vendedor alemán'],
-      ['Servicio PopCar', 2999, 'nosotros'],
+      ['Servicio PopCar', 3000, 'nosotros'],
       ['Garantía', 590, 'proveedor'],
     ]);
   });
 
   test('sin garantía, esa línea no sale', () => {
-    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 2999 }));
+    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 3000 }));
     assert.equal(r.length, 2);
     assert.ok(!r.some((l) => l.concepto === 'Garantía'));
   });

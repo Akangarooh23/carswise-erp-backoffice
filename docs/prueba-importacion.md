@@ -42,7 +42,7 @@ fecha futura y cualquier CVC.
 - [ ] Son **tres líneas** y cada una dice a quién va: el coche **al vendedor en
       Alemania**, el servicio **a nosotros**, el impuesto **a Hacienda**.
 - [ ] El **precio del coche** es el del anuncio alemán, **sin nada encima**.
-- [ ] El **Servicio PopCar** son 2.999 €, y son los mismos en un coche de 13.000
+- [ ] El **Servicio PopCar** son 3.000 €, y son los mismos en un coche de 13.000
       que en uno de 40.000.
 - [ ] Debajo se enumera **qué cubre el fee**, empezando por revisar el coche allí
       antes de liberar el dinero.
@@ -99,7 +99,7 @@ fecha futura y cualquier CVC.
       panel: eso se da hablando.
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
 - [ ] Te llega un correo con la cifra y con cuándo se libera.
-- [ ] El depósito es **el precio del coche más 2.999 €**, y la garantía si
+- [ ] El depósito es **el precio del coche más 3.000 €**, y la garantía si
       elegiste una. **No** lleva el impuesto de matriculación.
 - [ ] En **Solicitudes** aparece una tarjeta, en la pestaña *Pendiente*.
 
