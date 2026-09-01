@@ -92,11 +92,11 @@ fecha futura y cualquier CVC.
 **Qué tiene que pasar**
 
 - [ ] Sale «Solicitud recibida» con **los pasos** explicados.
-- [ ] **No hay ningún botón de pagar con tarjeta.** Sale la cifra a depositar y
-      que te llamamos para darte los datos de la cuenta.
-- [ ] Dice que **no lo cobra nadie** hasta que vemos el coche en Alemania.
-- [ ] **No aparece ningún número de cuenta** en la pantalla. Ni aquí ni en el
-      panel: eso se da hablando.
+- [ ] Sale **la cifra a depositar** y que se paga por transferencia.
+- [ ] Dice que **no se le paga al vendedor** hasta que vemos el coche en
+      Alemania, y que si no es el que se anunció se devuelve entero.
+- [ ] **No aparece ningún número de cuenta escrito en la página.** El IBAN lo
+      enseña Stripe, contra la sesión de ese cliente.
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
 - [ ] Te llega un correo con la cifra y con cuándo se libera.
 - [ ] El depósito es **el precio del coche más 3.000 €**, y la garantía si
@@ -113,46 +113,86 @@ lo último que se le enseñó.
 
 ---
 
-## 2 · El depósito · **en el ERP**
+## 2 · Pagar el depósito · **como cliente, en PopCar**
 
-Aquí ya no hay nada que pulsar en PopCar: el cliente transfiere y tú lo marcas.
+En tu panel, en la tarjeta de la solicitud, pulsa **«Ver los datos para
+transferir»**.
 
-Ve a **Importaciones**, abre el expediente y mira el bloque azul de arriba.
+- [ ] Te lleva a **Stripe**. Si se queda en la pantalla diciendo que no está
+      disponible, falta la clave o el método de pago: mira el paso de abajo.
+- [ ] La cifra es **el precio del coche más 3.000 €**. **No** lleva el impuesto
+      de matriculación.
+- [ ] Paga con la tarjeta de prueba **4242 4242 4242 4242**, cualquier fecha
+      futura y cualquier CVC.
 
-- [ ] Enseña el depósito **partido**: el coche → vendedor alemán, el servicio →
-      nosotros. Las partes **suman** la cifra grande.
-- [ ] Pulsa **«El dinero ha llegado a la cuenta»**.
-- [ ] El expediente pasa a **Depósito retenido**.
-- [ ] En el panel del cliente, la tarjeta pasa a **«Depósito retenido el …»**.
-- [ ] Vuelve a la ficha del coche en PopCar e intenta **cambiar la dirección de
-      envío**: ya no se deja. Con el dinero depositado queda fijada.
+> **Por qué hay tarjeta si el depósito va por transferencia.** Solo la hay con
+> clave de prueba, y es para poder recorrer el flujo: simular la llegada de una
+> transferencia es más incómodo que teclear la 4242. Con clave real la tarjeta
+> desaparece sola y solo queda la transferencia.
 
-**Y ahora lo que sostiene el producto**
+**Qué tiene que pasar, al volver**
 
-- [ ] Debajo sale **«Antes de soltar el dinero»**.
-- [ ] El botón **«Liberar el pago al vendedor»** está **apagado**, y dice por qué:
-      hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
-- [ ] Pulsa **«Hemos visto el coche en Alemania»**. Ahora el otro se enciende.
-- [ ] Púlsalo. El expediente pasa solo a **Verificado y pagado**.
-- [ ] Vuelve a mirarlo: ya no se puede liberar otra vez.
+- [ ] La tarjeta del panel pasa a **«Depósito retenido el …»**, sin recargar.
+- [ ] El paso dice **«Tu dinero está en la cuenta de depósito, retenido. Vamos a
+      ver el coche en Alemania.»**
+- [ ] Te llega **la factura por correo, con su PDF**.
+- [ ] La factura es de **3.000 €**, no del depósito entero. Y su número empieza
+      por **SRV**, no por FIA.
+- [ ] Está en **Facturación**, y el concepto dice **«Servicio de importación»**.
+
+Eso último es lo que más importa comprobar: de los ~20.000 € que has pagado,
+solo 3.000 son ingreso de PopCar. El resto es del vendedor alemán y está de
+paso. Facturarlo entero sería declarar la venta de un coche que no hemos
+vendido.
+
+- [ ] Vuelve a la ficha del coche e intenta **cambiar la dirección de envío**:
+      ya no se deja. Con el dinero depositado queda fijada.
 
 ---
 
-## 3 · El expediente · **en el ERP**
+## 3 · Ver el coche y soltar el dinero · **en el ERP**
 
-El coche tiene que estar ahora en la columna **Verificado y pagado**, y su
-importe contado en el dinero depositado.
+Este es el paso que sostiene el producto. Ve a **Importaciones** y abre el
+expediente.
 
-Ábrelo y:
+**El bloque azul de arriba**
 
-- [ ] Pasa a **Verificado y pagado**. Te pide decir qué ha pasado: escríbelo.
-- [ ] Se desbloquea **«Cuándo le hemos dicho que lo tendrá»**. Pon una fecha.
+- [ ] Enseña el depósito **partido**: el coche → vendedor alemán, el servicio →
+      nosotros. Las partes **suman** la cifra grande.
+- [ ] Dice **«En la cuenta desde el …»**, con la fecha de tu pago.
+
+**Y debajo, «Antes de soltar el dinero»**
+
+- [ ] El botón **«Liberar el pago al vendedor»** está **apagado**, y dice por
+      qué: hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
+- [ ] Pulsa **«Hemos visto el coche en Alemania»**. Ahora el otro se enciende.
+- [ ] Púlsalo. El expediente pasa **solo** a «Verificado y pagado».
+- [ ] Vuelve a mirarlo: **ya no se puede liberar otra vez**. Un segundo clic con
+      el dinero enviado sería un segundo pago.
+
+> Si te lo encuentras al revés —el botón encendido sin haber marcado que has
+> visto el coche— páralo y dímelo. Esa es la única regla del sistema que no
+> tiene excepción.
+
+**Lo que pasa solo al liberar**
+
+- [ ] En el panel del cliente, el paso dice **«Hemos visto el coche y lo hemos
+      comprado en tu nombre.»**
+- [ ] En **Pedidos** aparece uno **creado solo**. Eso es el paso 4.
+
+---
+
+## 3b · La fecha y las notas · **en el ERP**
+
+Sigues en el expediente de Importaciones.
+
+- [ ] Se ha desbloqueado **«Cuándo le hemos dicho que lo tendrá»**. Pon una
+      fecha.
 - [ ] Cámbiala. **Al cliente le llega un correo con las dos fechas.**
 - [ ] Escribe una nota interna y guárdala. Tiene que decir **«Guardada»**.
 - [ ] Abajo, en el **historial**, se lee la nota entera y quién la escribió.
 
 ---
-
 ## 4 · El pedido · **en el ERP**
 
 Ve a **Pedidos**. Tiene que haber uno **creado solo**, con el proveedor alemán y
@@ -186,11 +226,22 @@ momento.
 Saltarse fases tampoco vale de atajo: ir de *Borrador* a *En camino* de una vez
 exige lo mismo que haber ido paso a paso.
 
-### «A nombre de»: *El cliente* o *PopCar*
+### «A nombre de»: en importación, *El cliente*
 
-Son los dos botones de arriba del pedido, y **no** son quién vende. PopCar vende
-siempre —su factura y su garantía—; esto es **a nombre de quién se pone el
-coche**, y ahí está la diferencia entre pagar un cambio de nombre o dos.
+Son los dos botones de arriba del pedido.
+
+**En una importación viene puesto en *El cliente*, y es lo correcto.** PopCar no
+compra ese coche: lo compra el cliente al concesionario alemán y nosotros
+cobramos un fee por traerlo. Se matricula directamente a su nombre, no hay
+ningún cambio de nombre que pagar, y **el plazo de reventa no corre**, porque el
+coche nunca es nuestro.
+
+- [ ] Comprueba que el pedido viene con **El cliente** puesto.
+- [ ] Y que **no** sale ninguna fecha límite de reventa.
+
+Lo de abajo es para los otros caminos —concesionario, ex-renting, particular—,
+donde sí compramos para revender. Ahí PopCar vende, con su factura y su
+garantía, y ahí está la diferencia entre pagar un cambio de nombre o dos.
 
 | | *PopCar* — lo normal | *El cliente* — el caso raro |
 |---|---|---|
@@ -199,9 +250,9 @@ coche**, y ahí está la diferencia entre pagar un cambio de nombre o dos.
 | Plazo de reventa | **Sí**: el pedido enseña hasta cuándo, y avisa dos meses antes | No corre |
 | Cuándo se usa | Casi siempre: el coche se compra, se recibe, se matricula, se deja a punto y se vende | El coche va del vendedor directo al cliente y nos ahorramos un cambio de nombre |
 
-**Viene puesto en *PopCar*, aunque haya un cliente esperando**, porque es lo
-normal del negocio: PopCar compra el coche y luego se lo vende, con su factura y
-su garantía, y todo eso se hace sobre un coche que es nuestro.
+**En esos caminos viene puesto en *PopCar*, aunque haya un cliente esperando**,
+porque es lo normal ahí: PopCar compra el coche y luego se lo vende, con su
+factura y su garantía, y todo eso se hace sobre un coche que es nuestro.
 
 El precio de eso es el plazo: con el coche a nuestro nombre hay un límite para
 revenderlo sin que el impuesto de la compra se quede. Pasado, la factura aparece
