@@ -28,7 +28,7 @@ interface BillingSummary {
 
 interface InvoiceRow {
   id: string;
-  type: 'suscripcion' | 'venta' | 'renting' | 'tasacion';
+  type: 'suscripcion' | 'venta' | 'renting' | 'tasacion' | 'importacion';
   date: string;
   customer_name: string;
   customer_email: string;
@@ -374,7 +374,16 @@ export default function BillingPage() {
                               className="text-xs text-acento-texto hover:underline disabled:opacity-50 whitespace-nowrap">
                               {downloadingId === inv.id ? 'Generando…' : inv.cw_invoice_number ? `↓ ${inv.cw_invoice_number}` : '↓ Generar'}
                             </button>
-                          ) : inv.type === 'tasacion' ? (
+                          ) : /*
+                              * La importación baja el PDF guardado, no lo regenera.
+                              *
+                              * Lo genera PopCar al cobrar, y lleva el bloque de
+                              * suplidos que explica los otros 18.500 € que el
+                              * cliente transfirió. El generador de aquí no sabe de
+                              * suplidos: regenerarla le daría al cliente una factura
+                              * de 3.000 € sin nada que explique el resto.
+                              */
+                          inv.type === 'tasacion' || inv.type === 'importacion' ? (
                             inv.pdf_url ? (
                               <div className="flex flex-col gap-1">
                                 {/* Por la ruta con sesión, no por la dirección del
@@ -390,7 +399,7 @@ export default function BillingPage() {
                                     setDownloadingId(null);
                                   }}
                                   className="text-xs text-acento-texto hover:underline disabled:opacity-50 whitespace-nowrap">
-                                  {downloadingId === inv.id ? 'Bajando…' : `↓ ${inv.id.slice(-6).toUpperCase()}`}
+                                  {downloadingId === inv.id ? 'Bajando…' : `↓ ${inv.cw_invoice_number ?? inv.id.slice(-6).toUpperCase()}`}
                                 </button>
                                 {inv.cw_sent_at && (
                                   <span className="text-[10px] text-emerald-600 font-medium">

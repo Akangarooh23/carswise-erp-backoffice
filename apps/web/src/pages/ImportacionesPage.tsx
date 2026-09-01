@@ -56,6 +56,8 @@ export default function ImportacionesPage() {
   const [error, setError] = useState('');
   const [abierto, setAbierto] = useState<Expediente | null>(null);
   const [guardando, setGuardando] = useState(false);
+  // Lo que se le dice a quien acaba de pulsar, donde está mirando.
+  const [errorDelPanel, setErrorDelPanel] = useState('');
   const [fecha, setFecha] = useState('');
   const [verCerrados, setVerCerrados] = useState(false);
 
@@ -88,7 +90,24 @@ export default function ImportacionesPage() {
     setGuardando(true);
     const r = await api.patch<Expediente>(`/leads/${id}`, cambios);
     setGuardando(false);
-    if (!r.ok) { setError(r.error || 'No se ha podido guardar.'); return; }
+    if (!r.ok) {
+      /**
+       * El motivo, con palabras y **dentro del panel**.
+       *
+       * El aviso salía arriba de la pantalla, o sea detrás del expediente
+       * abierto: pulsar «Liberar el pago al vendedor» y que el servidor lo
+       * rechazara se veía exactamente igual que si no pasara nada.
+       *
+       * Y con la frase que manda el servidor, no con su código: «sin_pagar» no
+       * le dice a nadie que lo que falta es que el cliente transfiera.
+       */
+      const conDetalle = r as { detail?: string };
+      const dice = conDetalle.detail || r.error || 'No se ha podido guardar.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    }
+    setErrorDelPanel('');
     // El panel abierto se queda con lo recién recargado.
     //
     // No con lo que devuelve el `PATCH`: eso es la fila cruda de la base, con
@@ -263,6 +282,7 @@ export default function ImportacionesPage() {
           siguiente={siguienteEtapa(abierto.status)}
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
+          aviso={errorDelPanel}
           onDevolver={() => void devuelveFianza(abierto.id)}
           onNotificar={(respuesta, notas) => void notifica(abierto.id, respuesta, notas)}
           onGuardarNotas={(notas) => void guardaNotas(abierto.id, notas)}
@@ -430,6 +450,7 @@ interface PanelProps {
   siguiente: Etapa | null;
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
+  aviso: string;
   onDevolver: () => void;
   onNotificar: (respuesta: string, notas: string) => void;
   onGuardarNotas: (notas: string) => void;
@@ -441,7 +462,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, aviso }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -632,6 +653,18 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                   {!verificadoEnAlemania(x) && (
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
                       Hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
+                    </div>
+                  )}
+                  {/*
+                    * Y si el servidor lo rechaza, por qué.
+                    *
+                    * Este aviso salía arriba de la pantalla, detrás del panel
+                    * abierto: pulsar el botón y que no se pudiera se veía igual
+                    * que si el botón no hiciera nada.
+                    */}
+                  {aviso && (
+                    <div className="text-[11px] text-red-700 font-medium mt-1.5">
+                      {aviso}
                     </div>
                   )}
                 </>
