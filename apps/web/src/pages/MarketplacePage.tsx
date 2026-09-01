@@ -55,6 +55,16 @@ export default function MarketplacePage() {
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', publicada: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '', province: '', city: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
+
+  /**
+   * Las filas marcadas, para activarlas o retirarlas de golpe.
+   *
+   * Retirar veinte coches de una campaña abriendo cada uno y guardando es
+   * veinte veces el mismo gesto: se acaba no haciendo, y quedan publicados
+   * coches que ya no están a la venta.
+   */
+  const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
+  const [aplicandoBloque, setAplicandoBloque] = useState(false);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; provinces: string[]; cities: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], provinces: [], cities: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
   const [colFDeb, setColFDeb] = useState(colF);
@@ -997,6 +1007,35 @@ export default function MarketplacePage() {
     if (res.ok) exportParticularsXlsx(res.data);
   }
 
+  /**
+   * Activar o retirar las marcadas.
+   *
+   * `is_active` dice si la oferta sigue viva. No se toca `import_published`,
+   * que es otra cosa: esa la decide el ahorro real del cliente y la recalcula
+   * el script del catálogo, no una persona con veinte casillas marcadas.
+   *
+   * Se pregunta a partir de veinte porque a esa altura ya no se ve de un
+   * vistazo lo que se ha marcado, y un clic de más retira media pantalla.
+   */
+  async function marcaEnBloque(accion: 'activate' | 'deactivate') {
+    const ids = [...marcadas];
+    if (!ids.length || aplicandoBloque) return;
+    const verbo = accion === 'activate' ? 'activar' : 'marcar como inactivas';
+    if (ids.length >= 20 && !window.confirm(`Vas a ${verbo} ${ids.length} ofertas. ¿Seguimos?`)) return;
+    setAplicandoBloque(true);
+    try {
+      const r = await api.post<{ actualizadas: number; pedidas: number }>('/marketplace/offers/bulk', { action: accion, ids });
+      if (!r.ok) { alert('No se ha podido: ' + (r.error ?? 'error')); return; }
+      // Se pinta el cambio sin recargar: la tabla puede tener cincuenta filas y
+      // volver a pedirlas pierde el sitio donde estabas.
+      const activa = accion === 'activate';
+      setPortalItems((prev: any[]) => prev.map((i: any) => (marcadas.has(String(i.id)) ? { ...i, is_active: activa } : i)));
+      setMarcadas(new Set());
+    } finally {
+      setAplicandoBloque(false);
+    }
+  }
+
   async function doExportOffers(country: 'ES' | 'DE') {
     const params = new URLSearchParams({ export: '1', page: '1', country });
     if (q) params.set('q', q);
@@ -1833,6 +1872,24 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <>
+              {marcadas.size > 0 && (
+                <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-3 bg-acento-tenue sticky top-0 z-20">
+                  <span className="text-xs font-semibold text-acento-texto">
+                    {marcadas.size.toLocaleString('es-ES')} {marcadas.size === 1 ? 'seleccionada' : 'seleccionadas'}
+                  </span>
+                  <button onClick={() => void marcaEnBloque('activate')} disabled={aplicandoBloque}
+                    className="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50">
+                    Marcar activas
+                  </button>
+                  <button onClick={() => void marcaEnBloque('deactivate')} disabled={aplicandoBloque}
+                    className="text-xs font-semibold px-2.5 py-1 rounded bg-brand-100 text-brand-500 hover:bg-brand-200 disabled:opacity-50">
+                    Marcar inactivas
+                  </button>
+                  <button onClick={() => setMarcadas(new Set())} className="text-xs text-acento-texto underline hover:text-brand-600">
+                    Quitar selección
+                  </button>
+                </div>
+              )}
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
@@ -1843,12 +1900,22 @@ export default function MarketplacePage() {
               <div className="overflow-auto max-h-[72vh]">
               <table className="erp-table w-full">
                 <thead>
-                  <tr><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Estado</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Provincia</th><th>Ciudad</th><th>Enlace</th></tr>
+                  <tr><th className="w-8">
+                    {/* Marcar todas las de la página. Solo las de la página: marcar
+                        veinticinco mil de un clic no es una función, es un accidente. */}
+                    <input type="checkbox"
+                      checked={displayPortalItems.length > 0 && displayPortalItems.every((i: any) => marcadas.has(String(i.id)))}
+                      onChange={e => setMarcadas(e.target.checked
+                        ? new Set(displayPortalItems.map((i: any) => String(i.id)))
+                        : new Set())}
+                      className="cursor-pointer" />
+                  </th><th>Vehículo</th>{tab === 'exportacion' && <><th>Publicar</th><th>Margen</th><th>P. mercado ES</th><th>Comps</th></>}<th>Marca</th><th>Modelo</th><th>Versión</th><th>Portal</th><th>Estado</th><th>Vendedor</th><th>Precio</th><th>Km</th><th>Año</th><th>Combustible</th><th>Color</th><th>Carrocería</th><th>Cambio</th><th>CV</th><th>Puertas</th><th>Plazas</th><th>Cilindrada</th><th>CO₂</th><th>Etiqueta</th><th>Tracción</th><th>Consumo</th><th>Provincia</th><th>Ciudad</th><th>Enlace</th></tr>
                   <tr className="bg-brand-50 border-b border-brand-100">
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
                         className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
+                    <td className="px-3 py-1.5"></td>
                     {tab === 'exportacion' && <>
                       <td className="px-3 py-1.5">
                         <select value={colFOffers.publicada} onChange={e => setColFOffers(f => ({...f, publicada: e.target.value}))}
@@ -2035,7 +2102,17 @@ export default function MarketplacePage() {
                 </thead>
                 <tbody>
                   {displayPortalItems.map((item: any) => (
-                    <tr key={item.id} onClick={() => openPortalEdit(item)} className="cursor-pointer hover:bg-acento-tenue transition-colors">
+                    <tr key={item.id} onClick={() => openPortalEdit(item)}
+                      className={`cursor-pointer transition-colors ${marcadas.has(String(item.id)) ? 'bg-acento-tenue' : 'hover:bg-acento-tenue'}`}>
+                      <td onClick={(e) => e.stopPropagation()} className="w-8">
+                        <input type="checkbox" checked={marcadas.has(String(item.id))}
+                          onChange={e => setMarcadas(antes => {
+                            const ahora = new Set(antes);
+                            if (e.target.checked) ahora.add(String(item.id)); else ahora.delete(String(item.id));
+                            return ahora;
+                          })}
+                          className="cursor-pointer" />
+                      </td>
                       <td>
                         <div className="flex items-center gap-3">
                           {item.image_url && <img src={item.image_url} alt="" className="w-12 h-9 object-cover rounded-md bg-brand-100 shrink-0" />}

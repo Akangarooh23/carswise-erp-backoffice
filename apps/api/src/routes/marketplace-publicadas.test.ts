@@ -49,3 +49,57 @@ describe('el filtro de publicadas en importación', () => {
     assert.ok(!/UPDATE|SET /i.test(trozo));
   });
 });
+
+/**
+ * Activar o retirar varias ofertas de golpe.
+ *
+ * Retirar veinte coches de una campaña abriendo cada uno y guardando es veinte
+ * veces el mismo gesto: se acaba no haciendo, y quedan publicados coches que ya
+ * no están a la venta.
+ */
+describe('la acción en bloque de la tabla de ofertas', () => {
+  const BLOQUE = FUENTE.slice(
+    FUENTE.indexOf("marketplaceRouter.post('/marketplace/offers/bulk'"),
+    FUENTE.indexOf('// ── Portal stats')
+  );
+
+  test('existe, y solo para quien puede tocar el catálogo', () => {
+    assert.ok(BLOQUE.length > 0, 'no está el endpoint');
+    assert.match(BLOQUE, /requireRole\(\['admin', 'operations'\]\)/);
+  });
+
+  test('solo acepta activar o desactivar', () => {
+    // Sin esto, cualquier palabra en `action` decidiría el valor booleano.
+    assert.match(BLOQUE, /\['activate', 'deactivate'\]\.includes/);
+  });
+
+  test('sin ofertas no hace nada', () => {
+    // Una lista vacía con un UPDATE mal montado es un UPDATE sin WHERE.
+    assert.match(BLOQUE, /if \(!limpios\.length\)/);
+    assert.match(BLOQUE, /sin_ofertas/);
+  });
+
+  test('hay un tope, para que un fallo no se lleve la tabla por delante', () => {
+    assert.match(BLOQUE, /limpios\.length > 500/);
+  });
+
+  test('los identificadores van como parámetro, no pegados al SQL', () => {
+    // Pegar una lista que llega del navegador dentro de la consulta es abrir la
+    // puerta a que la lista traiga algo más que identificadores.
+    assert.match(BLOQUE, /id = ANY\(\$2::text\[\]\)/);
+    assert.ok(!/\$\{limpios/.test(BLOQUE), 'los ids se están interpolando en el SQL');
+  });
+
+  test('toca is_active y nada más', () => {
+    // `import_published` lo decide el ahorro real del cliente y lo recalcula el
+    // script del catálogo. No una persona con veinte casillas marcadas.
+    assert.match(BLOQUE, /SET is_active = \$1/);
+    assert.ok(!/import_published/.test(BLOQUE),
+      'la acción en bloque estaría decidiendo qué se publica');
+  });
+
+  test('se quitan repetidos y vacíos de lo que llega', () => {
+    assert.match(BLOQUE, /new Set\(/);
+    assert.match(BLOQUE, /\.filter\(Boolean\)/);
+  });
+});

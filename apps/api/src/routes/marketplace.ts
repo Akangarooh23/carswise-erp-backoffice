@@ -363,6 +363,53 @@ marketplaceRouter.patch('/marketplace/offers/:id', requireRole(['admin', 'suppor
   }
 });
 
+// ── Activar o desactivar varias ofertas de golpe ─────────────────────────────
+
+/**
+ * Marcar como activas o inactivas un puñado de ofertas a la vez.
+ *
+ * En importación la tabla tiene miles de filas. Retirar veinte coches de una
+ * campaña, o volver a activarlos, abriendo cada uno y guardando es veinte veces
+ * el mismo gesto: se acaba no haciendo, y quedan publicados coches que ya no
+ * están a la venta.
+ *
+ * `is_active` es lo que dice si la oferta sigue viva en el portal de origen. No
+ * se toca `import_published`, que es otra cosa: esa la decide el ahorro real y
+ * la recalcula el script, no una persona.
+ */
+marketplaceRouter.post('/marketplace/offers/bulk', requireRole(['admin', 'operations']), async (req, res) => {
+  const { action, ids } = req.body ?? {};
+  if (!['activate', 'deactivate'].includes(String(action))) {
+    res.status(400).json({ ok: false, error: 'invalid_action' });
+    return;
+  }
+  const limpios = Array.isArray(ids)
+    ? [...new Set(ids.map((x: unknown) => String(x ?? '').trim()).filter(Boolean))]
+    : [];
+  if (!limpios.length) {
+    res.status(400).json({ ok: false, error: 'sin_ofertas' });
+    return;
+  }
+  // Un tope, para que un fallo de la pantalla no se lleve la tabla entera por
+  // delante con un solo clic.
+  if (limpios.length > 500) {
+    res.status(400).json({ ok: false, error: 'demasiadas', detail: 'Máximo 500 de una vez.' });
+    return;
+  }
+  try {
+    const result = await query<{ id: string }>(
+      `UPDATE moveadvisor_market_offers
+          SET is_active = $1, updated_at = NOW()
+        WHERE id = ANY($2::text[])
+        RETURNING id`,
+      [action === 'activate', limpios]
+    );
+    res.json({ ok: true, data: { actualizadas: result.rows.length, pedidas: limpios.length } });
+  } catch (err) {
+    falloInterno(res, 'marketplace_offers_bulk_failed', err);
+  }
+});
+
 // ── Portal stats (informe de cobertura, en vivo) ──────────────────────────────
 
 marketplaceRouter.get('/marketplace/portal-stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
