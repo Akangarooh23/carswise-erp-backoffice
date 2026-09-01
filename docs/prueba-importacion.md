@@ -99,8 +99,10 @@ fecha futura y cualquier CVC.
       enseña Stripe, contra la sesión de ese cliente.
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
 - [ ] Te llega un correo con la cifra y con cuándo se libera.
-- [ ] El depósito es **el precio del coche más 3.000 €**, y la garantía si
-      elegiste una. **No** lleva el impuesto de matriculación.
+- [ ] Lo que paga es **el coche, 3.000 € de servicio y el impuesto**, más la
+      garantía si elegiste una. Las tres líneas del desglose **suman** esa cifra.
+- [ ] Debajo dice que **el impuesto va a cuenta** y que se ajusta al matricular:
+      si sale menos se devuelve, si sale más se cobra la diferencia.
 - [ ] En **Solicitudes** aparece una tarjeta, en la pestaña *Pendiente*.
 
 **Prueba también esto**: cierra el modal y vuelve a pedir el mismo coche. **No
@@ -120,8 +122,7 @@ transferir»**.
 
 - [ ] Te lleva a **Stripe**. Si se queda en la pantalla diciendo que no está
       disponible, falta la clave o el método de pago: mira el paso de abajo.
-- [ ] La cifra es **el precio del coche más 3.000 €**. **No** lleva el impuesto
-      de matriculación.
+- [ ] La cifra es la misma que viste en la ficha: **coche + 3.000 € + impuesto**.
 - [ ] Paga con la tarjeta de prueba **4242 4242 4242 4242**, cualquier fecha
       futura y cualquier CVC.
 
@@ -140,10 +141,21 @@ transferir»**.
       por **SRV**, no por FIA.
 - [ ] Está en **Facturación**, y el concepto dice **«Servicio de importación»**.
 
-Eso último es lo que más importa comprobar: de los ~20.000 € que has pagado,
-solo 3.000 son ingreso de PopCar. El resto es del vendedor alemán y está de
-paso. Facturarlo entero sería declarar la venta de un coche que no hemos
-vendido.
+**Ábrela y mira estas cuatro cosas** — es la parte que más importa de la prueba:
+
+- [ ] **El IVA va dentro de los 3.000**: base 2.479,34 + IVA 520,66 = 3.000,00.
+      No 3.000 + IVA aparte.
+- [ ] Debajo hay un bloque **SUPLIDOS** con el precio del coche y el impuesto,
+      y una línea que dice que **no son ingreso de PopCar**.
+- [ ] Los suplidos **no están dentro de la base imponible**. Si lo estuvieran,
+      estaríamos repercutiendo IVA sobre el coche del vendedor alemán.
+- [ ] Al final, **«Total pagado (factura + suplidos)»** cuadra exactamente con
+      lo que transferiste.
+
+De los ~21.000 € que has pagado, **solo 3.000 son factura nuestra** —y de esos,
+521 son de Hacienda—. El coche es del vendedor alemán y el impuesto de Hacienda:
+los dos pasan por nuestra cuenta y ninguno es ingreso nuestro. Facturarlo entero
+sería declarar la venta de un coche que no hemos vendido.
 
 - [ ] Vuelve a la ficha del coche e intenta **cambiar la dirección de envío**:
       ya no se deja. Con el dinero depositado queda fijada.
@@ -180,11 +192,11 @@ expediente.
 
 - [ ] En el panel del cliente, el paso dice **«Hemos visto el coche y lo hemos
       comprado en tu nombre.»**
-- [ ] En **Pedidos** aparece uno **creado solo**. Eso es el paso 4.
+- [ ] En **Pedidos** aparece uno **creado solo**. Eso es el paso 5.
 
 ---
 
-## 3b · La fecha y las notas · **en el ERP**
+## 4 · La fecha y las notas · **en el ERP**
 
 Sigues en el expediente de Importaciones.
 
@@ -195,7 +207,7 @@ Sigues en el expediente de Importaciones.
 - [ ] Abajo, en el **historial**, se lee la nota entera y quién la escribió.
 
 ---
-## 4 · El pedido · **en el ERP**
+## 5 · El pedido · **en el ERP**
 
 Ve a **Pedidos**. Tiene que haber uno **creado solo**, con el proveedor alemán y
 su precio — que **no** es la cifra que ve el cliente.
@@ -303,7 +315,8 @@ moviendo de verdad.
 
 - [ ] Sin hacer nada aún, mira el botón de **«Pasar a En camino»**: está apagado,
       y el aviso de arriba lo nombra todo — los cuatro papeles (ficha partes I y
-      II, COC y factura del vendedor), el número de la factura, que esté pagada,
+      II, COC y **factura del vendedor alemán**, que va a nombre del cliente),
+      el número de la factura, que esté pagada,
       y que alguien lo haya recogido.
 - [ ] Baja a **Documentos** —que aparece justo al confirmarlo, no antes—: arriba
       está la lista de lo que se espera de un coche alemán, con esos cuatro
@@ -323,7 +336,7 @@ es el paso siguiente.
 
 ---
 
-## 5 · El transporte · **en el ERP**
+## 6 · El transporte · **en el ERP**
 
 Ve a **Transportes**. Tiene que haber un tramo **creado solo**, en *Por
 organizar*.
@@ -350,7 +363,7 @@ organizar*.
 
 ---
 
-## 6 · Al llegar · **en el ERP**
+## 7 · Al llegar · **en el ERP**
 
 Vuelve al pedido.
 
@@ -369,7 +382,7 @@ Vuelve al pedido.
 
 ---
 
-## 7 · Los papeles · **en el ERP**
+## 8 · Los papeles · **en el ERP**
 
 Ve a **Gestoría**. Tienen que aparecer **tres trámites creados solos**: impuesto
 de matriculación, ITV de homologación y matriculación.
@@ -397,7 +410,7 @@ de matriculación, ITV de homologación y matriculación.
 
 ---
 
-## 8 · Lo que ha costado · **en el ERP**
+## 9 · Lo que ha costado · **en el ERP**
 
 En el pedido, abajo:
 
@@ -410,7 +423,7 @@ En el pedido, abajo:
 
 ---
 
-## 9 · La entrega · **en el ERP**
+## 10 · La entrega · **en el ERP**
 
 En el expediente de **Importaciones**, en «La entrega»:
 
@@ -432,7 +445,7 @@ En el expediente de **Importaciones**, en «La entrega»:
 
 ---
 
-## 10 · Y por el lado del cliente
+## 11 · Y por el lado del cliente
 
 Vuelve a PopCar, a su panel:
 
@@ -443,7 +456,7 @@ Vuelve a PopCar, a su panel:
 
 ---
 
-## 11 · Con quién has trabajado · **en el ERP**
+## 12 · Con quién has trabajado · **en el ERP**
 
 Ve a **Proveedores**.
 

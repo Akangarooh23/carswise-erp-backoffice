@@ -43,8 +43,8 @@ export const PAPELES_POR_ORIGEN: Record<string, PapelEsperado[]> = {
     { papel: 'Ficha del vehículo (parte II)', porQue: 'Es el título de propiedad alemán. Sin él no se matricula aquí', imprescindible: true },
     { papel: 'Ficha del vehículo (parte I)',  porQue: 'El permiso de circulación alemán', imprescindible: true },
     { papel: 'COC (certificado de conformidad)', porQue: 'La homologación europea. Sin él hay que homologar unidad a unidad: caro y lento', imprescindible: true },
-    { papel: 'Factura del vendedor', porQue: 'La compra, para declararla', imprescindible: true },
-    { papel: 'Contrato de compraventa', porQue: 'Lo que se acordó con el vendedor alemán, por si hay que reclamar', imprescindible: false },
+    { papel: 'Factura del vendedor alemán', porQue: 'A nombre del cliente. Sin ella no se matricula, y es la que prueba que el coche es suyo', imprescindible: true },
+    { papel: 'Contrato de compraventa', porQue: 'Entre el vendedor alemán y el cliente. Es a lo que se agarra una reclamación', imprescindible: false },
     { papel: 'Justificante de baja en Alemania', porQue: 'Que allí ya no está matriculado', imprescindible: false },
   ],
   concesionario: [

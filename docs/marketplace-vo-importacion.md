@@ -252,8 +252,21 @@ este negocio y lo que la ficha deja claro:
 | Línea | Qué es | Va a |
 |---|---|---|
 | **Precio del coche** | Lo que cuesta en Alemania, sin nada encima | El vendedor alemán |
-| **Servicio PopCar** | 3.000 €, siempre el mismo | Nosotros |
+| **Servicio PopCar** | 3.000 €, siempre el mismo, **con el IVA dentro** | Nosotros |
 | **Impuesto de matriculación** | Una estimación | Hacienda |
+
+**El IVA va dentro de los 3.000.** A un particular los precios se le dicen con el
+impuesto dentro, así que eso es lo que paga. Por dentro son **2.479,34 de base y
+520,66 de IVA**, y eso es lo que sale desglosado en su factura. Lo que ganamos se
+cuenta sobre la base: contar los 3.000 enteros sería creerse 521 € por coche que
+no existen.
+
+**Y en la factura, los suplidos.** El coche es del vendedor alemán y el impuesto
+de Hacienda: los dos pasan por nuestra cuenta y ninguno es ingreso nuestro, así
+que van en un bloque aparte, **fuera de la base de IVA**, con su explicación y con
+el total de lo que transfirió. Sin ese bloque, la factura diría 3.000 € al lado de
+una transferencia de 21.310 y esa diferencia no tendría explicación en ningún
+papel.
 
 El fee va suelto y con su nombre, al revés que el margen de antes, que iba
 escondido dentro del precio del coche. Cuando vendes un coche, lo que ganas no se

@@ -304,7 +304,7 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     // Se suben. Aquí a mano: el almacén tiene su propia ruta y no cuelga de esta.
     for (const papel of [
       'Ficha del vehículo (parte II)', 'Ficha del vehículo (parte I)',
-      'COC (certificado de conformidad)', 'Factura del vendedor',
+      'COC (certificado de conformidad)', 'Factura del vendedor alemán',
     ]) {
       tablas.documentos.push({ ambito: 'pedido', ambito_id: pedido.id, papel });
     }

@@ -6,7 +6,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
-  QUE_SE_ENTREGA, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
+  queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
   garantiaHasta, garantiaDeUnaImportacion, type Entrega,
 } from '../lib/entrega.js';
 
@@ -909,14 +909,18 @@ const ENSURE_ENTREGA = `
 leadsRouter.get('/leads/:id/entrega', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     await query(ENSURE_ENTREGA, []).catch(() => {});
-    const r = await query(`SELECT entrega FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    const r = await query(`SELECT entrega, lead_type FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
     if (!r.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
-    const entrega = ((r.rows[0] as { entrega?: Entrega }).entrega ?? {}) as Entrega;
+    const fila0 = r.rows[0] as { entrega?: Entrega; lead_type?: string };
+    const entrega = (fila0.entrega ?? {}) as Entrega;
+    // De dónde viene decide qué papeles se le entregan: en importación no hay
+    // factura nuestra del coche ni contrato de compraventa nuestro.
+    const tipo = fila0.lead_type ?? '';
     res.json({
       ok: true,
       data: entrega,
-      lista: QUE_SE_ENTREGA,
-      falta: faltaPorEntregar(entrega),
+      lista: queSeEntrega(tipo),
+      falta: faltaPorEntregar(entrega, tipo),
       faltaParaCerrar: faltaParaCerrar(entrega),
     });
   } catch (err) {
@@ -1023,7 +1027,11 @@ leadsRouter.patch('/leads/:id/entrega', requireRole(['admin', 'operations', 'sal
       `UPDATE moveadvisor_market_leads SET entrega = $2 WHERE id = $1 RETURNING entrega`,
       [req.params.id, JSON.stringify(nueva)]
     );
-    res.json({ ok: true, data: (r.rows[0] as { entrega: Entrega }).entrega, falta: faltaPorEntregar(nueva) });
+    res.json({
+      ok: true,
+      data: (r.rows[0] as { entrega: Entrega }).entrega,
+      falta: faltaPorEntregar(nueva, await esDeImportacion(req.params.id) ? 'import' : ''),
+    });
   } catch (err) {
     console.error('[leads] guardar entrega:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'entrega_failed' });

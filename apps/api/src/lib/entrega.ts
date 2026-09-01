@@ -65,9 +65,27 @@ export interface Entrega {
 }
 
 /** Lo que todavía no se le ha dado. */
-export function faltaPorEntregar(e: Entrega | null | undefined): { clave: string; que: string }[] {
+/**
+ * Lo que se le entrega, según de dónde venga el coche.
+ *
+ * En importación no hay factura nuestra del coche ni contrato de compraventa
+ * nuestro: esos papeles son del concesionario alemán, y el que le vale al
+ * cliente es el suyo. Pedirle a alguien que marque «contrato de compraventa» de
+ * un contrato que no existe es pedirle que mienta o que lo deje en rojo para
+ * siempre.
+ */
+export function queSeEntrega(origen?: string | null): { clave: string; que: string }[] {
+  return origen === 'import' || origen === 'importacion'
+    ? QUE_SE_ENTREGA_IMPORTACION
+    : QUE_SE_ENTREGA;
+}
+
+export function faltaPorEntregar(
+  e: Entrega | null | undefined,
+  origen?: string | null
+): { clave: string; que: string }[] {
   const dado = e?.entregado ?? {};
-  return QUE_SE_ENTREGA.filter((x) => dado[x.clave] !== true);
+  return queSeEntrega(origen).filter((x) => dado[x.clave] !== true);
 }
 
 /**
