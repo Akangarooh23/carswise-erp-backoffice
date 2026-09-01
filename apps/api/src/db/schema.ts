@@ -99,6 +99,31 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS reschedule_proposals   JSONB
   `);
 
+  /**
+   * El depósito de una importación, y lo que lo suelta.
+   *
+   * Las escribe PopCar al recibir la solicitud, pero se declaran también aquí:
+   * el ERP es quien las lee para decidir si se puede liberar el dinero, y una
+   * columna que existe solo porque otro servicio la creó primero es una columna
+   * que un día no está.
+   *
+   * Va partido por destino —el coche al vendedor alemán, el fee nuestro, la
+   * garantía a su proveedor— porque el día que haya que liberar hay que soltar
+   * lo del vendedor y no lo demás.
+   */
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_market_leads
+      ADD COLUMN IF NOT EXISTS escrow_coche           NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS escrow_fee             NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS escrow_garantia        NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS escrow_estado          VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+      ADD COLUMN IF NOT EXISTS escrow_pagado_at       TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS escrow_liberado_at     TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS escrow_devuelto_at     TIMESTAMPTZ,
+      -- La fecha en que alguien nuestro vio el coche. Sin esto no se libera.
+      ADD COLUMN IF NOT EXISTS verificado_alemania_at TIMESTAMPTZ
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS erp_password_resets (
       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -15,6 +15,7 @@ export const leadsRouter = Router();
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
+import { sePuedeLiberar, PORQUE_NO_SE_LIBERA } from '../lib/escrow.js';
 
 /** El panel del cliente, a donde apuntan casi todos los correos. */
 const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
@@ -376,9 +377,11 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     status, notes,
     erp_response, appointment_date, appointment_time, appointment_address, appointment_contact,
     sale_price, sale_notes,
-    // De un expediente de importación: si la fianza está cobrada y cuándo le
-    // hemos dicho que lo tendrá.
+    // De un expediente de importación: si el depósito está en la cuenta y
+    // cuándo le hemos dicho que lo tendrá.
     deposit_paid, delivery_estimate,
+    // Y los dos pasos que mueven su dinero: haber visto el coche, y soltarlo.
+    verificado_alemania, libera_deposito,
   } = req.body ?? {};
   // Los estados de una importación son los pasos de su expediente, no los de
   // una gestión cualquiera: el coche está en Alemania y tarda semanas en
@@ -423,10 +426,29 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (appointment_contact !== undefined) { values.push(appointment_contact ?? ''); sets.push(`appointment_contact = $${values.length}`); }
   if (sale_price  !== undefined)         { values.push(sale_price  || null);        sets.push(`sale_price  = $${values.length}`); }
   if (sale_notes  !== undefined)         { values.push(sale_notes  || null);        sets.push(`sale_notes  = $${values.length}`); }
-  // La fianza se marca cobrada con la fecha de hoy, y se puede desmarcar si fue
-  // un error: quitarla es tan importante como ponerla, porque de ella depende
-  // que se compre un coche en Alemania.
-  if (deposit_paid !== undefined)      { sets.push(`deposit_paid_at = ${deposit_paid ? "NOW()" : "NULL"}`); }
+  /**
+   * El depósito se marca recibido con la fecha de hoy, y se puede desmarcar si
+   * fue un error: quitarlo es tan importante como ponerlo, porque de ahí depende
+   * que alguien coja un avión para ir a ver un coche.
+   *
+   * Marca las dos cosas a la vez —la fecha y el estado del depósito— porque son
+   * la misma: el dinero está en la cuenta y nadie lo ha tocado.
+   */
+  if (deposit_paid !== undefined) {
+    sets.push(`deposit_paid_at = ${deposit_paid ? "NOW()" : "NULL"}`);
+    sets.push(`escrow_pagado_at = ${deposit_paid ? "NOW()" : "NULL"}`);
+    sets.push(`escrow_estado = '${deposit_paid ? 'retenido' : 'pendiente'}'`);
+  }
+  /**
+   * Que alguien nuestro ha visto el coche.
+   *
+   * Es la única llave que abre la liberación del dinero, así que se guarda con
+   * su fecha y se puede quitar: si se marcó por error, hay veinte mil euros de
+   * un cliente esperando detrás de esa casilla.
+   */
+  if (verificado_alemania !== undefined) {
+    sets.push(`verificado_alemania_at = ${verificado_alemania ? "NOW()" : "NULL"}`);
+  }
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
   // interesado de un coche que vamos a comprar.
@@ -444,12 +466,50 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   // When operator confirms a new appointment, clear any pending reschedule proposals
   if (appointment_date !== undefined && appointment_date) { sets.push(`reschedule_proposals = NULL`); }
 
+  /**
+   * Soltar el dinero: el único sitio del sistema donde se mueve dinero ajeno.
+   *
+   * Se mira contra lo que hay guardado, no contra lo que venga en la petición:
+   * quien pulsa el botón no puede traer consigo el permiso para pulsarlo.
+   *
+   * Y se contesta con el motivo, no con un 400 a secas. Quien lo intenta tiene
+   * que saber qué le falta —normalmente que nadie ha ido a ver el coche— para
+   * poder hacerlo, en vez de quedarse mirando un error.
+   */
+  if (libera_deposito) {
+    const ahora = await query<{ escrow_estado: string | null; verificado_alemania_at: string | null }>(
+      `SELECT escrow_estado, verificado_alemania_at FROM moveadvisor_market_leads WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!ahora.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+    const fila = ahora.rows[0];
+    const veredicto = sePuedeLiberar({
+      estado: fila.escrow_estado,
+      // La verificación puede haber llegado en esta misma petición: marcar que
+      // has visto el coche y soltar el dinero es un solo gesto.
+      verificadoEnAlemania: Boolean(fila.verificado_alemania_at) || verificado_alemania === true,
+    });
+    if (!veredicto.puede) {
+      res.status(409).json({
+        ok: false, error: veredicto.motivo,
+        detail: veredicto.motivo ? PORQUE_NO_SE_LIBERA[veredicto.motivo] : undefined,
+      });
+      return;
+    }
+    sets.push(`escrow_liberado_at = NOW()`);
+    sets.push(`escrow_estado = 'liberado'`);
+    // Con el dinero soltado, el coche es suyo: el expediente avanza solo.
+    if (!status) sets.push(`status = 'Verificado y pagado'`);
+  }
+
   if (!sets.length) { res.status(400).json({ ok: false, error: 'no_fields_to_update' }); return; }
 
   values.push(req.params.id);
   try {
     // Fetch current values for history diff
-    const before = await query(`SELECT status, erp_notes, erp_response, appointment_date, deposit_paid_at, delivery_estimate FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
+    const before = await query(`SELECT status, erp_notes, erp_response, appointment_date, deposit_paid_at, delivery_estimate,
+                                       escrow_estado, verificado_alemania_at, escrow_liberado_at
+                                  FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
     if (!before.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
     const prev = before.rows[0] as Record<string, unknown>;
 
