@@ -169,6 +169,21 @@ marketplaceRouter.get('/marketplace/offers', requireRole(['admin', 'support', 'o
   if (active === 'true') conditions.push(`COALESCE(is_active, TRUE) = TRUE`);
   else if (active === 'false') conditions.push(`is_active = FALSE`);
 
+  /**
+   * Publicada o por publicar. Solo tiene sentido en importación.
+   *
+   * Una oferta alemana se publica sola cuando el ahorro real para el cliente
+   * llega al 15 % y hay comparables suficientes. Las que no llegan siguen en la
+   * base —se vuelven a mirar en cada recálculo, y el precio alemán baja— pero
+   * no se le enseñan a nadie.
+   *
+   * Sin este filtro la tabla mezcla 700 publicadas con 24.798 que no lo están,
+   * y no hay forma de mirar solo lo que el cliente ve.
+   */
+  const publicada = s('published');
+  if (publicada === 'true') conditions.push(`COALESCE(import_published, FALSE) = TRUE`);
+  else if (publicada === 'false') conditions.push(`COALESCE(import_published, FALSE) = FALSE`);
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {

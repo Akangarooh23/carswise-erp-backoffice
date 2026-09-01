@@ -53,7 +53,7 @@ export default function MarketplacePage() {
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
   const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
-  const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '', province: '', city: '' });
+  const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', publicada: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '', province: '', city: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
   const [portalFilterOpts, setPortalFilterOpts] = useState<{ colors: string[]; bodyTypes: string[]; transmissions: string[]; tractions: string[]; fuels: string[]; portals: string[]; provinces: string[]; cities: string[]; years: number[] }>({ colors: [], bodyTypes: [], transmissions: [], tractions: [], fuels: [], portals: [], provinces: [], cities: [], years: [] });
   const [voFilterOpts, setVoFilterOpts] = useState<{ colors: string[]; fuels: string[]; transmissions: string[]; sellers: string[]; provincias: string[]; portals: string[]; years: number[] }>({ colors: [], fuels: [], transmissions: [], sellers: [], provincias: [], portals: [], years: [] });
@@ -237,6 +237,10 @@ export default function MarketplacePage() {
     if (colFOffers.sellerType) r = r.filter(i => matchEnum(colFOffers.sellerType, i.seller_type));
     if (colFOffers.estado === 'active')   r = r.filter(i => i.is_active !== false);
     if (colFOffers.estado === 'inactive') r = r.filter(i => i.is_active === false);
+    // Publicada o por publicar. Solo tiene sentido en importación: en el
+    // marketplace nacional no existe esa columna.
+    if (colFOffers.publicada === 'si') r = r.filter(i => Boolean((i as any).import_published));
+    if (colFOffers.publicada === 'no') r = r.filter(i => !(i as any).import_published);
     if (colFOffers.priceMax)   r = r.filter(i => matchRange(colFOffers.priceMax, i.price));
     if (colFOffers.kmMax)      r = r.filter(i => matchRange(colFOffers.kmMax, i.mileage));
     if (colFOffers.year)       r = r.filter(i => matchEnum(colFOffers.year, i.year));
@@ -509,6 +513,10 @@ export default function MarketplacePage() {
       if (cf.city)     params.set('city', cf.city);
       if (cf.estado === 'active')   params.set('active', 'true');
       if (cf.estado === 'inactive') params.set('active', 'false');
+      // Filtrar aquí y no solo en la página cargada: son 700 publicadas de
+      // 25.498, y buscarlas a mano entre páginas no es buscar.
+      if (cf.publicada === 'si') params.set('published', 'true');
+      if (cf.publicada === 'no') params.set('published', 'false');
       const res = await api.get<PortalOffer[]>(`/marketplace/offers?${params}`);
       if (res.ok) {
         setPortalItems(res.data);
@@ -1828,7 +1836,7 @@ export default function MarketplacePage() {
               {Object.values(colFOffers).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{total.toLocaleString('es-ES')} resultados (filtrado general)</span>
-                  <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', estado:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'', province:'', city:'' })}
+                  <button onClick={() => setColFOffers({ brand:'', marca:'', modelo:'', version:'', portal:'', sellerType:'', estado:'', publicada:'', priceMax:'', kmMax:'', year:'', fuel:'', color:'', body:'', trans:'', cvMin:'', doors:'', seats:'', ccMin:'', co2Max:'', etiq:'', trac:'', consMax:'', province:'', city:'' })}
                     className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros</button>
                 </div>
               )}
@@ -1841,7 +1849,17 @@ export default function MarketplacePage() {
                       <input value={colFOffers.brand} onChange={e => setColFOffers(f => ({...f, brand: e.target.value}))}
                         className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Buscar…" />
                     </td>
-                    {tab === 'exportacion' && <><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td></>}
+                    {tab === 'exportacion' && <>
+                      <td className="px-3 py-1.5">
+                        <select value={colFOffers.publicada} onChange={e => setColFOffers(f => ({...f, publicada: e.target.value}))}
+                          className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
+                          <option value="">Todas</option>
+                          <option value="si">Publicadas</option>
+                          <option value="no">Por publicar</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td><td className="px-3 py-1.5"></td>
+                    </>}
                     <td className="px-3 py-1.5">
                       <input value={colFOffers.marca} onChange={e => setColFOffers(f => ({...f, marca: e.target.value}))}
                         className="w-full text-xs border border-brand-200 rounded px-1.5 py-1" placeholder="Marca…" />
