@@ -14,8 +14,8 @@
 export const ETAPAS = [
   'Pendiente',
   'Contactado',
-  'Fianza pagada',
-  'Pedido a Alemania',
+  'Depósito retenido',
+  'Verificado y pagado',
   'En transporte',
   'En trámites',
   'Entregado',
@@ -23,15 +23,21 @@ export const ETAPAS = [
 
 export type Etapa = (typeof ETAPAS)[number];
 
-/** Qué hay que hacer con un expediente que está en esta etapa. */
+/**
+ * Qué hay que hacer con un expediente que está en esta etapa.
+ *
+ * El paso que sostiene todo lo demás es el tercero: con el dinero ya en la
+ * cuenta de depósito, alguien nuestro tiene que ir a ver el coche. Hasta que no
+ * lo ha visto, no se suelta un euro.
+ */
 export const QUE_TOCA: Record<Etapa, string> = {
-  'Pendiente':         'Llamar y explicarle el proceso',
-  'Contactado':        'Esperando a que pague la fianza',
-  'Fianza pagada':     'Hacer el pedido a Alemania',
-  'Pedido a Alemania': 'Confirmar fecha y organizar el transporte',
-  'En transporte':     'El coche viene de camino',
-  'En trámites':       'Impuesto, ITV y matrícula',
-  'Entregado':         'Cerrado',
+  'Pendiente':           'Llamar y explicarle el proceso',
+  'Contactado':          'Esperando su transferencia a la cuenta de depósito',
+  'Depósito retenido':   'Ir a ver el coche en Alemania',
+  'Verificado y pagado': 'Confirmar fecha y organizar el transporte',
+  'En transporte':       'El coche viene de camino',
+  'En trámites':         'Impuesto, ITV de homologación y matrícula',
+  'Entregado':           'Cerrado',
 };
 
 export interface MetaImportacion {
@@ -91,7 +97,7 @@ export function puedePedirlo(x: Expediente): boolean {
  */
 export function puedeDarFecha(status: string): boolean {
   const i = (ETAPAS as readonly string[]).indexOf(status);
-  return i >= (ETAPAS as readonly string[]).indexOf('Pedido a Alemania');
+  return i >= (ETAPAS as readonly string[]).indexOf('Verificado y pagado');
 }
 
 /** Cuántos días lleva abierto. Un expediente quieto es el problema. */

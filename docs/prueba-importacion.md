@@ -106,9 +106,9 @@ Pulsa **Pagar la fianza ahora** y paga con la tarjeta de prueba.
 
 **Qué tiene que pasar, al volver**
 
-- [ ] La tarjeta del panel pasa a **«Fianza pagada el …»**, sin recargar.
+- [ ] La tarjeta del panel pasa a **«Depósito retenido el …»**, sin recargar.
 - [ ] La solicitud **sigue estando** en Solicitudes — ahora en *En curso*.
-- [ ] El Resumen dice «Importación en curso: Fianza pagada».
+- [ ] El Resumen dice «Importación en curso: Depósito retenido».
 - [ ] Te llega **la factura por correo, con su PDF**.
 - [ ] La factura está en **Facturación**, con número de la serie FIA.
 - [ ] El importe cobrado es **el que ponía el botón**, con la garantía que
@@ -122,12 +122,12 @@ Si algo de esto falla, abre la consola con F12 y busca `[fianza] no consta pagad
 
 ## 3 · El expediente · **en el ERP**
 
-Ve a **Importaciones**. El coche tiene que estar en la columna **Fianza pagada**,
+Ve a **Importaciones**. El coche tiene que estar en la columna **Depósito retenido**,
 y su importe contado en «Fianzas cobradas».
 
 Ábrelo y:
 
-- [ ] Pasa a **Pedido a Alemania**. Te pide decir qué ha pasado: escríbelo.
+- [ ] Pasa a **Verificado y pagado**. Te pide decir qué ha pasado: escríbelo.
 - [ ] Se desbloquea **«Cuándo le hemos dicho que lo tendrá»**. Pon una fecha.
 - [ ] Cámbiala. **Al cliente le llega un correo con las dos fechas.**
 - [ ] Escribe una nota interna y guárdala. Tiene que decir **«Guardada»**.

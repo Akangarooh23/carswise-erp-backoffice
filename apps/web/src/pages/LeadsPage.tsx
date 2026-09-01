@@ -147,8 +147,8 @@ const STATUS_COLORS: Record<string, string> = {
   Cancelado:              'bg-red-100 text-red-700',
   // Los pasos de un expediente de importación. Van en azul, como todo lo de
   // importación, y se van oscureciendo según avanza.
-  'Fianza pagada':        'bg-blue-50 text-blue-700',
-  'Pedido a Alemania':    'bg-blue-100 text-blue-700',
+  'Depósito retenido':        'bg-blue-50 text-blue-700',
+  'Verificado y pagado':    'bg-blue-100 text-blue-700',
   'En transporte':        'bg-blue-100 text-blue-800',
   'En trámites':          'bg-indigo-100 text-indigo-700',
   Entregado:              'bg-emerald-100 text-emerald-700',
@@ -164,7 +164,7 @@ const ALL_STATUSES = ['Pendiente', 'Contactado', 'En proceso', 'Cita confirmada'
  * pasan cosas que hay que poder distinguir. Con «En proceso» a secas, quien
  * coge el teléfono no sabe si el coche está comprado, en un camión o en la ITV.
  */
-export const PASOS_IMPORTACION = ['Pendiente', 'Contactado', 'Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
+export const PASOS_IMPORTACION = ['Pendiente', 'Contactado', 'Depósito retenido', 'Verificado y pagado', 'En transporte', 'En trámites', 'Entregado'];
 
 function getAvailableStatuses(type: string): string[] {
   if (type === 'visit') return ALL_STATUSES;
@@ -472,7 +472,7 @@ export default function LeadsPage() {
  *
  * Se guarda al momento y no al darle a Guardar: es un hecho, no un borrador, y
  * de él depende que se compre un coche en Alemania. Al cobrarla, el expediente
- * pasa solo a «Fianza pagada» si estaba antes de eso.
+ * pasa solo a «Depósito retenido» si estaba antes de eso.
  */
   async function marcaFianza(cobrada: boolean) {
     if (!selected) return;
@@ -1307,7 +1307,7 @@ export default function LeadsPage() {
                       es justo lo que este campo intenta evitar. */}
                   {(() => {
                     const hechoElPedido = PASOS_IMPORTACION.indexOf(selected.status) >=
-                      PASOS_IMPORTACION.indexOf('Pedido a Alemania');
+                      PASOS_IMPORTACION.indexOf('Verificado y pagado');
                     return (
                       <div className="pt-1 border-t border-blue-200/70">
                         <label className="text-blue-700 text-xs font-semibold block mb-1">

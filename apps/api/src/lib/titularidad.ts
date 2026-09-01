@@ -1,18 +1,25 @@
 /**
  * A nombre de quién se pone el coche.
  *
- * Es distinto de quién lo vende. PopCar vende siempre —emite su factura y da su
- * garantía, y eso solo se sostiene siendo el vendedor— pero **no tiene por qué
- * ser el titular**. Y ahí está la diferencia entre pagar un cambio de nombre o
- * dos.
+ * Es distinto de quién lo vende, y depende de por dónde venga el coche.
+ *
+ * En **importación PopCar no vende nada**: el coche lo vende el concesionario
+ * alemán al cliente español y nosotros cobramos un fee por traerlo. Así que se
+ * matricula directamente a nombre del cliente, y no hay ningún cambio de nombre
+ * que pagar. Ponerlo a nuestro nombre sería comprar un coche que no compramos.
+ *
+ * En los demás caminos —concesionario, ex-renting, particular— sí compramos
+ * para revender: emitimos nuestra factura y damos nuestra garantía, y eso solo
+ * se sostiene siendo el vendedor. Ahí PopCar **no tiene por qué ser el titular**,
+ * y ahí está la diferencia entre pagar un cambio de nombre o dos.
  *
  * | | A nombre del cliente | A nombre de PopCar |
  * |---|---|---|
  * | Coche de aquí | Una transferencia, al venderlo | Dos: al comprarlo y al venderlo |
- * | Importación | Se matricula ya a su nombre: ninguna | Se matricula a nuestro nombre, y una al vender |
+ * | Importación | Se matricula ya a su nombre: ninguna | No aplica: el coche no es nuestro |
  *
- * Un coche que se compra para stock no tiene cliente todavía, así que va a
- * nombre de PopCar por fuerza. Uno que se compra para alguien concreto no
+ * Un coche de aquí que se compra para stock no tiene cliente todavía, así que
+ * va a nombre de PopCar por fuerza. Uno que se compra para alguien concreto no
  * necesita pasar por el medio.
  */
 
@@ -24,23 +31,25 @@ export function esTitularidad(v: string): v is Titularidad {
 }
 
 /**
- * La que le toca a un pedido si nadie dice otra cosa: **PopCar**.
+ * La que le toca a un pedido si nadie dice otra cosa.
  *
- * Aunque haya un cliente esperando. Lo normal del negocio es comprar el coche y
- * luego vendérselo: PopCar lo recibe, lo matricula si viene de fuera, lo deja a
- * punto y lo entrega con su factura y su garantía. Todo eso se hace sobre un
- * coche que es nuestro.
+ * **Importación: el cliente.** No compramos el coche, así que no puede ir a
+ * nuestro nombre. Se matricula directamente a nombre de quien lo ha comprado y
+ * no hay cambio de nombre que pagar. Antes esto salía a nombre de PopCar, que
+ * era correcto con el modelo anterior —comprábamos y revendíamos— y con el de
+ * ahora sería declarar una compra que no existe.
  *
- * A nombre del cliente es el caso raro —el coche va del vendedor directo a él y
- * nos ahorramos un cambio de nombre—, y por eso se elige a mano. Ponerlo por
- * defecto hacía lo contrario: daba por hecho lo excepcional.
+ * **Lo demás: PopCar.** Ahí sí compramos para revender: recibimos el coche, lo
+ * dejamos a punto y lo entregamos con nuestra factura y nuestra garantía. Todo
+ * eso se hace sobre un coche que es nuestro.
  *
- * El precio de esto es el plazo de reventa, que empieza a correr al recibirlo.
+ * El precio de eso es el plazo de reventa, que empieza a correr al recibirlo.
  * No es un efecto secundario que se nos escape: el pedido lo enseña y avisa dos
- * meses antes.
+ * meses antes. En importación ese plazo no existe, porque el coche nunca es
+ * nuestro.
  */
-export function titularidadPorDefecto(_origen?: string, _clienteEmail?: string | null): Titularidad {
-  return 'popcar';
+export function titularidadPorDefecto(origen?: string, _clienteEmail?: string | null): Titularidad {
+  return origen === 'importacion' ? 'cliente' : 'popcar';
 }
 
 /**

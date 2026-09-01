@@ -32,8 +32,8 @@ lee de izquierda a derecha: lo de la izquierda es lo que está empezando.
 |---|---|
 | Pendiente | Llamar y explicarle el proceso |
 | Contactado | Esperando a que pague la fianza |
-| Fianza pagada | Hacer el pedido a Alemania |
-| Pedido a Alemania | Confirmar fecha y organizar el transporte |
+| Depósito retenido | Hacer el pedido a Alemania |
+| Verificado y pagado | Confirmar fecha y organizar el transporte |
 | En transporte | El coche viene de camino |
 | En trámites | Impuesto, ITV y matrícula |
 | Entregado | Cerrado |
@@ -47,7 +47,7 @@ expediente que lleva más de una semana parado lo dice en rojo en su tarjeta.
 
 Dos cosas que la pantalla no te deja hacer, a propósito:
 
-- **Pasar a «Pedido a Alemania» sin la fianza cobrada.** Pedir el coche nos
+- **Pasar a «Verificado y pagado» sin la fianza cobrada.** Pedir el coche nos
   compromete con dinero; lo que cubre eso es la fianza.
 - **Poner fecha de entrega antes del pedido.** La fecha la da el vendedor al
   aceptarlo. Antes de eso cualquier fecha es inventada, y el cliente la ve en su
@@ -65,7 +65,7 @@ correo: **Al cliente** — su solicitud, con esa cifra · **A operaciones** — 
 erp: Sale en **Importaciones**, en la columna **Pendiente**, con su fianza
 trabajador: Le llama, le cuenta el proceso y le dice que pague la fianza desde su panel
 cliente: **Paga la fianza** con tarjeta, desde su solicitud
-sistema: Fianza cobrada, expediente a **Fianza pagada** y **su factura emitida**. Sin tocar nada
+sistema: Fianza cobrada, expediente a **Depósito retenido** y **su factura emitida**. Sin tocar nada
 trabajador: Hace el **pedido a Alemania** y pone el paso. Ahí es cuando hay fecha
 trabajador: Escribe **cuándo lo tendrá**. Si luego cambia, al cliente se le avisa solo
 ? ¿Sigue adelante?
@@ -105,7 +105,7 @@ El orden es este y no otro:
 
 **La paga él, desde su panel, con tarjeta.** En su solicitud le sale el botón con
 la cifra. Al pagar pasan tres cosas solas: la fianza queda cobrada, el expediente
-avanza a «Fianza pagada» y **se le emite su factura**, con serie propia. No hay
+avanza a «Depósito retenido» y **se le emite su factura**, con serie propia. No hay
 que hacer nada en el ERP.
 
 Antes del botón lee **los cinco pasos**: paga la fianza, pedido a Alemania,
@@ -290,8 +290,8 @@ llegar y entre «le he llamado» y «lo tiene» pasan cosas que hay que distingu
 |---|---|
 | Pendiente | Nadie le ha llamado todavía |
 | Contactado | Ya se ha hablado con él y conoce el proceso |
-| Fianza pagada | Ha pagado y tiene su factura. Ya se puede pedir el coche |
-| Pedido a Alemania | Se ha hecho el pedido. Aquí es cuando dan fecha |
+| Depósito retenido | Ha pagado y tiene su factura. Ya se puede pedir el coche |
+| Verificado y pagado | Se ha hecho el pedido. Aquí es cuando dan fecha |
 | En transporte | Viene de camino |
 | En trámites | Está aquí: aduana, ITV y matriculación |
 | Entregado | Lo tiene |
@@ -402,8 +402,8 @@ que está y una frase que se lo explica en su idioma:
 |---|---|
 | Pendiente | «Hemos recibido tu solicitud. Te llamamos para contarte el proceso.» |
 | Contactado | «Ya hemos hablado contigo. El siguiente paso es pagar la fianza.» |
-| Fianza pagada | «Fianza recibida y factura emitida. Vamos a pedir tu coche.» |
-| Pedido a Alemania | «Pedido hecho. En cuanto nos confirmen fechas, te las decimos.» |
+| Depósito retenido | «Fianza recibida y factura emitida. Vamos a pedir tu coche.» |
+| Verificado y pagado | «Pedido hecho. En cuanto nos confirmen fechas, te las decimos.» |
 | En transporte | «Está de camino a España.» |
 | En trámites | «Ya está aquí: aduana, ITV y matriculación para que puedas usarlo.» |
 | Entregado | «Es tuyo y lo tienes contigo.» |
@@ -413,7 +413,7 @@ Debajo va el dinero y la fecha, según toque:
 - Si **no ha pagado**: los cinco pasos explicados, la cifra y el botón **«Pagar la
   fianza»**, con la nota de que se le emite factura y de que se devuelve si no se
   hace el pedido.
-- Si **ha pagado**: «Fianza pagada el 12 de septiembre» y que tiene su factura en
+- Si **ha pagado**: «Depósito retenido el 12 de septiembre» y que tiene su factura en
   Facturación.
 - Si hay **fecha de entrega**: «Lo esperamos para el 14 de octubre», dicho como lo
   que es, una estimación.

@@ -30,7 +30,7 @@ const CON_FIANZA = { deposit_quoted: 1019, deposit_paid_at: '2026-08-10T10:00:00
 describe('el camino de un expediente', () => {
   test('cada etapa lleva a la siguiente', () => {
     assert.equal(siguienteEtapa('Pendiente'), 'Contactado');
-    assert.equal(siguienteEtapa('Fianza pagada'), 'Pedido a Alemania');
+    assert.equal(siguienteEtapa('Depósito retenido'), 'Verificado y pagado');
     assert.equal(siguienteEtapa('En trámites'), 'Entregado');
   });
 
@@ -57,17 +57,17 @@ describe('lo que no se puede hacer todavía', () => {
   });
 
   test('con la fianza cobrada, sí', () => {
-    assert.equal(puedePedirlo(exp({ status: 'Fianza pagada', meta: CON_FIANZA })), true);
+    assert.equal(puedePedirlo(exp({ status: 'Depósito retenido', meta: CON_FIANZA })), true);
   });
 
   test('no hay fecha de entrega antes del pedido', () => {
     assert.equal(puedeDarFecha('Pendiente'), false);
-    assert.equal(puedeDarFecha('Fianza pagada'), false,
+    assert.equal(puedeDarFecha('Depósito retenido'), false,
       'la fecha la da el vendedor al aceptar el pedido: antes es inventada');
   });
 
   test('y desde el pedido en adelante, sí', () => {
-    assert.equal(puedeDarFecha('Pedido a Alemania'), true);
+    assert.equal(puedeDarFecha('Verificado y pagado'), true);
     assert.equal(puedeDarFecha('En transporte'), true);
     assert.equal(puedeDarFecha('Entregado'), true);
   });
@@ -154,7 +154,7 @@ describe('la nota que deja un cambio de etapa', () => {
 
   test('se añade a lo que ya había: las notas son un cuaderno', () => {
     const previas = '[29 ago 2026 · Pendiente → Contactado] Primera llamada';
-    const r = notaDelCambio(previas, 'Contactado', 'Fianza pagada', 'Ha pagado por transferencia', CUANDO);
+    const r = notaDelCambio(previas, 'Contactado', 'Depósito retenido', 'Ha pagado por transferencia', CUANDO);
     assert.ok(r.startsWith(previas), 'lo de antes no se pisa');
     assert.match(r, /Ha pagado por transferencia/);
     assert.equal(r.split('\n').length, 2);
@@ -173,7 +173,7 @@ describe('la nota que deja un cambio de etapa', () => {
 describe('lo que se escribió esta vez', () => {
   test('de un cuaderno que crece, solo la línea nueva', () => {
     const antes = '[29 ago 2026 · Pendiente → Contactado] Primera llamada';
-    const linea = '[30 ago 2026 · Contactado → Fianza pagada] Ha pagado';
+    const linea = '[30 ago 2026 · Contactado → Depósito retenido] Ha pagado';
     const despues = `${antes}\n${linea}`;
     assert.equal(loQueSeEscribio(antes, despues), linea,
       'enseñar el cuaderno entero en cada apunte lo repite una vez por línea');

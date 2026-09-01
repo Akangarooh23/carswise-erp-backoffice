@@ -30,8 +30,8 @@ import {
 const COLOR_ETAPA: Record<Etapa, string> = {
   'Pendiente':         'bg-amber-50 border-amber-200 text-amber-800',
   'Contactado':        'bg-amber-50 border-amber-200 text-amber-800',
-  'Fianza pagada':     'bg-blue-50 border-blue-200 text-blue-800',
-  'Pedido a Alemania': 'bg-blue-50 border-blue-200 text-blue-800',
+  'Depósito retenido':     'bg-blue-50 border-blue-200 text-blue-800',
+  'Verificado y pagado': 'bg-blue-50 border-blue-200 text-blue-800',
   'En transporte':     'bg-indigo-50 border-indigo-200 text-indigo-800',
   'En trámites':       'bg-violet-50 border-violet-200 text-violet-800',
   'Entregado':         'bg-emerald-50 border-emerald-200 text-emerald-800',
@@ -537,7 +537,7 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           {siguiente && aEtapa === null && (
             <button
               onClick={() => { setAEtapa(siguiente); setPorQue(""); }}
-              disabled={guardando || (siguiente === 'Pedido a Alemania' && !pagada)}
+              disabled={guardando || (siguiente === 'Verificado y pagado' && !pagada)}
               className="mt-2 w-full px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40"
             >
               Pasar a «{siguiente}»
@@ -586,7 +586,7 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
             </div>
           )}
 
-          {siguiente === 'Pedido a Alemania' && !pagada && (
+          {siguiente === 'Verificado y pagado' && !pagada && (
             <p className="text-[11px] text-amber-700 mt-1.5">
               Hasta que la fianza no esté cobrada no se hace el pedido.
             </p>

@@ -214,7 +214,7 @@ export default function PedidosPage() {
       ) : pedidos.length === 0 ? (
         <div className="px-4 py-8 rounded-xl border border-brand-200 bg-white text-center text-sm text-brand-400">
           Todavía no hay ningún pedido. Los de importación aparecen solos al pasar un expediente
-          a «Pedido a Alemania»; el resto se crean aquí.
+          a «Verificado y pagado»; el resto se crean aquí.
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">

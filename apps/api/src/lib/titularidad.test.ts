@@ -20,12 +20,31 @@ describe('a nombre de quién', () => {
     assert.equal(esTitularidad('gestoria'), false);
   });
 
-  test('por defecto al nuestro, aunque haya un cliente esperando', () => {
-    // Lo normal es comprar el coche y luego vendérselo: se recibe, se matricula,
-    // se deja a punto y se entrega con nuestra factura. Todo eso sobre un coche
-    // que es nuestro.
+  test('un coche de aquí, al nuestro, aunque haya un cliente esperando', () => {
+    // Lo normal en esos caminos es comprar el coche y luego vendérselo: se
+    // recibe, se matricula, se deja a punto y se entrega con nuestra factura.
+    // Todo eso sobre un coche que es nuestro.
     assert.equal(titularidadPorDefecto('concesionario', 'cliente@ejemplo.es'), 'popcar');
-    assert.equal(titularidadPorDefecto('importacion', 'cliente@ejemplo.es'), 'popcar');
+    assert.equal(titularidadPorDefecto('ex-renting', 'cliente@ejemplo.es'), 'popcar');
+  });
+
+  test('una importación, al del cliente: ese coche no es nuestro', () => {
+    // No lo compramos. Lo vende el concesionario alemán al cliente español y
+    // nosotros cobramos un fee por traerlo, así que se matricula directamente a
+    // su nombre y no hay cambio de nombre que pagar.
+    //
+    // Ponerlo a nombre de PopCar era correcto con el modelo anterior, cuando
+    // comprábamos y revendíamos. Con el de ahora sería declarar una compra que
+    // no existe.
+    assert.equal(titularidadPorDefecto('importacion', 'cliente@ejemplo.es'), 'cliente');
+    assert.equal(titularidadPorDefecto('importacion', null), 'cliente',
+      'sin correo del cliente sigue sin ser nuestro el coche');
+  });
+
+  test('y en importación no corre el plazo de reventa', () => {
+    // El plazo existe porque una compraventa que compra para revender paga el
+    // impuesto si se pasa. En importación no compramos, así que no hay plazo.
+    assert.equal(vigilaElPlazo(titularidadPorDefecto('importacion')), false);
   });
 
   test('sin cliente, igual: no hay otro sitio donde ponerlo', () => {

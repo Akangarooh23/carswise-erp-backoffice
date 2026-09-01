@@ -707,7 +707,7 @@ pedidosRouter.get('/pedidos/:id/history', requireRole(['admin', 'support', 'oper
 /**
  * El pedido que nace de una solicitud de importación.
  *
- * Se llama al pasar el expediente a «Pedido a Alemania», que es el momento en
+ * Se llama al pasar el expediente a «Verificado y pagado», que es el momento en
  * que de verdad se le encarga el coche a alguien. Lo que se sabe del proveedor y
  * del precio está en la oferta del marketplace: el vendedor alemán y lo que él
  * cobra, que no es lo mismo que la cifra que ve el cliente —esa lleva dentro el

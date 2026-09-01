@@ -384,7 +384,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   // una gestión cualquiera: el coche está en Alemania y tarda semanas en
   // llegar. «En proceso» puede querer decir seis cosas distintas, y quien coge
   // el teléfono necesita saber cuál.
-  const ESTADOS_IMPORTACION = ['Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
+  const ESTADOS_IMPORTACION = ['Depósito retenido', 'Verificado y pagado', 'En transporte', 'En trámites', 'Entregado'];
   const allowed = ['Pendiente', 'Contactado', 'En proceso', 'Cerrado', 'Descartado', 'Reagendar solicitado', 'Cancelado', 'Cita confirmada', 'Visita realizada', 'Interesado', 'Vendido', ...ESTADOS_IMPORTACION];
 
   if (status && !allowed.includes(status)) {
@@ -398,7 +398,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   // inventarse un plazo, y de aquí sale un correo al cliente con esa fecha. La
   // pantalla ya no la deja poner, pero la regla tiene que estar aquí.
   if (delivery_estimate) {
-    const YA_PEDIDO = ['Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado'];
+    const YA_PEDIDO = ['Verificado y pagado', 'En transporte', 'En trámites', 'Entregado'];
     const ahora = await query(`SELECT status FROM moveadvisor_market_leads WHERE id = $1`, [req.params.id]);
     const paso = String((ahora.rows[0] as { status?: string })?.status ?? '');
     if (!YA_PEDIDO.includes(paso) && !YA_PEDIDO.includes(String(status ?? ''))) {
@@ -430,7 +430,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
   // interesado de un coche que vamos a comprar.
-  if (deposit_paid && !status) { sets.push(`status = CASE WHEN status IN ('Pendiente','Contactado') THEN 'Fianza pagada' ELSE status END`); }
+  if (deposit_paid && !status) { sets.push(`status = CASE WHEN status IN ('Pendiente','Contactado') THEN 'Depósito retenido' ELSE status END`); }
   /**
    * Poner fecha adelanta el estado… salvo en una importación.
    *
@@ -504,7 +504,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     // El expediente sigue teniendo sus etapas, que son las que ve el cliente. El
     // pedido es el registro interno: a quién se le encarga, cuánto cuesta y las
     // fechas de verdad. Si ya existe uno de esta solicitud no se crea otro.
-    if (status === 'Pedido a Alemania' && prev.status !== 'Pedido a Alemania'
+    if (status === 'Verificado y pagado' && prev.status !== 'Verificado y pagado'
         && updatedLead.lead_type === 'import') {
       creaPedidoDeImportacion({
         leadId: req.params.id,

@@ -51,7 +51,7 @@ function reinicia() {
     lead_type: 'import',
     vehicle_id: 'of-1',
     vehicle_title: 'SEAT Ateca 1.0 TSI',
-    status: 'Fianza pagada',
+    status: 'Depósito retenido',
     contact_name: 'Ana',
     erp_notes: '',
     erp_response: '',
@@ -247,7 +247,7 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
 
     // ── 1. Con la fianza cobrada, se pide el coche a Alemania ──────────────
     const pedirlo = await api(`/leads/${LEAD}`, 'PATCH', {
-      status: 'Pedido a Alemania', notes: 'Encargado a Autohaus Müller',
+      status: 'Verificado y pagado', notes: 'Encargado a Autohaus Müller',
     });
     assert.equal(pedirlo.codigo, 200);
     await esperaEnvios();

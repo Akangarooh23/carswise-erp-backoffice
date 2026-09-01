@@ -28,7 +28,7 @@ trámites distintos.
 ## 1 · Pedidos
 
 Un pedido es **encargarle un coche a alguien**. Los de importación se crean
-solos al pasar un expediente a «Pedido a Alemania»; el resto se crean con
+solos al pasar un expediente a «Verificado y pagado»; el resto se crean con
 **Nuevo pedido**, incluso sin cliente detrás —comprar para stock también es un
 pedido—.
 

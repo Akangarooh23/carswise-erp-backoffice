@@ -50,7 +50,7 @@ function reinicia() {
     lead_type: 'import',
     vehicle_title: 'Volkswagen Golf VI Trendline',
     contact_name: 'Ana',
-    status: 'Fianza pagada',
+    status: 'Depósito retenido',
     erp_notes: '',
     erp_response: '',
     appointment_date: null,
@@ -135,7 +135,7 @@ function elUpdate() {
 
 describe('el expediente de importación', { concurrency: 1 }, () => {
   test('la fecha de entrega se guarda, con el pedido ya hecho', async () => {
-    expediente.status = 'Pedido a Alemania';
+    expediente.status = 'Verificado y pagado';
     const r = await api(`/leads/${LEAD}`, { delivery_estimate: '2026-10-15' });
     assert.equal(r.codigo, 200, `no se ha podido guardar: ${JSON.stringify(r.cuerpo)}`);
     assert.match(elUpdate()!.sql, /delivery_estimate = \$\d+/,
@@ -171,7 +171,7 @@ describe('el expediente de importación', { concurrency: 1 }, () => {
   });
 
   test('las etapas de importación son estados válidos', async () => {
-    for (const etapa of ['Fianza pagada', 'Pedido a Alemania', 'En transporte', 'En trámites', 'Entregado']) {
+    for (const etapa of ['Depósito retenido', 'Verificado y pagado', 'En transporte', 'En trámites', 'Entregado']) {
       reinicia();
       const r = await api(`/leads/${LEAD}`, { status: etapa });
       assert.equal(r.codigo, 200, `«${etapa}» debería valer: ${JSON.stringify(r.cuerpo)}`);
