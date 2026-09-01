@@ -11,6 +11,11 @@ import type { User } from '../types/index.js';
 interface ResumenCobros {
   suscripciones: { n: number; cobrado: number };
   informes:      { n: number; cobrado: number };
+  // Los servicios de importación, con su cifra propia: 3.000 € por coche
+  // sumando en «Suscripciones» hacían que esa tarjeta dijera bastante más de
+  // lo que PopCar ingresa por cuotas. Opcional porque una API sin desplegar
+  // todavía no lo manda.
+  importaciones?: { n: number; cobrado: number };
   /** Lo que han costado los coches vendidos. No lo cobra PopCar. */
   ventas:        { n: number; volumen: number };
   rentings:      { n: number };
@@ -53,9 +58,11 @@ const TYPE_BADGE: Record<string, string> = {
   venta:       'bg-emerald-50 text-emerald-700',
   renting:     'bg-acento-tenue text-acento-texto',
   tasacion:    'bg-amber-50 text-amber-700',
+  importacion: 'bg-sky-50 text-sky-700',
 };
 const TYPE_LABEL: Record<string, string> = {
   suscripcion: 'Suscripción', venta: 'Venta', renting: 'Renting', tasacion: 'Informe de mercado',
+  importacion: 'Servicio de importación',
 };
 const STATUS_BADGE: Record<string, string> = {
   Pagada:     'bg-emerald-100 text-emerald-700',
@@ -66,12 +73,13 @@ const STATUS_BADGE: Record<string, string> = {
   cancelled:  'bg-red-100 text-red-600',
 };
 
-const TABS = ['all', 'suscripcion', 'tasacion', 'venta', 'renting', 'free'] as const;
+const TABS = ['all', 'suscripcion', 'tasacion', 'importacion', 'venta', 'renting', 'free'] as const;
 type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = {
   all:         'Todo',
   suscripcion: 'Suscripciones',
   tasacion:    'Informes de mercado',
+  importacion: 'Importaciones',
   venta:       'Ventas vehículos',
   renting:     'Contratos renting',
   free:        'Usuarios free',
@@ -163,11 +171,19 @@ export default function BillingPage() {
 
       {/* Lo cobrado. La tira de arriba cuenta personas; esta, dinero. */}
       {cobros && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             label="Suscripciones" icon="euro" color="bien"
             value={eur(cobros.suscripciones.cobrado)}
             sub={`${cobros.suscripciones.n} ${cobros.suscripciones.n === 1 ? 'factura' : 'facturas'} · IVA incluido`}
+          />
+          {/* El fee del servicio, que es lo nuestro. El coche y el impuesto no
+              salen aquí: van como suplidos en la factura del cliente y no son
+              ingreso de PopCar. */}
+          <StatCard
+            label="Servicios de importación" icon="euro" color="bien"
+            value={eur(cobros.importaciones?.cobrado ?? 0)}
+            sub={`${cobros.importaciones?.n ?? 0} ${(cobros.importaciones?.n ?? 0) === 1 ? 'factura' : 'facturas'} · solo el fee, IVA incluido`}
           />
           <StatCard
             label="Informes de mercado" icon="informe" color="bien"

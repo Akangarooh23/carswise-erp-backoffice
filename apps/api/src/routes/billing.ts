@@ -25,7 +25,28 @@ billingRouter.get('/billing/summary', requireRole(['admin', 'operations']), asyn
 });
 
 // ── Unified invoices list ─────────────────────────────────────────────────────
-// type filter: 'all' | 'suscripcion' | 'venta' | 'renting'
+// type filter: 'all' | 'suscripcion' | 'tasacion' | 'importacion' | 'venta' | 'renting'
+
+/**
+ * De qué es cada factura de cliente.
+ *
+ * Las tres comparten tabla, así que hay que distinguirlas al leerlas. Y no da
+ * igual: un servicio de importación son 3.000 € que estaban entrando en el
+ * contador de **suscripciones**, y ese contador es lo que se mira para saber
+ * cuánto ingresa PopCar por cuotas. Con dos importaciones al mes, esa cifra
+ * dice el triple de lo que es.
+ *
+ * La importación se reconoce por el identificador —lo emite el flujo del
+ * depósito como `srv-imp-…`— y no solo por el texto: la descripción la escribe
+ * quien emite y puede cambiar, el identificador no.
+ */
+export type TipoDeFactura = 'suscripcion' | 'tasacion' | 'importacion';
+export function tipoDeFactura(id: unknown, descripcion: unknown): TipoDeFactura {
+  const desc = String(descripcion || '').trim();
+  if (/^srv-imp-/i.test(String(id || '')) || /servicio de importaci/i.test(desc)) return 'importacion';
+  if (/informe|tasaci/i.test(desc)) return 'tasacion';
+  return 'suscripcion';
+}
 billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), async (req, res) => {
   const type  = String(req.query.type  || 'all').trim();
   const page  = Math.max(1, Number(req.query.page) || 1);
@@ -36,7 +57,7 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 
   try {
     // ── 1. Subscription & tasación invoices ──
-    if (type === 'all' || type === 'suscripcion' || type === 'tasacion') {
+    if (type === 'all' || type === 'suscripcion' || type === 'tasacion' || type === 'importacion') {
       const r = await query(`
         SELECT
           i.id, i.email, u.name, u.apellidos,
@@ -58,10 +79,8 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 
       for (const row of r.rows as Record<string, unknown>[]) {
         const dbDescription  = String(row.description || '').trim();
-        const isTasacion     = /informe|tasaci/i.test(dbDescription);
-        const derivedType    = isTasacion ? 'tasacion' : 'suscripcion';
-        if (type === 'suscripcion' && isTasacion)  continue;
-        if (type === 'tasacion'    && !isTasacion) continue;
+        const derivedType    = tipoDeFactura(row.id, dbDescription);
+        if (type !== 'all' && type !== derivedType) continue;
         const planLabel = String(row.plan || '');
         const fallbackDesc = planLabel
           ? `Plan ${planLabel.charAt(0).toUpperCase() + planLabel.slice(1)} · ${row.number}`
@@ -175,8 +194,13 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 /**
  * El resumen de arriba de la pantalla de facturación.
  *
- * Cada cifra con su nombre. Las suscripciones y los informes de mercado
- * comparten tabla y se separan por la descripción, igual que en el listado.
+ * Cada cifra con su nombre. Las suscripciones, los informes de mercado y los
+ * servicios de importación comparten tabla y se separan igual que en el
+ * listado, con `tipoDeFactura`.
+ *
+ * Que la importación tenga su propia cifra no es cosmético: son 3.000 € por
+ * coche que estaban sumando en «Suscripciones», y esa es la cifra que dice
+ * cuánto ingresa PopCar por cuotas.
  *
  * El volumen de ventas NO es facturación de PopCar: el proveedor cobra al
  * cliente y PopCar cobra su comisión aparte. Ponerlo junto a los ingresos, sin
@@ -187,13 +211,11 @@ billingRouter.get('/billing/invoices', requireRole(['admin', 'operations']), asy
 billingRouter.get('/billing/invoices/stats', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
     const [cobros, ventas, rentings] = await Promise.all([
+      // Sin agrupar en SQL: la regla vive en `tipoDeFactura` y repetirla aquí
+      // en otro idioma es la forma más fácil de que las dos se separen.
       query(`
-        SELECT
-          COALESCE(description, '') ~* '(informe|tasaci)' AS es_informe,
-          COUNT(*)::int                                   AS n,
-          COALESCE(SUM(amount), 0)::numeric               AS total
+        SELECT id, description, amount::numeric AS amount
         FROM moveadvisor_user_invoices
-        GROUP BY 1
       `).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
       query(`
@@ -210,18 +232,24 @@ billingRouter.get('/billing/invoices/stats', requireRole(['admin', 'operations']
         .catch(() => ({ rows: [{ n: 0 }] })),
     ]);
 
-    const fila = (informe: boolean) =>
-      (cobros.rows as Record<string, unknown>[]).find((r) => Boolean(r.es_informe) === informe);
-    const susc = fila(false);
-    const info = fila(true);
+    const suma = (tipo: TipoDeFactura) => {
+      let n = 0, total = 0;
+      for (const r of cobros.rows as Record<string, unknown>[]) {
+        if (tipoDeFactura(r.id, r.description) !== tipo) continue;
+        n += 1;
+        total += Number(r.amount) || 0;
+      }
+      return { n, cobrado: total };
+    };
     const vta  = ventas.rows[0]   as Record<string, unknown>;
     const rent = rentings.rows[0] as Record<string, unknown>;
 
     res.json({
       ok: true,
       data: {
-        suscripciones: { n: Number(susc?.n) || 0, cobrado: Number(susc?.total) || 0 },
-        informes:      { n: Number(info?.n) || 0, cobrado: Number(info?.total) || 0 },
+        suscripciones: suma('suscripcion'),
+        informes:      suma('tasacion'),
+        importaciones: suma('importacion'),
         // Lo que han costado los coches vendidos. No lo cobra PopCar.
         ventas:        { n: Number(vta.n) || 0, volumen: Number(vta.volumen) || 0 },
         rentings:      { n: Number(rent.n) || 0 },
@@ -239,7 +267,7 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
 
   try {
     // ── 1. Subscription invoices ──
-    if (type === 'all' || type === 'suscripcion' || type === 'tasacion') {
+    if (type === 'all' || type === 'suscripcion' || type === 'tasacion' || type === 'importacion') {
       const r = await query(`
         SELECT
           i.id, i.email, u.name, u.apellidos,
@@ -259,14 +287,11 @@ billingRouter.get('/billing/invoices/export', requireRole(['admin', 'operations'
       `).catch(() => ({ rows: [] as Record<string, unknown>[] }));
 
       for (const row of r.rows as Record<string, unknown>[]) {
-        // Suscripciones e informes de mercado comparten tabla y se distinguen
-        // por la descripción. Es la misma regla que aplica el listado: si las
-        // dos no coinciden, el fichero no dice lo que se ve en pantalla.
+        // La misma regla que el listado, traída de un sitio: si las dos no
+        // coinciden, el fichero no dice lo que se ve en pantalla.
         const dbDescription = String(row.description || '').trim();
-        const isTasacion    = /informe|tasaci/i.test(dbDescription);
-        const derivedType   = isTasacion ? 'tasacion' : 'suscripcion';
-        if (type === 'suscripcion' && isTasacion)  continue;
-        if (type === 'tasacion'    && !isTasacion) continue;
+        const derivedType   = tipoDeFactura(row.id, dbDescription);
+        if (type !== 'all' && type !== derivedType) continue;
         const planLabel    = String(row.plan || '');
         const fallbackDesc = planLabel
           ? `Plan ${planLabel.charAt(0).toUpperCase() + planLabel.slice(1)}`

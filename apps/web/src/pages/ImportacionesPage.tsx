@@ -160,10 +160,10 @@ export default function ImportacionesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
           ['En marcha', String(cuentas.enMarcha), 'sin contar los entregados'],
-          ['Esperando fianza', String(cuentas.sinFianza), 'hasta que no está, no se pide'],
+          ['Esperando depósito', String(cuentas.sinFianza), 'hasta que no está, nadie va a verlo'],
           // `eur(0)` da una raya, que en una tarjeta de dinero se lee como «no se
           // sabe». Aquí sí se sabe: son cero.
-          ['Fianzas cobradas', cuentas.comprometido ? eur(cuentas.comprometido) : '0 €', 'de coches aún sin entregar'],
+          ['Depósitos retenidos', cuentas.comprometido ? eur(cuentas.comprometido) : '0 €', 'de coches aún sin entregar'],
           ['Entregados', String(cuentas.entregados), 'expedientes cerrados'],
         ].map(([titulo, valor, pie]) => (
           <div key={titulo} className="px-4 py-3 rounded-xl border border-brand-200 bg-white">
@@ -208,7 +208,7 @@ export default function ImportacionesPage() {
                         <div className="text-[11px] text-brand-400 mt-0.5">{x.meta?.name || x.user_email}</div>
                         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pagada ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                            {pagada ? '✓ fianza' : 'sin fianza'} {eur(x.meta?.deposit_quoted)}
+                            {pagada ? '✓ depósito' : 'sin depósito'} {eur(x.meta?.deposit_quoted)}
                           </span>
                           {x.meta?.delivery_estimate && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-brand-100 text-brand-600">
