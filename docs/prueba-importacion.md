@@ -158,7 +158,9 @@ expediente.
 **El bloque azul de arriba**
 
 - [ ] Enseña el depósito **partido**: el coche → vendedor alemán, el servicio →
-      nosotros. Las partes **suman** la cifra grande.
+      nosotros, el impuesto → Hacienda. Las partes **suman** la cifra grande.
+- [ ] El impuesto sale como **«Impuesto (a cuenta)»**. No es un precio cerrado:
+      se liquida al matricular.
 - [ ] Dice **«En la cuenta desde el …»**, con la fecha de tu pago.
 
 **Y debajo, «Antes de soltar el dinero»**
@@ -377,6 +379,20 @@ de matriculación, ITV de homologación y matriculación.
 - [ ] Intenta mandar uno a gestoría sin decir cuál. **Te lo impide.**
 - [ ] Elígele gestoría de la lista y ponle coste, mándalo, y luego márcalo
       **Resuelto**.
+
+**Y ahora el ajuste del impuesto**
+
+- [ ] Al trámite de **«Impuesto de matriculación»** ponle un coste **distinto**
+      del que puso el cliente a cuenta. Pon uno más alto, por ejemplo.
+- [ ] Vuelve al expediente de **Importaciones**. Debajo del depósito ha
+      aparecido **«Liquidación del impuesto»**, con lo que puso, lo que ha
+      salido y **«Hay que cobrarle X €»**.
+- [ ] En el **panel del cliente** sale lo mismo, con sus palabras: cuánto puso,
+      cuánto ha salido y qué queda por pagar. Tiene que verlo ahí antes de que
+      se lo digas por teléfono.
+- [ ] Prueba con un coste **más bajo**: dice **«Hay que devolverle»** y en su
+      panel sale en verde.
+- [ ] Pulsa **«Ya lo he liquidado»**. Queda como **✓ Liquidado**.
 - [ ] Los que estén fuera salen arriba, con los días que llevan.
 
 ---
@@ -400,8 +416,17 @@ En el expediente de **Importaciones**, en «La entrega»:
 
 - [ ] Marca lo que le das: permiso, ficha, llaves, factura.
 - [ ] Intenta cerrarla sin kilómetros. **Te lo impide.**
+- [ ] **Antes de cerrarla, desmarca la liquidación del impuesto** y prueba a
+      cerrar. Te lo impide y te dice cuánto hay que cobrar o devolver: si se
+      entrega el coche sin ajustar, ese dinero no se recupera.
+- [ ] Vuelve a marcarla como liquidada.
 - [ ] Pon los kilómetros de salida y pulsa **Firmado y entregado**.
 - [ ] Sale la **garantía**, con su fecha de fin.
+
+> **Ojo con la garantía de aquí.** Sigue poniendo doce meses por defecto, y eso
+> es del modelo anterior: ahora la garantía la da un tercero y solo si el
+> cliente la contrató. No rompe nada, pero el documento de entrega dirá una
+> garantía que no damos nosotros. Está pendiente de arreglar.
 - [ ] Pasa el expediente a **Entregado**.
 - [ ] **Al cliente le llega un correo diciendo que ya es suyo.**
 

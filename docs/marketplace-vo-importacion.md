@@ -87,18 +87,19 @@ Tres cosas que la pantalla no te deja hacer, a propósito:
 :::flujo
 cliente: Entra en **Marketplace VO**, pestaña **Importación**, y abre un coche
 cliente: Pulsa **Solicitar importación** y deja nombre, correo, teléfono y su mensaje
-sistema: Le dice **cuánto deposita**: el coche entero y nuestro servicio
+sistema: Le dice **cuánto paga**: el coche, nuestro servicio y el impuesto a cuenta
 correo: **Al cliente** — su solicitud, con esa cifra y cuándo se libera · **A operaciones** — solicitud nueva
 erp: Sale en **Importaciones**, en la columna **Pendiente**, con su depósito
-trabajador: Le llama, le cuenta el proceso y **le da los datos de la cuenta de depósito**
-cliente: **Transfiere** el coche y el servicio a esa cuenta
-trabajador: Marca **«El dinero ha llegado a la cuenta»**. El expediente pasa a **Depósito retenido**
+trabajador: Le llama y le cuenta el proceso
+cliente: **Transfiere** desde su panel, con el número de cuenta que le da Stripe
+sistema: Al llegar el dinero, el expediente pasa a **Depósito retenido** y **sale su factura** del servicio
 trabajador: **Va a Alemania a ver el coche** y marca que lo ha visto
 ? ¿Es el coche que se anunció?
-rama Sí | **Liberar el pago al vendedor** | El expediente pasa solo a **Verificado y pagado**
-rama No | **Devolver el depósito** | Vuelve entero: nadie lo ha tocado
+rama Sí | **Liberar el pago al vendedor** | El expediente pasa solo a **Verificado y pagado** y nace su pedido
+rama No | **Devolver el depósito** | Vuelve entero: no se ha pagado a nadie
 trabajador: Escribe **cuándo lo tendrá**. Si luego cambia, al cliente se le avisa solo
 trabajador: En transporte → En trámites. Él lo ve en su panel sin llamar
+trabajador: Al matricular, **liquida el impuesto**: se cobra o se devuelve la diferencia
 trabajador: Cuando lo tiene, **Entregado**
 :::
 
@@ -107,10 +108,10 @@ trabajador: Cuando lo tiene, **Entregado**
 Es lo primero que hay que mirar al abrir un expediente, y sale arriba del todo.
 
 **No es una fianza.** Una fianza es una parte del precio que se adelanta a quien
-te vende. Aquí no le vendemos nada: el cliente deposita **el coche entero y
-nuestro fee** en una cuenta de depósito, y ese dinero **no lo cobra nadie** hasta
-que uno de los nuestros está delante del coche en Alemania y confirma que es el
-que se anunció.
+te vende. Aquí no le vendemos nada: el cliente paga **el coche entero, nuestro
+fee y el impuesto**, y ese dinero **no se le paga al vendedor** hasta que uno de
+los nuestros está delante del coche en Alemania y confirma que es el que se
+anunció.
 
 Esa es la promesa entera del producto. Un particular que compra en Alemania por
 su cuenta transfiere veinte mil euros a un desconocido de otro país y espera.
@@ -120,18 +121,27 @@ Aquí no.
 
 El expediente lo enseña partido, porque cada parte tiene un dueño distinto:
 
-| Parte | Va a |
-|---|---|
-| Precio del coche | El **concesionario alemán** |
-| Servicio PopCar | **Nosotros** |
-| Garantía, si la contrató | **Su proveedor** |
+| Parte | Va a | |
+|---|---|---|
+| Precio del coche | El **concesionario alemán** | firme |
+| Servicio PopCar | **Nosotros** | firme |
+| Impuesto de matriculación | **Hacienda** | **a cuenta** |
+| Garantía, si la contrató | **Su proveedor** | firme |
 
 El día que se libera hay que soltar lo del vendedor y no lo demás, y quien lo
 haga tiene que verlo ahí, no calcularlo.
 
-**El impuesto de matriculación no está en el depósito.** Es de Hacienda, se
-liquida al matricular y su importe exacto no se sabe hasta entonces. Cobrarlo
-antes sería cobrar una estimación y tener que devolver la diferencia.
+**El impuesto va a cuenta, no como precio cerrado.** Se cobra lo estimado y se
+liquida al matricular, cuando ya se sabe cuánto es de verdad.
+
+Eso no es un detalle contable: **es lo que protege nuestro fee**. Si el impuesto
+fuera un precio cerrado y el real saliera por encima —pasa en los coches de más
+de 160 g/km, que pagan el doble del tramo que estimamos— esa diferencia saldría
+de nuestro margen. Así la paga siempre el cliente, que es de quien es.
+
+Y va dentro y no aparte porque la alternativa es peor: con el coche ya pagado al
+alemán y de camino, pedirle mil cuatrocientos euros más es un cobro que se puede
+caer, y el coche está a su nombre desde el principio.
 
 ### Es el que se le dijo, no el que saldría hoy
 
@@ -145,21 +155,31 @@ es siempre lo último que se le enseñó.
 
 ### Cómo paga, y por qué no con tarjeta
 
-**Por transferencia**, a la cuenta de depósito. No con tarjeta, y no es una
-preferencia: un coche de 20.000 € llevaría unos 300 € de comisión y choca con el
-límite de cualquier tarjeta particular.
+**Por transferencia.** Desde su panel pulsa **«Ver los datos para transferir»** y
+Stripe le da un número de cuenta suyo. Cuando el dinero llega, **nos enteramos
+solos**: eso es lo que aporta Stripe aquí, no hay que mirar el banco a mano.
 
-**Los datos de la cuenta no están en la web**, ni en la ficha ni en su panel. Un
-número de cuenta en una pantalla pública es la forma más fácil de que alguien
-haga una captura, cambie un dígito y la reenvíe. **Se los das tú al llamarle**,
-que además es cuando se resuelven las dudas que tiene delante de una cifra así.
+No con tarjeta, y no es una preferencia: un coche de 20.000 € llevaría unos 300 €
+de comisión —el 10 % de nuestro fee—, choca con el límite de cualquier tarjeta
+particular, y una tarjeta se puede disputar meses después, cuando el dinero ya
+está en Alemania.
 
-Cuando el dinero llegue, se marca en su ficha con **«El dinero ha llegado a la
-cuenta»**. Si se marcó por error, se quita desde el mismo sitio.
+**El número de cuenta no está escrito en la web.** Lo enseña Stripe contra la
+sesión de ese cliente. Un IBAN en una página es la forma más fácil de que alguien
+haga una captura, cambie un dígito y la reenvíe.
 
-> Falta el proveedor de la cuenta de depósito —PayComet o MangoPay— y con él
-> volverá a haber un botón en el panel del cliente. Será otro botón: uno que
-> retiene el dinero en vez de cobrarlo.
+Si algo falla y paga por su cuenta, se puede marcar a mano en su ficha con **«El
+dinero ha llegado a la cuenta»**. Si se marcó por error, se quita desde el mismo
+sitio.
+
+> **Ojo con lo que le decimos.** Ese dinero entra hoy en la cuenta de PopCar, no
+> en un depósito de verdad. Por eso al cliente **no se le dice que está**
+> **retenido**: se le dice lo que es cierto, que no se le paga al vendedor hasta
+> que hemos visto el coche. El escrow de verdad llega con PayComet o MangoPay.
+
+> **Y en pruebas hay tarjeta.** Con clave de prueba se ofrece también la tarjeta,
+> para poder recorrer el flujo sin simular una transferencia. Con clave real
+> desaparece sola.
 
 ### Soltar el dinero
 
@@ -174,6 +194,42 @@ contesta qué falta.
 
 Al liberarlo, el expediente pasa solo a **Verificado y pagado**. Y no se libera
 dos veces: un segundo clic con el dinero ya enviado sería un segundo pago.
+
+### Liquidar el impuesto
+
+Al matricular se sabe lo que ha costado de verdad, y la gestoría lo escribe en
+su trámite de **«Impuesto de matriculación»**. De ahí sale la liquidación sola:
+no hay que teclearlo en ningún otro sitio, y por eso no puede acabar diciendo
+dos cosas distintas.
+
+En el expediente sale un bloque debajo del depósito:
+
+```
+Liquidación del impuesto
+  Puso a cuenta          1.420 €
+  Ha salido              2.100 €
+  ─────────────────────────────
+  Hay que cobrarle         680 €
+
+  [ Ya lo he liquidado ]
+```
+
+Si sale al revés dice **«Hay que devolverle»**, y si cuadra, que no hay que mover
+nada. **No aparece hasta que hay coste en el trámite**: un bloque diciendo
+«pendiente» durante seis semanas es ruido.
+
+**El botón no mueve dinero, deja constancia.** Cobrar o devolver la diferencia se
+hace por el mismo sitio que el depósito. Se puede desmarcar: si se marcó por
+error, hay una diferencia sin cobrar detrás de esa casilla.
+
+**Y no se puede cerrar la entrega con la liquidación pendiente.** Si salió más
+caro y se entrega sin cobrar la diferencia, ese dinero no se recupera: el cliente
+ya tiene su coche y la conversación es mucho más difícil. Y si hay que
+devolvérsela, dejarlo para después es no hacerlo.
+
+El cliente lo ve en su panel en cuanto se sabe, antes de que se lo digas por
+teléfono. Una cifra que aparece en una llamada suena a que se nos ha olvidado
+algo.
 
 ### Si hay que devolverlo
 
