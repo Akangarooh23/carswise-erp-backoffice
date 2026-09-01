@@ -5,6 +5,7 @@ import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
+  verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
 } from '../lib/expedientes-importacion.js';
@@ -479,23 +480,40 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
-        {/* ── El dinero ── */}
+        {/* ── El dinero ──
+
+            Es dinero del cliente, no nuestro, y por eso este bloque enseña
+            **a quién le toca cada parte**: el coche es del vendedor alemán,
+            el fee nuestro y la garantía de su proveedor. El día que se libera
+            hay que soltar lo del vendedor y no lo demás, y quien lo haga
+            tiene que verlo aquí y no calcularlo. */}
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 mb-4">
-          <div className="text-xs font-semibold text-blue-700">Fianza que se le dijo</div>
+          <div className="text-xs font-semibold text-blue-700">Depositado</div>
           <div className="text-lg font-bold text-blue-800">{eur(x.meta?.deposit_quoted)}</div>
           <div className="text-[11px] text-blue-700/80 mt-0.5">
-            El 30 % del precio con el coste de traerlo, al pedirlo. No se recalcula.
+            El coche y nuestro servicio. Se le dijo al pedirlo y no se recalcula.
           </div>
+
+          {repartoDelDeposito(x).length > 0 && (
+            <div className="mt-2 pt-2 border-t border-blue-200/70 space-y-0.5">
+              {repartoDelDeposito(x).map((l) => (
+                <div key={l.concepto} className="flex justify-between gap-3 text-[11.5px] text-blue-800/90">
+                  <span>{l.concepto} <span className="text-blue-700/60">→ {l.a}</span></span>
+                  <span className="font-semibold tabular-nums">{eur(l.importe)}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-blue-200/70">
             {pagada ? (
               <>
                 <span className="text-[13px] font-bold text-emerald-700">
-                  ✓ Cobrada el {dia(x.meta?.deposit_paid_at)}
+                  ✓ En la cuenta desde el {dia(x.meta?.deposit_paid_at)}
                 </span>
                 <button onClick={() => onCambiar({ deposit_paid: false })} disabled={guardando}
                         className="text-[11px] text-brand-400 underline underline-offset-2">
-                  no estaba cobrada
+                  no había llegado
                 </button>
                 {devuelta ? (
                   <span className="text-[13px] font-bold text-brand-500">
@@ -504,18 +522,73 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                 ) : (
                   <button onClick={onDevolver} disabled={guardando}
                           className="px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50">
-                    Devolver la fianza
+                    Devolver el depósito
                   </button>
                 )}
               </>
             ) : (
               <button onClick={() => onCambiar({ deposit_paid: true })} disabled={guardando}
                       className="px-3 py-1.5 text-xs font-bold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50">
-                Marcar fianza como cobrada
+                El dinero ha llegado a la cuenta
               </button>
             )}
           </div>
         </div>
+
+        {/* ── Ver el coche, y soltar el dinero ──
+
+            Los dos pasos que sostienen el producto, y en este orden. El cliente
+            ha transferido veinte mil euros por una promesa: que nadie los toca
+            hasta que uno de los nuestros ha visto el coche.
+
+            El botón de liberar se apaga solo cuando falta la verificación, pero
+            **quien decide es el servidor**: aquí se mira lo que se cargó en la
+            pantalla, y entre eso y el clic caben unos minutos y otra persona. */}
+        {pagada && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 mb-4">
+            <div className="text-xs font-semibold text-emerald-800 mb-2">Antes de soltar el dinero</div>
+
+            {verificadoEnAlemania(x) ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] font-bold text-emerald-700">
+                  ✓ Coche visto en Alemania el {dia(x.meta?.verificado_alemania_at)}
+                </span>
+                {!depositoLiberado(x) && (
+                  <button onClick={() => onCambiar({ verificado_alemania: false })} disabled={guardando}
+                          className="text-[11px] text-brand-400 underline underline-offset-2">
+                    no se ha visto
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button onClick={() => onCambiar({ verificado_alemania: true })} disabled={guardando}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                Hemos visto el coche en Alemania
+              </button>
+            )}
+
+            <div className="mt-3 pt-3 border-t border-emerald-200/70">
+              {depositoLiberado(x) ? (
+                <span className="text-[13px] font-bold text-emerald-700">
+                  ✓ Pago liberado al vendedor el {dia(x.meta?.escrow_liberado_at)}
+                </span>
+              ) : (
+                <>
+                  <button onClick={() => onCambiar({ libera_deposito: true })}
+                          disabled={guardando || !puedeLiberar(x)}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Liberar el pago al vendedor
+                  </button>
+                  {!verificadoEnAlemania(x) && (
+                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                      Hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── La etapa ──
 

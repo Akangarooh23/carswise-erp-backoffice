@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, puedePedirlo, puedeDarFecha,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
+  puedeLiberar, repartoDelDeposito,
   type Expediente,
 } from './expedientes-importacion.js';
 
@@ -191,5 +192,72 @@ describe('lo que se escribió esta vez', () => {
 
   test('borrar la nota no escribe nada', () => {
     assert.equal(loQueSeEscribio('algo', ''), '');
+  });
+});
+
+/**
+ * Ver el coche y soltar el dinero.
+ *
+ * Los dos pasos que sostienen el producto, y en este orden. El cliente ha
+ * transferido veinte mil euros por una promesa: que nadie los toca hasta que uno
+ * de los nuestros ha visto el coche.
+ */
+describe('antes de soltar el dinero', () => {
+  const exp = (meta: Record<string, unknown>): Expediente => ({
+    id: 'imp-1', status: 'Depósito retenido', title: 'SEAT León', user_email: 'x@y.es',
+    created_at: '2026-09-01', meta,
+  } as unknown as Expediente);
+
+  test('con el dinero dentro y el coche visto, se puede liberar', () => {
+    assert.equal(puedeLiberar(exp({
+      deposit_paid_at: '2026-09-01', verificado_alemania_at: '2026-09-02',
+    })), true);
+  });
+
+  test('sin haber visto el coche, no', () => {
+    // Es la única condición que sostiene todo lo demás.
+    assert.equal(puedeLiberar(exp({ deposit_paid_at: '2026-09-01' })), false);
+  });
+
+  test('sin el dinero en la cuenta, tampoco: no hay nada que soltar', () => {
+    assert.equal(puedeLiberar(exp({ verificado_alemania_at: '2026-09-02' })), false);
+  });
+
+  test('y no se libera dos veces', () => {
+    // Un segundo clic con el dinero ya enviado sería un segundo pago.
+    assert.equal(puedeLiberar(exp({
+      deposit_paid_at: '2026-09-01', verificado_alemania_at: '2026-09-02',
+      escrow_liberado_at: '2026-09-03',
+    })), false);
+  });
+});
+
+describe('el reparto del depósito', () => {
+  const exp = (meta: Record<string, unknown>): Expediente => ({
+    id: 'imp-1', status: 'Depósito retenido', title: 'SEAT León', user_email: 'x@y.es',
+    created_at: '2026-09-01', meta,
+  } as unknown as Expediente);
+
+  test('cada parte con quien la cobra', () => {
+    // El día que se libera hay que soltar lo del vendedor y no lo demás. Quien
+    // lo haga tiene que verlo, no calcularlo.
+    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 2999, escrow_garantia: 590 }));
+    assert.deepEqual(r.map((l) => [l.concepto, l.importe, l.a]), [
+      ['Coche', 18000, 'vendedor alemán'],
+      ['Servicio PopCar', 2999, 'nosotros'],
+      ['Garantía', 590, 'proveedor'],
+    ]);
+  });
+
+  test('sin garantía, esa línea no sale', () => {
+    const r = repartoDelDeposito(exp({ escrow_coche: 18000, escrow_fee: 2999 }));
+    assert.equal(r.length, 2);
+    assert.ok(!r.some((l) => l.concepto === 'Garantía'));
+  });
+
+  test('un expediente viejo sin depósito no enseña nada', () => {
+    // Los de antes del cambio de modelo no tienen estas columnas: inventarles un
+    // reparto de ceros sería peor que no enseñar el bloque.
+    assert.deepEqual(repartoDelDeposito(exp({ deposit_quoted: 5000 })), []);
   });
 });

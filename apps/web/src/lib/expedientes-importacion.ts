@@ -52,6 +52,15 @@ export interface MetaImportacion {
   appointment_contact?: string | null;
   deposit_quoted?: string | number | null;
   deposit_paid_at?: string | null;
+  // El depósito, partido por destino: el coche es del vendedor alemán, el fee
+  // nuestro y la garantía de su proveedor.
+  escrow_coche?: number | string | null;
+  escrow_fee?: number | string | null;
+  escrow_garantia?: number | string | null;
+  escrow_estado?: string | null;
+  escrow_liberado_at?: string | null;
+  // Cuándo alguien nuestro vio el coche. Sin esto no se libera nada.
+  verificado_alemania_at?: string | null;
   delivery_estimate?: string | null;
   deposit_refunded_at?: string | null;
 }
@@ -75,18 +84,56 @@ export function siguienteEtapa(status: string): Etapa | null {
   return i >= 0 && i < ETAPAS.length - 1 ? ETAPAS[i + 1] : null;
 }
 
+/**
+ * Si su dinero está en la cuenta de depósito.
+ *
+ * Se sigue llamando así porque el nombre está por toda la pantalla y por la
+ * API, pero ya no es una fianza: es el coche entero y nuestro fee, retenidos.
+ */
 export function fianzaPagada(x: Expediente): boolean {
   return Boolean(x.meta?.deposit_paid_at);
 }
 
+/** Si alguien nuestro ya ha visto el coche en Alemania. */
+export function verificadoEnAlemania(x: Expediente): boolean {
+  return Boolean(x.meta?.verificado_alemania_at);
+}
+
+/** Si el dinero ya salió hacia el vendedor. */
+export function depositoLiberado(x: Expediente): boolean {
+  return Boolean(x.meta?.escrow_liberado_at);
+}
+
 /**
- * Sin fianza no se pide el coche.
+ * Si se puede soltar el dinero.
  *
- * Es la regla que sostiene todo lo demás: pedir un coche a Alemania nos
- * compromete con dinero, y lo que cubre ese riesgo es la fianza del cliente.
+ * Esto es solo para pintar el botón. **La decisión la toma el servidor**, que
+ * mira lo que hay guardado: aquí se mira lo que se ha cargado en la pantalla, y
+ * entre una cosa y la otra caben unos minutos y otra persona.
+ */
+export function puedeLiberar(x: Expediente): boolean {
+  return fianzaPagada(x) && verificadoEnAlemania(x) && !depositoLiberado(x);
+}
+
+/**
+ * Sin el depósito no se va a ver el coche.
+ *
+ * Es la regla que sostiene todo lo demás. Antes decía que sin fianza no se
+ * pedía el coche, porque lo comprábamos nosotros; ahora el coche lo compra el
+ * cliente y lo que hay que hacer con el dinero dentro es ir a verlo.
  */
 export function puedePedirlo(x: Expediente): boolean {
   return fianzaPagada(x);
+}
+
+/** Lo que hay depositado, partido por a quién le toca cada parte. */
+export function repartoDelDeposito(x: Expediente): { concepto: string; importe: number; a: string }[] {
+  const n = (v: unknown) => Number(v) || 0;
+  return [
+    { concepto: 'Coche', importe: n(x.meta?.escrow_coche), a: 'vendedor alemán' },
+    { concepto: 'Servicio PopCar', importe: n(x.meta?.escrow_fee), a: 'nosotros' },
+    { concepto: 'Garantía', importe: n(x.meta?.escrow_garantia), a: 'proveedor' },
+  ].filter((l) => l.importe > 0);
 }
 
 /**
