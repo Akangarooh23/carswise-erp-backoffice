@@ -24,6 +24,56 @@ que el sistema funcione; el 1 solo hace el trabajo más incómodo.
 
 ---
 
+## 0 · n8n lleva quince días parado — **lo primero de todo**
+
+**Ningún portal se ha raspado desde el 17 de agosto.** No es el marketplace de
+importación: son todos.
+
+| Portal | Último raspado | Ofertas |
+|---|---|---|
+| autoscout24 (ES) | 17 ago | 464.122 |
+| autocasion | 17 ago | 133.848 |
+| cochescom | 17 ago | 110.901 |
+| autohero | 17 ago | 6.423 |
+| ocasionplus | 17 ago | 14.242 |
+| wallapop | 17 ago | 4.722 |
+| **autoscout24 (DE)** | **16 de julio** | 25.498 |
+
+El de importación lleva **cuarenta y siete días**, un mes más que el resto.
+
+**Lo que eso ha provocado**, y que se ve en la web ahora mismo:
+
+- De las 25.498 ofertas alemanas, **36 siguen vivas**. El resto se vendieron en
+  Alemania mientras el catálogo seguía enseñándolas. Comprobadas ocho a mano:
+  ocho muertas, cuatro con un HTTP 410 del propio AutoScout24.
+- Los 771.130 anuncios españoles llevan dos semanas sin refrescar, así que los
+  precios de comparables —que son la base del ahorro que anunciamos y del
+  impuesto que estimamos— son de hace quince días.
+
+**Marcar las ofertas como activas en el ERP no las resucita.** El coche está
+vendido en el portal alemán; volver a activarlo solo lo devuelve a la web con
+su botón de pagar la fianza.
+
+### Qué hay que hacer
+
+1. Entrar en n8n y mirar **por qué se paró**: si los flujos están desactivados,
+   si están fallando, o si el servidor se cayó. El flujo de importación es
+   `AutoScout24 – Scraper DE (orquestador importación)`, con disparador diario
+   a las 03:00.
+2. Volver a lanzarlo y esperar a que termine.
+3. Avisarme: lanzo el verificador de vida y el recálculo del catálogo, y a
+   partir de ahí se publica sobre stock de verdad.
+
+### Y una cosa que no existe y debería
+
+**Nadie avisó.** Quince días sin raspar y cuarenta y siete sin importación, y no
+saltó nada. Hay un flujo `error-notify-email` para cuando un flujo falla, pero
+no hay nada que avise de lo contrario: de que un flujo **no se ha ejecutado**.
+Un aviso de «hace más de dos días que no entran ofertas de X» habría cazado
+esto el 19 de agosto.
+
+---
+
 ## 1 · El teléfono de quien vende — **lo primero**
 
 **Hoy no lo tiene ninguna oferta: 0 de 4.383.**
