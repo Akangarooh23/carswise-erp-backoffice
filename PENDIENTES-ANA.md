@@ -198,13 +198,25 @@ consulta nueva contra la base, y es lo que se busca: los 1.273 que se caen se
 estaban enseñando a un precio que no cubría traerlos. Que se reduzca es la señal
 de que ahora cubren.
 
-## 5c · Los productos de garantía — **la estructura ya está esperando**
+## 5c · Los precios de la garantía — **los que hay son inventados**
 
-La oferta ya sabe enseñar la garantía: la base va dentro del precio y las demás
-salen debajo como diferencia, con lo que cubre cada una. Las tablas están
-creadas y vacías, así que **hoy no se ve nada** — la ficha se ve como siempre
-hasta que haya productos cargados. Es a propósito: mientras no los haya, no hay
-nada que prometer.
+La ficha ya ofrece tres garantías mecánicas, y funcionan: se eligen, suman al
+total y viajan con la solicitud. Pero **sus precios no son de nadie**:
+
+| Producto | Precio de hoy |
+|---|---|
+| Garantía mecánica · 12 meses | 190 € |
+| Garantía mecánica · 24 meses | 290 € |
+| Garantía mecánica · 36 meses | 690 € |
+
+Se pusieron para poder ver la pantalla, cuando el modelo era otro y una de ellas
+iba incluida en el precio a coste cero. Ya no: **no le vendemos el coche, así que
+no le debemos ninguna garantía** — la pone una aseguradora y el cliente la añade
+si quiere.
+
+En cuanto tengas los precios reales se cambian con
+`node scripts/renombra-garantias.cjs`, en el repositorio de PopCar. Y hasta
+entonces, que nadie los enseñe a un cliente de verdad.
 
 Por cada garantía que ofrezcáis necesito:
 
