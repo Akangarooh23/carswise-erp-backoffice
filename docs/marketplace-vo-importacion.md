@@ -199,13 +199,23 @@ solo se sabe cuando el coche llega y se le presupuesta antes, y el **seguro**.
 
 ## Dónde se lo llevamos
 
-En la ficha del coche, debajo del desglose, hay una sección de **Transporte** con
-las dos puntas del viaje:
+En la ficha del coche, debajo del desglose, hay una sección de **El viaje,
+incluido en el precio**, con sus tres puntos:
 
 | | De dónde sale |
 |---|---|
 | **Desde** | La ciudad alemana donde está el coche, sacada de la propia oferta |
+| **Pasa por** | Zaragoza, donde se homologa y se prepara |
 | **Hasta** | La dirección del cliente, entre comillas, con calle y código postal |
+
+**La parada de Zaragoza se le dice, y se le dice para qué.** El coche no puede ir
+de Alemania a su casa de un tirón: tiene que pasar la ITV de homologación antes
+de matricularse. Sin esa línea, tres semanas de espera no se entienden. Zaragoza
+y no Madrid porque ahí está la ITV que homologa y porque queda a media distancia
+de Madrid, Barcelona, Valencia y Bilbao.
+
+**Los dos tramos van en el precio.** Que por dentro sean dos camiones distintos
+—o el mismo conductor, si se trae rodando— es cosa nuestra. Él compró un viaje.
 
 **Un precio para toda la península.** El transporte va dentro del precio y no
 cambia si vive en Cádiz o en Girona. Fuera de la península —Baleares, Canarias,
@@ -227,6 +237,31 @@ desde el ERP.
 
 También la puede poner o cambiar **desde su panel**, en la tarjeta de la
 solicitud, con las mismas reglas.
+
+## Lo que se contrata aparte
+
+Debajo del viaje hay un bloque, **«Si quieres, aparte»**, con dos cosas que se
+marcan una a una:
+
+| Servicio | Qué es |
+|---|---|
+| **Seguro** | Póliza para que pueda circular el mismo día que lo reciba |
+| **Reacondicionamiento** | Lo que necesite al llegar: neumáticos, frenos, chapa |
+
+Tres reglas que conviene tener claras porque explican lo que se ve:
+
+- **Ninguno tiene precio todavía.** Salen como «a consultar». El seguro no lo
+  tendrá hasta que haya correduría, y el reacondicionamiento **no lo puede tener
+  nunca antes de que el coche llegue a la campa y se mire**. Un cero diría que es
+  gratis; «a consultar» dice lo que es.
+- **Lo que no tiene precio no suma.** No se puede sumar lo que no se sabe.
+- **Ninguno entra en la fianza.** La fianza cubre el compromiso de comprar el
+  coche en Alemania. Cobrarle por adelantado un seguro que todavía no tiene sería
+  otra cosa.
+
+Lo que marque llega al expediente, para que quien le llame sepa de qué hablarle.
+
+**La entrega en su casa no está aquí**, y es a propósito: va dentro del precio.
 
 ## Cuándo le hemos dicho que lo tendrá
 

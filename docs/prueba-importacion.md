@@ -48,11 +48,14 @@ fecha futura y cualquier CVC.
 - [ ] Al cambiar de garantía cambian **los cinco números**, no solo el del
       desglose: el precio grande, la cuota del mes, la fianza y el ahorro.
 
-**Y el transporte: de dónde a dónde**
+**Y el viaje: de dónde, por dónde y hasta dónde**
 
-- [ ] Debajo del desglose hay una sección **Transporte**, con **Desde** y **Hasta**.
+- [ ] Debajo del desglose hay **El viaje, incluido en el precio**, con **Desde**,
+      **Pasa por** y **Hasta**.
 - [ ] En *Desde* sale la **ciudad alemana de este coche**, no «Alemania» a secas.
       Compárala con la que pone la oferta.
+- [ ] En *Pasa por* sale **Zaragoza**, y dice para qué: ahí se homologa y se
+      prepara. Sin eso, tres semanas de espera no se entienden.
 - [ ] En *Hasta* sale **tu dirección entre comillas**, con calle y código postal,
       cogida de tus datos de facturación sin que la escribas.
 - [ ] Pulsa **Cambiar dirección de envío**: se abren cuatro campos —calle, C. P.,
@@ -60,6 +63,19 @@ fecha futura y cualquier CVC.
 - [ ] Pon una provincia de **fuera de la península** (Illes Balears): sale el
       aviso de recargo, **y sin ninguna cifra**. Vuelve a poner Madrid.
 - [ ] Abre otro coche: la dirección que escribiste **sigue puesta**.
+
+**Y lo que se contrata aparte**
+
+- [ ] Debajo sale **«Si quieres, aparte»** con **dos** cosas: seguro y
+      reacondicionamiento. La entrega **no** está: va dentro del precio.
+- [ ] Las dos ponen **«a consultar»**, no un cero: un cero diría que es gratis.
+- [ ] Márcalas: **el precio de arriba no se mueve**, ni la fianza.
+- [ ] Debajo dice que **ninguno entra en la fianza**.
+
+**Y la ficha técnica**
+
+- [ ] En **Cilindrada** sale un número —1.600 cc, 1.400 cc— o un guion. **Nunca
+      «EV»** en un coche que no sea eléctrico. Es lo que ponía antes en todos.
 
 2. Pulsa **Solicitar importación** y rellena.
 
@@ -244,8 +260,8 @@ organizar*.
 - [ ] En **Desde** sale la **ciudad alemana de la oferta** —Fürth, Aachen, la que
       sea—, no el nombre del vendedor ni «Alemania». Es el mismo sitio que veías
       en la ficha de PopCar.
-- [ ] En **Hasta**, «Nuestras instalaciones». Este es solo el primer viaje: el
-      coche tiene que pasar por aquí para la ITV de homologación.
+- [ ] En **Hasta**, «Zaragoza». Este es solo el primer viaje: el coche tiene que
+      pasar por la ITV de homologación antes de poder matricularse.
 - [ ] Intenta pasarlo a **Contratado** sin transportista. **Te lo impide.**
 - [ ] Elige el transportista de la lista. Si no está, pulsa **+ Añadir uno
       nuevo** y escríbelo: se queda dado de alta.
@@ -272,8 +288,8 @@ Vuelve al pedido.
 - [ ] Rellena **Al llegar** —kilómetros, llaves, algún daño— y guarda.
 - [ ] Ahora sí pasa a **Recibido**.
 - [ ] Vuelve a **Transportes**: hay un **segundo tramo**, creado solo, de
-      «Nuestras instalaciones» a **tu dirección**, con la calle y el código
-      postal que pusiste en la ficha. Es el viaje de entrega.
+      **Zaragoza** a **tu dirección**, con la calle y el código postal que
+      pusiste en la ficha. Es el viaje de entrega, y va en el mismo precio.
 - [ ] El primero **sigue estando**: son dos tramos del mismo coche, no uno
       reescrito.
 - [ ] Marca **«No es lo que se compró»** sin escribir nada y guarda. **Te lo

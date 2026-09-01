@@ -341,7 +341,8 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
      */
     const tramoDeEntrega = tablas.transportes[1];
     assert.ok(tramoDeEntrega, 'al recibirlo se abre el tramo de entrega');
-    assert.equal(tramoDeEntrega.desde, 'Nuestras instalaciones');
+    assert.equal(tramoDeEntrega.desde, 'Zaragoza',
+      'el segundo viaje sale de donde se homologa, no de un sitio sin nombre');
     assert.match(String(tramoDeEntrega.hasta), /Mauricio Legendre/,
       'el destino sale de la dirección que puso el cliente, no de un texto fijo');
     assert.match(String(tramoDeEntrega.hasta), /28046 Madrid/);

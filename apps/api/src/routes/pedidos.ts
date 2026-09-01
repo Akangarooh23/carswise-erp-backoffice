@@ -185,6 +185,20 @@ async function pedidosConTransporteSalido(ids: string[]): Promise<Set<string>> {
 }
 
 /**
+ * Dónde para el coche entre los dos viajes.
+ *
+ * Zaragoza, y no Madrid, por dos razones: ahí está la ITV que homologa —los
+ * coches de fuera tienen que pasarla antes de matricularse— y queda a media
+ * distancia de Madrid, Barcelona, Valencia y Bilbao, que es donde vive la
+ * mayoría de los clientes que no están en el sur.
+ *
+ * Es una constante y no un texto suelto porque sale en los dos tramos: como
+ * destino del primero y como origen del segundo. Escrita dos veces, el día que
+ * cambie la campa se cambia una y se olvida la otra.
+ */
+const PARADA_DE_HOMOLOGACION = 'Zaragoza';
+
+/**
  * A dónde se lo llevamos: lo que dijo el cliente en su solicitud.
  *
  * La pone él desde su panel y la puede cambiar hasta que paga la fianza. Si no
@@ -601,7 +615,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
         matricula: String(fila.matricula ?? ""),
         desde: ciudadDeSalida || String(fila.proveedor ?? "") || "El proveedor",
-        hasta: "Nuestras instalaciones",
+        hasta: PARADA_DE_HOMOLOGACION,
         creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
       }).catch((e: Error) => console.error('[pedidos] transporte del pedido:', e.message));
     }
@@ -653,7 +667,7 @@ pedidosRouter.patch('/pedidos/:id', requireRole(['admin', 'operations', 'sales']
         pedidoId: req.params.id,
         vehiculoTitulo: String(fila.vehiculo_titulo ?? ""),
         matricula: String(fila.matricula ?? ""),
-        desde: "Nuestras instalaciones",
+        desde: PARADA_DE_HOMOLOGACION,
         hasta: aDondeVa,
         tramo: 2,
         creadoPor: req.actor?.name ?? req.actor?.sub ?? '',

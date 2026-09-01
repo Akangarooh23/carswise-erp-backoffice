@@ -152,18 +152,26 @@ demás los añades tú.
 
 ### Un coche de fuera hace dos viajes, no uno
 
-No puede ir de Alemania a casa del cliente de un tirón: tiene que pasar por aquí
-para la ITV de homologación y para matricularlo. Así que se abren dos tramos, y
-cada uno en su momento:
+No puede ir de Alemania a casa del cliente de un tirón: **para en Zaragoza**,
+que es donde pasa la ITV de homologación y donde se prepara antes de
+matricularse. Así que se abren dos tramos, y cada uno en su momento:
 
 | Tramo | Cuándo se abre | Desde | Hasta |
 |---|---|---|---|
-| **1 · Traerlo** | Al **confirmar** el pedido | La ciudad alemana de la oferta | Nuestras instalaciones |
-| **2 · Entregarlo** | Al marcarlo **Recibido** | Nuestras instalaciones | La dirección del cliente |
+| **1 · Traerlo** | Al **confirmar** el pedido | La ciudad alemana de la oferta | Zaragoza |
+| **2 · Entregarlo** | Al marcarlo **Recibido** | Zaragoza | La dirección del cliente |
 
-Ninguna de las dos direcciones se escribe a mano. La de salida sale de la propia
+**Zaragoza y no Madrid** por dos razones: ahí está la ITV que homologa, y queda a
+media distancia de Madrid, Barcelona, Valencia y Bilbao, que es donde vive la
+mayoría de los clientes que no están en el sur.
+
+Ninguna de las direcciones se escribe a mano. La de salida sale de la propia
 oferta —la ciudad del vendedor alemán— y la de llegada, de lo que el cliente
 dijo en su solicitud o cambió después en su panel, con calle y código postal.
+
+**Los dos viajes van dentro del precio** que se le cobró. Que por dentro sean dos
+camiones distintos —o el mismo conductor, si se trae rodando— es cosa nuestra: él
+compró un viaje.
 
 El segundo se abre **al recibirlo y no antes** porque hasta ese momento no se
 sabe si hay algo que arreglar. Si el cliente todavía no ha dicho dónde quiere

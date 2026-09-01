@@ -305,30 +305,60 @@ mirar cuáles se abren sin usuario: varios piden credenciales.
 
 ---
 
-## 9 · El segundo viaje del coche, ¿siempre? — **para confirmar**
+## 9 · El modelo de coste — **tres decisiones, y la primera es dinero puesto**
 
-Un coche de importación hace hoy **dos viajes**: de la ciudad alemana de la
-oferta a vuestras instalaciones, y de ahí a casa del cliente. El primero se abre
-al confirmar el pedido; el segundo, al marcarlo *Recibido*.
+El Excel de costes de importación trae dos números reales que corrigen lo que
+hay hoy en el código, y están medidos sobre las 1.568 ofertas publicadas:
 
-Son dos y no uno porque el coche llega con matrícula alemana: tiene que pasar
-por aquí para la **ITV de homologación**, para **matricularlo** y para mirarlo
-—kilómetros, llaves, daños—, que es lo que decide si hay que reacondicionarlo.
-Un camión que descargara en el portal del cliente dejaría allí un coche que no
-puede circular y que nadie ha visto.
+| Partida | En el código | Real | Dif. |
+|---|---|---|---|
+| Transporte | 1.500 € | **1.113 €** (750 Alemania→Zaragoza + 363 Zaragoza→destino) | −387 |
+| Papeleo | 600 € | **230 €** (ITV 122,20 + gestoría 83,60 + placas 24) | −370 |
 
-**Lo que hay que confirmar:** si el cliente va a **recogerlo él** en vuestras
-instalaciones el día de la entrega —y si eso va a ser lo habitual—, el segundo
-tramo se queda abierto sin usar y ensucia la pantalla de Transportes.
+**Le estamos cargando 772 € de más a cada coche**, y no son beneficio: son
+colchón dentro del coste, cobrado al cliente y no ganado por nadie. Con los
+números reales, el catálogo pasa de que **1.035 de 1.568** salgan a cuenta a que
+salgan **los 1.568**, con un ahorro medio de 1.261 € en vez de 885 €.
 
-Dos formas de resolverlo, y la que elijas se monta en un rato:
+**Decisión 1 — bajar las dos constantes.** Es coste puro y no admite discusión.
+Está sin hacer, esperando tu visto bueno.
 
-| Si… | Lo que se hace |
-|---|---|
-| Casi siempre se lo lleváis | Se queda como está: se abre solo |
-| Casi siempre lo recoge él | Solo se abre si ha pedido que se lo llevéis |
+**Decisión 2 — cómo se forma el precio.** Hoy es *coste + margen*, y en un
+negocio de arbitraje eso regala el arbitraje: el ahorro que damos oscila entre el
+4 % y el 33 % según el coche. Hay **371 coches donde regalamos más del 20 %**; con
+la regla del mayor de dos —`max(coste + margen, comparable × 0,85)`— serían
+**975 € más por coche**. La tabla de márgenes pasa a ser el suelo, no la
+respuesta.
 
-No corre prisa: hasta que no haya un coche real llegando, no molesta.
+**Decisión 3 — la base del impuesto, para tu gestoría.** Usamos el comparable
+español, que es la opción más alta: 480 € de media. Con la flota a 12,8 años de
+media, el coeficiente de antigüedad de Hacienda es 0,10–0,13, y por ese camino
+saldría bastante menos. Vamos por lo seguro a propósito, pero eso lo firma quien
+responde.
+
+---
+
+## 10 · Eurotax — **tres cosas que pedir en el contrato**
+
+El cruce ya está montado: cada oferta sale con clave `marca|modelo|año|
+combustible|kW` —585 claves distintas para 1.568 coches— y con un nivel de
+confianza, alta en 930 y media en 637. La cilindrada está sacada del titular
+alemán y escrita en 18.375 ofertas.
+
+Lo que hay que atar antes de depender de ellos:
+
+- **Qué ciclo devuelve el CO₂, NEDC o WLTP, y para qué años.** El impuesto se
+  calcula sobre WLTP, y WLTP suele salir un 20–25 % por encima: eso es una banda
+  entera del impuesto. Que lo pongan por escrito.
+- **Si la licencia permite enseñar el valor al cliente.** Estos contratos suelen
+  separar uso interno de publicación. El valor de mercado es lo que sostiene el
+  ahorro que anunciamos: si no se puede publicar, cambia la ficha.
+- **Qué pasa cuando no cruza.** Versiones del mercado alemán que nunca se
+  vendieron aquí va a haber. Hay que decidirlo antes: no publicar, o publicar
+  marcado como estimado.
+
+Y una red que ya tenemos: **el COC lleva el CO₂ exacto** y se compra siempre con
+él. Eurotax sirve para publicar; el COC, para cobrar.
 
 ---
 
