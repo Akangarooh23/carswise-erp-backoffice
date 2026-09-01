@@ -559,12 +559,19 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
       ).catch((e: Error) => console.error('[leads] aviso de entrega:', e.message));
     }
 
-    // Al hacer el pedido a Alemania, nace su pedido.
-    //
-    // El expediente sigue teniendo sus etapas, que son las que ve el cliente. El
-    // pedido es el registro interno: a quién se le encarga, cuánto cuesta y las
-    // fechas de verdad. Si ya existe uno de esta solicitud no se crea otro.
-    if (status === 'Verificado y pagado' && prev.status !== 'Verificado y pagado'
+    /**
+     * Al liberar el pago, nace su pedido.
+     *
+     * El expediente sigue teniendo sus etapas, que son las que ve el cliente. El
+     * pedido es el registro interno: a quién se le encarga, cuánto cuesta y las
+     * fechas de verdad. Si ya existe uno de esta solicitud no se crea otro.
+     *
+     * Se mira `finalStatus`, que es **lo que ha quedado escrito**, y no el que
+     * venía en la petición. Liberar el pago pone la etapa desde el servidor, sin
+     * que nadie mande un `status`: mirando el de la petición se liberaba el
+     * dinero y no nacía ningún pedido.
+     */
+    if (finalStatus === 'Verificado y pagado' && prev.status !== 'Verificado y pagado'
         && updatedLead.lead_type === 'import') {
       creaPedidoDeImportacion({
         leadId: req.params.id,

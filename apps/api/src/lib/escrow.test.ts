@@ -127,3 +127,30 @@ describe('el portero está puesto en la ruta', () => {
       'se estaría soltando el dinero después de haber contestado que no');
   });
 });
+
+/**
+ * Y que liberar el pago no se quede a medias.
+ *
+ * El pedido nace al pasar el expediente a «Verificado y pagado». Esa etapa la
+ * pone el propio servidor cuando se libera el dinero, sin que nadie mande un
+ * `status` en la petición: si la condición mirara el de la petición, se
+ * liberaría el dinero y no nacería ningún pedido.
+ */
+describe('liberar el pago abre el pedido', () => {
+  const RUTA = new URL('../routes/leads.ts', import.meta.url);
+  const FUENTE = readFileSync(RUTA, 'utf8').replace(/\r\n/g, '\n');
+
+  test('el pedido se crea mirando lo que quedó escrito', () => {
+    assert.match(FUENTE, /finalStatus === 'Verificado y pagado'/);
+  });
+
+  test('y no lo que venía en la petición', () => {
+    assert.ok(!FUENTE.includes("if (status === 'Verificado y pagado'"),
+      'con el status de la petición, liberar el pago no abriría el pedido');
+  });
+
+  test('la liberación sí pone esa etapa', () => {
+    const bloque = FUENTE.slice(FUENTE.indexOf('if (libera_deposito)'), FUENTE.indexOf('if (!sets.length)'));
+    assert.match(bloque, /status = 'Verificado y pagado'/);
+  });
+});
