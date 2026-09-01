@@ -84,3 +84,33 @@ export function transicionValida(desde: string, hasta: string): boolean {
   if (!(ESTADOS_DEPOSITO as readonly string[]).includes(hasta)) return false;
   return (TRANSICIONES[d] as readonly string[]).includes(hasta);
 }
+
+/**
+ * Lo que hay que liquidar cuando se sabe el impuesto de verdad.
+ *
+ * El cliente pagó una **provisión**: una estimación, porque hoy no tenemos el
+ * CO₂ de ningún coche. Al matricular se sabe el importe real, y la diferencia
+ * es suya en los dos sentidos.
+ *
+ * **El fee de PopCar no entra en esta cuenta y no puede entrar.** Si entrara,
+ * un coche de más de 160 g/km —que paga el doble del tramo que estimamos— se
+ * comería lo que ganamos por traerlo.
+ *
+ * El importe real no se teclea aquí: sale del trámite «Impuesto de
+ * matriculación», donde la gestoría ya escribe lo que costó. Un dato en dos
+ * sitios acaba diciendo dos cosas.
+ */
+export function liquidacionDelImpuesto(datos: {
+  provision?: number | string | null;
+  real?: number | string | null;
+}): { provision: number; real: number; diferencia: number; quien: "cobrar" | "devolver" | "cuadra" } {
+  const puesto = Math.round(Number(datos.provision) || 0);
+  const cierto = Math.round(Number(datos.real) || 0);
+  const diferencia = cierto - puesto;
+  return {
+    provision: puesto,
+    real: cierto,
+    diferencia,
+    quien: diferencia > 0 ? 'cobrar' : diferencia < 0 ? 'devolver' : 'cuadra',
+  };
+}

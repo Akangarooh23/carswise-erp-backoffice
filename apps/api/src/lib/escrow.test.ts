@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import {
   ESTADOS_DEPOSITO, TRANSICIONES,
-  sePuedeLiberar, PORQUE_NO_SE_LIBERA, transicionValida,
+  sePuedeLiberar, PORQUE_NO_SE_LIBERA, transicionValida, liquidacionDelImpuesto,
 } from './escrow.js';
 
 describe('liberar el dinero', () => {
@@ -152,5 +152,68 @@ describe('liberar el pago abre el pedido', () => {
   test('la liberación sí pone esa etapa', () => {
     const bloque = FUENTE.slice(FUENTE.indexOf('if (libera_deposito)'), FUENTE.indexOf('if (!sets.length)'));
     assert.match(bloque, /status = 'Verificado y pagado'/);
+  });
+});
+
+/**
+ * Liquidar el impuesto cuando se sabe lo que costó.
+ *
+ * El cliente pagó una provisión: hoy no tenemos el CO₂ de ningún coche, así que
+ * el impuesto se estima. Al matricular se sabe el real, y la diferencia es suya
+ * en los dos sentidos.
+ *
+ * Lo que se vigila aquí es que el fee de PopCar no entre nunca en esa cuenta. Un
+ * coche de más de 160 g/km paga el doble del tramo que estimamos: si el fee
+ * entrara, ese coche se comería lo que ganamos por traerlo.
+ */
+describe('liquidar el impuesto', () => {
+  test('si sale más caro, se le cobra la diferencia', () => {
+    const l = liquidacionDelImpuesto({ provision: 1420, real: 2100 });
+    assert.equal(l.diferencia, 680);
+    assert.equal(l.quien, 'cobrar');
+  });
+
+  test('si sale más barato, se le devuelve', () => {
+    // Lo normal, porque la estimación se equivoca hacia arriba a propósito.
+    const l = liquidacionDelImpuesto({ provision: 1420, real: 900 });
+    assert.equal(l.diferencia, -520);
+    assert.equal(l.quien, 'devolver');
+  });
+
+  test('y si cuadra, no se mueve nada', () => {
+    assert.equal(liquidacionDelImpuesto({ provision: 1420, real: 1420 }).quien, 'cuadra');
+  });
+
+  test('la resta es solo del impuesto: el fee no entra', () => {
+    const l = liquidacionDelImpuesto({ provision: 1420, real: 2100 });
+    assert.equal(l.diferencia, 2100 - 1420, 'hay algo más metido en la cuenta');
+  });
+
+  test('con datos que faltan no inventa una diferencia', () => {
+    assert.equal(liquidacionDelImpuesto({}).quien, 'cuadra');
+    assert.equal(liquidacionDelImpuesto({ provision: null, real: null }).diferencia, 0);
+  });
+});
+
+describe('no se entrega con el impuesto sin liquidar', () => {
+  const RUTA = new URL('../routes/leads.ts', import.meta.url);
+  const FUENTE = readFileSync(RUTA, 'utf8').replace(/\r\n/g, '\n');
+
+  test('la puerta está antes de cerrar la entrega', () => {
+    // Si se entrega sin cobrar la diferencia, ese dinero no se recupera: el
+    // cliente ya tiene su coche.
+    assert.match(FUENTE, /falta_liquidar_impuesto/);
+  });
+
+  test('y el importe real sale del trámite, no de un campo aparte', () => {
+    // Un dato en dos sitios acaba diciendo dos cosas.
+    assert.match(FUENTE, /t\.tipo = 'Impuesto de matriculación'/);
+  });
+
+  test('solo estorba cuando ya se sabe el importe real', () => {
+    // Mientras la gestoría no lo haya escrito, no hay nada que liquidar y esto
+    // no puede bloquear una entrega.
+    const bloque = FUENTE.slice(FUENTE.indexOf('const liq = await query'), FUENTE.indexOf('falta_liquidar_impuesto'));
+    assert.match(bloque, /f\.real != null/);
   });
 });

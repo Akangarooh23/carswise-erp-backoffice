@@ -15,7 +15,7 @@ export const leadsRouter = Router();
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
-import { sePuedeLiberar, PORQUE_NO_SE_LIBERA } from '../lib/escrow.js';
+import { sePuedeLiberar, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
 
 /** El panel del cliente, a donde apuntan casi todos los correos. */
 const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
@@ -257,7 +257,24 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'deposit_quoted',        deposit_quoted,
                   'deposit_paid_at',       deposit_paid_at,
                   'delivery_estimate',     TO_CHAR(delivery_estimate, 'YYYY-MM-DD'),
-                  'deposit_refunded_at',   deposit_refunded_at
+                  'deposit_refunded_at',   deposit_refunded_at,
+                  -- El depósito, partido. El impuesto va a cuenta y se liquida.
+                  'escrow_coche',          escrow_coche,
+                  'escrow_fee',            escrow_fee,
+                  'escrow_garantia',       escrow_garantia,
+                  'escrow_impuesto',       escrow_impuesto,
+                  'escrow_estado',         escrow_estado,
+                  'escrow_liberado_at',    escrow_liberado_at,
+                  'verificado_alemania_at', verificado_alemania_at,
+                  'liquidacion_at',        liquidacion_at,
+                  -- Lo que costó de verdad: sale del trámite, no de un campo
+                  -- aparte. Un dato en dos sitios acaba diciendo dos cosas.
+                  'impuesto_real', (
+                    SELECT t.coste FROM erp_tramites t
+                     WHERE t.lead_id = moveadvisor_market_leads.id
+                       AND t.tipo = 'Impuesto de matriculación'
+                     ORDER BY t.created_at DESC LIMIT 1
+                  )
                 ) AS meta
          FROM moveadvisor_market_leads
          ${where}
@@ -382,6 +399,8 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     deposit_paid, delivery_estimate,
     // Y los dos pasos que mueven su dinero: haber visto el coche, y soltarlo.
     verificado_alemania, libera_deposito,
+    // Y el ajuste del impuesto, cuando ya se sabe lo que costó de verdad.
+    liquidacion_hecha,
   } = req.body ?? {};
   // Los estados de una importación son los pasos de su expediente, no los de
   // una gestión cualquiera: el coche está en Alemania y tarda semanas en
@@ -448,6 +467,19 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
    */
   if (verificado_alemania !== undefined) {
     sets.push(`verificado_alemania_at = ${verificado_alemania ? "NOW()" : "NULL"}`);
+  }
+  /**
+   * Que el ajuste del impuesto ya se ha hecho.
+   *
+   * El botón **no mueve dinero**: cobrar o devolver la diferencia se hace por el
+   * mismo sitio que el depósito, y hasta que haya escrow eso es una
+   * transferencia a mano. Esto deja constancia de que se hizo, con su fecha.
+   *
+   * Se puede quitar: si se marcó por error, hay una diferencia sin cobrar o sin
+   * devolver detrás de esa casilla.
+   */
+  if (liquidacion_hecha !== undefined) {
+    sets.push(`liquidacion_at = ${liquidacion_hecha ? "NOW()" : "NULL"}`);
   }
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
@@ -902,6 +934,37 @@ leadsRouter.patch('/leads/:id/entrega', requireRole(['admin', 'operations', 'sal
 
     // Cerrarla es el acto: hacen falta los kilómetros y la firma.
     if (cambios.cerrar) {
+      /**
+       * Y que el impuesto esté liquidado.
+       *
+       * Si salió más caro que la provisión y se entrega sin cobrar la
+       * diferencia, ese dinero no se recupera: el cliente ya tiene su coche y la
+       * conversación es mucho más difícil. Y si hay que devolvérsela, dejarlo
+       * para después es no hacerlo.
+       *
+       * Solo aplica cuando ya se sabe el importe real. Mientras la gestoría no
+       * lo haya escrito en su trámite no hay nada que liquidar y esto no estorba.
+       */
+      const liq = await query<{ provision: string | null; real: string | null; hecha: string | null }>(
+        `SELECT l.escrow_impuesto AS provision, l.liquidacion_at AS hecha,
+                (SELECT t.coste FROM erp_tramites t
+                  WHERE t.lead_id = l.id AND t.tipo = 'Impuesto de matriculación'
+                  ORDER BY t.created_at DESC LIMIT 1) AS real
+           FROM moveadvisor_market_leads l WHERE l.id = $1`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] as { provision: string | null; real: string | null; hecha: string | null }[] }));
+      const f = liq.rows[0];
+      if (f && f.real != null && !f.hecha) {
+        const cuenta = liquidacionDelImpuesto({ provision: f.provision, real: f.real });
+        const que = cuenta.quien === 'cobrar' ? `Hay que cobrarle ${Math.abs(cuenta.diferencia)} €`
+          : cuenta.quien === 'devolver' ? `Hay que devolverle ${Math.abs(cuenta.diferencia)} €`
+          : 'Cuadra, pero hay que darlo por liquidado';
+        res.status(409).json({
+          ok: false, error: 'falta_liquidar_impuesto',
+          detail: `El impuesto de matriculación está sin liquidar. ${que}.`,
+        });
+        return;
+      }
       if (!puedeCerrarseLaEntrega(nueva)) {
         res.status(409).json({
           ok: false, error: 'falta_para_cerrar',

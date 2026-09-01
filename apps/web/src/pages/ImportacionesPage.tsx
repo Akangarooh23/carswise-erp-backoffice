@@ -6,6 +6,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
+  liquidacionDelImpuesto,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
 } from '../lib/expedientes-importacion.js';
@@ -534,6 +535,55 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
             )}
           </div>
         </div>
+
+        {/* ── La liquidación del impuesto ──
+
+            El cliente pagó una provisión, porque el impuesto se estima. Al
+            matricular, la gestoría escribe el coste real en su trámite y la
+            diferencia es suya, en los dos sentidos.
+
+            No sale hasta que hay coste en el trámite: un bloque diciendo
+            «pendiente» durante seis semanas es ruido. Y el botón no mueve
+            dinero, deja constancia: cobrar o devolver se hace por el mismo
+            sitio que el depósito. */}
+        {(() => {
+          const liq = liquidacionDelImpuesto(x);
+          if (!liq) return null;
+          const hayQueMover = liq.quien !== 'cuadra';
+          return (
+            <div className={`rounded-xl border p-3 mb-4 ${liq.hecha ? 'border-brand-200 bg-brand-50/50' : hayQueMover ? 'border-amber-300 bg-amber-50/70' : 'border-brand-200 bg-brand-50/50'}`}>
+              <div className="text-xs font-semibold text-brand-600 mb-2">Liquidación del impuesto</div>
+              <div className="space-y-0.5 text-[12px]">
+                <div className="flex justify-between gap-3 text-brand-500">
+                  <span>Puso a cuenta</span>
+                  <span className="tabular-nums">{eur(liq.provision)}</span>
+                </div>
+                <div className="flex justify-between gap-3 text-brand-500">
+                  <span>Ha salido</span>
+                  <span className="tabular-nums">{eur(liq.real)}</span>
+                </div>
+                <div className="flex justify-between gap-3 pt-1.5 mt-1.5 border-t border-brand-200/70 font-bold text-brand-600">
+                  <span>
+                    {liq.quien === 'cobrar' ? 'Hay que cobrarle'
+                      : liq.quien === 'devolver' ? 'Hay que devolverle'
+                      : 'Cuadra: no hay que mover nada'}
+                  </span>
+                  {hayQueMover && <span className="tabular-nums">{eur(Math.abs(liq.diferencia))}</span>}
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-brand-200/70">
+                {liq.hecha ? (
+                  <span className="text-[13px] font-bold text-emerald-700">✓ Liquidado</span>
+                ) : (
+                  <button onClick={() => onCambiar({ liquidacion_hecha: true })} disabled={guardando}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
+                    {hayQueMover ? 'Ya lo he liquidado' : 'Dar por liquidado'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Ver el coche, y soltar el dinero ──
 

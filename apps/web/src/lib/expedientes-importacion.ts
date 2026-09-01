@@ -57,6 +57,11 @@ export interface MetaImportacion {
   escrow_coche?: number | string | null;
   escrow_fee?: number | string | null;
   escrow_garantia?: number | string | null;
+  // El impuesto va a cuenta: se cobró estimado y se liquida al matricular.
+  escrow_impuesto?: number | string | null;
+  // Lo que costó de verdad, del trámite de la gestoría.
+  impuesto_real?: number | string | null;
+  liquidacion_at?: string | null;
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
   // Cuándo alguien nuestro vio el coche. Sin esto no se libera nada.
@@ -132,8 +137,53 @@ export function repartoDelDeposito(x: Expediente): { concepto: string; importe: 
   return [
     { concepto: 'Coche', importe: n(x.meta?.escrow_coche), a: 'vendedor alemán' },
     { concepto: 'Servicio PopCar', importe: n(x.meta?.escrow_fee), a: 'nosotros' },
+    { concepto: 'Impuesto (a cuenta)', importe: n(x.meta?.escrow_impuesto), a: 'Hacienda' },
     { concepto: 'Garantía', importe: n(x.meta?.escrow_garantia), a: 'proveedor' },
   ].filter((l) => l.importe > 0);
+}
+
+/**
+ * La liquidación del impuesto, cuando ya se sabe cuánto ha salido.
+ *
+ * El cliente pagó una provisión, porque el impuesto se estima: hoy no tenemos
+ * el CO₂ de ningún coche. Al matricular, la gestoría escribe el coste real en
+ * su trámite, y la diferencia es del cliente en los dos sentidos.
+ *
+ * **Devuelve null mientras no haya coste en el trámite.** Un bloque que dice
+ * «pendiente» durante seis semanas es ruido, y el importe real no depende de
+ * nosotros: llega cuando llega.
+ */
+export function liquidacionDelImpuesto(x: Expediente): {
+  provision: number; real: number; diferencia: number;
+  quien: 'cobrar' | 'devolver' | 'cuadra'; hecha: boolean;
+} | null {
+  const real = x.meta?.impuesto_real;
+  if (real == null || real === "") return null;
+  const provision = Math.round(Number(x.meta?.escrow_impuesto) || 0);
+  const cierto = Math.round(Number(real) || 0);
+  const diferencia = cierto - provision;
+  return {
+    provision,
+    real: cierto,
+    diferencia,
+    quien: diferencia > 0 ? 'cobrar' : diferencia < 0 ? 'devolver' : 'cuadra',
+    hecha: Boolean(x.meta?.liquidacion_at),
+  };
+}
+
+/**
+ * Si se puede dar el coche por entregado.
+ *
+ * No con una liquidación pendiente. Si el impuesto salió más caro y el coche
+ * se entrega sin cobrar la diferencia, ese dinero no se recupera: el cliente ya
+ * tiene su coche y la conversación es mucho más difícil.
+ *
+ * Cuando cuadra o hay que devolverle, tampoco: devolverle lo suyo antes de
+ * entregar es lo mínimo, y si se deja para después no se hace.
+ */
+export function faltaLiquidarElImpuesto(x: Expediente): boolean {
+  const l = liquidacionDelImpuesto(x);
+  return l != null && !l.hecha;
 }
 
 /**

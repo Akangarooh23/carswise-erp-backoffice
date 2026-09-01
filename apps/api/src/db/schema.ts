@@ -116,6 +116,9 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS escrow_coche           NUMERIC(10,2),
       ADD COLUMN IF NOT EXISTS escrow_fee             NUMERIC(10,2),
       ADD COLUMN IF NOT EXISTS escrow_garantia        NUMERIC(10,2),
+      -- El impuesto va a cuenta: se cobra estimado y se liquida al matricular.
+      ADD COLUMN IF NOT EXISTS escrow_impuesto        NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS liquidacion_at         TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_estado          VARCHAR(20) NOT NULL DEFAULT 'pendiente',
       ADD COLUMN IF NOT EXISTS escrow_pagado_at       TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_liberado_at     TIMESTAMPTZ,
