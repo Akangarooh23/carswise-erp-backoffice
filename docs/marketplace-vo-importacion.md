@@ -254,6 +254,7 @@ este negocio y lo que la ficha deja claro:
 | **Precio del coche** | Lo que cuesta en Alemania, sin nada encima | El vendedor alemán |
 | **Servicio PopCar** | 3.000 €, siempre el mismo, **con el IVA dentro** | Nosotros |
 | **Impuesto de matriculación** | Una estimación | Hacienda |
+| **Garantía mecánica** | La de por defecto; se puede quitar | La aseguradora |
 
 **El IVA va dentro de los 3.000.** A un particular los precios se le dicen con el
 impuesto dentro, así que eso es lo que paga. Por dentro son **2.479,34 de base y
@@ -265,7 +266,7 @@ no existen.
 de Hacienda: los dos pasan por nuestra cuenta y ninguno es ingreso nuestro, así
 que van en un bloque aparte, **fuera de la base de IVA**, con su explicación y con
 el total de lo que transfirió. Sin ese bloque, la factura diría 3.000 € al lado de
-una transferencia de 21.310 y esa diferencia no tendría explicación en ningún
+una transferencia de 21.500 y esa diferencia no tendría explicación en ningún
 papel.
 
 El fee va suelto y con su nombre, al revés que el margen de antes, que iba
@@ -305,9 +306,23 @@ Es el número que más va a mejorar cuando entre Eurotax.
 alemán— así que no se la debemos. Lo que ofrecemos es una garantía mecánica de
 un tercero, elegida para el tipo de coche que se lleva.
 
-Ninguna va incluida en el precio. Se empieza **sin ninguna**, que es lo que pasa
-si el cliente no hace nada, y cada producto lleva **su precio entero** —no una
-diferencia sobre otra— porque ya no hay ninguna base de la que restar.
+Ninguna es obligatoria, pero **el precio publicado lleva una puesta**: la más
+barata que se le pueda dar a ese coche. En la ficha se puede quitar, y entonces
+el precio **baja**.
+
+Eso no es un truco: es el mismo dinero leído del derecho. Un coche que se anuncia
+a 21.310 € y luego ofrece una garantía por 190 € parece que sube de precio al
+final. Anunciado a 21.500 € con la garantía dentro, quitarla es una rebaja. Y lo
+que ve en la lista es lo que le vamos a pedir, que era el problema de fondo.
+
+Por eso los botones de la ficha dicen **lo que le mueve al total** y no lo que
+vale cada producto: «va en el precio» la que ya está puesta, «+300 €» una más
+larga, «−190 €» quitarla. El desglose de debajo sí pone su importe entero, como
+las demás partidas.
+
+Y sube el precio **coche a coche**: a uno al que no se le pueda dar ninguna no se
+le suma nada. Por eso la lista se ordena y la horquilla corta con esa cuenta
+dentro de la consulta, y no con una cifra fija.
 
 ### Lo que de verdad se vende aquí
 
@@ -329,15 +344,22 @@ Es el argumento más fuerte que hay y conviene usarlo al llamar.
   opción que luego se cae es peor que no enseñarla, porque el cliente ya contó
   con ella.
 - **El precio lo calcula el servidor.** El navegador dice cuál quiere, no cuánto
-  cuesta. Si llega una que no le corresponde, sale a cero en vez de aceptarla.
+  cuesta. Si llega una que no le corresponde —o no llega ninguna— se cobra la de
+  por defecto, no cero: cero sería cobrarle menos de lo que se le enseñó y
+  entregarle un coche sin la garantía que estaba viendo. Para no llevar ninguna
+  hay que decirlo, y eso es lo que hace el botón «Sin garantía».
 
 Cada garantía **cuelga de un proveedor** de Proveedores, del tipo *Garantías*. No
 se puede guardar una apuntando a alguien que no esté dado de alta: el día que
 haya que reclamarla, lo primero que se busca es a quién.
 
-> **Pendiente:** los tres productos que hay cargados tienen precios del modelo
-> anterior, cuando había una base incluida a coste cero. Hacen falta los precios
-> reales de la aseguradora.
+> **Pendiente:** los tres productos que hay cargados tienen precios inventados
+> para poder ver la pantalla. Hacen falta los de la aseguradora.
+>
+> Y una cosa más, ahora que la de por defecto entra en el precio: **la de doce
+> meses no tiene topes**, así que hoy se le ofrece a cualquier coche, tenga la
+> edad y los kilómetros que tenga. Las de 24 y 36 sí los tienen. Cuando lleguen
+> los productos de verdad hay que ponerle los suyos.
 
 ### Y en la entrega
 

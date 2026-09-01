@@ -39,8 +39,9 @@ fecha futura y cualquier CVC.
 
 **Y el desglose, que es de lo que va este negocio**
 
-- [ ] Son **tres líneas** y cada una dice a quién va: el coche **al vendedor en
-      Alemania**, el servicio **a nosotros**, el impuesto **a Hacienda**.
+- [ ] Son **cuatro líneas** y cada una dice a quién va: el coche **al vendedor en
+      Alemania**, el servicio **a nosotros**, el impuesto **a Hacienda** y la
+      garantía **a la aseguradora**. Sin garantía que ofrecer serían tres.
 - [ ] El **precio del coche** es el del anuncio alemán, **sin nada encima**.
 - [ ] El **Servicio PopCar** son 3.000 €, y son los mismos en un coche de 13.000
       que en uno de 40.000.
@@ -49,14 +50,24 @@ fecha futura y cualquier CVC.
 
 **Y la garantía**
 
-- [ ] La primera opción es **Sin garantía**, y sale marcada: no hay ninguna
-      incluida.
-- [ ] Cada una lleva **su precio entero** —«+590 €»—, no una diferencia.
+- [ ] Sale marcada **la más barata que se le pueda dar**, no «Sin garantía». El
+      precio de la lista ya la lleva dentro.
+- [ ] Esa dice **«va en el precio»**. No dice «sin coste»: cuesta, lo que pasa es
+      que ya está contada.
+- [ ] Las otras dicen **lo que le mueven al total** —«+300 €»—, y **«Sin
+      garantía»** dice **«−190 €»**. Quitarla **baja** el precio de arriba.
 - [ ] Dice que **la pone una aseguradora, no nosotros**, y que **si hay que
       reclamar, reclamamos nosotros**. Ese es el argumento, no la póliza.
-- [ ] Pincha una: **cambia el total** de arriba.
+- [ ] En el desglose de debajo, la línea de la garantía lleva **su importe**, como
+      las otras partidas. Y sale **una sola vez**, la que hayas elegido.
+- [ ] Pincha «Sin garantía»: baja el precio grande, baja el depósito y **el
+      desglose se queda en tres líneas**.
 - [ ] Abre un coche de **más de ocho años** y mira que la premium **no sale**. No
       es un fallo: es su tope de antigüedad.
+
+> El precio que ves en la **lista** es el mismo que el de la ficha, con la
+> garantía de por defecto dentro. Ordena por «precio más bajo primero» y filtra
+> por horquilla: tienen que cuadrar con lo que se ve en cada tarjeta.
 
 **Y el viaje: de dónde, por dónde y hasta dónde**
 
@@ -99,8 +110,9 @@ fecha futura y cualquier CVC.
       enseña Stripe, contra la sesión de ese cliente.
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
 - [ ] Te llega un correo con la cifra y con cuándo se libera.
-- [ ] Lo que paga es **el coche, 3.000 € de servicio y el impuesto**, más la
-      garantía si elegiste una. Las tres líneas del desglose **suman** esa cifra.
+- [ ] Lo que paga es **el coche, 3.000 € de servicio, el impuesto y la garantía**.
+      Las líneas del desglose **suman** esa cifra.
+- [ ] Si en la ficha quitaste la garantía, aquí tiene que faltar: **190 € menos**.
 - [ ] Debajo dice que **el impuesto va a cuenta** y que se ajusta al matricular:
       si sale menos se devuelve, si sale más se cobra la diferencia.
 - [ ] En **Solicitudes** aparece una tarjeta, en la pestaña *Pendiente*.

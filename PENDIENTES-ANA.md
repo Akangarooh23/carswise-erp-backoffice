@@ -209,14 +209,21 @@ total y viajan con la solicitud. Pero **sus precios no son de nadie**:
 | Garantía mecánica · 24 meses | 290 € |
 | Garantía mecánica · 36 meses | 690 € |
 
-Se pusieron para poder ver la pantalla, cuando el modelo era otro y una de ellas
-iba incluida en el precio a coste cero. Ya no: **no le vendemos el coche, así que
-no le debemos ninguna garantía** — la pone una aseguradora y el cliente la añade
-si quiere.
+Se pusieron para poder ver la pantalla. **No le vendemos el coche, así que no le
+debemos ninguna garantía**: la pone una aseguradora. Lo que sí hacemos es
+**publicar el precio con una puesta** —la más barata que se le pueda dar a ese
+coche— y dejar que la quite, y entonces el precio baja. Al revés, anunciar sin
+garantía y ofrecerla después, es el mismo dinero leído como una subida al final.
 
 En cuanto tengas los precios reales se cambian con
 `node scripts/renombra-garantias.cjs`, en el repositorio de PopCar. Y hasta
 entonces, que nadie los enseñe a un cliente de verdad.
+
+> **Y esto tiene ahora más filo que antes.** La de doce meses está cargada **sin
+> topes** de antigüedad ni de kilómetros, así que hoy se le pone a cualquier
+> coche y le sube el precio 190 €. Mientras estaba fuera del precio daba igual;
+> ahora entra en el precio publicado y en la decisión de a quién se publica.
+> Cuando lleguen los productos de verdad hay que ponerle sus topes.
 
 Por cada garantía que ofrezcáis necesito:
 
@@ -229,7 +236,10 @@ Por cada garantía que ofrezcáis necesito:
 | Quién la da | Vosotros o una aseguradora. Si es una aseguradora, **hay que darla de alta en Proveedores** con el tipo *Garantías*: el ERP no deja colgar un producto de alguien que no existe |
 | Antigüedad y km máximos del coche | Con 12,8 años de media en el catálogo, muchas no se van a poder ofrecer. Enseñar una que luego se cae es peor que no enseñarla |
 | Qué cubre **y qué no** | Poder decir lo que no cubre evita la discusión del día que algo se rompe |
-| Cuál es la base | La que va incluida en el precio |
+
+La que va de por defecto no hay que elegirla: es **la más barata que se le pueda
+dar a cada coche**, y sale sola del catálogo. Si un día se retira la de doce
+meses, la de veinticuatro pasa a serlo sin tocar nada.
 
 ### Y una pregunta que hay que contestar antes
 
@@ -239,16 +249,21 @@ Vendiendo como empresa a un particular, la garantía legal de conformidad no se
 puede quitar: el cliente no puede renunciar a ella ni queriendo. Lo que sí se
 puede mejorar o rechazar es una garantía comercial por encima de ese mínimo.
 
-Cada producto lleva una marca de **renunciable**, y la opción de «sin garantía»
-solo aparece si la base lo es. Si la base es el mínimo legal, esa opción no se
-enseña — ofrecer renunciar a algo irrenunciable es ofrecer lo que no se puede
-cumplir, y esto lo mira una inspección de consumo.
+Aquí la respuesta es más fácil que antes: **la garantía legal la debe el vendedor
+alemán**, no nosotros, y esa no se toca. Lo que ofrecemos es una comercial por
+encima, de un tercero, y por eso se puede quitar. El botón «Sin garantía» quita
+el producto de la aseguradora; no quita nada de lo que le debe el vendedor.
 
 ### Lo que arrastra
 
-La fianza es el 30 % del total. Si el cliente cambia de garantía, cambia el
-total y cambia la fianza — se calcula sobre lo que él acepta y se congela en su
-solicitud, igual que ya se congela el precio. Eso ya está montado.
+El precio publicado lleva la de por defecto dentro, así que **cambia el precio de
+la lista, el orden y la horquilla**, no solo la ficha. Y cambia a quién se
+publica: el listón del 15 % se mide sobre el precio con garantía, que es el que
+el cliente ve. Con los precios de hoy eso deja **4 coches publicables** en lugar
+de 5.
+
+Lo que el cliente elija se congela en su solicitud, igual que el precio, y es lo
+que se le cobra. Eso ya está montado.
 
 Lo que **no** está: una pantalla en el ERP para gestionarlos. Cuando me pases
 los productos los cargo yo, como hice con los transportistas y con Bernal; la
