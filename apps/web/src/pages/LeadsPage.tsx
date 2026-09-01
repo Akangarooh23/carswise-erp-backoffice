@@ -1257,45 +1257,51 @@ export default function LeadsPage() {
                   </a>
                   {selected.meta?.deposit_quoted != null && (
                     <div>
-                      <span className="text-blue-700 text-xs block font-semibold">Fianza que se le dijo</span>
+                      <span className="text-blue-700 text-xs block font-semibold">Depósito que se le dijo</span>
                       <span className="font-bold text-blue-800 text-lg">
                         {Number(selected.meta.deposit_quoted).toLocaleString('es-ES')} €
                       </span>
+                      {/* Ya no es una señal del 30 %. PopCar no le vende el coche
+                          —se lo vende el concesionario alemán— así que el dinero
+                          del coche tiene que estar entero antes de ir a verlo. */}
                       <span className="text-blue-700/80 text-xs block mt-0.5">
-                        El 30 % del precio con el coste de traerlo, al pedirlo. No se recalcula.
+                        El coche entero, nuestro servicio, el impuesto a cuenta y la
+                        garantía que eligió. Es lo que se le enseñó al pedirlo y no se
+                        recalcula.
                       </span>
                     </div>
                   )}
 
                   <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-blue-200/70">
-                    {/* Hasta que la fianza no está, no se compra nada en Alemania:
-                        es el paso que más cambia el expediente. */}
+                    {/* Hasta que el depósito no está, nadie va a Alemania a ver el
+                        coche: es el paso que más cambia el expediente. */}
                     {selected.meta?.deposit_paid_at ? (
                       <>
                         <span className="text-[13px] font-bold text-emerald-700">
-                          ✓ Fianza cobrada el {new Date(selected.meta.deposit_paid_at).toLocaleDateString('es-ES')}
+                          ✓ Depósito recibido el {new Date(selected.meta.deposit_paid_at).toLocaleDateString('es-ES')}
                         </span>
                         <button onClick={() => marcaFianza(false)}
                                 className="text-[11px] text-brand-400 underline underline-offset-2">
-                          no estaba cobrada
+                          no estaba recibido
                         </button>
-                        {/* Se devuelve si al final no se hace el pedido. Sale
-                            aquí, junto al cobro, porque es deshacerlo. */}
+                        {/* Se devuelve si el coche no es el que se anunció o si al
+                            final no se hace el pedido. Sale aquí, junto al cobro,
+                            porque es deshacerlo. */}
                         {selected.meta?.deposit_refunded_at ? (
                           <span className="text-[13px] font-bold text-brand-500">
-                            ↩ Devuelta el {new Date(selected.meta.deposit_refunded_at).toLocaleDateString('es-ES')}
+                            ↩ Devuelto el {new Date(selected.meta.deposit_refunded_at).toLocaleDateString('es-ES')}
                           </span>
                         ) : (
                           <button onClick={devuelveFianza} disabled={devolviendo}
                                   className="px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50">
-                            {devolviendo ? 'Devolviendo…' : 'Devolver la fianza'}
+                            {devolviendo ? 'Devolviendo…' : 'Devolver el depósito'}
                           </button>
                         )}
                       </>
                     ) : (
                       <button onClick={() => marcaFianza(true)}
                               className="px-3 py-1.5 text-xs font-bold text-white bg-blue-700 rounded-lg hover:bg-blue-800">
-                        Marcar fianza como cobrada
+                        Marcar depósito como recibido
                       </button>
                     )}
                   </div>
