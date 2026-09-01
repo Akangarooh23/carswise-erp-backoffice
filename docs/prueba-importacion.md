@@ -421,12 +421,12 @@ En el expediente de **Importaciones**, en «La entrega»:
       entrega el coche sin ajustar, ese dinero no se recupera.
 - [ ] Vuelve a marcarla como liquidada.
 - [ ] Pon los kilómetros de salida y pulsa **Firmado y entregado**.
-- [ ] Sale la **garantía**, con su fecha de fin.
-
-> **Ojo con la garantía de aquí.** Sigue poniendo doce meses por defecto, y eso
-> es del modelo anterior: ahora la garantía la da un tercero y solo si el
-> cliente la contrató. No rompe nada, pero el documento de entrega dirá una
-> garantía que no damos nosotros. Está pendiente de arreglar.
+- [ ] **La garantía dice de quién es.** Si no contrataste ninguna, pone que la
+      legal de dos años la debe el vendedor alemán —**no sale ninguna fecha de
+      fin nuestra**— y que si hay que reclamar lo hacemos nosotros.
+- [ ] Repite la prueba **contratando una garantía** en la ficha: entonces sale
+      con su nombre, sus meses y su fecha de fin, y sigue diciendo que
+      reclamamos nosotros.
 - [ ] Pasa el expediente a **Entregado**.
 - [ ] **Al cliente le llega un correo diciendo que ya es suyo.**
 

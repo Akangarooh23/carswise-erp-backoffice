@@ -326,6 +326,19 @@ haya que reclamarla, lo primero que se busca es a quién.
 > anterior, cuando había una base incluida a coste cero. Hacen falta los precios
 > reales de la aseguradora.
 
+### Y en la entrega
+
+El documento de entrega **no pone una garantía de PopCar**, porque no la damos.
+Pone lo que hay:
+
+| Si el cliente… | El documento dice |
+|---|---|
+| **No contrató garantía** | Que la legal de dos años la debe el vendedor alemán, y que si hay que reclamar lo hacemos nosotros. **Sin fecha de fin nuestra** |
+| **Sí contrató** | El nombre del producto, sus meses y su fecha de fin. Y que reclamamos nosotros |
+
+Esa última frase está en los dos casos a propósito: la póliza la puede vender
+cualquiera, **lo que le ahorra la discusión en alemán somos nosotros**.
+
 Lo que **tampoco** entra en el precio: el **reacondicionado**, que solo se sabe
 cuando el coche llega y se le presupuesta antes, y el **seguro**.
 ## Dónde se lo llevamos

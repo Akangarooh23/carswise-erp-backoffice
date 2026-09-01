@@ -27,6 +27,26 @@ export const QUE_SE_ENTREGA = [
   { clave: 'garantia', que: 'Documento de garantía' },
 ];
 
+/**
+ * Lo que se le entrega en una importación, que no es lo mismo.
+ *
+ * **No hay contrato de compraventa nuestro ni factura del coche**: el coche se
+ * lo vendió el concesionario alemán, y esos papeles son suyos. Lo que sí hay es
+ * la factura de nuestro servicio.
+ *
+ * Y el documento de garantía solo si contrató una: la pone una aseguradora, no
+ * nosotros. Pedirlo cuando no la contrató sería pedir un papel que no existe.
+ */
+export const QUE_SE_ENTREGA_IMPORTACION = [
+  { clave: 'permiso', que: 'Permiso de circulación' },
+  { clave: 'ficha_tecnica', que: 'Ficha técnica' },
+  { clave: 'llaves', que: 'Todas las llaves' },
+  { clave: 'libro', que: 'Libro de mantenimiento' },
+  { clave: 'coc', que: 'COC del fabricante' },
+  { clave: 'factura_alemana', que: 'Factura del vendedor alemán' },
+  { clave: 'factura', que: 'Factura de nuestro servicio' },
+];
+
 export interface Entrega {
   fecha?: string;
   km_salida?: number | null;
@@ -34,6 +54,10 @@ export interface Entrega {
   /** Qué se le ha dado, marcado uno a uno. */
   entregado?: Record<string, boolean>;
   garantia_meses?: number | null;
+  // Quién la da. En importación no somos nosotros: o la puso una aseguradora
+  // porque la contrató, o es la legal que le debe el vendedor alemán.
+  garantia_de?: 'popcar' | 'aseguradora' | 'vendedor_aleman' | null;
+  garantia_producto?: string | null;
   /** Hasta cuándo, calculado al entregar. */
   garantia_hasta?: string | null;
   firmado?: boolean;
@@ -102,4 +126,48 @@ export function diasDeGarantia(hasta?: string | null, ahora: Date = new Date()):
   const d = new Date(hasta);
   if (Number.isNaN(d.getTime())) return null;
   return Math.ceil((d.getTime() - ahora.getTime()) / 86_400_000);
+}
+
+/**
+ * La garantía que le corresponde a una importación al entregarla.
+ *
+ * **PopCar no da garantía en importación.** No le vendemos el coche: se lo vende
+ * el concesionario alemán, y es él quien le debe la garantía legal europea de
+ * dos años. Poner doce meses nuestros era del modelo anterior, y escribirlo en
+ * el documento de entrega sería prometer algo que no damos.
+ *
+ * Lo que sí damos, y es lo que de verdad se compra: **reclamamos nosotros**. Un
+ * particular que compra una vez en Alemania no tiene forma de presionar a un
+ * concesionario de otro país, en otro idioma y con otro derecho de consumo.
+ * Nosotros traemos coches todas las semanas y hablamos con esa gente todas las
+ * semanas. Eso no cabe en una fecha de fin, así que va escrito.
+ */
+export function garantiaDeUnaImportacion(contratada: {
+  nombre?: string | null;
+  meses?: number | null;
+} | null | undefined): {
+  de: 'aseguradora' | 'vendedor_aleman';
+  meses: number | null;
+  producto: string | null;
+  loQueDamos: string;
+} {
+  const meses = Number(contratada?.meses) || 0;
+  const nombre = String(contratada?.nombre ?? "").trim();
+  const RECLAMAMOS =
+    'Si hay que reclamar, lo hacemos nosotros: hablamos con el vendedor alemán ' +
+    'o con la aseguradora en tu nombre.';
+  if (!nombre || !meses) {
+    return {
+      de: 'vendedor_aleman',
+      meses: null,
+      producto: null,
+      loQueDamos: 'La garantía legal de dos años la debe el vendedor alemán. ' + RECLAMAMOS,
+    };
+  }
+  return {
+    de: 'aseguradora',
+    meses,
+    producto: nombre,
+    loQueDamos: `Garantía mecánica de ${nombre}, ${meses} meses. ` + RECLAMAMOS,
+  };
 }

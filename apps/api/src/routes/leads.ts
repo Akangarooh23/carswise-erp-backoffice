@@ -7,7 +7,7 @@ import { creaPedidoDeImportacion } from './pedidos.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   QUE_SE_ENTREGA, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
-  garantiaHasta, type Entrega,
+  garantiaHasta, garantiaDeUnaImportacion, type Entrega,
 } from '../lib/entrega.js';
 
 export const leadsRouter = Router();
@@ -16,6 +16,15 @@ import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } f
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { sePuedeLiberar, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
+
+/** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
+async function esDeImportacion(leadId: string): Promise<boolean> {
+  const r = await query<{ lead_type: string }>(
+    `SELECT lead_type FROM moveadvisor_market_leads WHERE id = $1`,
+    [leadId]
+  ).catch(() => ({ rows: [] as { lead_type: string }[] }));
+  return r.rows[0]?.lead_type === 'import';
+}
 
 /** El panel del cliente, a donde apuntan casi todos los correos. */
 const PANEL = () => `${MARCA.sitioUrl}/panel/solicitudes`;
@@ -974,10 +983,40 @@ leadsRouter.patch('/leads/:id/entrega', requireRole(['admin', 'operations', 'sal
         return;
       }
       nueva.fecha = nueva.fecha ?? new Date().toISOString();
-      // La garantía se calcula aquí y se queda quieta.
-      const meses = Number(nueva.garantia_meses ?? 12) || 12;
-      nueva.garantia_meses = meses;
-      nueva.garantia_hasta = garantiaHasta(new Date(nueva.fecha), meses);
+      /**
+       * La garantía se calcula aquí y se queda quieta.
+       *
+       * **En importación no la damos nosotros.** No le vendemos el coche: se lo
+       * vende el concesionario alemán, y es él quien le debe la garantía legal
+       * europea. Poner doce meses nuestros por defecto era del modelo anterior, y
+       * escribirlo en el documento de entrega sería prometer algo que no damos.
+       *
+       * Lo que se escribe es lo que hay: la garantía que contrató, si contrató
+       * una, y **que reclamamos nosotros** —que es lo que de verdad se compra.
+       */
+      const esImportacion = await esDeImportacion(req.params.id);
+      if (esImportacion) {
+        const g = await query<{ nombre: string | null; meses: number | null }>(
+          `SELECT g.nombre, g.meses
+             FROM moveadvisor_market_leads l
+             LEFT JOIN market_garantias g ON g.id = l.garantia_id
+            WHERE l.id = $1`,
+          [req.params.id]
+        ).catch(() => ({ rows: [] as { nombre: string | null; meses: number | null }[] }));
+        const cuenta = garantiaDeUnaImportacion(g.rows[0]);
+        nueva.garantia_de = cuenta.de;
+        nueva.garantia_producto = cuenta.producto;
+        nueva.garantia_meses = cuenta.meses;
+        nueva.garantia_hasta = cuenta.meses
+          ? garantiaHasta(new Date(nueva.fecha), cuenta.meses)
+          : null;
+      } else {
+        // En los demás caminos sí vendemos nosotros, y la garantía es nuestra.
+        const meses = Number(nueva.garantia_meses ?? 12) || 12;
+        nueva.garantia_de = 'popcar';
+        nueva.garantia_meses = meses;
+        nueva.garantia_hasta = garantiaHasta(new Date(nueva.fecha), meses);
+      }
     }
 
     const r = await query(

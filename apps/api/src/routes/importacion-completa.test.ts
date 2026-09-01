@@ -395,8 +395,18 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
       cerrar: true,
     });
     assert.equal(cerrada.codigo, 200);
-    const entrega = cerrada.cuerpo.data as { garantia_hasta?: string; fecha?: string };
-    assert.ok(entrega.garantia_hasta, 'la garantía se calcula al entregar y se queda quieta');
+    const entrega = cerrada.cuerpo.data as {
+      garantia_hasta?: string | null; fecha?: string;
+      garantia_de?: string | null; garantia_meses?: number | null;
+    };
+    // En importación la garantía **no la damos nosotros**: no le vendemos el
+    // coche. Sin una contratada, la que hay es la legal del vendedor alemán, y
+    // poner doce meses nuestros sería prometer lo que no damos.
+    assert.equal(entrega.garantia_de, 'vendedor_aleman',
+      'se estaría escribiendo una garantía de PopCar en el documento de entrega');
+    assert.equal(entrega.garantia_meses, null);
+    assert.equal(entrega.garantia_hasta, null,
+      'una fecha de fin de una garantía que no damos es una promesa');
     assert.ok((cerrada.cuerpo.falta as unknown[]).length > 0,
       'lo que no se le ha dado se ve, aunque no impida cerrar');
 
