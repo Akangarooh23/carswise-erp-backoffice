@@ -37,16 +37,26 @@ fecha futura y cualquier CVC.
       coche, como en cualquier compraventa.
 - [ ] Debajo dice **qué se factura aparte**: el reacondicionado y el seguro.
 
+**Y el desglose, que es de lo que va este negocio**
+
+- [ ] Son **tres líneas** y cada una dice a quién va: el coche **al vendedor en
+      Alemania**, el servicio **a nosotros**, el impuesto **a Hacienda**.
+- [ ] El **precio del coche** es el del anuncio alemán, **sin nada encima**.
+- [ ] El **Servicio PopCar** son 2.999 €, y son los mismos en un coche de 13.000
+      que en uno de 40.000.
+- [ ] Debajo se enumera **qué cubre el fee**, empezando por revisar el coche allí
+      antes de liberar el dinero.
+
 **Y la garantía**
 
-- [ ] La base sale en el desglose como **incluida**.
-- [ ] Las otras salen como **diferencia**, no como precio entero: «+240 €», no
-      «420 €».
-- [ ] Pincha otra: **cambia el total** de arriba.
+- [ ] La primera opción es **Sin garantía**, y sale marcada: no hay ninguna
+      incluida.
+- [ ] Cada una lleva **su precio entero** —«+590 €»—, no una diferencia.
+- [ ] Dice que **la pone una aseguradora, no nosotros**, y que **si hay que
+      reclamar, reclamamos nosotros**. Ese es el argumento, no la póliza.
+- [ ] Pincha una: **cambia el total** de arriba.
 - [ ] Abre un coche de **más de ocho años** y mira que la premium **no sale**. No
       es un fallo: es su tope de antigüedad.
-- [ ] Al cambiar de garantía cambian **los cinco números**, no solo el del
-      desglose: el precio grande, la cuota del mes, la fianza y el ahorro.
 
 **Y el viaje: de dónde, por dónde y hasta dónde**
 
@@ -69,8 +79,8 @@ fecha futura y cualquier CVC.
 - [ ] Debajo sale **«Si quieres, aparte»** con **dos** cosas: seguro y
       reacondicionamiento. La entrega **no** está: va dentro del precio.
 - [ ] Las dos ponen **«a consultar»**, no un cero: un cero diría que es gratis.
-- [ ] Márcalas: **el precio de arriba no se mueve**, ni la fianza.
-- [ ] Debajo dice que **ninguno entra en la fianza**.
+- [ ] Márcalas: **el precio de arriba no se mueve**, ni el depósito.
+- [ ] Debajo dice que **ninguno entra en la fianza**: ni en el depósito ni en el precio.
 
 **Y la ficha técnica**
 
@@ -81,49 +91,57 @@ fecha futura y cualquier CVC.
 
 **Qué tiene que pasar**
 
-- [ ] Sale «Solicitud recibida» con **los cinco pasos** explicados antes del botón.
-- [ ] El botón de pagar la fianza **se lee** (texto blanco sobre negro).
+- [ ] Sale «Solicitud recibida» con **los pasos** explicados.
+- [ ] **No hay ningún botón de pagar con tarjeta.** Sale la cifra a depositar y
+      que te llamamos para darte los datos de la cuenta.
+- [ ] Dice que **no lo cobra nadie** hasta que vemos el coche en Alemania.
+- [ ] **No aparece ningún número de cuenta** en la pantalla. Ni aquí ni en el
+      panel: eso se da hablando.
 - [ ] Debajo, **«Prefiero que me llaméis antes»**.
-- [ ] Te llega un correo con la cifra de la fianza.
-- [ ] La fianza es el **30 % del total con la garantía que elegiste**. Si elegiste
-      una más cara, la fianza sube.
+- [ ] Te llega un correo con la cifra y con cuándo se libera.
+- [ ] El depósito es **el precio del coche más 2.999 €**, y la garantía si
+      elegiste una. **No** lleva el impuesto de matriculación.
 - [ ] En **Solicitudes** aparece una tarjeta, en la pestaña *Pendiente*.
-- [ ] En el **Resumen** sale «Importación pendiente de fianza».
 
 **Prueba también esto**: cierra el modal y vuelve a pedir el mismo coche. **No
 debe crearse una segunda solicitud**, ni llegarte otro correo.
 
 **Y esto**: vuelve al coche, **cambia de garantía** y pídelo otra vez. Sigue sin
 crearse una segunda solicitud, pero la tarjeta de *Solicitudes* tiene que
-enseñar **la fianza nueva**, no la de la primera vez. Lo que se cobra es siempre
-lo último que se enseñó.
+enseñar **la cifra nueva**, no la de la primera vez. Lo que se le pide es siempre
+lo último que se le enseñó.
 
 ---
 
-## 2 · Pagar la fianza · **en PopCar**
+## 2 · El depósito · **en el ERP**
 
-Pulsa **Pagar la fianza ahora** y paga con la tarjeta de prueba.
+Aquí ya no hay nada que pulsar en PopCar: el cliente transfiere y tú lo marcas.
 
-**Qué tiene que pasar, al volver**
+Ve a **Importaciones**, abre el expediente y mira el bloque azul de arriba.
 
-- [ ] La tarjeta del panel pasa a **«Depósito retenido el …»**, sin recargar.
-- [ ] La solicitud **sigue estando** en Solicitudes — ahora en *En curso*.
-- [ ] El Resumen dice «Importación en curso: Depósito retenido».
-- [ ] Te llega **la factura por correo, con su PDF**.
-- [ ] La factura está en **Facturación**, con número de la serie FIA.
-- [ ] El importe cobrado es **el que ponía el botón**, con la garantía que
-      elegiste. Míralo en la factura, no de memoria.
-- [ ] Vuelve a la ficha del coche e intenta **cambiar la dirección de envío**: ya
-      no se deja, y te dice que escribas. Con la fianza pagada queda fijada.
+- [ ] Enseña el depósito **partido**: el coche → vendedor alemán, el servicio →
+      nosotros. Las partes **suman** la cifra grande.
+- [ ] Pulsa **«El dinero ha llegado a la cuenta»**.
+- [ ] El expediente pasa a **Depósito retenido**.
+- [ ] En el panel del cliente, la tarjeta pasa a **«Depósito retenido el …»**.
+- [ ] Vuelve a la ficha del coche en PopCar e intenta **cambiar la dirección de
+      envío**: ya no se deja. Con el dinero depositado queda fijada.
 
-Si algo de esto falla, abre la consola con F12 y busca `[fianza] no consta pagada`.
+**Y ahora lo que sostiene el producto**
+
+- [ ] Debajo sale **«Antes de soltar el dinero»**.
+- [ ] El botón **«Liberar el pago al vendedor»** está **apagado**, y dice por qué:
+      hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
+- [ ] Pulsa **«Hemos visto el coche en Alemania»**. Ahora el otro se enciende.
+- [ ] Púlsalo. El expediente pasa solo a **Verificado y pagado**.
+- [ ] Vuelve a mirarlo: ya no se puede liberar otra vez.
 
 ---
 
 ## 3 · El expediente · **en el ERP**
 
-Ve a **Importaciones**. El coche tiene que estar en la columna **Depósito retenido**,
-y su importe contado en «Fianzas cobradas».
+El coche tiene que estar ahora en la columna **Verificado y pagado**, y su
+importe contado en el dinero depositado.
 
 Ábrelo y:
 

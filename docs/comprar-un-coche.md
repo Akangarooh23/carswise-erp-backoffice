@@ -85,11 +85,13 @@ opcional, porque un hueco vacío puesto delante parece una tarea pendiente. Abaj
 hay **«Ver todos los datos del pedido»** para lo que haya que corregir fuera de
 sitio.
 
-**A nombre de quién va.** Viene en *PopCar* siempre, también cuando hay un
-cliente esperando: lo normal es comprar el coche y luego vendérselo, con nuestra
-factura y nuestra garantía. *El cliente* es el caso raro —el coche va del
-vendedor directo a él— y por eso se elige a mano. Con el coche a nuestro nombre
-empieza a correr el plazo de reventa, que el pedido enseña al recibirlo.
+**A nombre de quién va.** Depende de por dónde venga el coche. En **importación**
+viene en *El cliente*, porque el coche no es nuestro: lo compra él al
+concesionario alemán y nosotros cobramos un fee por traerlo. En los demás
+caminos viene en *PopCar*, también cuando hay un cliente esperando, porque ahí sí
+compramos para revender, con nuestra factura y nuestra garantía. Con el coche a
+nuestro nombre empieza a correr el plazo de reventa, que el pedido enseña al
+recibirlo; en importación ese plazo no existe.
 
 **Los papeles.** Cada pedido enseña lo que falta según de dónde venga: de
 Alemania la ficha del vehículo y el COC, de un particular el informe de la DGT y
@@ -121,14 +123,20 @@ va a ser la pregunta.
 
 ## A nombre de quién va el coche
 
-**No es lo mismo que quién lo vende.** PopCar vende siempre —su factura, su
-garantía— pero no tiene por qué ser el titular. Ahí está la diferencia entre
-pagar un cambio de nombre o dos.
+**No es lo mismo que quién lo vende.** Y quién vende depende del camino:
+
+- En **importación PopCar no vende nada**. El coche lo vende el concesionario
+  alemán al cliente y nosotros cobramos un fee por traerlo, así que se matricula
+  directamente a su nombre. No hay cambio de nombre que pagar ni plazo de
+  reventa que vigilar, porque el coche nunca es nuestro.
+- En los **demás caminos** sí compramos para revender: nuestra factura, nuestra
+  garantía. Ahí PopCar no tiene por qué ser el titular, y ahí está la diferencia
+  entre pagar un cambio de nombre o dos.
 
 | | A nombre del cliente | A nombre de PopCar |
 |---|---|---|
 | Coche de aquí | **Una** transferencia, al venderlo | **Dos**: al comprarlo y al venderlo |
-| Importación | Se matricula ya a su nombre: **ninguna** | A nuestro nombre, y una al vender |
+| Importación | Se matricula ya a su nombre: **ninguna** | No aplica: el coche no es nuestro |
 
 El pedido lo propone solo: **con cliente detrás, a su nombre**; sin cliente, al
 nuestro, porque no hay otro sitio donde ponerlo. Se puede cambiar.

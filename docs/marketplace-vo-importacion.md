@@ -1,15 +1,30 @@
 # Marketplace VO — Importación
 
 Un cliente pide un coche de la sección **Importación**: coches que están en
-Alemania y que traemos nosotros. Hoy hay 1.568 publicados.
+Alemania y que traemos nosotros.
+
+## Lo primero, porque cambia todo lo demás
+
+**PopCar no compra el coche.** Lo compra el cliente al concesionario alemán, y
+nosotros cobramos **2.999 €** por encargarnos de todo lo de en medio: ir a verlo
+allí, recogerlo, traerlo, pasar la ITV de homologación, hacer la documentación,
+revisarlo al llegar y entregárselo en casa.
+
+No es un matiz jurídico. De ahí salen cuatro cosas que hay que tener claras:
+
+- **La venta es entre el concesionario alemán y el cliente.** Nosotros no somos
+  parte de esa compraventa.
+- **La garantía no la damos nosotros.** No vendemos el coche, así que no se la
+  debemos. Lo que ofrecemos es una garantía mecánica de un tercero, y algo que
+  no cabe en un producto: **reclamamos nosotros**.
+- **El coche se matricula a nombre del cliente.** Nunca es nuestro, así que no
+  hay cambio de nombre que pagar ni plazo de reventa que vigilar.
+- **Facturamos el servicio, no un coche.**
 
 **Aquí no hay visita.** No se puede ver un coche que está en Alemania, así que
 no hay calendario ni horas que confirmar: el cliente pide que se lo traigamos y
 alguien le llama. Por eso este flujo **no vive en la Agenda, sino en
 Importaciones**, su propia sección del menú.
-
-Es lo que más lo diferencia de las otras dos secciones, y por eso este manual es
-corto: no hay que aprobar nada, hay que llamar.
 
 ## Lo que cambia respecto a un coche de aquí
 
@@ -18,7 +33,10 @@ corto: no hay que aprobar nada, hay que llamar.
 | Qué pide el cliente | Una **visita**, con día y hora | Que **le traigamos** el coche |
 | Dónde aparece | **Agenda** | **Importaciones** |
 | Hay que aprobar | Sí, siempre | No: hay que llamar |
-| Dinero por delante | No | **Una fianza del 30 %** |
+| Quién vende | PopCar | **El concesionario alemán** |
+| Quién da la garantía | PopCar | **Un tercero**, y nosotros reclamamos |
+| A nombre de quién va | Normalmente PopCar | **Siempre del cliente** |
+| Dinero por delante | No | **El coche entero y nuestro fee, a una cuenta de depósito** |
 | Cuándo lo ve | En días | En semanas: hay que traerlo |
 
 ---
@@ -31,25 +49,34 @@ lee de izquierda a derecha: lo de la izquierda es lo que está empezando.
 | Columna | Qué toca |
 |---|---|
 | Pendiente | Llamar y explicarle el proceso |
-| Contactado | Esperando a que pague la fianza |
-| Depósito retenido | Hacer el pedido a Alemania |
+| Contactado | Esperando su transferencia a la cuenta de depósito |
+| Depósito retenido | **Ir a ver el coche en Alemania** |
 | Verificado y pagado | Confirmar fecha y organizar el transporte |
 | En transporte | El coche viene de camino |
-| En trámites | Impuesto, ITV y matrícula |
+| En trámites | Impuesto, ITV de homologación y matrícula |
 | Entregado | Cerrado |
 
-Arriba hay cuatro números. El que importa es **Fianzas cobradas**: es dinero de
-clientes que tenemos y de coches que todavía no hemos entregado.
+La etapa que sostiene todo lo demás es la tercera: con el dinero ya en la cuenta,
+alguien nuestro tiene que ir a ver el coche. Hasta que no lo ha visto, no se
+suelta un euro.
+
+Arriba hay cuatro números. El que importa es el de **dinero depositado**: es
+dinero de clientes que está retenido y de coches que todavía no hemos entregado.
+No es nuestro.
 
 Al pulsar un coche se abre su expediente con todo lo que se puede hacer: marcar
-la fianza, pasarlo de etapa, poner la fecha de entrega y devolver la fianza. Un
-expediente que lleva más de una semana parado lo dice en rojo en su tarjeta.
+que el dinero ha llegado, marcar que se ha visto el coche, liberar el pago,
+pasarlo de etapa, poner la fecha de entrega y devolver el depósito. Un expediente
+que lleva más de una semana parado lo dice en rojo en su tarjeta.
 
-Dos cosas que la pantalla no te deja hacer, a propósito:
+Tres cosas que la pantalla no te deja hacer, a propósito:
 
-- **Pasar a «Verificado y pagado» sin la fianza cobrada.** Pedir el coche nos
-  compromete con dinero; lo que cubre eso es la fianza.
-- **Poner fecha de entrega antes del pedido.** La fecha la da el vendedor al
+- **Liberar el pago sin haber visto el coche.** Es la promesa que le hemos hecho
+  al cliente, y es la única regla que no tiene excepción. La pantalla apaga el
+  botón y la API lo rechaza aunque la pantalla dejara pulsarlo.
+- **Pasar a «Verificado y pagado» sin el dinero depositado.** Ir a ver un coche
+  cuesta un vuelo; lo que lo cubre es que el cliente ya haya transferido.
+- **Poner fecha de entrega antes de la compra.** La fecha la da el vendedor al
   aceptarlo. Antes de eso cualquier fecha es inventada, y el cliente la ve en su
   panel como una promesa.
 
@@ -60,143 +87,191 @@ Dos cosas que la pantalla no te deja hacer, a propósito:
 :::flujo
 cliente: Entra en **Marketplace VO**, pestaña **Importación**, y abre un coche
 cliente: Pulsa **Solicitar importación** y deja nombre, correo, teléfono y su mensaje
-sistema: Le dice **cuánto es la fianza**: el 30 % del precio con el coste de traerlo
-correo: **Al cliente** — su solicitud, con esa cifra · **A operaciones** — solicitud nueva
-erp: Sale en **Importaciones**, en la columna **Pendiente**, con su fianza
-trabajador: Le llama, le cuenta el proceso y le dice que pague la fianza desde su panel
-cliente: **Paga la fianza** con tarjeta, desde su solicitud
-sistema: Fianza cobrada, expediente a **Depósito retenido** y **su factura emitida**. Sin tocar nada
-trabajador: Hace el **pedido a Alemania** y pone el paso. Ahí es cuando hay fecha
+sistema: Le dice **cuánto deposita**: el coche entero y nuestro servicio
+correo: **Al cliente** — su solicitud, con esa cifra y cuándo se libera · **A operaciones** — solicitud nueva
+erp: Sale en **Importaciones**, en la columna **Pendiente**, con su depósito
+trabajador: Le llama, le cuenta el proceso y **le da los datos de la cuenta de depósito**
+cliente: **Transfiere** el coche y el servicio a esa cuenta
+trabajador: Marca **«El dinero ha llegado a la cuenta»**. El expediente pasa a **Depósito retenido**
+trabajador: **Va a Alemania a ver el coche** y marca que lo ha visto
+? ¿Es el coche que se anunció?
+rama Sí | **Liberar el pago al vendedor** | El expediente pasa solo a **Verificado y pagado**
+rama No | **Devolver el depósito** | Vuelve entero: nadie lo ha tocado
 trabajador: Escribe **cuándo lo tendrá**. Si luego cambia, al cliente se le avisa solo
-? ¿Sigue adelante?
-rama Sí | En transporte → En trámites | Se va poniendo el paso: él lo ve en su panel sin llamar
-rama No | Devolver la fianza | Se le devuelve el cargo, sale su rectificativa y se le escribe
+trabajador: En transporte → En trámites. Él lo ve en su panel sin llamar
 trabajador: Cuando lo tiene, **Entregado**
 :::
 
-## La fianza
+## El depósito
 
 Es lo primero que hay que mirar al abrir un expediente, y sale arriba del todo.
 
-**Es la que se le dijo, no la que saldría hoy.** Se guarda en el momento de
-pedirlo: si el precio del anuncio cambia después, o el coche deja de estar
-publicado, la suya sigue siendo la que se le prometió. Nunca se recalcula.
+**No es una fianza.** Una fianza es una parte del precio que se adelanta a quien
+te vende. Aquí no le vendemos nada: el cliente deposita **el coche entero y
+nuestro fee** en una cuenta de depósito, y ese dinero **no lo cobra nadie** hasta
+que uno de los nuestros está delante del coche en Alemania y confirma que es el
+que se anunció.
 
-Es el **30 % del precio puesto aquí**, con todo lo que lleva dentro. Con los
-precios de hoy son unos 2.900 € de media.
+Esa es la promesa entera del producto. Un particular que compra en Alemania por
+su cuenta transfiere veinte mil euros a un desconocido de otro país y espera.
+Aquí no.
 
-Si el cliente elige otra garantía, cambia el total y cambia la fianza. La que
-vale es la del momento en que la pidió.
+### Lo que hay dentro, y de quién es
+
+El expediente lo enseña partido, porque cada parte tiene un dueño distinto:
+
+| Parte | Va a |
+|---|---|
+| Precio del coche | El **concesionario alemán** |
+| Servicio PopCar | **Nosotros** |
+| Garantía, si la contrató | **Su proveedor** |
+
+El día que se libera hay que soltar lo del vendedor y no lo demás, y quien lo
+haga tiene que verlo ahí, no calcularlo.
+
+**El impuesto de matriculación no está en el depósito.** Es de Hacienda, se
+liquida al matricular y su importe exacto no se sabe hasta entonces. Cobrarlo
+antes sería cobrar una estimación y tener que devolver la diferencia.
+
+### Es el que se le dijo, no el que saldría hoy
+
+Se guarda al pedirlo: si el precio del anuncio cambia después, o el coche deja
+de estar publicado, el suyo sigue siendo el que se le prometió. Si alguien
+discute la cifra, la que vale es la que pone ahí.
 
 Y si vuelve a la ficha, cambia de garantía y **lo pide otra vez**, no se abre un
-segundo expediente: se reutiliza el suyo, con la fianza nueva. Lo que se le
-cobra es siempre lo último que se le enseñó.
+segundo expediente: se reutiliza el suyo, con la cifra nueva. Lo que se le pide
+es siempre lo último que se le enseñó.
 
-Si alguien discute la cifra, la que vale es la que pone ahí.
+### Cómo paga, y por qué no con tarjeta
 
-**Es lo primero que se cobra, y hasta que no está no se pide nada a Alemania.**
+**Por transferencia**, a la cuenta de depósito. No con tarjeta, y no es una
+preferencia: un coche de 20.000 € llevaría unos 300 € de comisión y choca con el
+límite de cualquier tarjeta particular.
 
-El orden es este y no otro:
+**Los datos de la cuenta no están en la web**, ni en la ficha ni en su panel. Un
+número de cuenta en una pantalla pública es la forma más fácil de que alguien
+haga una captura, cambie un dígito y la reenvíe. **Se los das tú al llamarle**,
+que además es cuando se resuelven las dudas que tiene delante de una cifra así.
 
-1. Se cobra la fianza y se le emite factura.
-2. Con eso hecho, se hace el pedido a Alemania.
-3. Al pedirlo dan fecha, y esa es la que se le dice al cliente.
-4. Cuando llega, los trámites para que pueda usarlo aquí.
+Cuando el dinero llegue, se marca en su ficha con **«El dinero ha llegado a la
+cuenta»**. Si se marcó por error, se quita desde el mismo sitio.
 
-**La paga él, desde su panel, con tarjeta.** En su solicitud le sale el botón con
-la cifra. Al pagar pasan tres cosas solas: la fianza queda cobrada, el expediente
-avanza a «Depósito retenido» y **se le emite su factura**, con serie propia. No hay
-que hacer nada en el ERP.
+> Falta el proveedor de la cuenta de depósito —PayComet o MangoPay— y con él
+> volverá a haber un botón en el panel del cliente. Será otro botón: uno que
+> retiene el dinero en vez de cobrarlo.
 
-Antes del botón lee **los cinco pasos**: paga la fianza, pedido a Alemania,
-transporte, trámites y entrega. Son los mismos que verá marcarse en su panel, así
-que cuando le llames ya sabe de qué le hablas.
+### Soltar el dinero
 
-Que la fianza quede cobrada **no depende de un solo aviso**. Se anota por dos
-caminos —el que manda Stripe y el que pregunta la propia pantalla al volver del
-pago—, y solo cuenta el primero que llegue: nunca salen dos facturas por el mismo
-cobro. Si alguna vez alguien dice que ha pagado y su expediente no lo refleja,
-compruébalo en Stripe **con el modo de prueba encendido**: un pago con tarjeta de
-prueba no se ve en la vista normal.
+Debajo del depósito hay dos botones, y en este orden:
 
-Para que pueda pagar necesita **NIF y dirección** en su perfil: sin eso no se
-puede emitir la factura, y el propio botón se lo dice.
+1. **Hemos visto el coche en Alemania.** Lo marca quien fue a verlo, con su fecha.
+2. **Liberar el pago al vendedor.** No se puede pulsar sin lo anterior.
 
-Si la paga por transferencia o fuera de la web, entonces sí se **marca a mano**
-desde su ficha; y si se marcó por error, se quita desde el mismo sitio.
+El segundo se apaga solo cuando falta el primero, y dice por qué. Pero **quien
+decide es el servidor**: aunque la pantalla dejara pulsar, la API lo rechaza y
+contesta qué falta.
 
-### Si hay que devolverla
+Al liberarlo, el expediente pasa solo a **Verificado y pagado**. Y no se libera
+dos veces: un segundo clic con el dinero ya enviado sería un segundo pago.
 
-**Devolver la fianza**, en su ficha. Pide un motivo, que es lo que se le cuenta al
-cliente, y hace tres cosas: devuelve el cargo en la tarjeta, emite su **factura
-rectificativa** y le escribe.
+### Si hay que devolverlo
 
-Si algo falla al devolver, no se marca nada: un expediente que dice «devuelta»
-con el dinero todavía dentro es peor que un error en pantalla. En ese caso la
-pantalla lo dice y se puede devolver desde Stripe a mano.
+**Devolver el depósito**, en su ficha. Pide un motivo, que es lo que se le cuenta
+al cliente.
 
-El cobro y la devolución **quedan los dos**, cada uno con su fecha y su factura.
-No se borra lo que pasó.
+Si algo falla al devolver, no se marca nada: un expediente que dice «devuelto»
+con el dinero todavía dentro es peor que un error en pantalla.
+
+El ingreso y la devolución **quedan los dos**, cada uno con su fecha. No se borra
+lo que pasó.
+
+---
 
 ## De qué se compone el precio
 
-Un coche de importación cuesta más que su anuncio alemán, y al cliente se le
-enseña por qué. En la ficha salen tres líneas y un total:
+Tres líneas, y cada una va a un sitio distinto. Eso es lo que hay que entender de
+este negocio y lo que la ficha deja claro:
 
-| Línea | Qué lleva |
-|---|---|
-| **Precio del coche** | Lo que cuesta en Alemania **más lo que gana PopCar** |
-| **Transporte desde Alemania** | Un coche por pedido |
-| **Matriculación y papeleo** | Los trámites y el impuesto de matriculación |
-| **Puesto en tu casa** | La suma |
+| Línea | Qué es | Va a |
+|---|---|---|
+| **Precio del coche** | Lo que cuesta en Alemania, sin nada encima | El vendedor alemán |
+| **Servicio PopCar** | 2.999 €, siempre el mismo | Nosotros |
+| **Impuesto de matriculación** | Una estimación | Hacienda |
 
-El margen va **dentro del precio del coche**, no en una línea suya. Nadie
-desglosa lo que gana quien le vende, y sacarlo aparte solo invita a discutirlo.
-Lo que sí se separa es lo que el cliente reconoce como un servicio.
+El fee va suelto y con su nombre, al revés que el margen de antes, que iba
+escondido dentro del precio del coche. Cuando vendes un coche, lo que ganas no se
+desglosa. Cuando vendes un servicio, **lo que se vende es eso**: el cliente tiene
+que ver qué le estás haciendo por ese dinero.
 
-Va por tramos del coste: 1.000 € en un coche de hasta 10.000, y subiendo hasta
-2.500 € a partir de 30.000; por encima de 40.000, un 6 %. Por tramos y no por
-porcentaje porque traer un coche de 6.000 € y uno de 25.000 € da casi el mismo
-trabajo.
+Por eso debajo del total se enumera lo que cubre: revisar el coche allí en
+persona antes de liberar su dinero, recogerlo y traerlo, la ITV de homologación y
+la documentación, revisarlo al llegar y llevárselo a casa.
 
-**Dos números siguen siendo estimaciones**, y conviene saberlo antes de
-prometerle nada a nadie:
+### Es el mismo fee para todos los coches
 
-- El **transporte** es lo que esperamos pagar mientras no haya tarifas cerradas
-  con los transportistas. En cuanto un corredor tenga tarifa, manda la tarifa.
-- El **impuesto de matriculación** se aproxima con una de las cuatro bandas de
-  CO₂ sobre el precio español de coches comparables. No se puede calcular bien
-  todavía: ninguna oferta alemana trae el CO₂. Se equivoca hacia arriba a
-  propósito — en un precio público, pasarse es recuperable y quedarse corto es
-  una promesa que no se puede cumplir.
+Y es a propósito: el trabajo es el mismo. El mismo viaje, la misma ITV, las
+mismas gestiones. Cobrar más por un coche caro sería cobrar por el coche, y el
+coche no lo vendemos nosotros.
 
+Lo que sí depende del precio es si al cliente le compensa, y eso se resuelve con
+un mínimo: **por debajo de 12.000 € no se publica**. Con un fee de 2.999 €, un
+coche de 5.000 sale por 8.000 antes del impuesto, y la diferencia con comprarlo
+aquí no da para pagarlo. Está medido: por debajo de 10.000 € la brecha mediana
+con España son 2.050 €, y el fee más el impuesto se la comen entera.
+
+### El impuesto sigue siendo una estimación
+
+Se aproxima con la banda de 121–159 g/km sobre el precio español de coches
+comparables. No se puede calcular bien todavía: **ninguna oferta alemana trae el
+CO₂**. Se equivoca hacia arriba a propósito — en un precio público, pasarse es
+recuperable y quedarse corto es una promesa que no se puede cumplir.
+
+Es el número que más va a mejorar cuando entre Eurotax.
+
+---
 ## La garantía
 
-La **base va dentro del precio** y sale en el desglose como «incluida». Debajo,
-el cliente puede elegir otra: se le enseña **la diferencia** con la base, no el
-precio entero. Sumar o restar sobre un total que ya ha visto se entiende;
-recalcularlo entero delante, no.
+**No la damos nosotros.** No le vendemos el coche —se lo vende el concesionario
+alemán— así que no se la debemos. Lo que ofrecemos es una garantía mecánica de
+un tercero, elegida para el tipo de coche que se lleva.
 
-Tres cosas que hace sola la pantalla, y que conviene conocer porque explican
-huecos que si no parecen fallos:
+Ninguna va incluida en el precio. Se empieza **sin ninguna**, que es lo que pasa
+si el cliente no hace nada, y cada producto lleva **su precio entero** —no una
+diferencia sobre otra— porque ya no hay ninguna base de la que restar.
+
+### Lo que de verdad se vende aquí
+
+El concesionario alemán le debe la garantía legal europea de dos años. El
+problema no es tenerla: **es usarla**. Un particular que compra una vez en
+Alemania no tiene forma de presionar a un concesionario de otro país, en otro
+idioma y con otro derecho de consumo.
+
+Nosotros traemos coches todas las semanas y hablamos con esa gente todas las
+semanas. **Si hay que reclamar, reclamamos nosotros.** Eso no cabe en el precio
+de un producto, así que se dice con palabras, en la ficha y por teléfono.
+
+Es el argumento más fuerte que hay y conviene usarlo al llamar.
+
+### Dos cosas que hace sola la pantalla
 
 - **No ofrece una garantía que a ese coche no se le pueda dar.** Cada producto
-  tiene tope de antigüedad y de kilómetros. Con la media del catálogo en doce
-  años, en muchos coches solo saldrán las básicas.
-- **«Sin garantía» solo aparece si la base es renunciable.** Si la base es el
-  mínimo legal no se puede quitar, y ofrecerlo sería ofrecer lo que no se puede
-  cumplir.
-- **El precio lo calcula el servidor.** Si llega una garantía que no le
-  corresponde, se cae a la base en vez de aceptarla.
+  tiene tope de antigüedad y de kilómetros; si no encaja, no aparece. Enseñar una
+  opción que luego se cae es peor que no enseñarla, porque el cliente ya contó
+  con ella.
+- **El precio lo calcula el servidor.** El navegador dice cuál quiere, no cuánto
+  cuesta. Si llega una que no le corresponde, sale a cero en vez de aceptarla.
 
-Cada garantía **cuelga de un proveedor** de Proveedores, del tipo *Garantías*.
-No se puede guardar una apuntando a alguien que no esté dado de alta: el día que
-haya que reclamarla, lo primero que se busca es a quién. Si la dais vosotros, va
-sin proveedor.
+Cada garantía **cuelga de un proveedor** de Proveedores, del tipo *Garantías*. No
+se puede guardar una apuntando a alguien que no esté dado de alta: el día que
+haya que reclamarla, lo primero que se busca es a quién.
 
-Lo que **no** entra en el precio y se factura aparte: el **reacondicionado**, que
-solo se sabe cuando el coche llega y se le presupuesta antes, y el **seguro**.
+> **Pendiente:** los tres productos que hay cargados tienen precios del modelo
+> anterior, cuando había una base incluida a coste cero. Hacen falta los precios
+> reales de la aseguradora.
 
+Lo que **tampoco** entra en el precio: el **reacondicionado**, que solo se sabe
+cuando el coche llega y se le presupuesta antes, y el **seguro**.
 ## Dónde se lo llevamos
 
 En la ficha del coche, debajo del desglose, hay una sección de **El viaje,
@@ -229,7 +304,7 @@ dijo. Debajo hay **Cambiar dirección de envío** por si quiere recibirlo en otr
 sitio, y lo que escriba se recuerda entre coches — quien compara cinco no la
 escribe cinco veces.
 
-**Se puede cambiar hasta que pague la fianza. Después no.** Lo que se le cobró
+**Se puede cambiar hasta que deposita el dinero. Después no.** Lo que depositó
 incluye llevárselo a donde dijo; dejarle cambiarla luego sería dejarle pagar
 precio de península y pedir la entrega en Palma. Al intentarlo se le dice que
 escriba, no un «no se puede» a secas. Si hay que cambiarla igualmente, se hace
@@ -255,7 +330,7 @@ Tres reglas que conviene tener claras porque explican lo que se ve:
   nunca antes de que el coche llegue a la campa y se mire**. Un cero diría que es
   gratis; «a consultar» dice lo que es.
 - **Lo que no tiene precio no suma.** No se puede sumar lo que no se sabe.
-- **Ninguno entra en la fianza.** La fianza cubre el compromiso de comprar el
+- **Ninguno entra en el depósito.** El depósito es el coche y nuestro servicio; el
   coche en Alemania. Cobrarle por adelantado un seguro que todavía no tiene sería
   otra cosa.
 
@@ -326,7 +401,7 @@ Cada cambio queda además en el **historial**, abajo del expediente, con quién 
 hizo y cuándo.
 
 **Guardar y avisar al cliente** le manda un correo con lo que hayas escrito y con
-su fianza. Al avisarle, un expediente que estuviera Pendiente pasa a Contactado
+su depósito. Al avisarle, un expediente que estuviera Pendiente pasa a Contactado
 solo. Las **notas internas**, debajo, no salen: son para el equipo, y tienen su
 botón de guardar —cuando está guardado, lo dice.
 
@@ -336,12 +411,12 @@ botón de guardar —cuando está guardado, lo dice.
 
 | Cuándo | Qué recibe |
 |---|---|
-| Al pedirla | Su solicitud, con la fianza |
-| Al pagar la fianza | Su factura queda emitida y la tiene en Facturación |
-| Al darle a **Notificar** | Lo que hayas escrito, con su fianza |
+| Al pedirla | Su solicitud, con lo que deposita y cuándo se libera |
+| Al liberar el pago | Que hemos visto el coche y lo hemos comprado en su nombre |
+| Al darle a **Notificar** | Lo que hayas escrito, con su depósito |
 | Si **cambias** la fecha de entrega | Las dos fechas, la que era y la que es |
 | Al marcarlo **Entregado** | Que ya es suyo, con lo que hayas escrito en la respuesta |
-| Si se le **devuelve** la fianza | El motivo y su factura rectificativa |
+| Si se le **devuelve** el depósito | El motivo, y que vuelve entero |
 
 Cambiar el paso **no manda ningún correo**, salvo el último: entregarlo sí se le dice. El resto lo ve en su panel
 cuando entre. Si quieres que se entere ya, llámale o usa Notificar.
@@ -360,7 +435,7 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 |---|---|
 | Las solicitudes de importación | **Importaciones**, repartidas por etapa |
 | De qué sección viene | La etiqueta **Marketplace · Importación** |
-| La fianza: cifra, si está cobrada y desde cuándo | Al abrir el expediente, arriba, en azul |
+| El depósito: cifra, de quién es cada parte y si ha llegado | Al abrir el expediente, arriba, en azul |
 | Marcarla cobrada a mano, o devolverla | En ese mismo recuadro |
 | Pasar de etapa | Debajo, con el botón de la siguiente |
 | Cuándo le hemos dicho que lo tendrá | Debajo, y solo después del pedido |
@@ -371,7 +446,7 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 | Quién tocó qué y cuándo | El **historial**, lo último del expediente |
 | Su factura y su rectificativa | **Facturación**, series FIA y RECT |
 | El coche | El enlace del expediente abre su ficha en el marketplace |
-| Cuánto dinero de clientes tenemos sin entregar | Arriba, **Fianzas cobradas** |
+| Cuánto dinero de clientes tenemos retenido | Arriba, en los números de la pantalla |
 
 ## Los papeles
 
@@ -401,28 +476,28 @@ que está y una frase que se lo explica en su idioma:
 | Paso | Lo que lee |
 |---|---|
 | Pendiente | «Hemos recibido tu solicitud. Te llamamos para contarte el proceso.» |
-| Contactado | «Ya hemos hablado contigo. El siguiente paso es pagar la fianza.» |
-| Depósito retenido | «Fianza recibida y factura emitida. Vamos a pedir tu coche.» |
-| Verificado y pagado | «Pedido hecho. En cuanto nos confirmen fechas, te las decimos.» |
+| Contactado | «Ya hemos hablado contigo. El siguiente paso es hacer la transferencia a la cuenta de depósito.» |
+| Depósito retenido | «Tu dinero está en la cuenta de depósito, retenido. Vamos a ver el coche en Alemania.» |
+| Verificado y pagado | «Hemos visto el coche y lo hemos comprado en tu nombre. En cuanto nos confirmen fechas, te las decimos.» |
 | En transporte | «Está de camino a España.» |
-| En trámites | «Ya está aquí: aduana, ITV y matriculación para que puedas usarlo.» |
+| En trámites | «Ya está aquí: ITV de homologación y matriculación para que puedas usarlo.» |
 | Entregado | «Es tuyo y lo tienes contigo.» |
 
 Debajo va el dinero y la fecha, según toque:
 
-- Si **no ha pagado**: los cinco pasos explicados, la cifra y el botón **«Pagar la
-  fianza»**, con la nota de que se le emite factura y de que se devuelve si no se
-  hace el pedido.
-- Si **ha pagado**: «Depósito retenido el 12 de septiembre» y que tiene su factura en
-  Facturación.
+- Si **no ha depositado**: los pasos explicados y la cifra, con la nota de que va
+  por transferencia, de que **los datos de la cuenta se los das tú al llamarle** y
+  de que el dinero no lo cobra nadie hasta que vemos el coche.
+- Si **ha depositado**: «Depósito retenido el 12 de septiembre».
 - Si hay **fecha de entrega**: «Lo esperamos para el 14 de octubre», dicho como lo
   que es, una estimación.
 
 **No** ve calendario ni hora: no hay ninguna, salvo que quedes con él y la pongas.
 
 En el **resumen** de su panel, además, le sale la importación en marcha con la
-etapa en la que va —o «pendiente de fianza» con la cifra, si todavía no la ha
-pagado—, delante de su garaje. Es lo más largo que tiene abierto con nosotros.
+etapa en la que va —o «pendiente de depósito» con la cifra, si todavía no ha
+transferido—, delante de su garaje. Es lo más largo que tiene abierto con
+nosotros.
 
 Cada vez que cambias el paso, lo ve la próxima vez que abra su panel. Ese es el
 trato: si lo ve, no llama.
