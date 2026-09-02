@@ -771,7 +771,41 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
               )}
             </div>
 
-            {verificadoEnAlemania(x) ? (
+            {/*
+              * Quién dice que el coche está visto.
+              *
+              * Si hay peritación, **ella**: aquí no se pulsa nada, se enseña lo
+              * que dijo el perito y se manda a su pantalla. Dos puertas al mismo
+              * hecho acaban diciendo cosas distintas, y la que vale es la suya.
+              *
+              * El botón se queda para los expedientes viejos, los de antes de que
+              * las peritaciones existieran. Quitarlo del todo dejaría uno de esos
+              * sin forma de avanzar.
+              */}
+            {x.meta?.peritacion ? (
+              <div>
+                {verificadoEnAlemania(x) ? (
+                  <span className="text-[13px] font-bold text-emerald-700">
+                    ✓ Coche visto en Alemania el {dia(x.meta?.verificado_alemania_at)}
+                    {x.meta.peritacion.perito ? ` · ${x.meta.peritacion.perito}` : ''}
+                  </span>
+                ) : x.meta.peritacion.veredicto === 'no_es_el_que_se_anuncio' ? (
+                  <span className="text-[13px] font-bold text-red-700">
+                    El perito dice que <strong>no es el que se anunció</strong>. El dinero vuelve al cliente.
+                  </span>
+                ) : (
+                  <span className="text-[13px] font-semibold text-emerald-800/80">
+                    Peritación {x.meta.peritacion.estado.toLowerCase()}
+                    {x.meta.peritacion.perito ? ` · ${x.meta.peritacion.perito}` : ' · sin perito todavía'}
+                  </span>
+                )}
+                <div className="mt-1">
+                  <a href="/peritaciones" className="text-[11px] text-brand-400 underline underline-offset-2">
+                    ver la peritación {x.meta.peritacion.id} →
+                  </a>
+                </div>
+              </div>
+            ) : verificadoEnAlemania(x) ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[13px] font-bold text-emerald-700">
                   ✓ Coche visto en Alemania el {dia(x.meta?.verificado_alemania_at)}

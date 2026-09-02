@@ -65,6 +65,20 @@ export interface MetaImportacion {
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.
+  /**
+   * La peritación de este coche, si la hay.
+   *
+   * Cuando existe, es ella la que dice si el coche está visto. El expediente
+   * deja de ofrecer el botón: dos puertas al mismo hecho acaban diciendo cosas
+   * distintas, y la que vale es la del perito.
+   */
+  peritacion?: {
+    id: string;
+    estado: string;
+    veredicto: string | null;
+    perito: string | null;
+    fecha_hecha: string | null;
+  } | null;
   // Cuándo se le preguntó al vendedor si el coche seguía ahí.
   reserva_preguntada_at?: string | null;
   reserva_preguntada_a?: string | null;

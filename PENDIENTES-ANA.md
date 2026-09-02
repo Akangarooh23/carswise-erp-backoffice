@@ -295,6 +295,37 @@ junto con la reserva. Llegan en su respuesta y se pegan en su ficha.
 > negocio, y una transferencia salida no vuelve. El aviso está debajo del campo
 > en Proveedores, pero quien paga eres tú.
 
+## 5e · El correo de checkdenwagen, y lo que cuesta cada peritaje
+
+Ya está dado de alta como **perito** (`PRV-2026-010`). Va a donde esté el coche
+en toda Alemania, más de cien puntos, informe con fotos en unas 24 h.
+
+**Le falta el correo.** Solo tienen publicado el teléfono, **+49 30 301 32 327**.
+Es el dato con el que el ERP le encarga la revisión: mientras no esté, el botón
+dice que falta y no manda nada. Pídeselo y lo pego en su ficha, o lo pegas tú en
+Proveedores.
+
+**Y hay un número que conviene mirar de frente:**
+
+| | |
+|---|---|
+| Peritaje estándar | 289 € |
+| Lo que ganamos por coche | 1.136 € |
+| Lo que queda | **847 €** |
+
+Una de cada cuatro pesetas de lo que se gana se va en mirar el coche. No es un
+problema —es el precio de poder prometer lo que prometemos, y es justo lo que
+diferencia esto de que alguien compre por su cuenta— pero cambia la conversación
+sobre el fee. Tres cosas que decidir:
+
+- ¿El peritaje va **siempre**, o solo por encima de cierto precio de coche?
+- ¿Se le cobra al cliente aparte, o va dentro de los 3.000 y lo comemos?
+- Con volumen, ¿hay tarifa? A 289 € sueltos, diez coches al mes son 2.890 €.
+
+> Mi opinión, por si sirve: **siempre y dentro del fee**. Es lo único que hace
+> que el depósito tenga sentido, y ofrecerlo como extra convierte la promesa en
+> una opción de pago. Pero el número hay que tenerlo delante.
+
 ## 6 · En Vercel
 
 Todo lo que hay que tocar fuera del código está aquí. Nada de esto se despliega

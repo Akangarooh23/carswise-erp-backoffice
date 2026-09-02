@@ -282,6 +282,19 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'escrow_estado',         escrow_estado,
                   'escrow_liberado_at',    escrow_liberado_at,
                   'verificado_alemania_at', verificado_alemania_at,
+                  -- La peritación de este coche, si la hay.
+                  --
+                  -- El expediente no puede ofrecer un botón de «lo hemos visto»
+                  -- cuando hay una peritación abierta: serían dos puertas al
+                  -- mismo hecho, y la que manda es la del perito.
+                  'peritacion', (
+                    SELECT json_build_object(
+                      'id', pr.id, 'estado', pr.estado, 'veredicto', pr.veredicto,
+                      'perito', pr.perito, 'fecha_hecha', pr.fecha_hecha)
+                      FROM erp_peritaciones pr
+                     WHERE pr.lead_id = moveadvisor_market_leads.id
+                     LIMIT 1
+                  ),
                   -- Los avisos a proveedores, para poder decir si ya salieron.
                   'reserva_preguntada_at',       reserva_preguntada_at,
                   'reserva_preguntada_a',        reserva_preguntada_a,
