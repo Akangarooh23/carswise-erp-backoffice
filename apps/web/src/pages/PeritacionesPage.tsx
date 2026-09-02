@@ -42,6 +42,8 @@ interface Peritacion {
   veredicto: string | null;
   notas: string;
   coste: string | number | null;
+  cita_avisada_at: string | null;
+  cita_avisada_a: string | null;
   factura_numero: string;
   factura_fecha: string | null;
   encargo_enviado_at: string | null;
@@ -60,7 +62,7 @@ export default function PeritacionesPage() {
   const [error, setError] = useState('');
   const [abierta, setAbierta] = useState<Peritacion | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; id: string } | null>(null);
+  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; id: string; que: string } | null>(null);
 
   const carga = useCallback(async (): Promise<Peritacion[]> => {
     const r = await api.get<Peritacion[]>('/peritaciones');
@@ -97,14 +99,14 @@ export default function PeritacionesPage() {
     }
   }
 
-  /** El encargo no se manda de un clic: se abre para revisarlo. */
-  async function preparaElEncargo(id: string) {
+  /** Ninguno se manda de un clic: se abre para revisarlo. */
+  async function preparaElCorreo(id: string, que: string) {
     setGuardando(true);
     try {
-      const r = await api.post<VistaDelCorreo>(`/peritaciones/${id}/encargo`, { soloVista: true });
+      const r = await api.post<VistaDelCorreo>(`/peritaciones/${id}/${que}`, { soloVista: true });
       if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido preparar.'); return; }
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id });
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id, que });
     } catch (e) {
       setError((e as Error)?.message || 'No se ha podido preparar.');
     } finally {
@@ -112,12 +114,12 @@ export default function PeritacionesPage() {
     }
   }
 
-  async function mandaElEncargo(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
+  async function mandaElCorreo(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
     if (!revisando) return;
-    const { id } = revisando;
+    const { id, que } = revisando;
     setGuardando(true);
     try {
-      const r = await api.post(`/peritaciones/${id}/encargo`, cambios);
+      const r = await api.post(`/peritaciones/${id}/${que}`, cambios);
       if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
       setRevisando(null);
       const datos = await carga();
@@ -230,7 +232,8 @@ export default function PeritacionesPage() {
           guardando={guardando}
           onCerrar={() => setAbierta(null)}
           onGuardar={(c) => void guarda(abierta.id, c)}
-          onEncargar={() => void preparaElEncargo(abierta.id)}
+          onEncargar={() => void preparaElCorreo(abierta.id, 'encargo')}
+          onAvisarCita={() => void preparaElCorreo(abierta.id, 'cita')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
           onFactura={(d) => void anotaLaFactura(abierta.id, d)}
         />
@@ -241,14 +244,14 @@ export default function PeritacionesPage() {
         vista={revisando?.vista ?? null}
         enviando={guardando}
         error={error}
-        onEnviar={(cambios) => void mandaElEncargo(cambios)}
+        onEnviar={(cambios) => void mandaElCorreo(cambios)}
         onCerrar={() => setRevisando(null)}
       />
     </div>
   );
 }
 
-function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura }: {
+function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura, onAvisarCita }: {
   p: Peritacion;
   guardando: boolean;
   onCerrar: () => void;
@@ -256,6 +259,7 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
   onEncargar: () => void;
   onResultado: (veredicto: string, notas: string) => void;
   onFactura: (datos: Record<string, string>) => void;
+  onAvisarCita: () => void;
 }) {
   const [datos, setDatos] = useState({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
@@ -344,6 +348,39 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
               </button>
               <div className="text-[11px] text-brand-300 mt-1.5">
                 Guarda antes los cambios: el correo sale con lo que hay grabado.
+              </div>
+            </>
+          )}
+        </div>
+
+        {/*
+          * Y avisar al vendedor del día.
+          *
+          * Va desde aquí para que quede apuntado: quién dijo qué día y a quién
+          * se le avisó. Dos que se llaman por su cuenta no dejan rastro, y el
+          * día que el coche no esté preparado no hay dónde mirar.
+          */}
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">Avisar al vendedor</div>
+          {p.cita_avisada_at ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-bold text-emerald-700">
+                ✓ Avisado el {dia(p.cita_avisada_at)}{p.cita_avisada_a ? ` a ${p.cita_avisada_a}` : ''}
+              </span>
+              <button onClick={onAvisarCita} disabled={guardando}
+                      className="text-[11px] text-brand-400 underline underline-offset-2">
+                avisar otra vez
+              </button>
+            </div>
+          ) : (
+            <>
+              <button onClick={onAvisarCita} disabled={guardando}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                Decirle qué día va
+              </button>
+              <div className="text-[11px] text-brand-300 mt-1.5">
+                Pon antes la fecha en «Cuándo va» y guarda. Le pide que el coche esté
+                accesible y que estén los papeles y las dos llaves.
               </div>
             </>
           )}

@@ -108,6 +108,71 @@ export function abreLaPuertaAlPago(veredicto: unknown): boolean {
   return veredicto === 'es_el_que_se_anuncio';
 }
 
+/**
+ * Avisar al vendedor de qué día va el perito.
+ *
+ * Es el correo que cierra la cita, y va desde el ERP para que quede apuntado:
+ * quién dijo qué día y a quién se le avisó. Dos que se llaman por su cuenta no
+ * dejan rastro, y el día que el coche no esté preparado no hay dónde mirar.
+ *
+ * Pide dos cosas concretas además de la hora: que el coche esté **accesible**
+ * —no bloqueado en el fondo de la nave— y que **estén los papeles y las dos
+ * llaves**. Son las tres cosas que hacen que una revisión se quede a medias y
+ * haya que volver, y volver son otros 289 €.
+ */
+export interface DatosDeLaCita {
+  vehiculo: string;
+  /** El día, ya escrito como se lee. */
+  cuando?: string | null;
+  /** Quién va a ir, para que sepan a quién esperan. */
+  perito?: string | null;
+  /** Lo que añada quien revisa, ya en HTML. */
+  nota?: string | null;
+}
+
+export function faltaParaAvisarDeLaCita(d: DatosDeLaCita): string[] {
+  const falta: string[] = [];
+  if (!String(d.vehiculo ?? '').trim()) falta.push('qué coche es');
+  if (!String(d.cuando ?? '').trim()) falta.push('qué día va');
+  return falta;
+}
+
+export function correoDeLaCitaAlVendedor(d: DatosDeLaCita): { subject: string; html: string } {
+  const coche = String(d.vehiculo ?? '').trim();
+  const cuando = String(d.cuando ?? '').trim();
+  const quien = String(d.perito ?? '').trim();
+  const subject = `Termin zur Fahrzeugprüfung / Inspection appointment — ${coche}`;
+
+  const p = (html: string) =>
+    `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#2A2A28">${html}</p>`;
+  const li = (html: string) => `<li style="margin-bottom:8px">${html}</li>`;
+
+  const pide =
+    '<ul style="margin:8px 0 16px 0;padding-left:20px;font-size:15px;line-height:1.6;color:#2A2A28">' +
+    li('Dass das Fahrzeug <strong>zugänglich</strong> ist und bewegt werden kann.') +
+    li('Dass die <strong>Papiere</strong> da sind: Zulassungsbescheinigung Teil I und II, und der COC.') +
+    li('Dass <strong>beide Schlüssel</strong> da sind.') +
+    '</ul>';
+
+  const html =
+    p('Guten Tag,') +
+    p(`wir haben den Termin zur Prüfung von <strong>${esc(coche)}</strong> für den <strong>${esc(cuando)}</strong> vorgesehen.`) +
+    p(quien
+      ? `Es kommt <strong>${esc(quien)}</strong>, ein unabhängiger Prüfer. Er meldet sich vorher bei Ihnen.`
+      : 'Es kommt ein unabhängiger Prüfer. Er meldet sich vorher bei Ihnen.') +
+    p('Damit der Termin nicht umsonst ist, bitten wir um Folgendes:') +
+    pide +
+    String(d.nota ?? '') +
+    p('Passt der Termin nicht? Sagen Sie uns einfach, wann es Ihnen besser passt.') +
+    '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
+    p('<em>Hello,</em>') +
+    p(`<em>we have scheduled the inspection of <strong>${esc(coche)}</strong> for <strong>${esc(cuando)}</strong>` +
+      (quien ? `, with <strong>${esc(quien)}</strong>, an independent inspector` : '') +
+      '. Please make sure the car is <strong>accessible</strong>, and that the <strong>papers</strong> —registration parts I and II, and the COC— and <strong>both keys</strong> are there, so the visit is not wasted. If the date does not suit you, just tell us when it does.</em>');
+
+  return { subject, html };
+}
+
 export interface DatosDelEncargoAlPerito {
   vehiculo: string;
   anuncio?: string | null;
@@ -179,19 +244,19 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
     p('Wir brauchen eine klare Aussage: <strong>Ist es das Fahrzeug aus dem Inserat oder nicht?</strong> Ein Nein ist für uns genauso nützlich wie ein Ja — dann kaufen wir es einfach nicht.') +
     String(d.nota ?? '') +
     /**
-     * Y la cita, directamente con el vendedor.
+     * La cita la cerramos nosotros.
      *
-     * «Díganos cuándo puede ir y lo cerramos con el vendedor» nos mete en medio
-     * de una conversación de dos: tres correos para cuadrar una hora. El
-     * vendedor ya sabe que va a ir alguien —se le dijo en el primer correo— y
-     * aquí abajo va su nombre y su teléfono.
+     * Él dice qué día puede y se lo decimos al vendedor desde el ERP. Es un
+     * correo más, pero deja las dos puntas apuntadas en el expediente: quién
+     * dijo qué día y a quién se le avisó. Dos que se llaman por su cuenta no
+     * dejan rastro, y el día que el coche no esté preparado no hay dónde mirar.
      */
-    p('Bitte stimmen Sie den Termin <strong>direkt mit dem Verkäufer</strong> ab und sagen Sie uns kurz Bescheid, wann Sie hinfahren.') +
+    p('Sagen Sie uns bitte, <strong>wann Sie hinfahren können</strong>. Den Termin stimmen wir mit dem Verkäufer ab und bestätigen ihn Ihnen.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
     p('<em>we need you to inspect this car before we pay for it. What matters:</em>') +
     lista('en') +
-    p('<em>We need a clear answer: <strong>is it the car from the listing or not?</strong> A no is as useful to us as a yes — we simply do not buy it. Please arrange the appointment <strong>directly with the seller</strong> and let us know when you are going.</em>');
+    p('<em>We need a clear answer: <strong>is it the car from the listing or not?</strong> A no is as useful to us as a yes — we simply do not buy it. Please tell us <strong>when you can go</strong>: we arrange the date with the seller and confirm it back to you.</em>');
 
   return { subject, html };
 }

@@ -256,10 +256,21 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
       siete puntos en otro idioma se contesta con «ok» sin haberla mirado.
 - [ ] Le dice punto por punto qué mirar, y le dice que **un «no» vale igual que**
       **un «sí»**: un perito que cree que solo puede confirmar, confirma.
-- [ ] Y le dice que **cierre la cita directamente con el vendedor**. Tiene su
-      nombre y su dirección arriba, y al vendedor ya se le avisó en el primer
-      correo de que iría alguien. Meternos en medio son tres correos para
-      cuadrar una hora entre dos que ya tienen el teléfono del otro.
+- [ ] Y le pide **qué día puede ir**. La cita la cerramos nosotros.
+
+**Cerrar la cita** · el sexto correo, al vendedor
+
+- [ ] Cuando el perito diga su día, ponlo en **«Cuándo va»** y guarda.
+- [ ] Pulsa **«Decirle qué día va»**. Se abre para revisarlo.
+- [ ] Le dice el día, quién va, y le pide las tres cosas que evitan que la
+      visita se quede a medias: que el coche esté **accesible**, que estén los
+      **papeles** —Zulassungsbescheinigung I y II, COC— y que estén las **dos**
+      **llaves**. Volver otro día son otros 289 €.
+- [ ] Y le deja cambiar el día en vez de darlo por cerrado.
+- [ ] Queda escrito **«✓ Avisado el … a …»**.
+
+> Todo pasa por el ERP a propósito: dos que se llaman por su cuenta no dejan
+> rastro, y el día que el coche no esté preparado no hay dónde mirar.
 - [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
 - [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
       que respalda la decisión de soltar 16.890 €.

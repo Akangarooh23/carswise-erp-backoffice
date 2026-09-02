@@ -28,6 +28,7 @@ import {
 } from '../lib/adjuntos-del-correo.js';
 import {
   correoDeEncargoAlPerito, faltaParaEncargarLaRevision,
+  correoDeLaCitaAlVendedor, faltaParaAvisarDeLaCita,
   esEstadoPeritacion, esVeredicto, abreLaPuertaAlPago,
 } from '../lib/peritaciones.js';
 
@@ -70,7 +71,9 @@ async function prepara(): Promise<void> {
   await query(
     `ALTER TABLE erp_peritaciones
        ADD COLUMN IF NOT EXISTS factura_numero TEXT NOT NULL DEFAULT '',
-       ADD COLUMN IF NOT EXISTS factura_fecha  DATE`,
+       ADD COLUMN IF NOT EXISTS factura_fecha  DATE,
+       ADD COLUMN IF NOT EXISTS cita_avisada_at TIMESTAMPTZ,
+       ADD COLUMN IF NOT EXISTS cita_avisada_a  TEXT NOT NULL DEFAULT ''`,
     []
   ).catch(() => {});
   preparado = true;
@@ -83,7 +86,7 @@ function nt(v: unknown): string {
 const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
-                factura_numero,
+                factura_numero, cita_avisada_at, cita_avisada_a,
                 TO_CHAR(factura_fecha, 'YYYY-MM-DD') AS factura_fecha,
                 encargo_enviado_at, encargo_enviado_a, creado_por, created_at, updated_at`;
 
@@ -297,6 +300,104 @@ peritacionesRouter.post(
     }
   }
 );
+
+// ── Avisar al vendedor del día ──────────────────────────────────────────────
+/**
+ * Decirle al vendedor qué día va el perito.
+ *
+ * Va desde el ERP y no por teléfono para que quede apuntado: quién dijo qué día
+ * y a quién se le avisó. Dos que se llaman por su cuenta no dejan rastro, y el
+ * día que el coche no esté preparado no hay dónde mirar.
+ */
+peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT p.*, 
+              TO_CHAR(p.fecha_prevista, 'DD/MM/YYYY') AS cuando,
+              pe.proveedor, o.dealer_name
+         FROM erp_peritaciones p
+         LEFT JOIN moveadvisor_market_leads l ON l.id = p.lead_id
+         LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+         LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
+        WHERE p.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const p = r.rows[0];
+    if (!p) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+
+    const nombre = nt(p.proveedor) || nt(p.dealer_name);
+    if (!nombre) {
+      res.status(409).json({ ok: false, error: 'sin_vendedor', detail: 'No se sabe a quién avisar.' });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = nt(v.rows[0]?.email);
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_vendedor',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const datos = {
+      vehiculo: nt(p.vehiculo_titulo),
+      cuando: nt(p.cuando),
+      perito: nt(p.perito),
+      nota: notaEnParrafos(req.body?.nota),
+    };
+    const falta = faltaParaAvisarDeLaCita(datos);
+    if (falta.length) {
+      res.status(409).json({
+        ok: false, error: 'faltan_datos',
+        detail: `Falta ${escritoEnLista(falta)}. La fecha se pone arriba, en «Cuándo va».`,
+      });
+      return;
+    }
+
+    const { subject, html } = correoDeLaCitaAlVendedor(datos);
+    const aQuien = pareceUnCorreo(req.body?.para) ? nt(req.body.para) : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+    const cajones = [
+      { ambito: 'lead', id: p.lead_id as string | null },
+      { ambito: 'peritacion', id: req.params.id },
+    ];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await query(
+      `UPDATE erp_peritaciones SET cita_avisada_at = NOW(), cita_avisada_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    );
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    console.error('[peritaciones] cita:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'cita_failed' });
+  }
+});
 
 // ── Su factura ──────────────────────────────────────────────────────────────
 /**

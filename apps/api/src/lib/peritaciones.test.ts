@@ -13,6 +13,7 @@ import {
   correoDeEncargoAlPerito, faltaParaEncargarLaRevision,
   abreLaPuertaAlPago, esVeredicto, esEstadoPeritacion,
   ESTADOS_PERITACION, QUE_MIRA_EL_PERITO,
+  correoDeLaCitaAlVendedor, faltaParaAvisarDeLaCita,
 } from './peritaciones.js';
 
 const CASO = {
@@ -99,12 +100,12 @@ describe('el encargo al perito', () => {
     assert.ok(!/money does not go out until you confirm/.test(html));
   });
 
-  test('la cita la cierra él con el vendedor, no nosotros en medio', () => {
-    // «Dinos cuándo puedes y lo cerramos con el vendedor» son tres correos
-    // para cuadrar una hora entre dos que ya tienen el teléfono del otro.
+  test('le pide el día, y la cita la cierra el ERP', () => {
+    // Va desde aquí y no de móvil a móvil para que quede apuntado quién dijo
+    // qué día y a quién se le avisó.
     const { html } = correoDeEncargoAlPerito(CASO);
-    assert.match(html, /direkt mit dem Verkäufer/);
-    assert.match(html, /directly with the seller/);
+    assert.match(html, /wann Sie hinfahren können/);
+    assert.match(html, /Den Termin stimmen wir mit dem Verkäufer ab/);
   });
 
   test('con dónde está y por quién preguntar', () => {
@@ -126,5 +127,53 @@ describe('el encargo al perito', () => {
   test('sin saber qué coche es, no se manda', () => {
     assert.deepEqual(faltaParaEncargarLaRevision({ vehiculo: '  ' }), ['qué coche es']);
     assert.deepEqual(faltaParaEncargarLaRevision(CASO), []);
+  });
+});
+
+/**
+ * El aviso al vendedor con el día de la visita.
+ *
+ * Cierra la cita, y lo que se le pide además de la hora es lo que evita que la
+ * visita se quede a medias: que el coche esté accesible, que estén los papeles
+ * y que estén las dos llaves. Volver otro día son otros 289 €.
+ */
+describe('el aviso de la cita al vendedor', () => {
+  const CITA = {
+    vehiculo: 'Kia Sorento 2.4 GDI AWD Automatik Kamera LED',
+    cuando: '11/09/2026',
+    perito: 'checkdenwagen.de',
+  };
+
+  test('dice el día y quién va', () => {
+    const { subject, html } = correoDeLaCitaAlVendedor(CITA);
+    assert.match(subject, /Termin zur Fahrzeugprüfung/);
+    assert.match(html, /11\/09\/2026/);
+    assert.match(html, /checkdenwagen\.de/);
+  });
+
+  test('y pide las tres cosas que hacen que no haya que volver', () => {
+    const { html } = correoDeLaCitaAlVendedor(CITA);
+    assert.match(html, /zugänglich/);
+    assert.match(html, /Zulassungsbescheinigung Teil I und II/);
+    assert.match(html, /beide Schlüssel/);
+  });
+
+  test('y deja cambiar el día en vez de darlo por cerrado', () => {
+    assert.match(correoDeLaCitaAlVendedor(CITA).html, /Passt der Termin nicht/);
+  });
+
+  test('sin día no se manda: sería un aviso sin aviso', () => {
+    assert.deepEqual(faltaParaAvisarDeLaCita({ vehiculo: 'Un coche' }), ['qué día va']);
+    assert.deepEqual(faltaParaAvisarDeLaCita(CITA), []);
+  });
+
+  test('sin saber quién va, se dice que va alguien y no se calla', () => {
+    const { html } = correoDeLaCitaAlVendedor({ ...CITA, perito: null });
+    assert.match(html, /Es kommt ein unabhängiger Prüfer/);
+  });
+
+  test('lo que venga de fuera no se cuela como HTML', () => {
+    const { html } = correoDeLaCitaAlVendedor({ ...CITA, perito: '<b>x</b>' });
+    assert.ok(!html.includes('<b>x</b>'));
   });
 });
