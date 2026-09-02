@@ -228,6 +228,21 @@ Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 > estaban vendidos desde julio y seguían en pie—, y para cuando se manda esto el
 > cliente ya ha transferido 21.500 €. Si el coche no está, aquí se acaba y se le
 > devuelve todo.
+**Lo que conteste, apuntado una sola vez**
+
+Su respuesta trae cuatro datos que hacen falta en tres pantallas distintas.
+Debajo del botón, en cuanto se ha preguntado, sale dónde escribirlos.
+
+- [ ] Pon **dónde se ve el coche**, **por quién preguntar**, el **IBAN** y el
+      **titular de la cuenta**, y guarda.
+- [ ] La dirección y el contacto caen solos en la **peritación**; el IBAN, en la
+      **ficha del vendedor** en Proveedores. Compruébalo en las dos pantallas.
+- [ ] Copiarlo a mano de un correo a tres sitios es donde se cuelan los errores,
+      y uno de esos datos es un número de cuenta.
+
+> Y otra vez: **el IBAN, por teléfono**. Da igual cuántas veces lo automaticemos;
+> esa llamada no la puede hacer el ERP.
+
 **La peritación** · se abrió sola al entrar el dinero
 
 Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.

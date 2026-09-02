@@ -159,6 +159,34 @@ export default function ImportacionesPage() {
    * Comparte forma con la petición de factura al vendedor: pulsa, se manda, y
    * si no se puede se dice qué falta donde está mirando.
    */
+  /**
+   * Lo que contestó el vendedor, apuntado una vez y repartido solo.
+   *
+   * La dirección y el contacto van a la peritación —es quien tiene que ir— y el
+   * IBAN a la ficha del vendedor, que es de donde lo lee el portero del pago.
+   * Copiarlo a mano de un correo a tres pantallas es donde se cuelan los
+   * errores, y uno de esos datos es un número de cuenta.
+   */
+  async function guardaLaRespuesta(id: string, datos: Record<string, string>) {
+    setGuardando(true);
+    try {
+      const r = await api.post(`/leads/${id}/respuesta-vendedor`, datos);
+      if (!r.ok) {
+        const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido guardar.';
+        setError(dice);
+        setErrorDelPanel(dice);
+        return;
+      }
+      setErrorDelPanel('');
+      const lista = await carga();
+      setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+    } catch (e) {
+      setErrorDelPanel((e as Error)?.message || 'No se ha podido guardar.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   // Los dos no mandan nada: preparan el correo y lo abren para revisarlo.
   const encargaALaGestoria = (id: string) => preparaCorreo(`/leads/${id}/encargo-gestoria`);
   const pideLaFactura = (id: string) => preparaCorreo(`/leads/${id}/factura-vendedor`);
@@ -370,6 +398,7 @@ export default function ImportacionesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onPreguntarAlVendedor={() => void preguntaAlVendedor(abierto.id)}
+          onGuardarRespuesta={(datos) => void guardaLaRespuesta(abierto.id, datos)}
           onPedirFactura={() => void pideLaFactura(abierto.id)}
           onEncargarALaGestoria={() => void encargaALaGestoria(abierto.id)}
           aviso={errorDelPanel}
@@ -550,6 +579,7 @@ interface PanelProps {
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
   onPreguntarAlVendedor: () => void;
+  onGuardarRespuesta: (datos: Record<string, string>) => void;
   onPedirFactura: () => void;
   onEncargarALaGestoria: () => void;
   aviso: string;
@@ -564,7 +594,11 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onPedirFactura, onEncargarALaGestoria, aviso }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onGuardarRespuesta, onPedirFactura,
+onEncargarALaGestoria, aviso }: PanelProps) {
+  // Lo que conteste el vendedor. Vacío hasta que alguien lo teclee: aquí no se
+  // adivina nada.
+  const [delVendedor, setDelVendedor] = useState({ donde: '', contacto: '', iban: '', titular: '' });
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -768,6 +802,42 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                     Un anuncio sigue publicado días después de venderse el coche.
                   </div>
                 </>
+              )}
+
+              {/*
+                * Y lo que conteste, apuntado aquí una sola vez.
+                *
+                * Su respuesta trae cuatro datos que hacen falta en tres pantallas:
+                * dónde se ve el coche y por quién preguntar —lo que necesita el
+                * perito— y su IBAN, que es lo que el ERP exige para dejar soltar el
+                * pago. Se teclea una vez y cae donde tiene que caer.
+                */}
+              {reservaPreguntada(x) && (
+                <div className="mt-3 pt-3 border-t border-emerald-200/70">
+                  <div className="text-[11px] font-semibold text-emerald-800 mb-1.5">
+                    Lo que ha contestado
+                  </div>
+                  <input value={delVendedor.donde} placeholder="Dónde se ve el coche: calle, número y CP"
+                         onChange={(e) => setDelVendedor((d) => ({ ...d, donde: e.target.value }))}
+                         className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
+                  <input value={delVendedor.contacto} placeholder="Preguntar por… y su teléfono"
+                         onChange={(e) => setDelVendedor((d) => ({ ...d, contacto: e.target.value }))}
+                         className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
+                  <input value={delVendedor.iban} placeholder="IBAN"
+                         onChange={(e) => setDelVendedor((d) => ({ ...d, iban: e.target.value }))}
+                         className="w-full mb-1.5 px-3 py-2 text-sm font-mono border border-emerald-200 rounded-lg" />
+                  <input value={delVendedor.titular} placeholder="Titular de la cuenta"
+                         onChange={(e) => setDelVendedor((d) => ({ ...d, titular: e.target.value }))}
+                         className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
+                  <button onClick={() => onGuardarRespuesta(delVendedor)} disabled={guardando}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                    Guardar lo que ha contestado
+                  </button>
+                  <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                    La dirección va a la peritación y el IBAN a su ficha.
+                    <strong> Confirma el IBAN por teléfono</strong> antes de transferir.
+                  </div>
+                </div>
               )}
             </div>
 

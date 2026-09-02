@@ -82,6 +82,9 @@ peritacionesRouter.get(
   requireRole(['admin', 'support', 'operations']),
   async (_req, res) => {
     await prepara();
+    // Antes de enseñarlas, las que falten: el aviso de que el dinero ha
+    // entrado no llega al ERP, así que se mira lo que hay.
+    await abreLasQueFalten().catch(() => 0);
     try {
       const r = await query(`SELECT ${CAMPOS} FROM erp_peritaciones ORDER BY created_at DESC`, []);
       res.json({ ok: true, data: r.rows });
@@ -283,6 +286,44 @@ peritacionesRouter.post(
     }
   }
 );
+
+/**
+ * Las que faltan, abiertas de golpe.
+ *
+ * Hace falta porque **el depósito no se marca desde aquí**: lo escribe PopCar
+ * en la misma base cuando el cliente paga, sin pasar por el ERP. El enganche
+ * que abre la peritación al cambiar de etapa nunca llega a dispararse en el
+ * camino normal, que es justo el que va a usar todo el mundo.
+ *
+ * Así que en vez de confiar en un aviso que no llega, se mira lo que hay: todo
+ * coche de importación con el dinero dentro y sin peritación necesita una. Se
+ * ejecuta al abrir las pantallas que las enseñan, y es idempotente — el índice
+ * único por expediente no deja abrir dos.
+ */
+export async function abreLasQueFalten(): Promise<number> {
+  await prepara();
+  const faltan = await query<{ id: string; vehicle_title: string | null }>(
+    `SELECT l.id, l.vehicle_title
+       FROM moveadvisor_market_leads l
+       LEFT JOIN erp_peritaciones p ON p.lead_id = l.id
+      WHERE l.lead_type = 'import'
+        AND l.deposit_paid_at IS NOT NULL
+        AND p.id IS NULL
+      LIMIT 50`,
+    []
+  ).catch(() => ({ rows: [] as { id: string; vehicle_title: string | null }[] }));
+
+  let abiertas = 0;
+  for (const f of faltan.rows) {
+    const id = await abrePeritacionDeImportacion({
+      leadId: f.id,
+      vehiculoTitulo: f.vehicle_title ?? '',
+      creadoPor: 'al entrar el dinero',
+    });
+    if (id) abiertas += 1;
+  }
+  return abiertas;
+}
 
 /**
  * La peritación de una importación, abierta sola cuando el dinero entra.

@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
-import { abrePeritacionDeImportacion } from './peritaciones.js';
+import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
@@ -223,6 +223,9 @@ function rentingNotifyEmailHtml(lead: Lead): string {
 
 
 leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  // Las peritaciones que falten, para que el expediente las enseñe sin tener
+  // que pasar antes por su pantalla.
+  await abreLasQueFalten().catch(() => 0);
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
   const type    = String(req.query.type   || '').trim();
@@ -1196,6 +1199,77 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
  * La gestoría sale de los propios trámites: si están repartidos entre dos
  * —que no debería, pero puede—, manda a la del primero y lo dice.
  */
+/**
+ * Lo que ha contestado el vendedor, apuntado una sola vez.
+ *
+ * Su respuesta al primer correo trae cuatro cosas que hacen falta en tres
+ * pantallas distintas: si el coche sigue ahí, **dónde se ve** y **por quién
+ * preguntar** —que es lo que necesita el perito para ir— y **su IBAN**, que es
+ * lo que el ERP exige para dejar soltar el pago.
+ *
+ * Copiarlo a mano de un correo a tres sitios es donde se cuelan los errores, y
+ * uno de esos sitios es un número de cuenta. Así que se teclea aquí y cae donde
+ * tiene que caer: la dirección y el contacto en la peritación, el IBAN en la
+ * ficha del vendedor.
+ */
+leadsRouter.post('/leads/:id/respuesta-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT l.id, l.vehicle_title, pe.proveedor, o.dealer_name
+         FROM moveadvisor_market_leads l
+         LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+         LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
+        WHERE l.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const f = r.rows[0];
+    if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    const donde = String(req.body?.donde ?? '').trim();
+    const contacto = String(req.body?.contacto ?? '').trim();
+    const iban = String(req.body?.iban ?? '').replace(/[\s-]/g, '').toUpperCase();
+    const titular = String(req.body?.titular ?? '').trim();
+
+    /**
+     * Dónde y con quién: a la peritación, que es quien va a ir.
+     *
+     * Con `COALESCE(NULLIF(...))` para no borrar lo que ya hubiera escrito
+     * alguien: un campo vacío aquí no es una corrección, es que no se rellenó.
+     */
+    if (donde || contacto) {
+      await query(
+        `UPDATE erp_peritaciones
+            SET donde = COALESCE(NULLIF($2, ''), donde),
+                contacto = COALESCE(NULLIF($3, ''), contacto),
+                updated_at = NOW()
+          WHERE lead_id = $1`,
+        [req.params.id, donde, contacto]
+      ).catch((e: Error) => console.error('[leads] peritación:', e.message));
+    }
+
+    // El IBAN y el titular, a la ficha del vendedor: es de donde los lee el
+    // portero que deja soltar el pago.
+    const nombre = String(f.proveedor ?? f.dealer_name ?? '').trim();
+    let enElVendedor = false;
+    if (nombre && (iban || titular)) {
+      const u = await query(
+        `UPDATE erp_proveedores
+            SET iban = COALESCE(NULLIF($2, ''), iban),
+                notas = CASE WHEN $3 <> '' AND notas NOT LIKE '%' || $3 || '%'
+                             THEN TRIM(BOTH E'\n' FROM COALESCE(notas, '') || E'\nTitular de la cuenta: ' || $3)
+                             ELSE notas END,
+                updated_at = NOW()
+          WHERE clave = $1`,
+        [nombreComparable(nombre), iban, titular]
+      ).catch(() => ({ rowCount: 0 }));
+      enElVendedor = Boolean(u.rowCount);
+    }
+
+    res.json({ ok: true, enLaPeritacion: Boolean(donde || contacto), enElVendedor });
+  } catch (err) {
+    falloInterno(res, 'respuesta_vendedor_failed', err);
+  }
+});
 leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     const r = await query<Record<string, unknown>>(
