@@ -24,6 +24,9 @@ fecha futura y cualquier CVC.
 - [ ] **Y ten a mano el IBAN, el NIF y el correo del vendedor alemán.** Sin los
       tres, el ERP no deja soltarle el pago. En el paso 3 se explica por qué y
       dónde se rellenan; para la prueba valen inventados.
+- [ ] **El perito también necesita correo.** `checkdenwagen` solo publica el
+      teléfono; hasta que lo tengamos, en Proveedores lleva uno de prueba y el
+      encargo te llega a ti.
 
 ---
 
@@ -94,7 +97,7 @@ fecha futura y cualquier CVC.
       reacondicionamiento. La entrega **no** está: va dentro del precio.
 - [ ] Las dos ponen **«a consultar»**, no un cero: un cero diría que es gratis.
 - [ ] Márcalas: **el precio de arriba no se mueve**, ni el depósito.
-- [ ] Debajo dice que **ninguno entra en la fianza**: ni en el depósito ni en el precio.
+- [ ] Debajo dice que **ninguno entra en el depósito**: se facturan aparte.
 
 **Y la ficha técnica**
 
@@ -179,20 +182,24 @@ sería declarar la venta de un coche que no hemos vendido.
 
 ## 3 · Ver el coche y soltar el dinero · **en el ERP**
 
-> **Los tres correos a proveedores salen de aquí en adelante**, y como en
-> Proveedores están puestos correos de prueba, **te llegan a ti**. Ábrelos:
-> son los que un día van a salir a un concesionario alemán, a un transportista
-> y a una gestoría.
+> **Los siete correos a proveedores salen de aquí en adelante**, y cuatro de
+> ellos de este paso. Como en Proveedores están puestos correos de prueba,
+> **te llegan a ti**. Ábrelos: son los que un día van a salir a un
+> concesionario alemán, a un perito, a un transportista y a una gestoría.
 >
-> | Cuándo | A quién | Paso |
-> |---|---|---|
-> | Al liberar el pago | Vendedor | 3 |
-> | En el tramo de transporte | Transportista | 6 |
-> | Al entrar en trámites | Gestoría | 8 |
+> | Cuándo | A quién | Qué pide | Paso |
+> |---|---|---|---|
+> | Con el depósito dentro | Vendedor | Si sigue disponible, y sus datos de pago | 3 |
+> | Con el depósito dentro | Perito | Que vaya a verlo, y qué mirar | 3 |
+> | Con el día que dé el perito | Vendedor | Qué día va, y que lo tenga listo | 3 |
+> | Al liberar el pago | Vendedor | Que ya se le ha pagado, y su factura | 3 |
+> | Al organizar el tramo | Vendedor | Dónde y cuándo se recoge | 6 |
+> | En el tramo de transporte | Transportista | La recogida, con las dos puntas | 6 |
+> | Al entrar en trámites | Gestoría | Los tres papeleos y el impuesto real | 8 |
 
-> **Para repetir esta parte sin empezar de cero**: el expediente se puede dejar
-> otra vez en «Depósito retenido», sin liberar y sin coche visto, y desde ahí
-> vuelve a recorrerse entero. Pídemelo y lo dejo así.
+> **Para repetir esta parte sin empezar de cero**: el expediente se deja otra
+> vez en «Depósito retenido», sin liberar, sin coche visto y sin ningún correo
+> mandado, y desde aquí vuelve a recorrerse entero. Pídemelo y lo dejo así.
 
 Este es el paso que sostiene el producto. Ve a **Importaciones** y abre el
 expediente.
@@ -228,6 +235,7 @@ Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 > estaban vendidos desde julio y seguían en pie—, y para cuando se manda esto el
 > cliente ya ha transferido 21.500 €. Si el coche no está, aquí se acaba y se le
 > devuelve todo.
+
 **Lo que conteste, apuntado una sola vez**
 
 Su respuesta trae cuatro datos que hacen falta en tres pantallas distintas.
@@ -271,6 +279,9 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 
 > Todo pasa por el ERP a propósito: dos que se llaman por su cuenta no dejan
 > rastro, y el día que el coche no esté preparado no hay dónde mirar.
+
+**Lo que vuelve del perito**
+
 - [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
 - [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
       que respalda la decisión de soltar 16.890 €.
@@ -310,7 +321,7 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
 |---|---|
 | **IBAN** | Adónde va la transferencia. Es el que más caro sale equivocado |
 | **NIF** | Va en la factura del coche, y permite comprobar que la sociedad existe |
-| **Correo** | A quien se le pide **la factura a nombre del cliente**. Sin ella esos 16.890 € no son un suplido: son ingreso nuestro, con su IVA encima |
+| **Correo** | A quien se le avisa del pago y se le pide **la factura a nombre del cliente**. Sin ella esos 16.890 € no son un suplido: son ingreso nuestro, con su IVA encima |
 
 - [ ] Ve a **Proveedores** y busca **Autowelt Kaufmann GmbH**. Está ya, dado de
       alta solo a partir del anuncio, pero **vacío**.

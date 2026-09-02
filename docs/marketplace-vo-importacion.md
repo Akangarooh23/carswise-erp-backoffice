@@ -183,14 +183,17 @@ sitio.
 
 ### Soltar el dinero
 
-Debajo del depósito hay dos botones, y en este orden:
+Debajo del depósito hay **un** botón: **«Liberar el pago al vendedor»**. Nace
+apagado y dice por qué — hasta que alguien nuestro no vea el coche, ese dinero
+no se mueve.
 
-1. **Hemos visto el coche en Alemania.** Lo marca quien fue a verlo, con su fecha.
-2. **Liberar el pago al vendedor.** No se puede pulsar sin lo anterior.
+Lo enciende la **peritación**, no una casilla. Cuando el perito dice que es el
+coche que se anunció, el coche queda visto con su fecha y el botón se abre
+solo. Antes eso era un «Hemos visto el coche» que se pulsaba, y el sistema se
+lo creía sin saber quién fue ni qué encontró.
 
-El segundo se apaga solo cuando falta el primero, y dice por qué. Pero **quien
-decide es el servidor**: aunque la pantalla dejara pulsar, la API lo rechaza y
-contesta qué falta.
+Pero **quien decide es el servidor**: aunque la pantalla dejara pulsar, la API
+lo rechaza y contesta qué falta — el coche sin ver, o los datos del vendedor.
 
 Al liberarlo, el expediente pasa solo a **Verificado y pagado**. Y no se libera
 dos veces: un segundo clic con el dinero ya enviado sería un segundo pago.
@@ -338,6 +341,28 @@ márgenes.
 
 > **Le falta el correo.** Solo está publicado el teléfono, +49 30 301 32 327.
 > Hasta que lo tengamos, el botón de encargar dirá que falta y no mandará nada.
+
+### Lo que vuelve, y dónde acaba
+
+Del perito vuelven tres cosas y cada una tiene su sitio en la pantalla:
+
+- **Lo que vio.** El veredicto y sus notas. Es lo único que marca el coche
+  como visto y abre la puerta al pago.
+- **Su informe y las fotos.** Al bloque de Documentos de la peritación, igual
+  que los papeles del coche van a los del expediente.
+- **Su factura.** Número, fecha e importe.
+
+Esos 289 € van a **dos sitios**, porque son dos preguntas distintas:
+
+| La pregunta | Dónde se contesta |
+|---|---|
+| ¿A quién le debemos dinero? | **Facturación proveedores → Recibidas**, pendiente de pagar |
+| ¿Cuánto cuesta este coche? | **Lo que cuesta**, en el pedido, de donde sale el margen |
+
+Lo segundo llega más tarde y es a propósito: el perito cobra **antes** de que
+exista el pedido —el pedido nace al liberar el pago—, así que es el pedido el
+que recoge el gasto al nacer. Apuntar la factura dos veces la corrige; no
+duplica ni el pago ni el coste.
 
 ---
 ## Antes de soltar el dinero al vendedor
@@ -653,6 +678,10 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 | Su teléfono, y cuándo quiere que le llamen | En el expediente, en sus dos campos |
 | Escribirle, y las notas del equipo | Al final del expediente |
 | Los papeles del coche | **Documentos**, en el expediente |
+| Quién vio el coche, qué día y qué encontró | **Peritaciones**, repartidas por estado |
+| El informe del perito y sus fotos | **Documentos**, en la peritación |
+| Lo que nos cobró el perito, y pagárselo | **Facturación proveedores → Recibidas** |
+| Lo que cuesta este coche, con la peritación dentro | **Lo que cuesta**, en su pedido |
 | El día que has quedado para entregarlo | **Día de la entrega**, en el expediente |
 | Quién tocó qué y cuándo | El **historial**, lo último del expediente |
 | Su factura y su rectificativa | **Facturación**, series FIA y RECT |

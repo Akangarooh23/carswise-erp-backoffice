@@ -425,9 +425,14 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
         {/*
           * Su factura.
           *
-          * No se queda aquí: se apunta como gasto del pedido, que es de donde
-          * salen «Lo que cuesta este coche» y el margen. Un coste que solo vive
-          * en la pantalla donde se generó no aparece en ninguna cuenta.
+          * No se queda aquí. Va a dos sitios porque contesta dos preguntas
+          * distintas: **cuánto cuesta este coche** —el gasto del pedido, de
+          * donde sale el margen— y **a quién le debemos dinero** —las facturas
+          * recibidas, que es donde se paga—. Un coste que solo vive en la
+          * pantalla donde se generó no aparece en ninguna cuenta.
+          *
+          * El gasto del pedido llega tarde a propósito: el perito cobra antes de
+          * que el pedido exista, así que lo recoge el pedido al nacer.
           */}
         <div className="mt-4 pt-3 border-t border-brand-200">
           <div className="text-xs font-semibold text-brand-600 mb-1.5">Su factura</div>
@@ -453,7 +458,8 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
             Apuntar su factura
           </button>
           <div className="text-[11px] text-brand-300 mt-1.5">
-            Se apunta también como coste de este coche, en el pedido.
+            Va a facturas de proveedor, pendiente de pagar, y al pedido como coste
+            de este coche.
           </div>
         </div>
 
