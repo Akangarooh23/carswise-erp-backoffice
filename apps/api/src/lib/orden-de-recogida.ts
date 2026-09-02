@@ -35,6 +35,8 @@ export interface DatosDeLaOrden {
   recogidaPrevista?: string | null;
   /** Lo acordado, si ya está cerrado. */
   coste?: number | null;
+  /** Lo que añada quien revisa antes de mandarla, ya en HTML. */
+  nota?: string | null;
 }
 
 /** Lo que impide mandar la orden. Sin esto, el camión no sabe adónde ir. */
@@ -107,6 +109,7 @@ export function correoDeOrdenDeRecogida(d: DatosDeLaOrden): { subject: string; h
     p(cuando
       ? 'Decidnos qué día podéis y os confirmamos.'
       : 'Todavía no tenemos fecha de salida. En cuanto la tengamos os la decimos; si necesitáis avisar con antelación, contadnos cuánta.') +
+    String(d.nota ?? '') +
     p('Cualquier cosa, respondiendo a este correo.');
 
   return { subject, html };

@@ -29,6 +29,8 @@ export interface DatosDelEncargo {
   /** La matrícula alemana con la que ha venido. */
   matricula?: string | null;
   tramites: Tramite[];
+  /** Lo que añada quien revisa antes de mandarlo, ya en HTML. */
+  nota?: string | null;
   /** A nombre de quién se matricula. */
   titular: {
     nombre?: string | null;
@@ -105,6 +107,7 @@ export function correoDeEncargoALaGestoria(d: DatosDelEncargo): { subject: strin
     p('<strong>Se matricula a nombre del cliente</strong>, no del nuestro: el coche es suyo desde Alemania y nosotros solo gestionamos la importación.') +
     delTitular +
     p('Y una cosa que necesitamos de vuelta: <strong>el importe real del impuesto de matriculación</strong> en cuanto lo sepáis. El cliente pagó una estimación y hasta que no tengamos la cifra de verdad no podemos devolverle ni cobrarle la diferencia.') +
+    String(d.nota ?? '') +
     p('Cualquier cosa, respondiendo a este correo.');
 
   return { subject, html };

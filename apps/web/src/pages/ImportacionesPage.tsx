@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, descargaConSesion } from '../api/client.js';
+import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
@@ -59,6 +60,44 @@ export default function ImportacionesPage() {
   const [guardando, setGuardando] = useState(false);
   // Lo que se le dice a quien acaba de pulsar, donde está mirando.
   const [errorDelPanel, setErrorDelPanel] = useState('');
+
+  /**
+   * El correo que se está revisando, antes de mandarlo.
+   *
+   * Se guarda también a qué ruta va: los dos correos de esta pantalla —la
+   * factura al vendedor y el encargo a la gestoría— se revisan igual y solo
+   * cambia el sitio al que se manda.
+   */
+  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; ruta: string } | null>(null);
+
+  /** Pide el correo sin mandarlo y lo abre para revisar. */
+  async function preparaCorreo(ruta: string) {
+    setGuardando(true);
+    const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true });
+    setGuardando(false);
+    if (!r.ok) {
+      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    }
+    setErrorDelPanel('');
+    const d = r.data as unknown as VistaDelCorreo;
+    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html }, ruta });
+  }
+
+  /** Y ya revisado, se manda con lo que haya cambiado. */
+  async function mandaElCorreo(cambios: { para: string; asunto: string; nota: string }) {
+    if (!revisando) return;
+    const id = abierto?.id;
+    setGuardando(true);
+    const r = await api.post(revisando.ruta, cambios);
+    setGuardando(false);
+    if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
+    setRevisando(null);
+    const lista = await carga();
+    if (id) setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+  }
   const [fecha, setFecha] = useState('');
   const [verCerrados, setVerCerrados] = useState(false);
 
@@ -99,39 +138,9 @@ export default function ImportacionesPage() {
    * Comparte forma con la petición de factura al vendedor: pulsa, se manda, y
    * si no se puede se dice qué falta donde está mirando.
    */
-  async function encargaALaGestoria(id: string) {
-    setGuardando(true);
-    const r = await api.post<{ para?: string }>(`/leads/${id}/encargo-gestoria`, {});
-    setGuardando(false);
-    if (!r.ok) {
-      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido mandar.';
-      setError(dice);
-      setErrorDelPanel(dice);
-      return;
-    }
-    setErrorDelPanel('');
-    const lista = await carga();
-    setAbierto((previo) => (previo && previo.id === id
-      ? (lista.find((y) => y.id === id) ?? previo)
-      : previo));
-  }
-
-  async function pideLaFactura(id: string) {
-    setGuardando(true);
-    const r = await api.post<{ para?: string }>(`/leads/${id}/factura-vendedor`, {});
-    setGuardando(false);
-    if (!r.ok) {
-      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido pedir.';
-      setError(dice);
-      setErrorDelPanel(dice);
-      return;
-    }
-    setErrorDelPanel('');
-    const lista = await carga();
-    setAbierto((previo) => (previo && previo.id === id
-      ? (lista.find((y) => y.id === id) ?? previo)
-      : previo));
-  }
+  // Los dos no mandan nada: preparan el correo y lo abren para revisarlo.
+  const encargaALaGestoria = (id: string) => preparaCorreo(`/leads/${id}/encargo-gestoria`);
+  const pideLaFactura = (id: string) => preparaCorreo(`/leads/${id}/factura-vendedor`);
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -337,6 +346,15 @@ export default function ImportacionesPage() {
           onGuardarNotas={(notas) => void guardaNotas(abierto.id, notas)}
         />
       )}
+
+      {/* Ningún correo a un proveedor sale sin que alguien lo haya visto. */}
+      <RevisarCorreo
+        vista={revisando?.vista ?? null}
+        enviando={guardando}
+        error={errorDelPanel}
+        onEnviar={(cambios) => void mandaElCorreo(cambios)}
+        onCerrar={() => setRevisando(null)}
+      />
     </div>
   );
 }

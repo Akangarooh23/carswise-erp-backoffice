@@ -27,6 +27,8 @@ export interface DatosDeLaPeticion {
   /** Lo que se le paga por el coche. */
   importe?: number | null;
   /** A nombre de quién tiene que ir la factura. */
+  /** Lo que añada quien revisa antes de mandarlo, ya en HTML. */
+  nota?: string | null;
   cliente: {
     nombre?: string | null;
     nif?: string | null;
@@ -104,6 +106,7 @@ export function correoDeFacturaAlVendedor(d: DatosDeLaPeticion): { subject: stri
     datosDelCliente +
     p('Fahrzeug:') +
     delCoche +
+    String(d.nota ?? '') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +

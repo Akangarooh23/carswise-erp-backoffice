@@ -330,6 +330,39 @@ escritos en pedidos, transportes y trámites y da de alta a quien falte— pero
 aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
 
 ---
+## Los tres correos que salen a proveedores
+
+Uno por cada cosa que hay que pedirle a alguien de fuera, y cada uno en el
+momento en que esa cosa hace falta:
+
+| Cuándo | A quién | Qué pide |
+|---|---|---|
+| Al liberar el pago | El vendedor alemán | La factura del coche **a nombre del cliente** |
+| En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
+| Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |
+
+Los tres **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
+correo entero, se revisa y se manda. Un correo no se desenvía, y estos van a
+gente de fuera con nuestro nombre.
+
+De cada uno se puede cambiar **a quién va**, **el asunto** y **añadir una línea**
+de ese coche en concreto. El cuerpo se ve pero no se edita, y eso es a
+propósito: cada correo existe por una frase —«a nombre del cliente, no de
+PopCar», «preguntar por» en cada punta, «decidnos el importe real del
+impuesto»— y un cuadro de texto con todo el HTML dentro es la forma más fácil
+de que un día se borre una de ellas sin querer y el correo salga pareciendo el
+de siempre.
+
+Y ninguno se manda a ciegas: si falta el correo del proveedor, o el NIF del
+cliente, o el transportista, se dice qué falta y dónde se rellena en lugar de
+mandar algo que vuelve mal.
+
+> **Todavía no son automáticos, y es una decisión.** Con cuatro coches al mes,
+> un correo revisado vale lo mismo que uno que sale solo y no se arriesga a lo
+> que el automático sí: salir con un dato mal puesto. Cuando alguno haya salido
+> igual cien veces, ese se automatiza.
+
+---
 ## La garantía
 
 **No la damos nosotros.** No le vendemos el coche —se lo vende el concesionario

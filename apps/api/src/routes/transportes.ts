@@ -18,6 +18,7 @@ import { enviar } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
+import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import {
   INCIDENCIA, esEstadoTransporteValido, puedeContratarse, notaDelCambio, fotosQueFaltan,
 } from '../lib/transportes.js';
@@ -251,18 +252,33 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       return;
     }
 
-    const { subject, html } = correoDeOrdenDeRecogida(datos);
+    /**
+     * Lo que trae quien revisa: a quién, el asunto y lo que quiera añadir.
+     *
+     * `soloVista` devuelve el correo sin mandarlo. Es lo que pinta el cuadro de
+     * revisión: enseñar el que se va a enviar y no una aproximación, porque una
+     * aproximación revisada no es una revisión.
+     */
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+
+    const { subject, html } = correoDeOrdenDeRecogida({ ...datos, nota });
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+
+    if (soloVista) { res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html }); return; }
+
     // Salta el desvío de pruebas: si no sale, nadie recoge el coche.
-    await enviar({ to: para, subject, html, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html, alClienteSiempre: true });
 
     await query(
       `UPDATE erp_transportes
           SET orden_enviada_at = NOW(), orden_enviada_a = $2, updated_at = NOW()
         WHERE id = $1`,
-      [req.params.id, para]
+      [req.params.id, aQuien]
     ).catch((e: Error) => console.error('[transportes] no se ha podido anotar la orden:', e.message));
 
-    res.json({ ok: true, para });
+    res.json({ ok: true, para: aQuien });
   } catch (err) {
     console.error('[transportes] orden:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'orden_failed' });

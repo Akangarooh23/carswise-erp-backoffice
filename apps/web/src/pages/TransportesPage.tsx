@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
+import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
@@ -119,6 +120,8 @@ export default function TransportesPage() {
   const gastado = lista.reduce((s, t) => s + Number(t.coste || 0), 0);
   // Lo que se le dice a quien acaba de pulsar, donde está mirando.
   const [errorDelPanel, setErrorDelPanel] = useState('');
+  // La orden que se está revisando antes de mandarla.
+  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; id: string } | null>(null);
 
   /**
    * Mandarle al transportista la orden de recogida.
@@ -128,16 +131,31 @@ export default function TransportesPage() {
    * el botón no hace nada.
    */
   async function mandaLaOrden(id: string) {
+    // No manda: pide el correo sin enviarlo y lo abre para revisarlo. Un
+    // camión que se presenta en la puerta equivocada no se deshace.
     setGuardando(true);
-    const r = await api.post<{ para?: string }>(`/transportes/${id}/orden`, {});
+    const r = await api.post<VistaDelCorreo>(`/transportes/${id}/orden`, { soloVista: true });
     setGuardando(false);
     if (!r.ok) {
-      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido mandar.';
+      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
       setError(dice);
       setErrorDelPanel(dice);
       return;
     }
     setErrorDelPanel('');
+    const d = r.data as unknown as VistaDelCorreo;
+    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html }, id });
+  }
+
+  /** Y ya revisada, se manda con lo que haya cambiado. */
+  async function mandaLaRevisada(cambios: { para: string; asunto: string; nota: string }) {
+    if (!revisando) return;
+    const { id } = revisando;
+    setGuardando(true);
+    const r = await api.post(`/transportes/${id}/orden`, cambios);
+    setGuardando(false);
+    if (!r.ok) { setErrorDelPanel((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
+    setRevisando(null);
     const datos = await carga();
     setAbierto((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
   }
@@ -210,6 +228,15 @@ export default function TransportesPage() {
           aviso={errorDelPanel}
         />
       )}
+
+      {/* Ninguna orden sale sin que alguien la haya visto. */}
+      <RevisarCorreo
+        vista={revisando?.vista ?? null}
+        enviando={guardando}
+        error={errorDelPanel}
+        onEnviar={(cambios) => void mandaLaRevisada(cambios)}
+        onCerrar={() => setRevisando(null)}
+      />
 
       {nuevo && (
         <TramoNuevo onCerrar={() => setNuevo(false)} onCreado={() => { setNuevo(false); void carga(); }} onError={setError} />

@@ -222,8 +222,13 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
 **Y el papel que hay que pedirle** · aparece al liberar
 
 - [ ] Sale un bloque nuevo: **«La factura del coche, a nombre del cliente»**.
-- [ ] Pulsa **«Pedírsela al vendedor»**. Le llega un correo en alemán y en
-      inglés, con los datos del cliente para poder emitirla.
+- [ ] Pulsa **«Pedírsela al vendedor»**. **No se manda todavía**: se abre el
+      correo para que lo revises, en alemán y en inglés.
+- [ ] Puedes cambiar **a quién va** y **el asunto**, y añadir una línea de este
+      coche en concreto. El cuerpo se ve pero no se toca: cada uno de estos
+      correos existe por una frase, y un cuadro con todo el HTML dentro es la
+      forma más fácil de borrar una sin darse cuenta.
+- [ ] Pulsa **«Mandarlo»**. Ahora sí sale.
 - [ ] Queda escrito: **«✓ Pedida el … a …»**, con el correo al que ha ido.
 - [ ] Como en Proveedores has puesto tu correo, **te llega a ti**. Ábrelo y mira
       que dice que la factura va a nombre del cliente y **no a nombre de
@@ -422,7 +427,9 @@ organizar*.
 **Y la orden de recogida** · el correo que hoy escribes a mano
 
 - [ ] Rellena el tramo —transportista, coste, fechas— y **guarda**.
-- [ ] Pulsa **«Mandársela al transportista»**.
+- [ ] Pulsa **«Mandársela al transportista»**. Se abre para revisarla antes de
+      salir, como la del vendedor.
+- [ ] Añade algo en «Algo que añadir» —«el jueves está cerrado»— y **manda**.
 - [ ] Queda escrito **«✓ Mandada el … a …»**, con el correo al que ha ido.
 - [ ] Ábrelo (te llega a ti) y mira que lleva las cuatro cosas con las que un
       conductor puede ir sin llamar: **qué coche**, **de dónde** y por quién
@@ -491,7 +498,8 @@ de matriculación, ITV de homologación y matriculación.
 Vuelve a **Importaciones** y abre el expediente. Con el coche en «En trámites»
 sale un bloque nuevo: **«El encargo a la gestoría»**.
 
-- [ ] Pulsa **«Mandárselo a la gestoría»**. Queda escrito **«✓ Mandado el … a …»**.
+- [ ] Pulsa **«Mandárselo a la gestoría»**. Se abre para revisarlo; **manda** y
+      queda escrito **«✓ Mandado el … a …»**.
 - [ ] Ábrelo (te llega a ti) y comprueba las dos cosas que lo hacen servir:
 - [ ] Dice **«Se matricula a nombre del cliente, no del nuestro»**, con su nombre,
       su NIF y su domicilio. Es lo que más caro sale equivocado: a nombre de

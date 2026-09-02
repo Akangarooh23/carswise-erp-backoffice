@@ -19,6 +19,7 @@ import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpu
 import { nombreComparable } from '../lib/proveedores.js';
 import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
 import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
+import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -976,17 +977,31 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
       return;
     }
 
+    /**
+     * Lo que trae quien revisa: a quién, el asunto y lo que quiera añadir.
+     *
+     * `soloVista` devuelve el correo sin mandarlo. Es lo que pinta el cuadro de
+     * revisión: enseñar el que se va a enviar y no una aproximación, porque una
+     * aproximación revisada no es una revisión.
+     */
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+
     const { subject, html } = correoDeFacturaAlVendedor({
       vehiculo: String(f.vehicle_title ?? ''),
       anuncio: f.anuncio as string | null,
       pedido: f.pedido as string | null,
       importe: f.importe != null ? Number(f.importe) : (f.precio != null ? Number(f.precio) : null),
-      cliente,
+      cliente, nota,
     });
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+
+    if (soloVista) { res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html }); return; }
 
     // `alClienteSiempre` porque el desvío de pruebas no puede tragarse esto: si
     // no sale, no hay factura, y quien pulsa tiene que enterarse de que no salió.
-    await enviar({ to: para, subject, html, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
@@ -994,10 +1009,10 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
                 'factura_vendedor_pedida_at', to_jsonb(NOW()),
                 'factura_vendedor_pedida_a', to_jsonb($2::text))
         WHERE id = $1`,
-      [req.params.id, para]
+      [req.params.id, aQuien]
     ).catch((e: Error) => console.error('[leads] no se ha podido anotar la petición:', e.message));
 
-    res.json({ ok: true, para });
+    res.json({ ok: true, para: aQuien });
   } catch (err) {
     falloInterno(res, 'factura_vendedor_failed', err);
   }
@@ -1084,9 +1099,24 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
       return;
     }
 
-    const { subject, html } = correoDeEncargoALaGestoria(datos);
+    /**
+     * Lo que trae quien revisa: a quién, el asunto y lo que quiera añadir.
+     *
+     * `soloVista` devuelve el correo sin mandarlo. Es lo que pinta el cuadro de
+     * revisión: enseñar el que se va a enviar y no una aproximación, porque una
+     * aproximación revisada no es una revisión.
+     */
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+
+    const { subject, html } = correoDeEncargoALaGestoria({ ...datos, nota });
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+
+    if (soloVista) { res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html }); return; }
+
     // Salta el desvío de pruebas: si no sale, el coche no se matricula.
-    await enviar({ to: para, subject, html, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
@@ -1094,10 +1124,10 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
                 'encargo_gestoria_enviado_at', to_jsonb(NOW()),
                 'encargo_gestoria_enviado_a', to_jsonb($2::text))
         WHERE id = $1`,
-      [req.params.id, para]
+      [req.params.id, aQuien]
     ).catch((e: Error) => console.error('[leads] no se ha podido anotar el encargo:', e.message));
 
-    res.json({ ok: true, para });
+    res.json({ ok: true, para: aQuien });
   } catch (err) {
     falloInterno(res, 'encargo_gestoria_failed', err);
   }
