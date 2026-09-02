@@ -133,18 +133,28 @@ export default function TransportesPage() {
   async function mandaLaOrden(id: string) {
     // No manda: pide el correo sin enviarlo y lo abre para revisarlo. Un
     // camión que se presenta en la puerta equivocada no se deshace.
+    //
+    // Con `finally`: sin él, una llamada que revienta deja el panel entero en
+    // «guardando» y todos los botones apagados sin decir por qué.
     setGuardando(true);
-    const r = await api.post<VistaDelCorreo>(`/transportes/${id}/orden`, { soloVista: true });
-    setGuardando(false);
-    if (!r.ok) {
-      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
+    try {
+      const r = await api.post<VistaDelCorreo>(`/transportes/${id}/orden`, { soloVista: true });
+      if (!r.ok) {
+        const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
+        setError(dice);
+        setErrorDelPanel(dice);
+        return;
+      }
+      setErrorDelPanel('');
+      const d = r.data as unknown as VistaDelCorreo;
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id });
+    } catch (e) {
+      const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);
       setErrorDelPanel(dice);
-      return;
+    } finally {
+      setGuardando(false);
     }
-    setErrorDelPanel('');
-    const d = r.data as unknown as VistaDelCorreo;
-    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id });
   }
 
   /** Y ya revisada, se manda con lo que haya cambiado. */
@@ -152,12 +162,17 @@ export default function TransportesPage() {
     if (!revisando) return;
     const { id } = revisando;
     setGuardando(true);
-    const r = await api.post(`/transportes/${id}/orden`, cambios);
-    setGuardando(false);
-    if (!r.ok) { setErrorDelPanel((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
-    setRevisando(null);
-    const datos = await carga();
-    setAbierto((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
+    try {
+      const r = await api.post(`/transportes/${id}/orden`, cambios);
+      if (!r.ok) { setErrorDelPanel((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
+      setRevisando(null);
+      const datos = await carga();
+      setAbierto((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
+    } catch (e) {
+      setErrorDelPanel((e as Error)?.message || 'No se ha podido mandar.');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function cambia(id: string, cambios: Record<string, unknown>) {

@@ -70,20 +70,33 @@ export default function ImportacionesPage() {
    */
   const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; ruta: string } | null>(null);
 
-  /** Pide el correo sin mandarlo y lo abre para revisar. */
+  /**
+   * Pide el correo sin mandarlo y lo abre para revisar.
+   *
+   * Con `finally`: si la llamada revienta —la red, un despliegue a medias— sin
+   * él se queda «guardando» para siempre y **todos los botones del panel se
+   * apagan sin decir nada**. Pulsar y que se apague todo es peor que un error.
+   */
   async function preparaCorreo(ruta: string) {
     setGuardando(true);
-    const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true });
-    setGuardando(false);
-    if (!r.ok) {
-      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
+    try {
+      const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true });
+      if (!r.ok) {
+        const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
+        setError(dice);
+        setErrorDelPanel(dice);
+        return;
+      }
+      setErrorDelPanel('');
+      const d = r.data as unknown as VistaDelCorreo;
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, ruta });
+    } catch (e) {
+      const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);
       setErrorDelPanel(dice);
-      return;
+    } finally {
+      setGuardando(false);
     }
-    setErrorDelPanel('');
-    const d = r.data as unknown as VistaDelCorreo;
-    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, ruta });
   }
 
   /** Y ya revisado, se manda con lo que haya cambiado. */
@@ -91,12 +104,20 @@ export default function ImportacionesPage() {
     if (!revisando) return;
     const id = abierto?.id;
     setGuardando(true);
-    const r = await api.post(revisando.ruta, cambios);
-    setGuardando(false);
-    if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
-    setRevisando(null);
-    const lista = await carga();
-    if (id) setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+    try {
+      const r = await api.post(revisando.ruta, cambios);
+      if (!r.ok) {
+        setErrorDelPanel((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.');
+        return;
+      }
+      setRevisando(null);
+      const lista = await carga();
+      if (id) setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+    } catch (e) {
+      setErrorDelPanel((e as Error)?.message || 'No se ha podido mandar.');
+    } finally {
+      setGuardando(false);
+    }
   }
   const [fecha, setFecha] = useState('');
   const [verCerrados, setVerCerrados] = useState(false);
@@ -145,8 +166,17 @@ export default function ImportacionesPage() {
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
-    const r = await api.patch<Expediente>(`/leads/${id}`, cambios);
-    setGuardando(false);
+    let r;
+    try {
+      r = await api.patch<Expediente>(`/leads/${id}`, cambios);
+    } catch (e) {
+      const dice = (e as Error)?.message || 'No se ha podido guardar.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    } finally {
+      setGuardando(false);
+    }
     if (!r.ok) {
       /**
        * El motivo, con palabras y **dentro del panel**.
