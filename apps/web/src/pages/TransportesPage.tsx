@@ -54,6 +54,9 @@ interface Transporte {
   fecha_entrega: string | null;
   notas: string;
   created_at: string;
+  // Cuándo se le mandó la orden de recogida, y a qué correo.
+  orden_enviada_at?: string | null;
+  orden_enviada_a?: string | null;
 }
 
 const enCamino = (e: string) => e === 'Recogido' || e === 'En tránsito';
@@ -114,6 +117,30 @@ export default function TransportesPage() {
   );
 
   const gastado = lista.reduce((s, t) => s + Number(t.coste || 0), 0);
+  // Lo que se le dice a quien acaba de pulsar, donde está mirando.
+  const [errorDelPanel, setErrorDelPanel] = useState('');
+
+  /**
+   * Mandarle al transportista la orden de recogida.
+   *
+   * El aviso va **dentro del panel**, no arriba de la pantalla: quien pulsa
+   * está mirando el tramo, y un error detrás del panel abierto se lee como que
+   * el botón no hace nada.
+   */
+  async function mandaLaOrden(id: string) {
+    setGuardando(true);
+    const r = await api.post<{ para?: string }>(`/transportes/${id}/orden`, {});
+    setGuardando(false);
+    if (!r.ok) {
+      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido mandar.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    }
+    setErrorDelPanel('');
+    const datos = await carga();
+    setAbierto((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
+  }
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -179,6 +206,8 @@ export default function TransportesPage() {
           guardando={guardando}
           onCerrar={() => setAbierto(null)}
           onCambiar={(c) => void cambia(abierto.id, c)}
+          onMandarOrden={() => void mandaLaOrden(abierto.id)}
+          aviso={errorDelPanel}
         />
       )}
 
@@ -232,8 +261,9 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
   );
 }
 
-function TransporteAbierto({ t, guardando, onCerrar, onCambiar }: {
+function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
+  onMandarOrden: () => void; aviso: string;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
   const [porQue, setPorQue] = useState('');
@@ -344,6 +374,44 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar }: {
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
         </div>
+        {/*
+          * La orden de recogida.
+          *
+          * Va aquí, debajo de los datos del tramo, porque es lo que se hace
+          * justo después de rellenarlos: mandárselos a quien tiene que ir a por
+          * el coche. Escribirlo a mano es copiar tres direcciones de tres
+          * pantallas, y ahí es donde se cuelan los errores.
+          *
+          * Con botón y no automático: un camión que se presenta en la puerta
+          * equivocada no se deshace.
+          */}
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">La orden de recogida</div>
+          {t.orden_enviada_at ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-bold text-emerald-700">
+                ✓ Mandada el {new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}
+                {t.orden_enviada_a ? ` a ${t.orden_enviada_a}` : ''}
+              </span>
+              <button onClick={onMandarOrden} disabled={guardando}
+                      className="text-[11px] text-brand-400 underline underline-offset-2">
+                mandarla otra vez
+              </button>
+            </div>
+          ) : (
+            <>
+              <button onClick={onMandarOrden} disabled={guardando}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                Mandársela al transportista
+              </button>
+              <div className="text-[11px] text-brand-300 mt-1.5">
+                Guarda antes los cambios: la orden sale con lo que hay grabado.
+              </div>
+            </>
+          )}
+          {aviso && <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>}
+        </div>
+
         <button onClick={() => onCambiar(datos)} disabled={guardando}
                 className="w-full px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
           Guardar los datos

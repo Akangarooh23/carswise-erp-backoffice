@@ -419,6 +419,26 @@ organizar*.
 
 ---
 
+**Y la orden de recogida** · el correo que hoy escribes a mano
+
+- [ ] Rellena el tramo —transportista, coste, fechas— y **guarda**.
+- [ ] Pulsa **«Mandársela al transportista»**.
+- [ ] Queda escrito **«✓ Mandada el … a …»**, con el correo al que ha ido.
+- [ ] Ábrelo (te llega a ti) y mira que lleva las cuatro cosas con las que un
+      conductor puede ir sin llamar: **qué coche**, **de dónde** y por quién
+      preguntar, **adónde** y **desde cuándo**.
+- [ ] Sin matrícula todavía, tiene que poner **«sin matricular todavía»**, no un
+      hueco en blanco.
+- [ ] **Sin fecha de recogida**, en vez de callarlo dice que todavía no la hay y
+      pregunta con cuánta antelación hay que avisar.
+
+> Pruébalo **sin transportista elegido** y **sin correo suyo en Proveedores**:
+> en los dos casos te dice qué falta y dónde se rellena, en lugar de mandar una
+> orden que nadie puede atender.
+
+> Fíjate en el segundo tramo cuando llegue: ahí el destino es **la casa del
+> cliente**, con su nombre y su teléfono para preguntar al llegar.
+
 ## 7 · Al llegar · **en el ERP**
 
 Vuelve al pedido.

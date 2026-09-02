@@ -14,6 +14,10 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
+import { enviar } from '../lib/correo.js';
+import { nombreComparable } from '../lib/proveedores.js';
+import { escritoEnLista } from '../lib/escrow.js';
+import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import {
   INCIDENCIA, esEstadoTransporteValido, puedeContratarse, notaDelCambio, fotosQueFaltan,
 } from '../lib/transportes.js';
@@ -54,6 +58,12 @@ const ENSURE_HISTORY = `
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`;
 
+/** Cuándo se le mandó la orden de recogida, y a qué correo. */
+const ENSURE_ORDEN = `
+  ALTER TABLE erp_transportes
+    ADD COLUMN IF NOT EXISTS orden_enviada_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS orden_enviada_a  TEXT NOT NULL DEFAULT ''`;
+
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_transportes_estado
     ON erp_transportes (estado, created_at DESC)`;
@@ -64,6 +74,7 @@ async function prepara() {
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
+  await query(ENSURE_ORDEN, []).catch(() => {});
   preparado = true;
 }
 
@@ -75,7 +86,8 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 vehiculo_titulo, matricula, coste::numeric AS coste,
                 TO_CHAR(recogida_prevista, 'YYYY-MM-DD') AS recogida_prevista,
                 TO_CHAR(entrega_prevista, 'YYYY-MM-DD')  AS entrega_prevista,
-                fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at`;
+                fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at,
+                orden_enviada_at, orden_enviada_a`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -151,6 +163,111 @@ transportesRouter.post('/transportes', requireRole(['admin', 'operations']), asy
 });
 
 // ── Cambiar ─────────────────────────────────────────────────────────────────
+/**
+ * Mandarle al transportista la orden de recogida.
+ *
+ * Hoy esto se escribe a mano copiando de tres pantallas. Copiar una dirección a
+ * mano es donde se cuelan los errores, y en un transporte el error no se ve
+ * hasta que el camión está en la puerta equivocada.
+ *
+ * Va con botón, como la petición de factura al vendedor y por lo mismo: con
+ * este volumen, un correo revisado vale igual que uno automático y no se
+ * arriesga a salir con un dato mal puesto.
+ */
+transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT t.*, 
+              pe.proveedor AS vendedor,
+              l.entrega_direccion, l.entrega_cp, l.entrega_ciudad, l.entrega_provincia,
+              l.contact_name, l.contact_phone
+         FROM erp_transportes t
+         LEFT JOIN erp_pedidos pe ON pe.id = t.pedido_id
+         LEFT JOIN moveadvisor_market_leads l ON l.id = t.lead_id
+        WHERE t.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const t = r.rows[0];
+    if (!t) { res.status(404).json({ ok: false, error: 'transporte_no_encontrado' }); return; }
+
+    // A quién: el correo de su ficha, buscada por el nombre normalizado.
+    const nombre = String(t.transportista ?? '').trim();
+    if (!nombre) {
+      res.status(409).json({
+        ok: false, error: 'sin_transportista',
+        detail: 'Elige antes quién lo trae.',
+      });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_transportista',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    /**
+     * A quién pregunta al llegar, según el tramo.
+     *
+     * En el primero recoge en el concesionario alemán; en el segundo sale de
+     * nuestra parada y lo entrega en casa del cliente. Sin un nombre y un
+     * teléfono en cada punta, el conductor llega y llama aquí.
+     */
+    const esElPrimero = Number(t.tramo ?? 1) <= 1;
+    const enCasaDelCliente = {
+      donde: [t.entrega_direccion, t.entrega_cp, t.entrega_ciudad, t.entrega_provincia]
+        .map((x) => String(x ?? '').trim()).filter(Boolean).join(', '),
+      quien: t.contact_name as string | null,
+      telefono: t.contact_phone as string | null,
+    };
+    const origen = esElPrimero
+      ? { donde: String(t.desde ?? ''), quien: t.vendedor as string | null }
+      : { donde: String(t.desde ?? '') };
+    const destino = esElPrimero
+      ? { donde: String(t.hasta ?? '') }
+      : (enCasaDelCliente.donde ? enCasaDelCliente : { donde: String(t.hasta ?? '') });
+
+    const datos = {
+      referencia: String(t.id),
+      vehiculo: String(t.vehiculo_titulo ?? ''),
+      matricula: t.matricula as string | null,
+      origen, destino,
+      recogidaPrevista: t.recogida_prevista as string | null,
+      coste: t.coste != null ? Number(t.coste) : null,
+    };
+    const falta = faltaParaLaOrden(datos);
+    if (falta.length) {
+      res.status(409).json({
+        ok: false, error: 'faltan_datos_del_tramo',
+        detail: `Falta ${escritoEnLista(falta)}.`,
+      });
+      return;
+    }
+
+    const { subject, html } = correoDeOrdenDeRecogida(datos);
+    // Salta el desvío de pruebas: si no sale, nadie recoge el coche.
+    await enviar({ to: para, subject, html, alClienteSiempre: true });
+
+    await query(
+      `UPDATE erp_transportes
+          SET orden_enviada_at = NOW(), orden_enviada_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, para]
+    ).catch((e: Error) => console.error('[transportes] no se ha podido anotar la orden:', e.message));
+
+    res.json({ ok: true, para });
+  } catch (err) {
+    console.error('[transportes] orden:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'orden_failed' });
+  }
+});
 transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations']), async (req, res) => {
   const estado = nt(req.body?.estado);
   if (estado && !esEstadoTransporteValido(estado)) {
