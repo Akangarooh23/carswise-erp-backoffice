@@ -53,12 +53,24 @@ const ENSURE_UNIQUE = `
 const ENSURE_MATRIZ = `
   ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS matriz_id TEXT`;
 
+/**
+ * Dónde se le paga.
+ *
+ * Faltaba, y es el dato del que depende que salga dinero: a un vendedor
+ * alemán se le transfieren 16.890 € del cliente. Sin sitio propio acababa en
+ * «notas», que es texto libre —no se puede exigir, ni comprobar, ni cotejar el
+ * día que llegue un correo con un dígito cambiado—.
+ */
+const ENSURE_IBAN = `
+  ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS iban TEXT NOT NULL DEFAULT ''`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
   await query(ENSURE_MATRIZ, []).catch(() => {});
+  await query(ENSURE_IBAN, []).catch(() => {});
   await traeLoQueYaEstaba();
   preparado = true;
 }
@@ -75,6 +87,11 @@ export async function preparaProveedores(): Promise<void> {
 
 function nt(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
+}
+
+/** Sin espacios y en mayúsculas, que es como se compara un IBAN con otro. */
+export function ibanLimpio(v: unknown): string {
+  return nt(v).replace(/[\s-]/g, '').toUpperCase();
 }
 
 /**
@@ -118,7 +135,7 @@ async function traeLoQueYaEstaba() {
   }
 }
 
-const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, notas, activo, created_at,
+const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, iban, notas, activo, created_at,
                 matriz_id,
                 (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz`;
 
@@ -174,11 +191,11 @@ proveedoresRouter.post('/proveedores', requireRole(['admin', 'operations']), asy
       () => siguienteDeSerie('erp_proveedores', prefijoAnual('PRV')),
       async (nuevoId) => {
         await query(
-          `INSERT INTO erp_proveedores (id, nombre, clave, tipos, nif, telefono, email, direccion, notas, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          `INSERT INTO erp_proveedores (id, nombre, clave, tipos, nif, telefono, email, direccion, iban, notas, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
           [nuevoId, nombre, clave, tipos, nt(req.body?.nif), nt(req.body?.telefono),
-           nt(req.body?.email).toLowerCase(), nt(req.body?.direccion), nt(req.body?.notas),
-           req.actor?.name ?? req.actor?.sub ?? '']
+           nt(req.body?.email).toLowerCase(), nt(req.body?.direccion), ibanLimpio(req.body?.iban),
+           nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '']
         );
       }
     );
@@ -212,6 +229,9 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
     for (const campo of ['nif', 'telefono', 'email', 'direccion', 'notas'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
+    // El IBAN se guarda sin espacios: escrito de dos formas distintas, el mismo
+    // número no se puede comparar con el que venga en un correo.
+    if (req.body?.iban !== undefined) pon('iban', ibanLimpio(req.body.iban));
     // Dar de baja, no borrar: lo que se le compró sigue siendo suyo.
     if (req.body?.activo !== undefined) pon('activo', req.body.activo !== false);
 

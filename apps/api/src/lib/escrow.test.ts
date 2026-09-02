@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import {
   ESTADOS_DEPOSITO, TRANSICIONES,
   sePuedeLiberar, PORQUE_NO_SE_LIBERA, transicionValida, liquidacionDelImpuesto,
+  escritoEnLista, faltanDatosDelVendedor,
 } from './escrow.js';
 
 describe('liberar el dinero', () => {
@@ -110,11 +111,25 @@ describe('el portero está puesto en la ruta', () => {
 
   test('y se mira lo guardado, no lo que venga en la petición', () => {
     // Quien pulsa el botón no puede traer consigo el permiso para pulsarlo.
-    assert.match(FUENTE, /SELECT escrow_estado, verificado_alemania_at FROM moveadvisor_market_leads/);
+    assert.match(FUENTE, /SELECT escrow_estado, verificado_alemania_at, vehicle_id FROM moveadvisor_market_leads/);
   });
 
   test('si no se puede, se contesta con el motivo', () => {
     assert.match(FUENTE, /PORQUE_NO_SE_LIBERA\[veredicto\.motivo\]/);
+  });
+
+  test('y se busca a quién se le va a mandar el dinero', () => {
+    // El vendedor sale del anuncio del que nació el expediente, y su ficha de
+    // Proveedores es donde están el IBAN, el NIF y el correo.
+    assert.match(FUENTE, /JOIN erp_proveedores p ON p\.clave = lower\(trim\(o\.dealer_name\)\)/);
+    assert.match(FUENTE, /vendedor,/);
+  });
+
+  test('y si le faltan datos, se dice cuáles', () => {
+    // «Faltan datos» no sirve: quien lo lee tiene que poder ir a rellenarlo sin
+    // adivinar el qué.
+    assert.match(FUENTE, /escritoEnLista\(veredicto\.faltan\)/);
+    assert.match(FUENTE, /Se rellena en Proveedores/);
   });
 
   test('y no se escribe nada cuando no se puede', () => {
@@ -122,7 +137,7 @@ describe('el portero está puesto en la ruta', () => {
     // el dinero igual.
     const bloque = FUENTE.slice(FUENTE.indexOf('if (libera_deposito)'), FUENTE.indexOf("if (!sets.length)"));
     const noPuede = bloque.slice(bloque.indexOf('if (!veredicto.puede)'));
-    assert.match(noPuede.slice(0, 400), /return;/);
+    assert.match(noPuede.slice(0, 800), /return;/);
     assert.ok(noPuede.indexOf('return;') < noPuede.indexOf('escrow_liberado_at'),
       'se estaría soltando el dinero después de haber contestado que no');
   });
@@ -215,5 +230,86 @@ describe('no se entrega con el impuesto sin liquidar', () => {
     // no puede bloquear una entrega.
     const bloque = FUENTE.slice(FUENTE.indexOf('const liq = await query'), FUENTE.indexOf('falta_liquidar_impuesto'));
     assert.match(bloque, /f\.real != null/);
+  });
+});
+
+/**
+ * Y saber a quién se le manda el dinero.
+ *
+ * Antes de soltar 16.890 € hacia Alemania hay tres cosas que tienen que estar
+ * escritas, y cada una por un motivo distinto: el **IBAN** porque es a dónde va
+ * la transferencia, el **NIF** porque es lo que permite comprobar que la
+ * sociedad existe, y el **correo** porque es a quien se le pide la factura del
+ * coche a nombre del cliente — sin ella esos 16.890 € no son un suplido, son
+ * ingreso nuestro con su IVA encima.
+ */
+describe('los datos del vendedor', () => {
+  const COMPLETO = { iban: 'DE89370400440532013000', nif: 'DE123456789', email: 'ventas@autowelt.de', nombre: 'Autowelt Kaufmann GmbH' };
+
+  test('con los tres puestos, se puede soltar', () => {
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true, vendedor: COMPLETO });
+    assert.equal(r.puede, true);
+    assert.equal(r.motivo, null);
+  });
+
+  test('sin IBAN no se suelta, y se dice que es el IBAN', () => {
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true, vendedor: { ...COMPLETO, iban: '' } });
+    assert.equal(r.puede, false);
+    assert.equal(r.motivo, 'sin_datos_del_vendedor');
+    assert.deepEqual(r.faltan, ['el IBAN']);
+  });
+
+  test('y si faltan varios, salen todos', () => {
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true, vendedor: { nombre: 'Alguien' } });
+    assert.deepEqual(r.faltan, ['el IBAN', 'el NIF', 'el correo']);
+    assert.equal(escritoEnLista(r.faltan ?? []), 'el IBAN, el NIF y el correo');
+  });
+
+  test('un espacio en blanco no cuenta como dato', () => {
+    // Es la forma más fácil de saltarse un campo obligatorio sin darse cuenta.
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true, vendedor: { ...COMPLETO, iban: '   ' } });
+    assert.deepEqual(r.faltan, ['el IBAN']);
+  });
+
+  test('sin ficha de proveedor, faltan los tres', () => {
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true, vendedor: null });
+    assert.deepEqual(r.faltan, ['el IBAN', 'el NIF', 'el correo']);
+  });
+
+  test('y sin saber quién es, no se comprueba nada', () => {
+    // Un expediente sin oferta detrás. Bloquear un pago por no haber sabido
+    // buscar al vendedor sería peor que no comprobarlo.
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: true });
+    assert.equal(r.puede, true);
+  });
+
+  test('el dinero sin depositar sigue mandando sobre esto', () => {
+    // El orden importa: decirle que faltan datos del vendedor cuando lo que
+    // pasa es que el cliente no ha pagado manda a arreglar lo que no es.
+    const r = sePuedeLiberar({ estado: 'pendiente', verificadoEnAlemania: true, vendedor: { nombre: 'Alguien' } });
+    assert.equal(r.motivo, 'sin_pagar');
+  });
+
+  test('y el coche sin ver, también', () => {
+    const r = sePuedeLiberar({ estado: 'retenido', verificadoEnAlemania: false, vendedor: { nombre: 'Alguien' } });
+    assert.equal(r.motivo, 'sin_verificar');
+  });
+});
+
+describe('cómo se escribe lo que falta', () => {
+  test('uno solo, tal cual', () => {
+    assert.equal(escritoEnLista(['el IBAN']), 'el IBAN');
+  });
+
+  test('dos, con una «y»', () => {
+    assert.equal(escritoEnLista(['el IBAN', 'el correo']), 'el IBAN y el correo');
+  });
+
+  test('tres, con comas y una «y» al final', () => {
+    assert.equal(escritoEnLista(['el IBAN', 'el NIF', 'el correo']), 'el IBAN, el NIF y el correo');
+  });
+
+  test('ninguno, nada', () => {
+    assert.equal(escritoEnLista([]), '');
   });
 });

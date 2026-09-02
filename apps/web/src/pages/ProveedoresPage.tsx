@@ -37,6 +37,9 @@ interface Proveedor {
   telefono: string;
   email: string;
   direccion: string;
+  // Dónde se le paga. De este dato depende que salga dinero: a un vendedor
+  // alemán se le transfieren 16.890 € de un cliente.
+  iban: string;
   notas: string;
   activo: boolean;
 }
@@ -310,7 +313,8 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
 }) {
   const [datos, setDatos] = useState({
     nombre: p.nombre, nif: p.nif ?? '', telefono: p.telefono ?? '',
-    email: p.email ?? '', direccion: p.direccion ?? '', notas: p.notas ?? '',
+    email: p.email ?? '', direccion: p.direccion ?? '', iban: p.iban ?? '',
+    notas: p.notas ?? '',
     matriz_id: p.matriz_id ?? '',
   });
   const matricesPosibles = posiblesMatrices(p, todos);
@@ -398,6 +402,20 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
             Dirección
             <input value={datos.direccion} onChange={(e) => setDatos((d) => ({ ...d, direccion: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          {/*
+            * El IBAN, con su aviso de para qué es.
+            *
+            * Vivía en «notas» cuando vivía en algún sitio, y ahí no se puede ni
+            * exigir ni comparar el día que llegue un correo con un dígito
+            * cambiado. Sin él, el ERP no deja soltar el pago al vendedor.
+            */}
+          <label className="col-span-2 text-[11px] text-brand-400">
+            IBAN
+            <span className="text-brand-300"> · adónde se le transfiere</span>
+            <input value={datos.iban} placeholder="DE89 3704 0044 0532 0130 00"
+                   onChange={(e) => setDatos((d) => ({ ...d, iban: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm font-mono border border-brand-200 rounded-lg" />
           </label>
           <label className="col-span-2 text-[11px] text-brand-400">
             Notas

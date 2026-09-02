@@ -41,7 +41,8 @@ export const TRANSICIONES: Record<EstadoDeposito, readonly EstadoDeposito[]> = {
   devuelto: [],
 };
 
-export type MotivoNoLiberar = 'sin_pagar' | 'sin_verificar' | 'ya_liberado' | 'ya_devuelto';
+export type MotivoNoLiberar = 'sin_pagar' | 'sin_verificar' | 'ya_liberado' | 'ya_devuelto'
+  | 'sin_datos_del_vendedor';
 
 /** Lo que se le dice a quien intenta liberar y no puede. */
 export const PORQUE_NO_SE_LIBERA: Record<MotivoNoLiberar, string> = {
@@ -49,7 +50,47 @@ export const PORQUE_NO_SE_LIBERA: Record<MotivoNoLiberar, string> = {
   sin_verificar: 'Nadie ha confirmado el coche en Alemania. El dinero no se suelta antes de eso.',
   ya_liberado: 'Ya se liberó.',
   ya_devuelto: 'Este depósito se devolvió.',
+  sin_datos_del_vendedor: 'Faltan datos del vendedor en Proveedores.',
 };
+
+/**
+ * Lo que hace falta saber del vendedor antes de mandarle el dinero.
+ *
+ * Tres cosas, y cada una por un motivo distinto:
+ *
+ * - **IBAN.** Es a dónde va la transferencia. Sin esto no hay pago posible, y
+ *   es el dato que más caro sale equivocado.
+ * - **NIF.** Va en la factura del coche y es lo que permite comprobar que la
+ *   sociedad existe antes de mandarle diecisiete mil euros.
+ * - **Correo.** Es a quien se le pide esa factura, **a nombre del cliente**.
+ *   Sin ella los 16.890 € no son un suplido: son ingreso nuestro con su IVA
+ *   encima, unos 3.500 € sobre dinero que no es nuestro.
+ *
+ * El teléfono y la dirección se quedan fuera a propósito: se agradecen, pero
+ * bloquear un pago por no tener un teléfono sería bloquearlo por nada.
+ */
+export const DATOS_DEL_VENDEDOR = [
+  { campo: 'iban', nombre: 'el IBAN' },
+  { campo: 'nif', nombre: 'el NIF' },
+  { campo: 'email', nombre: 'el correo' },
+] as const;
+
+/** Cuáles de esos faltan, con su nombre, para poder decirlo. */
+export function faltanDatosDelVendedor(
+  vendedor: Record<string, unknown> | null | undefined
+): string[] {
+  if (!vendedor) return DATOS_DEL_VENDEDOR.map((d) => d.nombre);
+  return DATOS_DEL_VENDEDOR
+    .filter((d) => String(vendedor[d.campo] ?? '').trim() === '')
+    .map((d) => d.nombre);
+}
+
+/** «el IBAN y el correo», «el IBAN, el NIF y el correo». */
+export function escritoEnLista(trozos: string[]): string {
+  if (!trozos.length) return '';
+  if (trozos.length === 1) return trozos[0];
+  return trozos.slice(0, -1).join(', ') + ' y ' + trozos[trozos.length - 1];
+}
 
 /**
  * Si se puede soltar el dinero.
@@ -64,7 +105,8 @@ export const PORQUE_NO_SE_LIBERA: Record<MotivoNoLiberar, string> = {
 export function sePuedeLiberar(datos: {
   estado?: string | null;
   verificadoEnAlemania?: boolean | null;
-}): { puede: boolean; motivo: MotivoNoLiberar | null } {
+  vendedor?: Record<string, unknown> | null;
+}): { puede: boolean; motivo: MotivoNoLiberar | null; faltan?: string[] } {
   const estado = String(datos.estado ?? 'pendiente');
   if (estado !== 'retenido') {
     const motivo: MotivoNoLiberar =
@@ -74,6 +116,22 @@ export function sePuedeLiberar(datos: {
     return { puede: false, motivo };
   }
   if (!datos.verificadoEnAlemania) return { puede: false, motivo: 'sin_verificar' };
+  /**
+   * Y saber a quién se le manda.
+   *
+   * Va aquí y no al confirmar el pedido porque **este es el momento en que sale
+   * el dinero**. Confirmar es decir que el vendedor acepta; soltar es
+   * transferirle diecisiete mil euros de un cliente.
+   *
+   * Solo se comprueba cuando se sabe de quién estamos hablando: un pedido a
+   * mano puede no tener proveedor todavía, y esa comprobación la hace su
+   * propia pantalla.
+   */
+  if (datos.vendedor !== undefined) {
+    const faltan = faltanDatosDelVendedor(datos.vendedor);
+    if (faltan.length) return { puede: false, motivo: 'sin_datos_del_vendedor', faltan };
+
+  }
   return { puede: true, motivo: null };
 }
 

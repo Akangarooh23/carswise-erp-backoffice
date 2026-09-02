@@ -15,7 +15,7 @@ export const leadsRouter = Router();
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
-import { sePuedeLiberar, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
+import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -518,23 +518,48 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
    * poder hacerlo, en vez de quedarse mirando un error.
    */
   if (libera_deposito) {
-    const ahora = await query<{ escrow_estado: string | null; verificado_alemania_at: string | null }>(
-      `SELECT escrow_estado, verificado_alemania_at FROM moveadvisor_market_leads WHERE id = $1`,
+    const ahora = await query<{ escrow_estado: string | null; verificado_alemania_at: string | null; vehicle_id: string | null }>(
+      `SELECT escrow_estado, verificado_alemania_at, vehicle_id FROM moveadvisor_market_leads WHERE id = $1`,
       [req.params.id]
     );
     if (!ahora.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
     const fila = ahora.rows[0];
+
+    /**
+     * A quién se le manda el dinero, con sus datos.
+     *
+     * El vendedor sale del anuncio del que nació el expediente y su ficha está
+     * en Proveedores. Si no se encuentra —un expediente sin oferta detrás— se
+     * pasa `undefined` y la comprobación no se hace: bloquear un pago por no
+     * haber sabido buscar sería peor que no comprobarlo.
+     */
+    let vendedor: Record<string, unknown> | undefined;
+    if (fila.vehicle_id) {
+      const v = await query(
+        `SELECT p.iban, p.nif, p.email, p.nombre
+           FROM moveadvisor_market_offers o
+           JOIN erp_proveedores p ON p.clave = lower(trim(o.dealer_name))
+          WHERE o.id = $1`,
+        [fila.vehicle_id]
+      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+      if (v.rows.length) vendedor = v.rows[0] as Record<string, unknown>;
+    }
+
     const veredicto = sePuedeLiberar({
       estado: fila.escrow_estado,
       // La verificación puede haber llegado en esta misma petición: marcar que
       // has visto el coche y soltar el dinero es un solo gesto.
       verificadoEnAlemania: Boolean(fila.verificado_alemania_at) || verificado_alemania === true,
+      vendedor,
     });
     if (!veredicto.puede) {
-      res.status(409).json({
-        ok: false, error: veredicto.motivo,
-        detail: veredicto.motivo ? PORQUE_NO_SE_LIBERA[veredicto.motivo] : undefined,
-      });
+      // Con lo que falta escrito, no solo con que falta algo: quien lo lee
+      // tiene que poder ir a rellenarlo sin adivinar el qué.
+      const base = veredicto.motivo ? PORQUE_NO_SE_LIBERA[veredicto.motivo] : undefined;
+      const detail = veredicto.faltan?.length
+        ? `Falta ${escritoEnLista(veredicto.faltan)} de ${String(vendedor?.nombre ?? 'el vendedor')}. Se rellena en Proveedores.`
+        : base;
+      res.status(409).json({ ok: false, error: veredicto.motivo, detail });
       return;
     }
     sets.push(`escrow_liberado_at = NOW()`);
