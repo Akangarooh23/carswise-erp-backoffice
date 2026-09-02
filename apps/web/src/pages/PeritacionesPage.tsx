@@ -17,7 +17,7 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import DanosDelCoche from '../components/DanosDelCoche.js';
 import { type Dano, resumenDeDanos, comoSeCuenta } from '../lib/danos.js';
-import { faseDeLaPeritacion, QUE_TOCA_AHORA } from '../lib/fases-peritacion.js';
+import { faseDeLaPeritacion, queTocaAhora } from '../lib/fases-peritacion.js';
 
 const ESTADOS = ['Por encargar', 'Encargada', 'Hecha'] as const;
 
@@ -349,7 +349,7 @@ function PeritacionAbierta({
    */
   const fase = faseDeLaPeritacion(p);
 
-  const queToca = QUE_TOCA_AHORA[fase];
+  const queToca = queTocaAhora(p);
 
   const seccion = (titulo: string, dentro: ReactNode, pista?: string) => (
     <div className="mt-4 pt-3 border-t border-brand-200">

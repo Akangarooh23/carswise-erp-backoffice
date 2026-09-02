@@ -21,6 +21,14 @@ export interface DondeVa {
   estado: string;
   /** Cuándo se le mandó el encargo, si se le mandó. */
   encargo_enviado_at?: string | null;
+  /**
+   * Lo que nos cobra. Vale como acuse de recibo: confirmar que van y decir
+   * el precio vienen en la misma respuesta, así que un coste apuntado es un
+   * perito que ha contestado.
+   */
+  coste?: number | string | null;
+  /** Cuándo se le confirmó el día al vendedor. */
+  cita_avisada_at?: string | null;
 }
 
 export const FASES = [
@@ -43,7 +51,34 @@ export function faseDeLaPeritacion(p: DondeVa): 0 | 1 | 2 {
   return p.encargo_enviado_at ? 1 : 0;
 }
 
-/** Lo que toca hacer ahora, dicho antes de que empiecen los campos. */
+/**
+ * Lo que toca hacer ahora, dicho antes de que empiecen los campos.
+ *
+ * La fase decide **qué se ve**; esta frase decide **qué hacer**, y no son lo
+ * mismo. Dentro de «Encargada» caben tres momentos muy distintos: esperando
+ * que conteste, esperando la visita, y —en medio— una cosa que hacer,
+ * confirmarle el día al vendedor. Con una sola frase para los tres, la
+ * pantalla seguía diciendo «esperando su respuesta» después de apuntar lo que
+ * había contestado, y entonces el cartel deja de leerse.
+ */
+export function queTocaAhora(p: DondeVa): string {
+  if (p.estado === 'Hecha') {
+    return 'Ya se sabe lo que hay. Apunta lo que vio, sus daños, su informe y su factura.';
+  }
+  if (!p.encargo_enviado_at) {
+    return 'Elige quién va a verlo, comprueba los datos de la visita y mándale el encargo.';
+  }
+  const haContestado = p.coste !== null && p.coste !== undefined && p.coste !== '' && Number(p.coste) > 0;
+  if (!haContestado) {
+    return 'Esperando su respuesta: si puede ir ese día y cuánto nos cobra.';
+  }
+  if (!p.cita_avisada_at) {
+    return 'Ha confirmado. Confírmale ahora el día y la hora al vendedor.';
+  }
+  return 'Todo cerrado: esperando la visita. Cuando vuelva, apunta lo que vio.';
+}
+
+/** La versión corta, por fase, para donde no se tiene la ficha entera. */
 export const QUE_TOCA_AHORA: Record<0 | 1 | 2, string> = {
   0: 'Elige quién va a verlo, comprueba los datos de la visita y mándale el encargo.',
   1: 'Esperando su respuesta: si puede ir ese día y cuánto nos cobra.',

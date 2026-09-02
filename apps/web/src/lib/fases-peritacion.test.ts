@@ -10,7 +10,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { faseDeLaPeritacion, QUE_TOCA_AHORA } from './fases-peritacion.js';
+import { faseDeLaPeritacion, queTocaAhora, QUE_TOCA_AHORA } from './fases-peritacion.js';
 
 describe('por dónde va', () => {
   test('recién nacida: hay que elegir perito y mandar el encargo', () => {
@@ -53,5 +53,42 @@ describe('lo que toca ahora', () => {
     // Que pueda ir ese día y cuánto cobra: son las dos que trae su respuesta.
     assert.match(QUE_TOCA_AHORA[1], /puede ir/);
     assert.match(QUE_TOCA_AHORA[1], /cobra/);
+  });
+});
+
+describe('lo que toca ahora, dentro de «Encargada»', () => {
+  // Caben tres momentos muy distintos, y con una sola frase para los tres la
+  // pantalla seguía diciendo «esperando su respuesta» después de apuntar lo que
+  // había contestado. Un cartel que no cambia se deja de leer.
+  const ENCARGADA = { estado: 'Encargada', encargo_enviado_at: '2026-09-02T10:00:00Z' };
+
+  test('recién mandado el encargo, se espera su respuesta', () => {
+    assert.match(queTocaAhora(ENCARGADA), /Esperando su respuesta/);
+  });
+
+  test('con su precio apuntado, toca confirmarle el día al vendedor', () => {
+    assert.match(queTocaAhora({ ...ENCARGADA, coste: 289 }), /Confírmale ahora el día/);
+  });
+
+  test('avisado el vendedor, ya solo se espera la visita', () => {
+    assert.match(
+      queTocaAhora({ ...ENCARGADA, coste: 289, cita_avisada_at: '2026-09-03T10:00:00Z' }),
+      /esperando la visita/
+    );
+  });
+
+  test('un coste de cero no cuenta como respuesta', () => {
+    // Se guardaba 0,00 € con el campo en blanco. Si contara, la pantalla diría
+    // que ha confirmado sin que nadie haya dicho nada.
+    assert.match(queTocaAhora({ ...ENCARGADA, coste: 0 }), /Esperando su respuesta/);
+    assert.match(queTocaAhora({ ...ENCARGADA, coste: '' }), /Esperando su respuesta/);
+  });
+
+  test('sin encargo mandado, lo que toca es mandarlo', () => {
+    assert.match(queTocaAhora({ estado: 'Encargada' }), /mándale el encargo/);
+  });
+
+  test('hecha, lo que toca es apuntar lo que vio', () => {
+    assert.match(queTocaAhora({ estado: 'Hecha', coste: 289 }), /Apunta lo que vio/);
   });
 });
