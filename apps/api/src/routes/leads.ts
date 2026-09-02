@@ -928,7 +928,6 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
   try {
     const r = await query<Record<string, unknown>>(
       `SELECT l.id, l.vehicle_title, l.vehicle_id, l.user_email, l.lead_type,
-              l.meta,
               pe.id AS pedido, pe.proveedor, pe.importe::numeric AS importe,
               o.dealer_name, o.url AS anuncio, o.price::numeric AS precio,
               u.name, u.apellidos, u.tax_id, u.company_name,
