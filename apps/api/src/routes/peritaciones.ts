@@ -48,6 +48,7 @@ const ENSURE_TABLE = `
     fecha_prevista  DATE,
     hora_prevista   TEXT NOT NULL DEFAULT '',
     telefono        TEXT NOT NULL DEFAULT '',
+    quien_va        TEXT NOT NULL DEFAULT '',
     fecha_hecha     TIMESTAMPTZ,
     veredicto       TEXT,
     notas           TEXT NOT NULL DEFAULT '',
@@ -105,7 +106,8 @@ async function prepara(): Promise<void> {
        ADD COLUMN IF NOT EXISTS cita_avisada_at TIMESTAMPTZ,
        ADD COLUMN IF NOT EXISTS cita_avisada_a  TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS hora_prevista   TEXT NOT NULL DEFAULT '',
-       ADD COLUMN IF NOT EXISTS telefono        TEXT NOT NULL DEFAULT ''`,
+       ADD COLUMN IF NOT EXISTS telefono        TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS quien_va        TEXT NOT NULL DEFAULT ''`,
     []
   ).catch(() => {});
   preparado = true;
@@ -124,7 +126,7 @@ function nt(v: unknown): string {
 }
 
 const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
-                telefono, hora_prevista,
+                telefono, hora_prevista, quien_va,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
                 factura_numero, cita_avisada_at, cita_avisada_a,
@@ -180,7 +182,9 @@ peritacionesRouter.patch(
       sets.push(`${campo} = $${valores.length}`);
     };
 
-    for (const campo of ['perito', 'donde', 'contacto', 'telefono', 'hora_prevista', 'notas'] as const) {
+    for (const campo of [
+      'perito', 'donde', 'contacto', 'telefono', 'hora_prevista', 'quien_va', 'notas',
+    ] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.fecha_prevista !== undefined) {
@@ -414,6 +418,9 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
       cuando: nt(p.cuando),
       hora: nt(p.hora_prevista),
       perito: nt(p.perito),
+      // El nombre de quien va de verdad, si nos lo han dicho. Es lo que
+      // pregunta el vendedor al contestar: con qué nombre va el perito.
+      quienVa: nt(p.quien_va),
       nota: notaEnParrafos(req.body?.nota),
     };
     const falta = faltaParaAvisarDeLaCita(datos);

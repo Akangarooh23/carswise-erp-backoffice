@@ -287,8 +287,14 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
       misma respuesta. Preguntarlo cuando ya ha ido es preguntarlo cuando no se
       puede decir que no: el trabajo está hecho y la factura llega con el número
       que él ponga.
-- [ ] Cuando conteste, apunta ese importe en **«Lo que nos cobra»**. De ahí sale
-      el coste del coche y, luego, lo que se le paga.
+- [ ] Cuando conteste, apunta en **«Lo que nos ha contestado»** el importe y,
+      si lo ha dicho, **quién va a ir** —«Prüfer: Daniel Weber»—. El nombre es
+      opcional; el precio es lo que da la cita por confirmada.
+- [ ] Ese nombre va en el correo al vendedor: «Es kommt **Daniel Weber**
+      (checkdenwagen…)». Es literalmente lo que él pregunta al contestar, y
+      quien abre la puerta de una nave no espera a una empresa, espera a
+      alguien.
+- [ ] Del importe sale el coste del coche y, luego, lo que se le paga.
 - [ ] Le dice punto por punto qué mirar, y le dice que **un «no» vale igual que**
       **un «sí»**: un perito que cree que solo puede confirmar, confirma.
 - [ ] Y le pide **qué día puede ir**. La cita la cerramos nosotros.

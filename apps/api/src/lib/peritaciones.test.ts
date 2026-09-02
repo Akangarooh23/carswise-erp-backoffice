@@ -239,6 +239,24 @@ describe('la cita que ya viene del vendedor', () => {
     assert.match(html, /07\/09\/2026 · 10:00/);
   });
 
+  test('y con nombre y apellido si la empresa nos lo ha dicho', () => {
+    // «Prüfer: Daniel Weber». Quien abre la puerta de una nave no espera a
+    // una empresa, espera a alguien.
+    const { html } = correoDeLaCitaAlVendedor({
+      vehiculo: 'Un coche', cuando: '07/09/2026', hora: '10:00',
+      perito: 'checkdenwagen Automobile DE', quienVa: 'Daniel Weber',
+    });
+    assert.ok(html.includes('Daniel Weber (checkdenwagen Automobile DE)'));
+  });
+
+  test('sin nombre, con la empresa basta y no se deja el hueco', () => {
+    const { html } = correoDeLaCitaAlVendedor({
+      vehiculo: 'Un coche', cuando: '07/09/2026', perito: 'checkdenwagen Automobile DE',
+    });
+    assert.match(html, /checkdenwagen Automobile DE/);
+    assert.ok(!html.includes('()'), 'un paréntesis vacío donde no hay nombre');
+  });
+
   test('y se le dice quién va, que es lo que pregunta él', () => {
     // «Bitte lassen Sie uns kurz bestätigen, mit welchem Namen Ihr Prüfer zu
     // uns kommt» es lo que contestan. La respuesta ya va en este correo.

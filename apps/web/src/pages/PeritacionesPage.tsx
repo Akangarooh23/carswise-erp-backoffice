@@ -45,6 +45,8 @@ interface Peritacion {
   hora_prevista: string;
   /** El teléfono de la persona por la que hay que preguntar. */
   telefono: string;
+  /** Quién va a ir de verdad, si la empresa nos ha dicho el nombre. */
+  quien_va: string;
   fecha_hecha: string | null;
   veredicto: string | null;
   notas: string;
@@ -241,7 +243,9 @@ export default function PeritacionesPage() {
                   <button key={p.id} onClick={() => setAbierta(p)}
                           className="w-full text-left rounded-lg border border-brand-200 px-3 py-2 hover:bg-brand-50">
                     <div className="text-sm font-semibold text-brand-600 leading-tight">{p.vehiculo_titulo}</div>
-                    <div className="text-[11px] text-brand-400 mt-0.5">{p.perito || 'sin perito'}</div>
+                    <div className="text-[11px] text-brand-400 mt-0.5">
+                      {p.perito || 'sin perito'}{p.quien_va ? ` · ${p.quien_va}` : ''}
+                    </div>
                     {p.veredicto && (
                       <div className={`text-[11px] font-bold mt-1 ${p.veredicto === 'es_el_que_se_anuncio' ? 'text-emerald-700' : 'text-red-700'}`}>
                         {VEREDICTOS.find(([k]) => k === p.veredicto)?.[1]}
@@ -318,6 +322,7 @@ function PeritacionAbierta({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
     telefono: p.telefono ?? '', fecha_prevista: p.fecha_prevista ?? '',
     hora_prevista: p.hora_prevista ?? '', coste: String(p.coste ?? ''),
+    quien_va: p.quien_va ?? '',
   });
   const [veredicto, setVeredicto] = useState(p.veredicto ?? '');
   const [factura, setFactura] = useState({
@@ -459,17 +464,35 @@ function PeritacionAbierta({
       clave: 'coste',
       desde: 1,
       nodo: seccion(
-        'Lo que nos cobra',
+        'Lo que nos ha contestado',
         <>
-          <input value={datos.coste} inputMode="decimal" placeholder="Lo que nos ha dicho"
-                 onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
-                 className="w-full mb-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <label className="block text-[11px] text-brand-400 mb-2">
+            Lo que nos cobra
+            <input value={datos.coste} inputMode="decimal" placeholder="289"
+                   onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          {/*
+            * Y quién va a ir, si lo han dicho.
+            *
+            * Opcional: lo que hace falta para seguir es el precio, que es lo
+            * que confirma que van. Pero el nombre es literalmente lo que
+            * pregunta el vendedor —«con qué nombre va su perito»—, y quien
+            * abre la puerta de una nave no espera a una empresa, espera a
+            * alguien.
+            */}
+          <label className="block text-[11px] text-brand-400 mb-2">
+            Quién va a ir <span className="text-brand-300">· opcional</span>
+            <input value={datos.quien_va} placeholder="Daniel Weber"
+                   onChange={(e) => setDatos((d) => ({ ...d, quien_va: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
           <button onClick={() => onGuardar(datos)} disabled={guardando}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
-            Guardar lo que nos cobra
+            Guardar lo que ha contestado
           </button>
         </>,
-        'Lo dice al confirmar la cita. Sale de nuestro margen, no del cliente.'
+        'El precio lo dice al confirmar la cita, y es lo que la da por confirmada. Sale de nuestro margen, no del cliente.'
       ),
     },
     {

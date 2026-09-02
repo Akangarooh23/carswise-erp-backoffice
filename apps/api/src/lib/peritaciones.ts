@@ -126,8 +126,16 @@ export interface DatosDeLaCita {
   cuando?: string | null;
   /** Y la hora que él mismo propuso, para confirmársela. */
   hora?: string | null;
-  /** Quién va a ir, para que sepan a quién esperan. */
+  /** La empresa que lo revisa. */
   perito?: string | null;
+  /**
+   * Y la persona que va a ir, si nos la han dicho.
+   *
+   * Es literalmente lo que pregunta el vendedor al confirmar la cita: con
+   * qué nombre va el perito. Quien abre la puerta de una nave no espera a
+   * una empresa, espera a alguien.
+   */
+  quienVa?: string | null;
   /** Lo que añada quien revisa, ya en HTML. */
   nota?: string | null;
 }
@@ -145,7 +153,10 @@ export function correoDeLaCitaAlVendedor(d: DatosDeLaCita): { subject: string; h
   const cuando = [String(d.cuando ?? '').trim(), String(d.hora ?? '').trim()]
     .filter(Boolean)
     .join(' · ');
-  const quien = String(d.perito ?? '').trim();
+  const empresa = String(d.perito ?? '').trim();
+  const persona = String(d.quienVa ?? '').trim();
+  // La persona delante, la empresa entre paréntesis: es a quien esperan.
+  const quien = persona && empresa ? `${persona} (${empresa})` : persona || empresa;
   const subject = `Termin zur Fahrzeugprüfung / Inspection appointment — ${coche}`;
 
   const p = (html: string) =>
