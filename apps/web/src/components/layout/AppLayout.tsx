@@ -6,6 +6,8 @@ import Sidebar from './Sidebar.js';
 import PaletaComandos from '../ui/PaletaComandos.js';
 import AyudaAtajos from '../ui/AyudaAtajos.js';
 import { useAtajos } from '../../hooks/useAtajos.js';
+import type { Expediente } from '../../lib/expedientes-importacion.js';
+import { pendientesPorPantalla } from '../../lib/pasos-de-la-importacion.js';
 
 interface LeadStats { pending: number; }
 
@@ -14,6 +16,15 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [pendingLeads, setPendingLeads] = useState(0);
   const [visitasPorConfirmar, setVisitasPorConfirmar] = useState(0);
+  /**
+   * Lo que espera algo nuestro, repartido por pantalla.
+   *
+   * Se calcula aquí, en el navegador, con la misma función que dibuja el
+   * camino del coche. Podría hacerse en la API, pero entonces habría dos
+   * versiones de la misma regla y el día que se toque una, el número del menú
+   * y lo que dice el expediente dejarían de coincidir.
+   */
+  const [pendientes, setPendientes] = useState<Record<string, number>>({});
   const [toast, setToast]               = useState<string | null>(null);
 
   // Los atajos. El hook se llama siempre, tambien sin sesion: React exige que
@@ -34,6 +45,16 @@ export default function AppLayout() {
           if (!v.ok) return;
           const lista = v.data?.bookings ?? [];
           setVisitasPorConfirmar(lista.length);
+        })
+        .catch(() => {});
+
+      // Los expedientes de importación, para saber qué espera algo nuestro.
+      // Solo lo que depende de nosotros suma: un contador que incluye esperas
+      // no baja nunca, y un número que no baja se deja de mirar.
+      api.get<Expediente[]>('/leads?type=import&limit=100')
+        .then((v) => {
+          if (!v.ok || !Array.isArray(v.data)) return;
+          setPendientes(pendientesPorPantalla(v.data));
         })
         .catch(() => {});
 
@@ -73,7 +94,8 @@ export default function AppLayout() {
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads} visitasPorConfirmar={visitasPorConfirmar} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads}
+               visitasPorConfirmar={visitasPorConfirmar} pendientes={pendientes} />
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Mobile top bar */}

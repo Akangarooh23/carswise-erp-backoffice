@@ -710,6 +710,45 @@ hasta que lo marques como entregado.
 **El coche está en Alemania.** Todo lo que se le diga de plazos es una promesa
 que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 
+## En qué punto va cada coche
+
+Un expediente cruza cinco pantallas. Para saber dónde estaba había que
+abrirlas todas y reconstruirlo de memoria: con un coche se puede, con quince
+lo que pasa es que uno se queda parado tres semanas porque nadie se acordó de
+que el perito no había contestado.
+
+Al abrir el expediente, lo primero es **qué toca ahora**. Debajo, plegado, el
+camino entero con sus doce pasos.
+
+| | Qué significa |
+|---|---|
+| ✓ | Hecho, con su fecha |
+| ● | **Te toca a ti**: hay un botón que pulsar |
+| ⏳ | Esperando a alguien de fuera, con los días que lleva |
+| ○ | Todavía no |
+
+La diferencia entre los dos del medio es la que hace que esto sirva. «Ya se lo
+he pedido al perito y falta que confirme» no es una tarea nuestra; «no se lo he
+pedido» sí.
+
+**Y las esperas vencen.** A los tres días sin respuesta del vendedor o del
+perito —dos después del día de la visita, cinco con la gestoría—, esperar se
+convierte en **reclamar**, y entonces sí cuenta como tarea nuestra. Sin esa
+regla, «esperando» es donde los expedientes se quedan a morir.
+
+Si el perito dice que **no era el coche del anuncio**, el camino se corta ahí:
+lo único que queda es devolverle el depósito al cliente. El transporte y los
+trámites no se enseñan ni en gris — invitarían a buscar la forma de seguir.
+
+### El número rojo del menú
+
+Sale de la misma cuenta, y **va donde está el botón**: encargar una peritación
+suma en Peritaciones, no en Importaciones. Cuenta acciones, no coches — un
+expediente parado en dos sitios son dos cosas que hacer.
+
+Lo que se espera de fuera **no suma**. Un contador que incluye esperas no baja
+nunca, y un número que no baja se deja de mirar.
+
 ## Dónde está cada cosa
 
 | Qué | Dónde |

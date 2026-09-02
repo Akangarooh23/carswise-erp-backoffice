@@ -54,10 +54,20 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   pendingLeads?: number;
+  /**
+   * Cuántas acciones esperan en cada pantalla, por su ruta.
+   *
+   * El número va donde está el botón: encargar una peritación cuenta en
+   * Peritaciones, no en Importaciones. Contarlo en las dos sería el mismo
+   * trabajo contado dos veces.
+   */
+  pendientes?: Record<string, number>;
   visitasPorConfirmar?: number;
 }
 
-export default function Sidebar({ isOpen, onClose, pendingLeads = 0, visitasPorConfirmar = 0 }: SidebarProps) {
+export default function Sidebar({
+  isOpen, onClose, pendingLeads = 0, visitasPorConfirmar = 0, pendientes = {},
+}: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -135,6 +145,19 @@ export default function Sidebar({ isOpen, onClose, pendingLeads = 0, visitasPorC
               <span title={`${visitasPorConfirmar} visita${visitasPorConfirmar > 1 ? 's' : ''} por confirmar`}
                     className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
                 {visitasPorConfirmar > 99 ? '99+' : visitasPorConfirmar}
+              </span>
+            )}
+            {/*
+              * Y lo que espera algo nuestro en el flujo de importación.
+              *
+              * Cada acción cuenta en la pantalla donde se hace, así que el
+              * número dice cuántos botones hay que pulsar ahí, no cuántos
+              * coches pasan por ahí.
+              */}
+            {(pendientes[item.to] ?? 0) > 0 && (
+              <span title={`${pendientes[item.to]} cosa${pendientes[item.to] > 1 ? 's' : ''} por hacer`}
+                    className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
+                {pendientes[item.to] > 99 ? '99+' : pendientes[item.to]}
               </span>
             )}
           </NavLink>

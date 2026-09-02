@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 
 import type { Expediente } from './expedientes-importacion.js';
 import {
-  pasosDeLaImportacion, loQueToca, loQueSeEspera, pideAlgoNuestro, PLAZOS,
+  pasosDeLaImportacion, loQueToca, loQueSeEspera, pideAlgoNuestro, pendientesPorPantalla, PLAZOS,
 } from './pasos-de-la-importacion.js';
 
 const HOY = new Date('2026-09-10T12:00:00Z');
@@ -197,5 +197,61 @@ describe('el final del camino', () => {
     const x = kia({ ...TODO, encargo_gestoria_enviado_at: '2026-09-09T10:00:00Z' }, 'Entregado');
     assert.equal(pideAlgoNuestro(x, HOY), false);
     assert.equal(paso(x, 'entrega').estado, 'hecho');
+  });
+});
+
+describe('el número rojo del menú', () => {
+  const PARADO_EN_PERITACIONES = kia({
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    peritacion: {
+      id: 'PER-2026-001', estado: 'Por encargar', veredicto: null, perito: '',
+      fecha_hecha: null, donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-12',
+    },
+  });
+
+  test('el número va donde está el botón, no donde está el coche', () => {
+    // Encargar una peritación se hace en Peritaciones. Contarlo también en
+    // Importaciones sería el mismo trabajo contado dos veces.
+    const cuenta = pendientesPorPantalla([PARADO_EN_PERITACIONES], HOY);
+    assert.equal(cuenta['/peritaciones'], 1);
+    assert.equal(cuenta['/importaciones'], undefined);
+  });
+
+  test('se cuentan acciones, no coches', () => {
+    // Un expediente parado en dos sitios a la vez son dos cosas que hacer.
+    const conDosFrentes = kia({
+      deposit_paid_at: '2026-09-01T10:00:00Z',
+      reserva_preguntada_at: '2026-09-02T10:00:00Z',
+      verificado_alemania_at: '2026-09-07T10:00:00Z',
+      escrow_liberado_at: '2026-09-08T10:00:00Z',
+      factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
+      peritacion: {
+        id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
+        perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
+        donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
+        encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+      },
+    }, 'En trámites');
+    const cuenta = pendientesPorPantalla([conDosFrentes], HOY);
+    assert.equal(cuenta['/gestoria'], 1);
+    assert.equal(cuenta['/importaciones'], 1); // entregárselo al cliente
+  });
+
+  test('lo que se espera de fuera no suma', () => {
+    // Un contador que incluye esperas nunca baja, y un número que nunca baja se
+    // deja de mirar.
+    const esperando = kia({
+      deposit_paid_at: '2026-09-01T10:00:00Z',
+      reserva_preguntada_at: '2026-09-09T10:00:00Z',
+    });
+    assert.deepEqual(pendientesPorPantalla([esperando], HOY), {});
+  });
+
+  test('varios coches suman en la misma pantalla', () => {
+    const cuenta = pendientesPorPantalla(
+      [PARADO_EN_PERITACIONES, PARADO_EN_PERITACIONES], HOY
+    );
+    assert.equal(cuenta['/peritaciones'], 2);
   });
 });

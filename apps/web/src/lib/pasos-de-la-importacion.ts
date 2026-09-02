@@ -285,3 +285,28 @@ export function loQueSeEspera(pasos: readonly Paso[]): Paso | null {
 export function pideAlgoNuestro(x: Expediente, hoy: Date = new Date()): boolean {
   return loQueToca(pasosDeLaImportacion(x, hoy)) !== null;
 }
+
+/**
+ * Cuántas acciones esperan en cada pantalla.
+ *
+ * Cada paso sabe dónde se hace, así que el número rojo va donde está el
+ * botón: encargar una peritación cuenta en Peritaciones, no en Importaciones.
+ * Contarlo en las dos sería el mismo trabajo contado dos veces, y un número
+ * inflado se deja de mirar igual que uno que no baja.
+ *
+ * **Se cuentan las acciones, no los coches**: un expediente parado en dos
+ * sitios a la vez —el transporte y los trámites— son dos cosas que hacer.
+ */
+export function pendientesPorPantalla(
+  expedientes: readonly Expediente[],
+  hoy: Date = new Date()
+): Record<string, number> {
+  const cuenta: Record<string, number> = {};
+  for (const x of expedientes) {
+    for (const p of pasosDeLaImportacion(x, hoy)) {
+      if (p.estado !== 'toca' || !p.donde) continue;
+      cuenta[p.donde] = (cuenta[p.donde] ?? 0) + 1;
+    }
+  }
+  return cuenta;
+}
