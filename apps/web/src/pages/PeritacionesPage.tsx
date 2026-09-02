@@ -389,9 +389,15 @@ function PeritacionAbierta({
             </label>
           </div>
 
+          {/*
+            * Lo que cobra, que lo dice él al confirmar la cita.
+            *
+            * Se le pregunta en el encargo y no después: cuando ya ha ido, el
+            * trabajo está hecho y la factura llega con el número que él ponga.
+            */}
           <label className="block text-[11px] text-brand-400">
-            Lo que cuesta
-            <span className="text-brand-300"> · sale de nuestro margen, no del cliente</span>
+            Lo que nos cobra
+            <span className="text-brand-300"> · lo dice al confirmar la cita; sale de nuestro margen, no del cliente</span>
             <input value={datos.coste} inputMode="decimal"
                    onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />

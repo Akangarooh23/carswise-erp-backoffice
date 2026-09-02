@@ -277,6 +277,12 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Lleva **la cita ya puesta** —día y hora—, la dirección, por quién preguntar
       y **su teléfono**. Y le pide **confirmar que puede**, no proponer día:
       cuadrar una hora entre tres por correo son cuatro correos y dos días.
+- [ ] Y le pide **lo que cuesta la peritación**, desplazamiento incluido, en esa
+      misma respuesta. Preguntarlo cuando ya ha ido es preguntarlo cuando no se
+      puede decir que no: el trabajo está hecho y la factura llega con el número
+      que él ponga.
+- [ ] Cuando conteste, apunta ese importe en **«Lo que nos cobra»**. De ahí sale
+      el coste del coche y, luego, lo que se le paga.
 - [ ] Le dice punto por punto qué mirar, y le dice que **un «no» vale igual que**
       **un «sí»**: un perito que cree que solo puede confirmar, confirma.
 - [ ] Y le pide **qué día puede ir**. La cita la cerramos nosotros.

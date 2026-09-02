@@ -279,6 +279,15 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
     p(cita
       ? `<strong>Der Termin ist mit dem Verkäufer bereits vereinbart: ${esc(cita)}.</strong> Bitte bestätigen Sie uns kurz, dass Sie ihn wahrnehmen können. Falls nicht, sagen Sie uns, wann es Ihnen passt, und wir stimmen es neu ab.`
       : 'Sagen Sie uns bitte, <strong>wann Sie hinfahren können</strong>. Den Termin stimmen wir mit dem Verkäufer ab und bestätigen ihn Ihnen.') +
+    /**
+     * Y el precio, en el mismo correo que la confirmación.
+     *
+     * Es lo que va a acabar como gasto de este coche y sale del margen, no
+     * del cliente. Preguntarlo después, cuando ya ha ido, es preguntarlo
+     * cuando no se puede decir que no: el trabajo está hecho y la factura
+     * llega con el número que él ponga.
+     */
+    p('Und sagen Sie uns bitte im selben Zug, <strong>was die Prüfung kostet</strong> — inklusive Anfahrt, damit nichts nachkommt.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
     p('<em>we need you to inspect this car before we pay for it. What matters:</em>') +
@@ -287,6 +296,7 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
       (cita
         ? `The appointment is <strong>already agreed with the seller: ${esc(cita)}</strong>. Please confirm you can make it; if not, tell us when suits you and we will rearrange it.`
         : 'Please tell us <strong>when you can go</strong>: we arrange the date with the seller and confirm it back to you.') +
+      ' And in the same reply, please tell us <strong>what the inspection will cost</strong>, travel included, so nothing comes afterwards.' +
       '</em>');
 
   return { subject, html };

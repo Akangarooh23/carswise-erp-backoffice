@@ -208,6 +208,17 @@ describe('la cita que ya viene del vendedor', () => {
     assert.doesNotMatch(html, /wann Sie hinfahren können/);
   });
 
+  test('y le pide el precio en la misma respuesta', () => {
+    // Es lo que acaba como gasto de este coche y sale del margen. Preguntarlo
+    // cuando ya ha ido es preguntarlo cuando no se puede decir que no: el
+    // trabajo está hecho y la factura llega con el número que él ponga.
+    const { html } = correoDeEncargoAlPerito(CON_CITA);
+    assert.match(html, /was die Prüfung kostet/);
+    assert.match(html, /inklusive Anfahrt/);
+    assert.match(html, /what the inspection will cost/);
+    assert.match(html, /travel included/);
+  });
+
   test('sin cita todavía, le pregunta cuándo puede ir', () => {
     // Si el vendedor no dio día —o se encarga antes de que conteste—, el
     // correo tiene que seguir sirviendo.
