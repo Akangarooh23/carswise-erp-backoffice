@@ -57,24 +57,36 @@ describe('por dónde pasa una peritación', () => {
 });
 
 describe('el encargo al perito', () => {
-  test('dice qué mirar, punto por punto', () => {
+  test('dice qué mirar, punto por punto y en los dos idiomas', () => {
     // «Revísalo» devuelve «está bien».
     const { html } = correoDeEncargoAlPerito(CASO);
     for (const punto of QUE_MIRA_EL_PERITO) {
-      assert.ok(html.includes(punto.slice(0, 30)), `falta: ${punto}`);
+      assert.ok(html.includes(punto.de.slice(0, 30)), `falta en alemán: ${punto.de}`);
+      assert.ok(html.includes(punto.en.slice(0, 30)), `falta en inglés: ${punto.en}`);
     }
+  });
+
+  test('va en alemán, porque el perito es alemán', () => {
+    // Una lista de comprobación en castellano se lee mal o no se lee: es la
+    // clase de correo que se contesta con «ok» sin haberlo mirado.
+    const { subject, html } = correoDeEncargoAlPerito(CASO);
+    assert.match(subject, /Fahrzeugprüfung/);
+    assert.match(html, /Guten Tag/);
+    assert.match(html, /Fahrgestellnummer/);
   });
 
   test('y lo que de verdad hay que comprobar va el primero', () => {
     // Que sea el coche del anuncio. Todo lo demás es sobre ese coche.
-    assert.match(QUE_MIRA_EL_PERITO[0], /Que es el coche del anuncio/);
+    assert.match(QUE_MIRA_EL_PERITO[0].de, /das Fahrzeug aus dem Inserat/);
+    assert.match(QUE_MIRA_EL_PERITO[0].en, /the car from the listing/);
   });
 
   test('le dice que puede parar la operación', () => {
     // Un perito que cree que solo puede confirmar, confirma.
     const { html } = correoDeEncargoAlPerito(CASO);
-    assert.match(html, /no sale hasta que nos digas que es el coche que se anunció/);
-    assert.match(html, /no pasa nada por parar/);
+    assert.match(html, /Geld unseres Kunden geht erst raus/);
+    assert.match(html, /kein Problem, zu stoppen/);
+    assert.match(html, /stopping is not a problem/);
   });
 
   test('con dónde está y por quién preguntar', () => {
@@ -85,7 +97,7 @@ describe('el encargo al perito', () => {
 
   test('sin dirección todavía, se dice; no se deja el hueco', () => {
     const { html } = correoDeEncargoAlPerito({ vehiculo: 'Un coche' });
-    assert.match(html, /todavía no lo tenemos/);
+    assert.match(html, /noch offen/);
   });
 
   test('lo que venga de fuera no se cuela como HTML', () => {

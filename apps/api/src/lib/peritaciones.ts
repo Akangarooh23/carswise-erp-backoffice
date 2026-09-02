@@ -18,15 +18,48 @@
  * que interpretar.
  */
 
-/** Lo que se le pide que mire. No es exhaustivo: es lo que se discute después. */
+/**
+ * Lo que se le pide que mire, en su idioma y en el nuestro.
+ *
+ * **En alemán, porque el perito es alemán.** El que hay dado de alta es
+ * checkdenwagen.de, y una lista de comprobación en castellano se lee mal o no
+ * se lee: es justo la clase de correo que se contesta con «ok» sin haberlo
+ * mirado punto por punto.
+ *
+ * En inglés debajo por lo mismo que los correos al vendedor: quien lo manda
+ * desde aquí tiene que poder leer lo que envía en su nombre.
+ *
+ * No es exhaustiva: es lo que se discute después.
+ */
 export const QUE_MIRA_EL_PERITO = [
-  'Que es el coche del anuncio: bastidor, versión, motor y equipamiento',
-  'Kilómetros reales en el cuadro, y que cuadren con el anuncio',
-  'Carrocería y pintura: golpes, retoques, diferencias de tono',
-  'Neumáticos, frenos y estado general de la mecánica a la vista',
-  'Interior, y que estén las dos llaves',
-  'Los papeles: Zulassungsbescheinigung I y II, y el COC',
-  'Fotos de todo lo anterior, incluidos los defectos',
+  {
+    de: 'Dass es das Fahrzeug aus dem Inserat ist: Fahrgestellnummer, Ausstattungslinie, Motor und Ausstattung',
+    en: 'That it is the car from the listing: VIN, trim, engine and equipment',
+  },
+  {
+    de: 'Tatsächlicher Kilometerstand am Tacho, und ob er zum Inserat passt',
+    en: 'Actual mileage on the dash, and whether it matches the listing',
+  },
+  {
+    de: 'Karosserie und Lack: Schäden, Nachlackierungen, Farbunterschiede',
+    en: 'Body and paint: damage, respray, colour differences',
+  },
+  {
+    de: 'Reifen, Bremsen und sichtbarer Zustand der Technik',
+    en: 'Tyres, brakes and visible mechanical condition',
+  },
+  {
+    de: 'Innenraum, und ob beide Schlüssel da sind',
+    en: 'Interior, and whether both keys are there',
+  },
+  {
+    de: 'Die Papiere: Zulassungsbescheinigung Teil I und II, und der COC',
+    en: 'The papers: registration parts I and II, and the COC',
+  },
+  {
+    de: 'Fotos von allem, auch von den Mängeln',
+    en: 'Photos of all of the above, including the defects',
+  },
 ] as const;
 
 /**
@@ -102,7 +135,7 @@ function esc(s: unknown): string {
 
 export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: string; html: string } {
   const coche = String(d.vehiculo ?? '').trim();
-  const subject = `Revisión en Alemania — ${coche}`;
+  const subject = `Fahrzeugprüfung / Vehicle inspection — ${coche}`;
 
   const fila = (k: string, v: string) =>
     `<tr><td style="padding:4px 12px 4px 0;color:#5E5E59;white-space:nowrap;vertical-align:top">${esc(k)}</td>` +
@@ -110,29 +143,34 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
 
   const delCoche =
     '<table style="border-collapse:collapse;font-size:14px;margin:8px 0 16px 0">' +
-    fila('Vehículo', coche) +
-    fila('Dónde está', String(d.donde ?? '').trim() || 'todavía no lo tenemos, te lo decimos en cuanto lo sepamos') +
-    (String(d.contacto ?? '').trim() ? fila('Preguntar por', String(d.contacto)) : '') +
-    (d.anuncio ? fila('El anuncio', String(d.anuncio)) : '') +
+    fila('Fahrzeug / Vehicle', coche) +
+    fila('Standort / Where it is', String(d.donde ?? '').trim() || 'noch offen, wir melden uns / not yet known, we will confirm') +
+    (String(d.contacto ?? '').trim() ? fila('Ansprechpartner / Ask for', String(d.contacto)) : '') +
+    (d.anuncio ? fila('Inserat / Listing', String(d.anuncio)) : '') +
     '</table>';
 
   const p = (html: string) =>
     `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#2A2A28">${html}</p>`;
 
-  const lista =
+  const lista = (idioma: 'de' | 'en') =>
     '<ul style="margin:8px 0 16px 0;padding-left:20px;font-size:15px;line-height:1.7;color:#2A2A28">' +
-    QUE_MIRA_EL_PERITO.map((x) => `<li>${esc(x)}</li>`).join('') +
+    QUE_MIRA_EL_PERITO.map((x) => `<li>${esc(x[idioma])}</li>`).join('') +
     '</ul>';
 
   const html =
-    p('Hola,') +
-    p('Necesitamos que vayas a ver este coche antes de que paguemos:') +
+    p('Guten Tag,') +
+    p('wir bitten Sie, dieses Fahrzeug zu prüfen, bevor wir bezahlen:') +
     delCoche +
-    p('Lo que hay que mirar:') +
-    lista +
-    p('<strong>El dinero del cliente no sale hasta que nos digas que es el coche que se anunció.</strong> Si no lo es, dilo con lo que hayas visto y lo paramos: no pasa nada por parar.') +
+    p('Worauf es ankommt:') +
+    lista('de') +
+    p('<strong>Das Geld unseres Kunden geht erst raus, wenn Sie uns bestätigen, dass es das Fahrzeug aus dem Inserat ist.</strong> Wenn nicht, sagen Sie es uns mit dem, was Sie gesehen haben, und wir stoppen den Kauf. Es ist kein Problem, zu stoppen.') +
     String(d.nota ?? '') +
-    p('Dinos qué día puedes ir y lo cerramos con el vendedor.');
+    p('Sagen Sie uns, wann Sie hinfahren können, und wir stimmen es mit dem Verkäufer ab.') +
+    '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
+    p('<em>Hello,</em>') +
+    p('<em>we need you to inspect this car before we pay for it. What matters:</em>') +
+    lista('en') +
+    p('<em><strong>Our customer\u2019s money does not go out until you confirm it is the car from the listing.</strong> If it is not, tell us what you saw and we stop the purchase — stopping is not a problem. Let us know when you can go and we will arrange it with the seller.</em>');
 
   return { subject, html };
 }
