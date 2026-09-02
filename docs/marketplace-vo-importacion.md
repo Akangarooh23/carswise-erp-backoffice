@@ -351,8 +351,13 @@ alguien querrá mirar el informe de una que aún no ha ido.
 | Cuando está… | Se ve | Y todavía no |
 |---|---|---|
 | **Por encargar** | Quién va a verlo y los datos de la visita —dirección, contacto, teléfono, día y hora—, y el botón de encargar | Lo que cobra, avisar al vendedor, lo que vio, los daños, la factura |
-| **Encargada** | Además: lo que nos cobra, avisar al vendedor y anotar lo que vio | Los daños, su factura y su informe |
+| **Encargada** | Además: lo que nos cobra, avisar al vendedor, y todo lo que trae de vuelta —lo que vio, los daños y su informe— | Su factura |
 | **Hecha** | Todo | — |
+
+Lo que vuelve de la visita va junto a propósito: el perito vuelve **una vez** y
+lo trae todo en el mismo correo —el veredicto, la lista de daños y el informe
+con las fotos—. Tenerlo repartido en dos fases obligaba a anotar el veredicto,
+salir y volver a entrar para apuntar los costes.
 
 No es cuestión de orden en la pantalla, es que **antes no se puede**: lo que
 cobra no se sabe hasta que contesta, y avisar al vendedor del día antes de que

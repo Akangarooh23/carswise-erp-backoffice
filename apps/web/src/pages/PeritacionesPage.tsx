@@ -588,7 +588,15 @@ function PeritacionAbierta({
     },
     {
       clave: 'danos',
-      desde: 2,
+      /*
+       * Los daños llegan con el informe, no después de anotarlo.
+       *
+       * Estaban en la fase siguiente, así que para apuntar lo que traía el
+       * informe había que anotar antes el veredicto y volver a entrar. El
+       * perito vuelve una vez y lo trae todo junto: lo que vio, lo que
+       * cuesta arreglarlo y sus papeles.
+       */
+      desde: 1,
       nodo: (
         <DanosDelCoche
           danos={p.danos ?? []}
@@ -634,7 +642,8 @@ function PeritacionAbierta({
     },
     {
       clave: 'papeles',
-      desde: 2,
+      // Su informe y sus fotos vienen en el mismo correo que el resultado.
+      desde: 1,
       nodo: seccion('Su informe y las fotos', <Documentos ambito="peritacion" id={p.id} />),
     },
   ];
