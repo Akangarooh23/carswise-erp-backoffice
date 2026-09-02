@@ -131,6 +131,8 @@ export async function ensureSchema() {
       -- arma en el SELECT con un jsonb_build_object. Escribirle era un UPDATE
       -- que fallaba en silencio, y el aviso salía como sin mandar aunque el
       -- correo hubiera salido.
+      ADD COLUMN IF NOT EXISTS reserva_preguntada_at       TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS reserva_preguntada_a        TEXT,
       ADD COLUMN IF NOT EXISTS factura_vendedor_pedida_at  TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS factura_vendedor_pedida_a   TEXT,
       ADD COLUMN IF NOT EXISTS encargo_gestoria_enviado_at TIMESTAMPTZ,

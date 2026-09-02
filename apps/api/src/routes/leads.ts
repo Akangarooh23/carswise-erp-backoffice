@@ -19,6 +19,7 @@ import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpu
 import { nombreComparable } from '../lib/proveedores.js';
 import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
 import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
+import { correoDeReservaAlVendedor, faltaParaLaReserva } from '../lib/reserva-al-vendedor.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import { papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 
@@ -281,6 +282,8 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'escrow_liberado_at',    escrow_liberado_at,
                   'verificado_alemania_at', verificado_alemania_at,
                   -- Los avisos a proveedores, para poder decir si ya salieron.
+                  'reserva_preguntada_at',       reserva_preguntada_at,
+                  'reserva_preguntada_a',        reserva_preguntada_a,
                   'factura_vendedor_pedida_at',  factura_vendedor_pedida_at,
                   'factura_vendedor_pedida_a',   factura_vendedor_pedida_a,
                   'encargo_gestoria_enviado_at', encargo_gestoria_enviado_at,
@@ -924,6 +927,96 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
  * que ir a su nombre y el vendedor los necesita para emitirla. Es lo mínimo para
  * que la compra exista, y no se manda nada más.
  */
+/**
+ * Preguntarle al vendedor si el coche sigue ahí, y cuándo podemos verlo.
+ *
+ * Es el primer correo del expediente y el que puede pararlo todo. Un anuncio
+ * de AutoScout24 sigue publicado días después de que el coche se venda —454 de
+ * 484 de los nuestros estaban vendidos desde julio y seguían en pie—, así que
+ * que el anuncio esté vivo no dice nada, y el cliente ya ha transferido
+ * veintiún mil euros.
+ */
+leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT l.id, l.vehicle_title, l.lead_type,
+              pe.proveedor, pe.importe::numeric AS importe,
+              o.dealer_name, o.url AS anuncio, o.price::numeric AS precio
+         FROM moveadvisor_market_leads l
+         LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+         LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
+        WHERE l.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const f = r.rows[0];
+    if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    const nombreDelVendedor = String(f.proveedor ?? f.dealer_name ?? '').trim();
+    const v = nombreDelVendedor
+      ? await query<{ email: string | null }>(
+          `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+          [nombreComparable(nombreDelVendedor)]
+        ).catch(() => ({ rows: [] as { email: string | null }[] }))
+      : { rows: [] as { email: string | null }[] };
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_vendedor',
+        detail: `No hay correo de ${nombreDelVendedor || 'el vendedor'}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+    const datos = {
+      vehiculo: String(f.vehicle_title ?? ''),
+      anuncio: f.anuncio as string | null,
+      importe: f.precio != null ? Number(f.precio) : (f.importe != null ? Number(f.importe) : null),
+      nota,
+    };
+    const falta = faltaParaLaReserva(datos);
+    if (falta.length) {
+      res.status(409).json({ ok: false, error: 'faltan_datos', detail: `Falta ${escritoEnLista(falta)}.` });
+      return;
+    }
+
+    const { subject, html } = correoDeReservaAlVendedor(datos);
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+
+    await query(
+      `UPDATE moveadvisor_market_leads
+          SET reserva_preguntada_at = NOW(),
+              reserva_preguntada_a  = $2
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    );
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    falloInterno(res, 'reserva_vendedor_failed', err);
+  }
+});
 leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     const r = await query<Record<string, unknown>>(

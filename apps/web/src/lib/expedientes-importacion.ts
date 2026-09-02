@@ -65,6 +65,9 @@ export interface MetaImportacion {
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.
+  // Cuándo se le preguntó al vendedor si el coche seguía ahí.
+  reserva_preguntada_at?: string | null;
+  reserva_preguntada_a?: string | null;
   factura_vendedor_pedida_at?: string | null;
   factura_vendedor_pedida_a?: string | null;
   // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.
@@ -122,6 +125,16 @@ export function depositoLiberado(x: Expediente): boolean {
  * nuestro, con su IVA encima. Se enseña pedida o sin pedir para que no se
  * quede en el aire, que es donde se quedan las cosas que no tienen casilla.
  */
+/**
+ * Si ya se le ha preguntado al vendedor si el coche sigue disponible.
+ *
+ * Es lo primero que se hace con el dinero ya dentro, y lo que puede pararlo
+ * todo: un anuncio sigue publicado días después de venderse el coche.
+ */
+export function reservaPreguntada(x: Expediente): boolean {
+  return Boolean(x.meta?.reserva_preguntada_at);
+}
+
 export function facturaDelVendedorPedida(x: Expediente): boolean {
   return Boolean(x.meta?.factura_vendedor_pedida_at);
 }

@@ -7,7 +7,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
-  facturaDelVendedorPedida, encargoALaGestoriaEnviado,
+  facturaDelVendedorPedida, encargoALaGestoriaEnviado, reservaPreguntada,
   liquidacionDelImpuesto,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
@@ -141,6 +141,7 @@ export default function ImportacionesPage() {
   // Los dos no mandan nada: preparan el correo y lo abren para revisarlo.
   const encargaALaGestoria = (id: string) => preparaCorreo(`/leads/${id}/encargo-gestoria`);
   const pideLaFactura = (id: string) => preparaCorreo(`/leads/${id}/factura-vendedor`);
+  const preguntaAlVendedor = (id: string) => preparaCorreo(`/leads/${id}/reserva-vendedor`);
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -338,6 +339,7 @@ export default function ImportacionesPage() {
           siguiente={siguienteEtapa(abierto.status)}
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
+          onPreguntarAlVendedor={() => void preguntaAlVendedor(abierto.id)}
           onPedirFactura={() => void pideLaFactura(abierto.id)}
           onEncargarALaGestoria={() => void encargaALaGestoria(abierto.id)}
           aviso={errorDelPanel}
@@ -517,6 +519,7 @@ interface PanelProps {
   siguiente: Etapa | null;
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
+  onPreguntarAlVendedor: () => void;
   onPedirFactura: () => void;
   onEncargarALaGestoria: () => void;
   aviso: string;
@@ -531,7 +534,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPedirFactura, onEncargarALaGestoria, aviso }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onPedirFactura, onEncargarALaGestoria, aviso }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -702,6 +705,41 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
         {pagada && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 mb-4">
             <div className="text-xs font-semibold text-emerald-800 mb-2">Antes de soltar el dinero</div>
+
+            {/*
+              * Lo primero con el dinero ya dentro: preguntarle si el coche está.
+              *
+              * Un anuncio de AutoScout24 sigue publicado días después de que el
+              * coche se venda —454 de 484 de los nuestros estaban vendidos desde
+              * julio y seguían en pie—, así que que el anuncio esté vivo no dice
+              * nada. Y el cliente ya ha transferido veintiún mil euros.
+              *
+              * Va antes de «Hemos visto el coche» porque es lo que decide si hay
+              * algo que ir a ver.
+              */}
+            <div className="mb-3 pb-3 border-b border-emerald-200/70">
+              {reservaPreguntada(x) ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] font-bold text-emerald-700">
+                    ✓ Preguntado al vendedor el {dia(x.meta?.reserva_preguntada_at)}
+                  </span>
+                  <button onClick={() => onPreguntarAlVendedor()} disabled={guardando}
+                          className="text-[11px] text-brand-400 underline underline-offset-2">
+                    preguntar otra vez
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button onClick={() => onPreguntarAlVendedor()} disabled={guardando}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                    Preguntarle si sigue disponible
+                  </button>
+                  <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                    Un anuncio sigue publicado días después de venderse el coche.
+                  </div>
+                </>
+              )}
+            </div>
 
             {verificadoEnAlemania(x) ? (
               <div className="flex flex-wrap items-center gap-2">

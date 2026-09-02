@@ -207,6 +207,23 @@ expediente.
 
 **Y debajo, «Antes de soltar el dinero»**
 
+Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
+
+- [ ] Pulsa **«Preguntarle si sigue disponible»**. Se abre para revisarlo.
+- [ ] El correo hace tres preguntas y en este orden: si sigue disponible,
+      cuándo podemos ir a verlo —diciéndole que vamos **antes de pagar**— y que
+      el coche va a un particular español, que le cambia los papeles que tiene
+      que preparar.
+- [ ] Comprueba que **no promete el pago**: hasta que alguien vaya a verlo, lo
+      único cierto es que hay un comprador.
+- [ ] Queda escrito **«✓ Preguntado al vendedor el …»**.
+
+> Es el correo que puede pararlo todo. Un anuncio de AutoScout24 sigue
+> publicado días después de que el coche se venda —de los nuestros, 454 de 484
+> estaban vendidos desde julio y seguían en pie—, y para cuando se manda esto el
+> cliente ya ha transferido 21.500 €. Si el coche no está, aquí se acaba y se le
+> devuelve todo.
+
 - [ ] El botón **«Liberar el pago al vendedor»** está **apagado**, y dice por
       qué: hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
 - [ ] Pulsa **«Hemos visto el coche en Alemania»**. Ahora el otro se enciende.
