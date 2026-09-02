@@ -116,14 +116,14 @@ describe('la dirección, en una línea', () => {
     // facturación necesita saber que es una venta intracomunitaria.
     assert.equal(
       direccionEnUnaLinea(CASO.cliente),
-      'Calle Mauricio Legendre 45 G2B, 28046 MADRID, Spanien / Spain'
+      'Calle Mauricio Legendre 45 G2B, 28046 MADRID, Spanien'
     );
   });
 
   test('sin código postal no se queda una coma suelta', () => {
     assert.equal(
       direccionEnUnaLinea({ direccion: 'Calle X', provincia: 'MADRID' }),
-      'Calle X, MADRID, Spanien / Spain'
+      'Calle X, MADRID, Spanien'
     );
   });
 });

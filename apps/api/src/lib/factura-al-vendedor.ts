@@ -58,7 +58,9 @@ function esc(s: unknown): string {
 /** «Calle Mauricio Legendre 45 G2B, 28046 Madrid (MADRID), España» */
 export function direccionEnUnaLinea(c: DatosDeLaPeticion['cliente']): string {
   const ciudad = [c.cp, c.provincia].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ');
-  return [String(c.direccion ?? '').trim(), ciudad, 'Spanien / Spain']
+  // El país en un idioma solo: la etiqueta ya va en los dos, y quien copia
+  // esta línea en su programa de facturación pegaría «Spanien / Spain» de país.
+  return [String(c.direccion ?? '').trim(), ciudad, 'Spanien']
     .filter(Boolean)
     .join(', ');
 }
