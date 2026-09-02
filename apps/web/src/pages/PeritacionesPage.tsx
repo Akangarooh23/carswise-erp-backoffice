@@ -40,6 +40,10 @@ interface Peritacion {
   donde: string;
   contacto: string;
   fecha_prevista: string | null;
+  /** La hora que dio el vendedor, tal cual: «10:00». */
+  hora_prevista: string;
+  /** El teléfono de la persona por la que hay que preguntar. */
+  telefono: string;
   fecha_hecha: string | null;
   veredicto: string | null;
   notas: string;
@@ -311,7 +315,8 @@ function PeritacionAbierta({
 }) {
   const [datos, setDatos] = useState({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
-    fecha_prevista: p.fecha_prevista ?? '', coste: String(p.coste ?? ''),
+    telefono: p.telefono ?? '', fecha_prevista: p.fecha_prevista ?? '',
+    hora_prevista: p.hora_prevista ?? '', coste: String(p.coste ?? ''),
   });
   const [veredicto, setVeredicto] = useState(p.veredicto ?? '');
   const [factura, setFactura] = useState({
@@ -348,6 +353,13 @@ function PeritacionAbierta({
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
 
+          {/*
+            * Por quién preguntar y su teléfono, separados.
+            *
+            * Iban juntos en un campo y el perito los recibía pegados en una
+            * línea. Es el dato que usa cuando llega a la nave y no encuentra a
+            * nadie: tiene que poder marcarlo, no leerlo.
+            */}
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[11px] text-brand-400">
               Preguntar por
@@ -355,9 +367,24 @@ function PeritacionAbierta({
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             </label>
             <label className="text-[11px] text-brand-400">
-              Cuándo va
+              Su teléfono
+              <input value={datos.telefono} inputMode="tel"
+                     onChange={(e) => setDatos((d) => ({ ...d, telefono: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] text-brand-400">
+              Qué día va
               <input type="date" value={datos.fecha_prevista}
                      onChange={(e) => setDatos((d) => ({ ...d, fecha_prevista: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+            <label className="text-[11px] text-brand-400">
+              A qué hora
+              <input value={datos.hora_prevista} placeholder="10:00"
+                     onChange={(e) => setDatos((d) => ({ ...d, hora_prevista: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             </label>
           </div>

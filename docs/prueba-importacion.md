@@ -246,10 +246,16 @@ Su respuesta trae los datos que hacen falta en otras dos pantallas. Debajo del
 botón, en cuanto se ha preguntado, sale dónde escribirlos: se teclean una vez
 y caen donde tienen que caer.
 
-- [ ] Pon **dónde se ve el coche** y **por quién preguntar** —eso sí lo trae su
-      respuesta— y, cuando lo tengas, el **IBAN** y el **titular de la cuenta**.
-      Guarda.
-- [ ] La dirección y el contacto caen solos en la **peritación**; el IBAN, en la
+- [ ] Son **cinco campos, en el mismo orden en que él los escribe**: qué día, a
+      qué hora, dónde está el coche, por quién preguntar y su teléfono. Copiar
+      de un correo a un formulario ordenado de otra manera es donde se cambian
+      dos campos de sitio.
+- [ ] **El IBAN no está aquí**, porque el correo no lo pide. Va en su ficha de
+      Proveedores, y se rellena al ir a pagar.
+- [ ] Guarda, y ve a **Peritaciones**: los cinco están puestos. El día y la hora
+      en «Qué día va» y «A qué hora», y el teléfono en su campo, separado del
+      nombre: el perito tiene que poder marcarlo, no leerlo.
+- [ ] Los cinco caen solos en la **peritación**; el IBAN, cuando lo tengas, en la
       **ficha del vendedor** en Proveedores. Compruébalo en las dos pantallas.
 - [ ] Copiarlo a mano de un correo a tres sitios es donde se cuelan los errores,
       y uno de esos datos es un número de cuenta.
@@ -268,15 +274,21 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Pulsa **«Encargarle la revisión»**. Se abre para revisarlo, como los demás.
       Va **en alemán**, con el inglés debajo: el perito es alemán y una lista de
       siete puntos en otro idioma se contesta con «ok» sin haberla mirado.
+- [ ] Lleva **la cita ya puesta** —día y hora—, la dirección, por quién preguntar
+      y **su teléfono**. Y le pide **confirmar que puede**, no proponer día:
+      cuadrar una hora entre tres por correo son cuatro correos y dos días.
 - [ ] Le dice punto por punto qué mirar, y le dice que **un «no» vale igual que**
       **un «sí»**: un perito que cree que solo puede confirmar, confirma.
 - [ ] Y le pide **qué día puede ir**. La cita la cerramos nosotros.
 
 **Cerrar la cita** · el sexto correo, al vendedor
 
-- [ ] Cuando el perito diga su día, ponlo en **«Cuándo va»** y guarda.
+- [ ] Si el perito confirma la cita que dio el vendedor, no hay nada que
+      cambiar. Si propone otra, ponla en **«Qué día va»** y **«A qué hora»**.
 - [ ] Pulsa **«Decirle qué día va»**. Se abre para revisarlo.
-- [ ] Le dice el día, quién va, y le pide las tres cosas que evitan que la
+- [ ] Le confirma **el día y la hora**, le dice **quién va** —que es justo lo
+      que él pregunta en su respuesta: con qué nombre va el perito— y le pide
+      las tres cosas que evitan que la
       visita se quede a medias: que el coche esté **accesible**, que estén los
       **papeles** —Zulassungsbescheinigung I y II, COC— y que estén las **dos**
       **llaves**. Volver otro día son otros 289 €.

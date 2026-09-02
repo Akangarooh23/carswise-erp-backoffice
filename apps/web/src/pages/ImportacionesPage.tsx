@@ -599,7 +599,17 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
 onEncargarALaGestoria, aviso }: PanelProps) {
   // Lo que conteste el vendedor. Vacío hasta que alguien lo teclee: aquí no se
   // adivina nada.
-  const [delVendedor, setDelVendedor] = useState({ donde: '', contacto: '', iban: '', titular: '' });
+  /**
+   * Lo que trae su respuesta al primer correo, en el mismo orden en que lo
+   * escribe él: Besichtigung, Uhrzeit, Adresse, Ansprechpartner, Telefon.
+   *
+   * Copiar de un correo a un formulario que ordena las cosas de otra manera
+   * es donde se cambian dos campos de sitio. Si la pantalla va en el orden de
+   * la carta, se copia de arriba abajo sin pensar.
+   */
+  const [delVendedor, setDelVendedor] = useState({
+    fecha: '', hora: '', donde: '', contacto: '', telefono: '',
+  });
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -808,39 +818,53 @@ onEncargarALaGestoria, aviso }: PanelProps) {
               {/*
                 * Y lo que conteste, apuntado aquí una sola vez.
                 *
-                * Del correo vuelven la dirección exacta y por quién preguntar,
-                * que es lo que necesita el perito. El IBAN no: ese no se pide
-                * en el primer correo —un número de cuenta pedido antes de saber
-                * si el coche existe es el hilo por el que entra el fraude— y se
-                * apunta aquí cuando se consigue, confirmado por teléfono.
+                * Su respuesta trae cinco datos y los cinco son de la visita: qué
+                * día, a qué hora, dónde está el coche, por quién preguntar y en
+                * qué teléfono. Van los cinco a la peritación, que es quien va a
+                * ir, y se teclean una vez.
                 *
-                * Se teclea una vez y cae donde tiene que caer.
+                * El IBAN no está aquí: el primer correo no lo pide —un número de
+                * cuenta pedido antes de saber si el coche existe es el hilo por el
+                * que entra el fraude— y se apunta en Proveedores al ir a pagar,
+                * confirmado por teléfono.
                 */}
               {reservaPreguntada(x) && (
                 <div className="mt-3 pt-3 border-t border-emerald-200/70">
                   <div className="text-[11px] font-semibold text-emerald-800 mb-1.5">
                     Lo que ha contestado
                   </div>
-                  <input value={delVendedor.donde} placeholder="Dónde se ve el coche: calle, número y CP"
+                  <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+                    <label className="text-[11px] text-emerald-800/80">
+                      Qué día va
+                      <input type="date" value={delVendedor.fecha}
+                             onChange={(e) => setDelVendedor((d) => ({ ...d, fecha: e.target.value }))}
+                             className="w-full mt-0.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
+                    </label>
+                    <label className="text-[11px] text-emerald-800/80">
+                      A qué hora
+                      <input value={delVendedor.hora} placeholder="10:00"
+                             onChange={(e) => setDelVendedor((d) => ({ ...d, hora: e.target.value }))}
+                             className="w-full mt-0.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
+                    </label>
+                  </div>
+                  <input value={delVendedor.donde} placeholder="Dónde está el coche: calle, número, CP y ciudad"
                          onChange={(e) => setDelVendedor((d) => ({ ...d, donde: e.target.value }))}
                          className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
-                  <input value={delVendedor.contacto} placeholder="Preguntar por… y su teléfono"
+                  <input value={delVendedor.contacto} placeholder="Preguntar por…"
                          onChange={(e) => setDelVendedor((d) => ({ ...d, contacto: e.target.value }))}
                          className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
-                  <input value={delVendedor.iban} placeholder="IBAN"
-                         onChange={(e) => setDelVendedor((d) => ({ ...d, iban: e.target.value }))}
-                         className="w-full mb-1.5 px-3 py-2 text-sm font-mono border border-emerald-200 rounded-lg" />
-                  <input value={delVendedor.titular} placeholder="Titular de la cuenta"
-                         onChange={(e) => setDelVendedor((d) => ({ ...d, titular: e.target.value }))}
+                  <input value={delVendedor.telefono} placeholder="Su teléfono" inputMode="tel"
+                         onChange={(e) => setDelVendedor((d) => ({ ...d, telefono: e.target.value }))}
                          className="w-full mb-1.5 px-3 py-2 text-sm border border-emerald-200 rounded-lg" />
                   <button onClick={() => onGuardarRespuesta(delVendedor)} disabled={guardando}
                           className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
                     Guardar lo que ha contestado
                   </button>
                   <div className="text-[11px] text-emerald-800/80 mt-1.5">
-                    La dirección va a la peritación y el IBAN a su ficha. El correo no
-                    se lo pide: <strong>el IBAN se pide al ir a pagar y se confirma por
-                    teléfono</strong>, nunca solo por correo.
+                    Los cinco caen en la <strong>peritación</strong>: es lo que necesita
+                    el perito para ir. El <strong>IBAN no se pide aquí</strong> —tampoco
+                    lo pide el correo—: se apunta en su ficha de Proveedores al ir a
+                    pagar, y <strong>se confirma por teléfono</strong>.
                   </div>
                 </div>
               )}

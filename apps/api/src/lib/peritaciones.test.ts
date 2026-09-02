@@ -177,3 +177,63 @@ describe('el aviso de la cita al vendedor', () => {
     assert.ok(!html.includes('<b>x</b>'));
   });
 });
+
+describe('la cita que ya viene del vendedor', () => {
+  // Ahora el primer correo le pide al vendedor día y hora concretos, así que
+  // lo normal es que el encargo salga con la cita puesta. Al perito le queda
+  // confirmar que puede, no proponer: cuadrar una hora entre tres por correo
+  // son cuatro correos y dos días.
+  const CON_CITA = {
+    vehiculo: 'Kia Sorento 2.4 GDI AWD',
+    donde: 'Landsberger Str. 180, 80687 München',
+    contacto: 'Herr Michael Schneider',
+    telefono: '+49 171 458 7293',
+    cuando: '07/09/2026',
+    hora: '10:00',
+  };
+
+  test('el encargo lleva la cita, el nombre y el teléfono', () => {
+    const { html } = correoDeEncargoAlPerito(CON_CITA);
+    assert.match(html, /07\/09\/2026/);
+    assert.match(html, /10:00/);
+    assert.match(html, /Termin \/ Appointment/);
+    assert.match(html, /Michael Schneider/);
+    assert.match(html, /\+49 171 458 7293/);
+  });
+
+  test('y le pide confirmarla, no proponer día', () => {
+    const { html } = correoDeEncargoAlPerito(CON_CITA);
+    assert.match(html, /bereits vereinbart/);
+    assert.match(html, /already agreed with the seller/);
+    assert.doesNotMatch(html, /wann Sie hinfahren können/);
+  });
+
+  test('sin cita todavía, le pregunta cuándo puede ir', () => {
+    // Si el vendedor no dio día —o se encarga antes de que conteste—, el
+    // correo tiene que seguir sirviendo.
+    const { html } = correoDeEncargoAlPerito({ vehiculo: 'Un coche' });
+    assert.match(html, /wann Sie hinfahren können/);
+    assert.doesNotMatch(html, /bereits vereinbart/);
+  });
+
+  test('el teléfono es del que abre la nave, no adorno', () => {
+    // Es lo que marca el perito cuando llega y no encuentra a nadie. Sin él,
+    // vuelve otro día y son otros 289 €.
+    const { html } = correoDeEncargoAlPerito({ ...CON_CITA, telefono: '' });
+    assert.doesNotMatch(html, /Telefon \/ Phone/);
+  });
+
+  test('al vendedor se le confirma su hora, no solo el día', () => {
+    const { html } = correoDeLaCitaAlVendedor({ vehiculo: 'Un coche', cuando: '07/09/2026', hora: '10:00' });
+    assert.match(html, /07\/09\/2026 · 10:00/);
+  });
+
+  test('y se le dice quién va, que es lo que pregunta él', () => {
+    // «Bitte lassen Sie uns kurz bestätigen, mit welchem Namen Ihr Prüfer zu
+    // uns kommt» es lo que contestan. La respuesta ya va en este correo.
+    const { html } = correoDeLaCitaAlVendedor({
+      vehiculo: 'Un coche', cuando: '07/09/2026', hora: '10:00', perito: 'checkdenwagen Automobile DE',
+    });
+    assert.match(html, /checkdenwagen Automobile DE/);
+  });
+});

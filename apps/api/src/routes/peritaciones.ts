@@ -46,6 +46,8 @@ const ENSURE_TABLE = `
     donde           TEXT NOT NULL DEFAULT '',
     contacto        TEXT NOT NULL DEFAULT '',
     fecha_prevista  DATE,
+    hora_prevista   TEXT NOT NULL DEFAULT '',
+    telefono        TEXT NOT NULL DEFAULT '',
     fecha_hecha     TIMESTAMPTZ,
     veredicto       TEXT,
     notas           TEXT NOT NULL DEFAULT '',
@@ -101,7 +103,9 @@ async function prepara(): Promise<void> {
        ADD COLUMN IF NOT EXISTS factura_numero TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS factura_fecha  DATE,
        ADD COLUMN IF NOT EXISTS cita_avisada_at TIMESTAMPTZ,
-       ADD COLUMN IF NOT EXISTS cita_avisada_a  TEXT NOT NULL DEFAULT ''`,
+       ADD COLUMN IF NOT EXISTS cita_avisada_a  TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS hora_prevista   TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS telefono        TEXT NOT NULL DEFAULT ''`,
     []
   ).catch(() => {});
   preparado = true;
@@ -120,6 +124,7 @@ function nt(v: unknown): string {
 }
 
 const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
+                telefono, hora_prevista,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
                 factura_numero, cita_avisada_at, cita_avisada_a,
@@ -175,7 +180,7 @@ peritacionesRouter.patch(
       sets.push(`${campo} = $${valores.length}`);
     };
 
-    for (const campo of ['perito', 'donde', 'contacto', 'notas'] as const) {
+    for (const campo of ['perito', 'donde', 'contacto', 'telefono', 'hora_prevista', 'notas'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.fecha_prevista !== undefined) {
@@ -218,7 +223,8 @@ peritacionesRouter.post(
     await prepara();
     try {
       const r = await query<Record<string, unknown>>(
-        `SELECT p.*, o.url AS anuncio
+        `SELECT p.*, o.url AS anuncio,
+                TO_CHAR(p.fecha_prevista, 'DD/MM/YYYY') AS cuando
            FROM erp_peritaciones p
            LEFT JOIN moveadvisor_market_leads l ON l.id = p.lead_id
            LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
@@ -252,6 +258,10 @@ peritacionesRouter.post(
         anuncio: p.anuncio as string | null,
         donde: nt(p.donde),
         contacto: nt(p.contacto),
+        telefono: nt(p.telefono),
+        // La cita ya viene del vendedor: al perito le queda confirmarla.
+        cuando: nt(p.cuando),
+        hora: nt(p.hora_prevista),
         nota: notaEnParrafos(req.body?.nota),
       };
       const falta = faltaParaEncargarLaRevision(datos);
@@ -401,6 +411,7 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
     const datos = {
       vehiculo: nt(p.vehiculo_titulo),
       cuando: nt(p.cuando),
+      hora: nt(p.hora_prevista),
       perito: nt(p.perito),
       nota: notaEnParrafos(req.body?.nota),
     };

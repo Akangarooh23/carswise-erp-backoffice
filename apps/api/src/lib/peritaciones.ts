@@ -124,6 +124,8 @@ export interface DatosDeLaCita {
   vehiculo: string;
   /** El día, ya escrito como se lee. */
   cuando?: string | null;
+  /** Y la hora que él mismo propuso, para confirmársela. */
+  hora?: string | null;
   /** Quién va a ir, para que sepan a quién esperan. */
   perito?: string | null;
   /** Lo que añada quien revisa, ya en HTML. */
@@ -139,7 +141,10 @@ export function faltaParaAvisarDeLaCita(d: DatosDeLaCita): string[] {
 
 export function correoDeLaCitaAlVendedor(d: DatosDeLaCita): { subject: string; html: string } {
   const coche = String(d.vehiculo ?? '').trim();
-  const cuando = String(d.cuando ?? '').trim();
+  // El día y la hora juntos: se le confirma la cita que él propuso, no otra.
+  const cuando = [String(d.cuando ?? '').trim(), String(d.hora ?? '').trim()]
+    .filter(Boolean)
+    .join(' · ');
   const quien = String(d.perito ?? '').trim();
   const subject = `Termin zur Fahrzeugprüfung / Inspection appointment — ${coche}`;
 
@@ -180,6 +185,12 @@ export interface DatosDelEncargoAlPerito {
   donde?: string | null;
   /** Por quién preguntar al llegar. */
   contacto?: string | null;
+  /** Su teléfono: es lo que marca el perito cuando llega y no ve a nadie. */
+  telefono?: string | null;
+  /** El día que dio el vendedor, ya escrito como se lee. */
+  cuando?: string | null;
+  /** Y la hora, tal cual: «10:00». */
+  hora?: string | null;
   /** Lo que añada quien revisa antes de mandarlo, ya en HTML. */
   nota?: string | null;
 }
@@ -202,6 +213,18 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
   const coche = String(d.vehiculo ?? '').trim();
   const subject = `Fahrzeugprüfung / Vehicle inspection — ${coche}`;
 
+  /**
+   * La cita, si el vendedor ya la dio.
+   *
+   * Ahora se le pide en el primer correo —día y hora concretos—, así que lo
+   * normal es que el encargo salga con la cita puesta. Al perito le queda
+   * confirmar que puede, no proponer. Cuadrar una hora entre tres por correo
+   * son cuatro correos y dos días.
+   */
+  const cita = [String(d.cuando ?? '').trim(), String(d.hora ?? '').trim()]
+    .filter(Boolean)
+    .join(' · ');
+
   const fila = (k: string, v: string) =>
     `<tr><td style="padding:4px 12px 4px 0;color:#5E5E59;white-space:nowrap;vertical-align:top">${esc(k)}</td>` +
     `<td style="padding:4px 0;color:#2A2A28"><strong>${esc(v)}</strong></td></tr>`;
@@ -210,7 +233,9 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
     '<table style="border-collapse:collapse;font-size:14px;margin:8px 0 16px 0">' +
     fila('Fahrzeug / Vehicle', coche) +
     fila('Standort / Where it is', String(d.donde ?? '').trim() || 'noch offen, wir melden uns / not yet known, we will confirm') +
+    (cita ? fila('Termin / Appointment', cita) : '') +
     (String(d.contacto ?? '').trim() ? fila('Ansprechpartner / Ask for', String(d.contacto)) : '') +
+    (String(d.telefono ?? '').trim() ? fila('Telefon / Phone', String(d.telefono)) : '') +
     (d.anuncio ? fila('Inserat / Listing', String(d.anuncio)) : '') +
     '</table>';
 
@@ -251,12 +276,18 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
      * dijo qué día y a quién se le avisó. Dos que se llaman por su cuenta no
      * dejan rastro, y el día que el coche no esté preparado no hay dónde mirar.
      */
-    p('Sagen Sie uns bitte, <strong>wann Sie hinfahren können</strong>. Den Termin stimmen wir mit dem Verkäufer ab und bestätigen ihn Ihnen.') +
+    p(cita
+      ? `<strong>Der Termin ist mit dem Verkäufer bereits vereinbart: ${esc(cita)}.</strong> Bitte bestätigen Sie uns kurz, dass Sie ihn wahrnehmen können. Falls nicht, sagen Sie uns, wann es Ihnen passt, und wir stimmen es neu ab.`
+      : 'Sagen Sie uns bitte, <strong>wann Sie hinfahren können</strong>. Den Termin stimmen wir mit dem Verkäufer ab und bestätigen ihn Ihnen.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
     p('<em>we need you to inspect this car before we pay for it. What matters:</em>') +
     lista('en') +
-    p('<em>We need a clear answer: <strong>is it the car from the listing or not?</strong> A no is as useful to us as a yes — we simply do not buy it. Please tell us <strong>when you can go</strong>: we arrange the date with the seller and confirm it back to you.</em>');
+    p('<em>We need a clear answer: <strong>is it the car from the listing or not?</strong> A no is as useful to us as a yes — we simply do not buy it. ' +
+      (cita
+        ? `The appointment is <strong>already agreed with the seller: ${esc(cita)}</strong>. Please confirm you can make it; if not, tell us when suits you and we will rearrange it.`
+        : 'Please tell us <strong>when you can go</strong>: we arrange the date with the seller and confirm it back to you.') +
+      '</em>');
 
   return { subject, html };
 }

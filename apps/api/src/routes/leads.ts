@@ -1239,8 +1239,22 @@ leadsRouter.post('/leads/:id/respuesta-vendedor', requireRole(['admin', 'operati
     const f = r.rows[0];
     if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
 
+    /**
+     * Lo que trae su respuesta al primer correo, que es lo que se le pidió:
+     * el día y la hora de la visita, dónde está el coche, por quién preguntar
+     * y en qué teléfono.
+     *
+     * El IBAN ya no viene aquí. El primer correo no lo pide —un número de
+     * cuenta pedido antes de saber si el coche existe es el hilo por el que
+     * entra el fraude— y se apunta en la ficha del vendedor cuando se
+     * consigue, confirmado por teléfono. Se sigue aceptando por si alguien
+     * lo manda desde otro sitio, pero la pantalla ya no lo pregunta aquí.
+     */
     const donde = String(req.body?.donde ?? '').trim();
     const contacto = String(req.body?.contacto ?? '').trim();
+    const telefono = String(req.body?.telefono ?? '').trim();
+    const fecha = String(req.body?.fecha ?? '').trim();
+    const hora = String(req.body?.hora ?? '').trim();
     const iban = String(req.body?.iban ?? '').replace(/[\s-]/g, '').toUpperCase();
     const titular = String(req.body?.titular ?? '').trim();
 
@@ -1250,14 +1264,18 @@ leadsRouter.post('/leads/:id/respuesta-vendedor', requireRole(['admin', 'operati
      * Con `COALESCE(NULLIF(...))` para no borrar lo que ya hubiera escrito
      * alguien: un campo vacío aquí no es una corrección, es que no se rellenó.
      */
-    if (donde || contacto) {
+    const paraLaPeritacion = Boolean(donde || contacto || telefono || fecha || hora);
+    if (paraLaPeritacion) {
       await query(
         `UPDATE erp_peritaciones
             SET donde = COALESCE(NULLIF($2, ''), donde),
                 contacto = COALESCE(NULLIF($3, ''), contacto),
+                telefono = COALESCE(NULLIF($4, ''), telefono),
+                fecha_prevista = COALESCE(NULLIF($5, '')::date, fecha_prevista),
+                hora_prevista = COALESCE(NULLIF($6, ''), hora_prevista),
                 updated_at = NOW()
           WHERE lead_id = $1`,
-        [req.params.id, donde, contacto]
+        [req.params.id, donde, contacto, telefono, fecha, hora]
       ).catch((e: Error) => console.error('[leads] peritación:', e.message));
     }
 
@@ -1279,7 +1297,7 @@ leadsRouter.post('/leads/:id/respuesta-vendedor', requireRole(['admin', 'operati
       enElVendedor = Boolean(u.rowCount);
     }
 
-    res.json({ ok: true, enLaPeritacion: Boolean(donde || contacto), enElVendedor });
+    res.json({ ok: true, enLaPeritacion: paraLaPeritacion, enElVendedor });
   } catch (err) {
     falloInterno(res, 'respuesta_vendedor_failed', err);
   }

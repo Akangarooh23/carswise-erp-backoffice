@@ -428,8 +428,8 @@ momento en que esa cosa hace falta:
 | Cuándo | A quién | Qué pide |
 |---|---|---|
 | Con el depósito dentro | El vendedor alemán | Si el coche **sigue disponible**, **qué día y a qué hora** podemos verlo, y **dónde está, por quién preguntar y en qué teléfono** |
-| Con el depósito dentro | El perito | Que vaya a ver el coche, y qué mirar |
-| Con el día que dé el perito | El vendedor alemán | Qué día va, y que tenga el coche y los papeles listos |
+| Con la respuesta del vendedor | El perito | Que vaya a ver el coche, qué mirar, y **la cita ya puesta** con su dirección y su teléfono |
+| Con la cita cerrada | El vendedor alemán | Le confirma **el día y la hora**, quién va, y que tenga el coche y los papeles listos |
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
 | Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, y qué se lleva el conductor |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
