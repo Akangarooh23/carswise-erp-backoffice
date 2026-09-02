@@ -571,6 +571,21 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
+        {/*
+          * Lo que no se ha podido hacer, arriba del todo.
+          *
+          * Estaba metido dentro del bloque de «Antes de soltar el dinero», que
+          * desaparece en cuanto el pago se libera. A partir de ahí, cualquier
+          * cosa que fallara —pedir la factura, el encargo a la gestoría— se
+          * quedaba sin sitio donde salir: pulsabas y no pasaba nada, que es
+          * exactamente lo que este aviso existe para que no ocurra.
+          */}
+        {aviso && (
+          <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-[13px] text-red-800">
+            {aviso}
+          </div>
+        )}
+
         {/* ── El dinero ──
 
             Es dinero del cliente, no nuestro, y por eso este bloque enseña
@@ -722,18 +737,6 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                   {!verificadoEnAlemania(x) && (
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
                       Hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
-                    </div>
-                  )}
-                  {/*
-                    * Y si el servidor lo rechaza, por qué.
-                    *
-                    * Este aviso salía arriba de la pantalla, detrás del panel
-                    * abierto: pulsar el botón y que no se pudiera se veía igual
-                    * que si el botón no hiciera nada.
-                    */}
-                  {aviso && (
-                    <div className="text-[11px] text-red-700 font-medium mt-1.5">
-                      {aviso}
                     </div>
                   )}
                 </>
