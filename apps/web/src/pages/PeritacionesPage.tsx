@@ -9,7 +9,7 @@
  * La peritación nace sola cuando el dinero entra. Lo que hace falta después es
  * elegir perito, mandarle el encargo y anotar lo que dijo.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
@@ -17,12 +17,13 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import DanosDelCoche from '../components/DanosDelCoche.js';
 import { type Dano, resumenDeDanos, comoSeCuenta } from '../lib/danos.js';
+import { faseDeLaPeritacion, QUE_TOCA_AHORA } from '../lib/fases-peritacion.js';
 
 const ESTADOS = ['Por encargar', 'Encargada', 'Hecha'] as const;
 
 const QUE_TOCA: Record<string, string> = {
   'Por encargar': 'Elegir perito y mandarle el encargo',
-  Encargada: 'Esperando a que vaya',
+  Encargada: 'Esperando que confirme, diga el precio y vaya',
   Hecha: 'Ya se sabe lo que hay',
 };
 
@@ -324,18 +325,38 @@ function PeritacionAbierta({
   });
   const [notas, setNotas] = useState(p.notas ?? '');
 
-  return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
-      <div className="w-full max-w-md h-full overflow-y-auto bg-white shadow-xl p-5"
-           onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-base font-bold text-brand-600 leading-tight">{p.vehiculo_titulo}</h2>
-            <p className="text-xs text-brand-400 mt-0.5">{p.id} · {p.estado}</p>
-          </div>
-          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
-        </div>
+  /**
+   * En qué fase va esto, que es lo que decide qué se ve.
+   *
+   * 0 · **Por encargar** — hay que elegir perito y mandarle el encargo.
+   * 1 · **Encargada** — se le ha mandado y toca esperar: si puede ir, cuánto
+   *     cobra, y luego la visita.
+   * 2 · **Hecha** — ha ido y ha dicho lo que vio.
+   *
+   * Enseñar los doce campos a la vez desde el primer momento no es enseñar más
+   * información, es enseñar menos: entre «lo que vio» vacío y «su factura»
+   * vacía se pierde el único botón que se puede pulsar hoy. Lo que no toca no
+   * desaparece —se pliega abajo, por si alguien quiere mirarlo—, pero no
+   * compite con lo que sí.
+   */
+  const fase = faseDeLaPeritacion(p);
 
+  const queToca = QUE_TOCA_AHORA[fase];
+
+  const seccion = (titulo: string, dentro: ReactNode, pista?: string) => (
+    <div className="mt-4 pt-3 border-t border-brand-200">
+      <div className="text-xs font-semibold text-brand-600 mb-1.5">{titulo}</div>
+      {dentro}
+      {pista ? <div className="text-[11px] text-brand-300 mt-1.5">{pista}</div> : null}
+    </div>
+  );
+
+  /** Cada trozo, con la fase a partir de la cual tiene sentido. */
+  const bloques: { clave: string; desde: number; nodo: ReactNode }[] = [
+    {
+      clave: 'visita',
+      desde: 0,
+      nodo: (
         <div className="space-y-3">
           <label className="block text-[11px] text-brand-400">
             Quién va a verlo
@@ -389,93 +410,105 @@ function PeritacionAbierta({
             </label>
           </div>
 
-          {/*
-            * Lo que cobra, que lo dice él al confirmar la cita.
-            *
-            * Se le pregunta en el encargo y no después: cuando ya ha ido, el
-            * trabajo está hecho y la factura llega con el número que él ponga.
-            */}
-          <label className="block text-[11px] text-brand-400">
-            Lo que nos cobra
-            <span className="text-brand-300"> · lo dice al confirmar la cita; sale de nuestro margen, no del cliente</span>
-            <input value={datos.coste} inputMode="decimal"
-                   onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
-
           <button onClick={() => onGuardar(datos)} disabled={guardando}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
             Guardar los datos
           </button>
+          <div className="text-[11px] text-brand-300">
+            Los cinco los da el vendedor al contestar al primer correo.
+          </div>
         </div>
-
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">El encargo</div>
-          {p.encargo_enviado_at ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] font-bold text-emerald-700">
-                ✓ Mandado el {dia(p.encargo_enviado_at)}{p.encargo_enviado_a ? ` a ${p.encargo_enviado_a}` : ''}
-              </span>
-              <button onClick={onEncargar} disabled={guardando}
-                      className="text-[11px] text-brand-400 underline underline-offset-2">
-                mandarlo otra vez
-              </button>
-            </div>
-          ) : (
-            <>
-              <button onClick={onEncargar} disabled={guardando}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-                Encargarle la revisión
-              </button>
-              <div className="text-[11px] text-brand-300 mt-1.5">
-                Guarda antes los cambios: el correo sale con lo que hay grabado.
-              </div>
-            </>
-          )}
-        </div>
-
-        {/*
-          * Y avisar al vendedor del día.
-          *
-          * Va desde aquí para que quede apuntado: quién dijo qué día y a quién
-          * se le avisó. Dos que se llaman por su cuenta no dejan rastro, y el
-          * día que el coche no esté preparado no hay dónde mirar.
-          */}
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">Avisar al vendedor</div>
-          {p.cita_avisada_at ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] font-bold text-emerald-700">
-                ✓ Avisado el {dia(p.cita_avisada_at)}{p.cita_avisada_a ? ` a ${p.cita_avisada_a}` : ''}
-              </span>
-              <button onClick={onAvisarCita} disabled={guardando}
-                      className="text-[11px] text-brand-400 underline underline-offset-2">
-                avisar otra vez
-              </button>
-            </div>
-          ) : (
-            <>
-              <button onClick={onAvisarCita} disabled={guardando}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-                Decirle qué día va
-              </button>
-              <div className="text-[11px] text-brand-300 mt-1.5">
-                Pon antes la fecha en «Cuándo va» y guarda. Le pide que el coche esté
-                accesible y que estén los papeles y las dos llaves.
-              </div>
-            </>
-          )}
-        </div>
-
-        {/*
-          * Lo que vio.
-          *
-          * Esto es lo que marca el coche como visto en el expediente, y solo el
-          * veredicto bueno abre la puerta a soltar el dinero. Si dice que no es
-          * el que se anunció, no hay nada que interpretar: vuelve al cliente.
-          */}
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">Lo que vio</div>
+      ),
+    },
+    {
+      clave: 'encargo',
+      desde: 0,
+      nodo: seccion(
+        'El encargo',
+        p.encargo_enviado_at ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-bold text-emerald-700">
+              ✓ Mandado el {dia(p.encargo_enviado_at)}{p.encargo_enviado_a ? ` a ${p.encargo_enviado_a}` : ''}
+            </span>
+            <button onClick={onEncargar} disabled={guardando}
+                    className="text-[11px] text-brand-400 underline underline-offset-2">
+              mandarlo otra vez
+            </button>
+          </div>
+        ) : (
+          <button onClick={onEncargar} disabled={guardando || !datos.perito.trim()}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
+            Encargarle la revisión
+          </button>
+        ),
+        p.encargo_enviado_at
+          ? 'Le pedimos que confirme la cita y que nos diga lo que cuesta.'
+          : datos.perito.trim()
+            ? 'Guarda antes los cambios: el correo sale con lo que hay grabado.'
+            : 'Elige primero quién va a verlo.'
+      ),
+    },
+    {
+      /*
+       * Lo que nos cobra: hasta que no contesta, no se sabe.
+       *
+       * Tenerlo abierto desde el primer momento invita a escribir la tarifa de
+       * catálogo, y entonces el gasto del coche sale de lo que suponíamos y no
+       * de lo que nos han dicho.
+       */
+      clave: 'coste',
+      desde: 1,
+      nodo: seccion(
+        'Lo que nos cobra',
+        <>
+          <input value={datos.coste} inputMode="decimal" placeholder="Lo que nos ha dicho"
+                 onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
+                 className="w-full mb-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <button onClick={() => onGuardar(datos)} disabled={guardando}
+                  className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
+            Guardar lo que nos cobra
+          </button>
+        </>,
+        'Lo dice al confirmar la cita. Sale de nuestro margen, no del cliente.'
+      ),
+    },
+    {
+      /*
+       * Avisar al vendedor: solo cuando hay algo que avisarle.
+       *
+       * Antes de que el perito confirme, no hay cita que confirmar. El botón
+       * estaba encendido y lo único que podía hacer era mandar un correo con
+       * una fecha que todavía no sostenía nadie.
+       */
+      clave: 'avisar',
+      desde: 1,
+      nodo: seccion(
+        'Avisar al vendedor',
+        p.cita_avisada_at ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-bold text-emerald-700">
+              ✓ Avisado el {dia(p.cita_avisada_at)}{p.cita_avisada_a ? ` a ${p.cita_avisada_a}` : ''}
+            </span>
+            <button onClick={onAvisarCita} disabled={guardando}
+                    className="text-[11px] text-brand-400 underline underline-offset-2">
+              avisar otra vez
+            </button>
+          </div>
+        ) : (
+          <button onClick={onAvisarCita} disabled={guardando}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+            Confirmarle el día y la hora
+          </button>
+        ),
+        'Cuando el perito haya confirmado. Le pide que el coche esté accesible y que estén los papeles y las dos llaves.'
+      ),
+    },
+    {
+      clave: 'resultado',
+      desde: 1,
+      nodo: seccion(
+        'Lo que vio',
+        <>
           {p.fecha_hecha && (
             <div className={`text-[13px] font-bold mb-2 ${p.veredicto === 'es_el_que_se_anuncio' ? 'text-emerald-700' : 'text-red-700'}`}>
               {VEREDICTOS.find(([k]) => k === p.veredicto)?.[1]} · {dia(p.fecha_hecha)}
@@ -501,16 +534,14 @@ function PeritacionAbierta({
                   className="w-full mt-2 px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
             Anotar lo que vio
           </button>
-        </div>
-
-        {/*
-          * Los daños, y lo que estima que cuesta arreglarlos.
-          *
-          * Va debajo del veredicto porque es su detalle: el veredicto dice si
-          * el coche es el que se anunció, y esto, en qué estado está. De aquí
-          * sale el precio de reacondicionamiento que se le da al cliente, que
-          * hasta ahora salía de la memoria de quien cogía el teléfono.
-          */}
+        </>,
+        'Esto es lo que marca el coche como visto. Solo el veredicto bueno abre la puerta a soltar el dinero.'
+      ),
+    },
+    {
+      clave: 'danos',
+      desde: 2,
+      nodo: (
         <DanosDelCoche
           danos={p.danos ?? []}
           guardando={guardando}
@@ -520,21 +551,14 @@ function PeritacionAbierta({
           onPegar={onPegar}
           onGuardarPegado={onGuardarPegado}
         />
-
-        {/*
-          * Su factura.
-          *
-          * No se queda aquí. Va a dos sitios porque contesta dos preguntas
-          * distintas: **cuánto cuesta este coche** —el gasto del pedido, de
-          * donde sale el margen— y **a quién le debemos dinero** —las facturas
-          * recibidas, que es donde se paga—. Un coste que solo vive en la
-          * pantalla donde se generó no aparece en ninguna cuenta.
-          *
-          * El gasto del pedido llega tarde a propósito: el perito cobra antes de
-          * que el pedido exista, así que lo recoge el pedido al nacer.
-          */}
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">Su factura</div>
+      ),
+    },
+    {
+      clave: 'factura',
+      desde: 2,
+      nodo: seccion(
+        'Su factura',
+        <>
           {p.factura_numero && (
             <div className="text-[13px] font-bold text-emerald-700 mb-2">
               ✓ {p.factura_numero}{p.factura_fecha ? ` · ${dia(p.factura_fecha)}` : ''}
@@ -556,16 +580,56 @@ function PeritacionAbierta({
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
             Apuntar su factura
           </button>
-          <div className="text-[11px] text-brand-300 mt-1.5">
-            Va a facturas de proveedor, pendiente de pagar, y al pedido como coste
-            de este coche.
+        </>,
+        'Va a facturas de proveedor, pendiente de pagar, y al pedido como coste de este coche.'
+      ),
+    },
+    {
+      clave: 'papeles',
+      desde: 2,
+      nodo: seccion('Su informe y las fotos', <Documentos ambito="peritacion" id={p.id} />),
+    },
+  ];
+
+  const ahora = bloques.filter((b) => b.desde <= fase);
+  const luego = bloques.filter((b) => b.desde > fase);
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
+      <div className="w-full max-w-md h-full overflow-y-auto bg-white shadow-xl p-5"
+           onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-base font-bold text-brand-600 leading-tight">{p.vehiculo_titulo}</h2>
+            <p className="text-xs text-brand-400 mt-0.5">{p.id} · {p.estado}</p>
           </div>
+          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">Su informe y las fotos</div>
-          <Documentos ambito="peritacion" id={p.id} />
+        {/* Lo que toca hoy, dicho antes de que empiecen los campos. */}
+        <div className="mb-4 px-3 py-2 rounded-lg bg-brand-50 border border-brand-200 text-[12px] text-brand-600">
+          {queToca}
         </div>
+
+        {ahora.map((b) => <div key={b.clave}>{b.nodo}</div>)}
+
+        {/*
+          * Y lo que todavía no toca, plegado.
+          *
+          * Plegado y no escondido: alguien querrá mirar el informe de una que
+          * aún no ha ido, o corregir algo de una fase pasada. Lo que no puede
+          * es competir con lo que hay que hacer hoy.
+          */}
+        {luego.length > 0 && (
+          <details className="mt-5 pt-3 border-t border-brand-200">
+            <summary className="text-[12px] text-brand-400 cursor-pointer select-none">
+              Lo que todavía no toca ({luego.length})
+            </summary>
+            <div className="opacity-70">
+              {luego.map((b) => <div key={b.clave}>{b.nodo}</div>)}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );

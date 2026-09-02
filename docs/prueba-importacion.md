@@ -267,6 +267,12 @@ y caen donde tienen que caer.
 
 Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 
+- [ ] Ábrela: arriba dice **qué toca ahora**, y solo se ven los campos de esta
+      fase. «Lo que nos cobra», «Avisar al vendedor», «Lo que vio», los daños y
+      la factura **no están** — están plegados abajo, en **«Lo que todavía no
+      toca»**, por si quieres mirarlos.
+- [ ] El botón de encargar está **apagado** hasta que elijas perito.
+
 - [ ] Ábrela y elige **quién va a verlo**. Está `checkdenwagen.de`, que va a
       donde esté el coche en toda Alemania.
 - [ ] Pon **dónde está** —lo que te haya contestado el vendedor— y por quién

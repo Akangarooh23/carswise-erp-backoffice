@@ -342,6 +342,26 @@ márgenes.
 > **Le falta el correo.** Solo está publicado el teléfono, +49 30 301 32 327.
 > Hasta que lo tengamos, el botón de encargar dirá que falta y no mandará nada.
 
+### La pantalla va por fases
+
+El panel de una peritación **solo enseña lo que toca en ese momento**, y lo
+demás se pliega abajo, en «Lo que todavía no toca». Plegado, no escondido:
+alguien querrá mirar el informe de una que aún no ha ido.
+
+| Cuando está… | Se ve | Y todavía no |
+|---|---|---|
+| **Por encargar** | Quién va a verlo y los datos de la visita —dirección, contacto, teléfono, día y hora—, y el botón de encargar | Lo que cobra, avisar al vendedor, lo que vio, los daños, la factura |
+| **Encargada** | Además: lo que nos cobra, avisar al vendedor y anotar lo que vio | Los daños, su factura y su informe |
+| **Hecha** | Todo | — |
+
+No es cuestión de orden en la pantalla, es que **antes no se puede**: lo que
+cobra no se sabe hasta que contesta, y avisar al vendedor del día antes de que
+el perito confirme es mandarle una fecha que no sostiene nadie.
+
+La fase la marca **el correo, no el estado**. Arrastrar la tarjeta a
+«Encargada» en el tablero no habilita nada: lo que habilita es haberle mandado
+el encargo de verdad.
+
 ### Lo que vuelve, y dónde acaba
 
 Del perito vuelven tres cosas y cada una tiene su sitio en la pantalla:
