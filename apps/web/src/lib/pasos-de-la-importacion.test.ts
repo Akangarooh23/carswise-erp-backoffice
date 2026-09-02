@@ -182,6 +182,8 @@ describe('el final del camino', () => {
       perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
       donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
       encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+      // Su factura ya está apuntada: en este bloque se mira lo que viene después.
+      factura_numero: 'PE-DE-0001',
     },
   };
 
@@ -276,17 +278,23 @@ describe('la factura del perito, que llega cuando llega', () => {
     assert.equal(paso(x, 'liberar').estado, 'toca');
   });
 
-  test('pero queda pendiente, para que no se olvide', () => {
+  test('pero queda pendiente: toca pedírsela', () => {
     // 289 € que nadie apunta no llegan al coste del coche ni a lo que hay que
     // pagar, y el margen sale mejor de lo que es.
-    assert.equal(paso(kia(VISTO), 'facturaPerito').estado, 'esperando');
+    assert.equal(paso(kia(VISTO), 'facturaPerito').estado, 'toca');
   });
 
-  test('y si tarda, se le reclama', () => {
+  test('pedida y sin llegar, se espera; y si tarda, se reclama', () => {
+    // La cuenta corre desde que se pidió, no desde la visita: reclamar dos
+    // días después de haberla pedido es prisa, no seguimiento.
+    const ayer = new Date(HOY.getTime() - 86400000).toISOString();
+    const conPrisa = kia({ ...VISTO, peritacion: { ...VISTO.peritacion, factura_pedida_at: ayer } });
+    assert.equal(paso(conPrisa, 'facturaPerito').estado, 'esperando');
+
     const viejo = new Date(HOY.getTime() - (PLAZOS.perito + 1) * 86400000).toISOString();
-    const x = kia({ ...VISTO, peritacion: { ...VISTO.peritacion, fecha_hecha: viejo } });
+    const x = kia({ ...VISTO, peritacion: { ...VISTO.peritacion, factura_pedida_at: viejo } });
     assert.equal(paso(x, 'facturaPerito').estado, 'toca');
-    assert.match(paso(x, 'facturaPerito').titulo, /Reclamarle la factura/);
+    assert.match(paso(x, 'facturaPerito').titulo, /Reclamarle otra vez/);
   });
 
   test('apuntada, deja de pedir nada', () => {

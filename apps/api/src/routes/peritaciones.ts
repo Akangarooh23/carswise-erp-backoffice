@@ -19,7 +19,8 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
-import { enviar } from '../lib/correo.js';
+import { enviar, respuestaA } from '../lib/correo.js';
+import { correoDeFacturaAlPerito, faltaParaPedirleLaFactura } from '../lib/factura-al-perito.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { apuntaFacturaRecibida } from './provider-billing.js';
@@ -111,7 +112,9 @@ async function prepara(): Promise<void> {
        ADD COLUMN IF NOT EXISTS telefono        TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS quien_va        TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS quien_va_email  TEXT NOT NULL DEFAULT '',
-       ADD COLUMN IF NOT EXISTS quien_va_tel    TEXT NOT NULL DEFAULT ''`,
+       ADD COLUMN IF NOT EXISTS quien_va_tel    TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS factura_pedida_at TIMESTAMPTZ,
+       ADD COLUMN IF NOT EXISTS factura_pedida_a  TEXT NOT NULL DEFAULT ''`,
     []
   ).catch(() => {});
   preparado = true;
@@ -134,6 +137,7 @@ const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
                 factura_numero, cita_avisada_at, cita_avisada_a,
+                factura_pedida_at, factura_pedida_a,
                 TO_CHAR(factura_fecha, 'YYYY-MM-DD') AS factura_fecha,
                 encargo_enviado_at, encargo_enviado_a, creado_por, created_at, updated_at`;
 
@@ -611,6 +615,98 @@ peritacionesRouter.post('/peritaciones/:id/danos/pegadas', requireRole(['admin',
   } catch (err) {
     console.error('[peritaciones] pegar daños:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'danos_failed' });
+  }
+});
+
+// ── Pedirle su factura ──────────────────────────────────────────────────────
+/**
+ * El correo que le pide la factura, cuando ya ha hecho la revisión.
+ *
+ * Se manda desde aquí y no a mano porque lo que hace falta que lleve —de qué
+ * revisión hablamos, lo que se acordó, y que va a nombre de PopCar y no del
+ * cliente— es justo lo que se olvida al escribirlo deprisa.
+ */
+peritacionesRouter.post('/peritaciones/:id/pedir-factura', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT p.*,
+              TO_CHAR(p.fecha_hecha, 'DD/MM/YYYY') AS hecha_el
+         FROM erp_peritaciones p
+        WHERE p.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const p = r.rows[0];
+    if (!p) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+
+    const nombre = nt(p.perito);
+    if (!nombre) {
+      res.status(409).json({ ok: false, error: 'sin_perito', detail: 'No consta quién lo revisó.' });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = nt(v.rows[0]?.email);
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_perito',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const datos = {
+      vehiculo: nt(p.vehiculo_titulo),
+      cuando: nt(p.hecha_el),
+      donde: nt(p.donde),
+      importe: p.coste != null ? Number(p.coste) : null,
+      referencia: req.params.id,
+      // A dónde nos la manda: la misma dirección desde la que sale el correo.
+      paraFacturas: respuestaA() ?? null,
+      nota: notaEnParrafos(req.body?.nota),
+    };
+    const falta = faltaParaPedirleLaFactura(datos);
+    if (falta.length) {
+      res.status(409).json({ ok: false, error: 'faltan_datos', detail: `Falta ${escritoEnLista(falta)}.` });
+      return;
+    }
+
+    const { subject, html } = correoDeFacturaAlPerito(datos);
+    const aQuien = pareceUnCorreo(req.body?.para) ? nt(req.body.para) : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+    const cajones = [{ ambito: 'peritacion', id: req.params.id }];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await query(
+      `UPDATE erp_peritaciones SET factura_pedida_at = NOW(), factura_pedida_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    );
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    console.error('[peritaciones] pedir factura:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'pedir_factura_failed' });
   }
 });
 

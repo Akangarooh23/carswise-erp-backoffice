@@ -457,7 +457,7 @@ escritos en pedidos, transportes y trámites y da de alta a quien falte— pero
 aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
 
 ---
-## Los siete correos que salen a proveedores
+## Los ocho correos que salen a proveedores
 
 Uno por cada cosa que hay que pedirle a alguien de fuera, y cada uno en el
 momento en que esa cosa hace falta:
@@ -470,9 +470,10 @@ momento en que esa cosa hace falta:
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
 | Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, y qué se lleva el conductor |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
+| Cuando ha hecho la revisión | El perito | **Su factura**, a nombre de PopCar y no del cliente |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |
 
-Los siete **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
+Los ocho **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
 correo entero, se revisa y se manda. Un correo no se desenvía, y estos van a
 gente de fuera con nuestro nombre.
 

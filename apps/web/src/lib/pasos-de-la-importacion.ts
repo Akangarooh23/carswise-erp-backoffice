@@ -238,11 +238,18 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
           donde: '/peritaciones',
         }
       : p?.veredicto
-        ? esperando(
-            { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'esperando', donde: '/peritaciones' },
-            p?.fecha_hecha, PLAZOS.perito,
-            'Reclamarle la factura al perito', hoy
-          )
+        ? p?.factura_pedida_at
+          // Ya se le ha pedido: la cuenta corre desde que se pidió, no desde
+          // la visita. Reclamar dos días después de haberla pedido es prisa.
+          ? esperando(
+              { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'esperando', donde: '/peritaciones' },
+              p.factura_pedida_at, PLAZOS.perito,
+              'Reclamarle otra vez la factura al perito', hoy
+            )
+          : {
+              clave: 'facturaPerito', titulo: 'Pedirle su factura al perito',
+              estado: 'toca', donde: '/peritaciones',
+            }
         : { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'porVenir' }
   );
 

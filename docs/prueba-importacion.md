@@ -182,7 +182,7 @@ sería declarar la venta de un coche que no hemos vendido.
 
 ## 3 · Ver el coche y soltar el dinero · **en el ERP**
 
-> **Los siete correos a proveedores salen de aquí en adelante**, y cuatro de
+> **Los ocho correos a proveedores salen de aquí en adelante**, y cinco de
 > ellos de este paso. Como en Proveedores están puestos correos de prueba,
 > **te llegan a ti**. Ábrelos: son los que un día van a salir a un
 > concesionario alemán, a un perito, a un transportista y a una gestoría.
@@ -195,6 +195,7 @@ sería declarar la venta de un coche que no hemos vendido.
 > | Al liberar el pago | Vendedor | Que ya se le ha pagado, y su factura | 3 |
 > | Al organizar el tramo | Vendedor | Dónde y cuándo se recoge | 6 |
 > | En el tramo de transporte | Transportista | La recogida, con las dos puntas | 6 |
+> | Con la revisión hecha | Perito | Su factura, a nombre de PopCar | 3 |
 > | Al entrar en trámites | Gestoría | Los tres papeleos y el impuesto real | 8 |
 
 > **Para repetir esta parte sin empezar de cero**: el expediente se deja otra
@@ -346,7 +347,13 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Vuelve al **expediente**: debajo de la peritación sale el mismo total.
       Es donde está mirando quien le da al cliente el precio de
       reacondicionamiento.
-- [ ] Apunta **su factura**: número, fecha e importe.
+- [ ] Si no la ha mandado, pulsa **«Pedírsela por correo»**. Se abre para
+      revisarlo, como los demás. Lleva de qué revisión hablamos —coche, día y
+      sitio—, el importe que él mismo dio, y que la factura va **a nombre de
+      PopCar y no del cliente**: es lo contrario que la del coche, y es el
+      error que se comete si no se dice.
+- [ ] Queda escrito **«✓ Pedida el … a …»**.
+- [ ] Apunta **su factura** cuando llegue: número, fecha e importe.
 - [ ] Ve a **Facturación proveedores → Recibidas de proveedores**: ahí está,
       pendiente de pagar. Es la pregunta de «a quién le debemos dinero».
 - [ ] El **gasto del coche** es otra pregunta distinta y va al pedido. Como el

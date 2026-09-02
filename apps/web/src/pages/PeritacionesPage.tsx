@@ -57,6 +57,9 @@ interface Peritacion {
   cita_avisada_a: string | null;
   factura_numero: string;
   factura_fecha: string | null;
+  /** Cuándo se le pidió la factura, y a qué correo. */
+  factura_pedida_at: string | null;
+  factura_pedida_a: string | null;
   encargo_enviado_at: string | null;
   encargo_enviado_a: string | null;
   created_at: string;
@@ -275,6 +278,7 @@ export default function PeritacionesPage() {
           onGuardar={(c) => void guarda(abierta.id, c)}
           onEncargar={() => void preparaElCorreo(abierta.id, 'encargo')}
           onAvisarCita={() => void preparaElCorreo(abierta.id, 'cita')}
+          onPedirFactura={() => void preparaElCorreo(abierta.id, 'pedir-factura')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
           onFactura={(d) => void anotaLaFactura(abierta.id, d)}
           onApuntarDano={(d) => void conLosDanos(abierta.id, () =>
@@ -304,6 +308,7 @@ export default function PeritacionesPage() {
 
 function PeritacionAbierta({
   p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura, onAvisarCita,
+  onPedirFactura,
   onApuntarDano, onCorregirDano, onQuitarDano, onPegar, onGuardarPegado,
 }: {
   p: Peritacion;
@@ -314,6 +319,7 @@ function PeritacionAbierta({
   onResultado: (veredicto: string, notas: string) => void;
   onFactura: (datos: Record<string, string>) => void;
   onAvisarCita: () => void;
+  onPedirFactura: () => void;
   onApuntarDano: (d: { pieza: string; coste: string; notas: string }) => void;
   onCorregirDano: (danoId: string, d: Record<string, string>) => void;
   onQuitarDano: (danoId: string) => void;
@@ -615,6 +621,34 @@ function PeritacionAbierta({
       nodo: seccion(
         'Su factura',
         <>
+          {/*
+            * Pedírsela, que no bloquea nada y por eso se olvida.
+            *
+            * Nadie está esperando esta factura para poder seguir: el pago al
+            * vendedor se libera con el veredicto. Pero sin ella los 289 € no
+            * llegan al coste del coche ni a lo que hay que pagar.
+            */}
+          {!p.factura_numero && (
+            <div className="mb-2">
+              {p.factura_pedida_at ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[12px] font-bold text-emerald-700">
+                    ✓ Pedida el {dia(p.factura_pedida_at)}
+                    {p.factura_pedida_a ? ` a ${p.factura_pedida_a}` : ''}
+                  </span>
+                  <button onClick={onPedirFactura} disabled={guardando}
+                          className="text-[11px] text-brand-400 underline underline-offset-2">
+                    pedirla otra vez
+                  </button>
+                </div>
+              ) : (
+                <button onClick={onPedirFactura} disabled={guardando}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                  Pedírsela por correo
+                </button>
+              )}
+            </div>
+          )}
           {p.factura_numero && (
             <div className="text-[13px] font-bold text-emerald-700 mb-2">
               ✓ {p.factura_numero}{p.factura_fecha ? ` · ${dia(p.factura_fecha)}` : ''}

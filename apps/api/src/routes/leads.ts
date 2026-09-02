@@ -306,6 +306,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       'cita_avisada_at', pr.cita_avisada_at,
                       'coste', pr.coste::numeric,
                       'factura_numero', pr.factura_numero,
+                      'factura_pedida_at', pr.factura_pedida_at,
                       'fecha_prevista_hecha', pr.fecha_hecha,
                       'fecha_prevista', TO_CHAR(pr.fecha_prevista, 'YYYY-MM-DD'),
                       -- Lo que vio roto y lo que estima que cuesta. Va aquí
