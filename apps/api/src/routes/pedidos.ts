@@ -762,6 +762,28 @@ export async function creaPedidoDeImportacion(datos: {
     [id, datos.creadoPor || "sistema"]
   ).catch(() => {});
 
+  /**
+   * La peritación se pagó antes de que existiera este pedido.
+   *
+   * Va a por ella al nacer, porque el orden real es ese: el perito va y cobra
+   * **antes** de que se libere el pago, y el pedido nace justo al liberarlo. Si
+   * el gasto solo se apuntara al registrar su factura, esos 289 € no llegarían
+   * nunca a la cuenta de este coche.
+   */
+  await query(
+    `INSERT INTO erp_gastos_pedido (pedido_id, concepto, proveedor, importe, fecha, notas, creado_por)
+     SELECT $1, 'Peritación en Alemania', p.perito, p.coste, p.factura_fecha,
+            CASE WHEN p.factura_numero <> '' THEN 'Factura ' || p.factura_numero ELSE '' END,
+            'al crear el pedido'
+       FROM erp_peritaciones p
+      WHERE p.lead_id = $2 AND p.coste IS NOT NULL AND p.coste > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM erp_gastos_pedido g
+           WHERE g.pedido_id = $1 AND g.concepto = 'Peritación en Alemania'
+        )`,
+    [id, datos.leadId]
+  ).catch((e: Error) => console.error('[pedidos] gasto de peritación:', e.message));
+
   return id;
 }
 export { ESTADOS_PEDIDO };

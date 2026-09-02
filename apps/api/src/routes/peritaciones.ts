@@ -22,6 +22,7 @@ import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.
 import { enviar } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
+import { apuntaFacturaRecibida } from './provider-billing.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import {
   papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar,
@@ -438,6 +439,29 @@ peritacionesRouter.post('/peritaciones/:id/factura', requireRole(['admin', 'oper
     if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
 
     const { lead_id: leadId, perito, coste } = r.rows[0];
+
+    /**
+     * A facturas recibidas, que es donde se paga.
+     *
+     * El gasto del pedido dice lo que cuesta el coche; esto dice lo que le
+     * debemos a alguien. Son dos preguntas distintas y hasta ahora la segunda
+     * no tenía respuesta: la factura estaba apuntada y no había nada que pagar
+     * en ningún sitio.
+     */
+    let enFacturas: string | null = null;
+    if (Number(coste)) {
+      enFacturas = await apuntaFacturaRecibida({
+        proveedor: perito,
+        numero,
+        importe: Number(coste),
+        fecha,
+        vehiculo: nt((await query<{ t: string }>(
+          `SELECT vehiculo_titulo AS t FROM erp_peritaciones WHERE id = $1`, [req.params.id]
+        ).catch(() => ({ rows: [] as { t: string }[] }))).rows[0]?.t),
+        notas: 'Peritación en Alemania',
+      }).catch(() => null);
+    }
+
     let enElPedido = false;
     if (leadId && Number(coste)) {
       const pedido = await query<{ id: string }>(
@@ -467,7 +491,7 @@ peritacionesRouter.post('/peritaciones/:id/factura', requireRole(['admin', 'oper
       }
     }
 
-    res.json({ ok: true, enElPedido });
+    res.json({ ok: true, enElPedido, enFacturas: Boolean(enFacturas) });
   } catch (err) {
     console.error('[peritaciones] factura:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'factura_failed' });

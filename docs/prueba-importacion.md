@@ -275,11 +275,14 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
       que respalda la decisión de soltar 16.890 €.
 - [ ] Apunta **su factura**: número, fecha e importe.
-- [ ] Ve al **pedido**, a «Lo que cuesta»: los 289 € están ahí como *Peritación
-      en Alemania*. Un coste que solo vive en la pantalla donde se generó no
-      aparece en ninguna cuenta.
-- [ ] Corrige el importe y vuelve a apuntarla: tiene que **cambiar**, no sumarse
-      otra vez.
+- [ ] Ve a **Facturación proveedores → Recibidas de proveedores**: ahí está,
+      pendiente de pagar. Es la pregunta de «a quién le debemos dinero».
+- [ ] El **gasto del coche** es otra pregunta distinta y va al pedido. Como el
+      perito cobra **antes** de que el pedido exista, ese apunte se hace solo
+      cuando el pedido nace, al liberar el pago. Compruébalo entonces en «Lo que
+      cuesta»: *Peritación en Alemania · 289 €*.
+- [ ] Corrige el importe y vuelve a apuntarla: tiene que **cambiar** en los dos
+      sitios, no duplicarse en ninguno.
 - [ ] Vuelve al expediente: **«Coche visto en Alemania» se ha marcado solo**,
       con la fecha de la peritación. Ya no es una casilla que se pulsa.
 

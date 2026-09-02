@@ -97,6 +97,59 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
   }
 });
 
+/**
+ * Apuntar una factura que nos han mandado.
+ *
+ * Está aparte de la ruta para poder llamarla desde donde la factura aparece de
+ * verdad. La del perito llega en la peritación, y obligar a volver a teclearla
+ * en otra pantalla es garantizar que un día no se teclea: entonces el gasto
+ * existe en la cuenta del coche pero no hay nada que pagar en ningún sitio.
+ *
+ * Idempotente por proveedor y número: apuntarla dos veces la corrige, no la
+ * duplica. Corregir el importe de una factura no puede crear una segunda.
+ */
+export async function apuntaFacturaRecibida(datos: {
+  proveedor: string;
+  numero: string;
+  importe: number;
+  fecha?: string | null;
+  vehiculo?: string | null;
+  notas?: string | null;
+}): Promise<string | null> {
+  const proveedor = String(datos.proveedor ?? '').trim();
+  const numero = String(datos.numero ?? '').trim();
+  if (!proveedor || !numero || !(Number(datos.importe) > 0)) return null;
+
+  const ya = await query<{ id: string }>(
+    `SELECT id FROM moveadvisor_provider_invoices
+      WHERE direction = 'received' AND provider_name = $1 AND notes LIKE $2 LIMIT 1`,
+    [proveedor, `%${numero}%`]
+  ).catch(() => ({ rows: [] as { id: string }[] }));
+
+  const notas = [`Factura ${numero}`, datos.notas].filter(Boolean).join(' · ');
+  if (ya.rows[0]) {
+    await query(
+      `UPDATE moveadvisor_provider_invoices
+          SET invoice_amount = $2, invoice_date = $3, vehicle_title = $4, notes = $5,
+              updated_at = NOW()
+        WHERE id = $1`,
+      [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null, notas]
+    ).catch(() => {});
+    return ya.rows[0].id;
+  }
+
+  const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevoId) => {
+    await query(
+      `INSERT INTO moveadvisor_provider_invoices
+         (id, type, direction, provider_name, vehicle_title,
+          invoice_amount, invoice_date, notes, status)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, 'pending')`,
+      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), datos.fecha || null, notas]
+    );
+  });
+  return id;
+}
+
 // ── Create received invoice (provider → CarsWise) manually with optional PDF ──
 // Body: { provider_name, vehicle_title, amount, invoice_date, notes?, contract_id?,
 //         pdf_base64?, pdf_filename? }
