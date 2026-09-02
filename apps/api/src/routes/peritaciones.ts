@@ -47,6 +47,8 @@ const ENSURE_TABLE = `
     veredicto       TEXT,
     notas           TEXT NOT NULL DEFAULT '',
     coste           NUMERIC(12,2),
+    factura_numero  TEXT NOT NULL DEFAULT '',
+    factura_fecha   DATE,
     encargo_enviado_at TIMESTAMPTZ,
     encargo_enviado_a  TEXT NOT NULL DEFAULT '',
     creado_por      TEXT NOT NULL DEFAULT '',
@@ -64,6 +66,13 @@ async function prepara(): Promise<void> {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_UNICA, []).catch(() => {});
+  // Para las tablas que ya existían antes de que hubiera factura.
+  await query(
+    `ALTER TABLE erp_peritaciones
+       ADD COLUMN IF NOT EXISTS factura_numero TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS factura_fecha  DATE`,
+    []
+  ).catch(() => {});
   preparado = true;
 }
 
@@ -74,6 +83,8 @@ function nt(v: unknown): string {
 const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
+                factura_numero,
+                TO_CHAR(factura_fecha, 'YYYY-MM-DD') AS factura_fecha,
                 encargo_enviado_at, encargo_enviado_a, creado_por, created_at, updated_at`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
@@ -286,6 +297,81 @@ peritacionesRouter.post(
     }
   }
 );
+
+// ── Su factura ──────────────────────────────────────────────────────────────
+/**
+ * La factura del perito, y su coste donde se ve.
+ *
+ * No se queda solo aquí: se apunta como **gasto del pedido**, que es de donde
+ * salen «Lo que cuesta este coche» y el margen. Un coste que solo vive en la
+ * pantalla donde se generó no aparece en ninguna cuenta, y 289 € sobre 1.136 €
+ * de margen no son un detalle.
+ *
+ * Se apunta una sola vez: si ya hay un gasto de peritación de este pedido, se
+ * actualiza en vez de añadir otro. Corregir el importe de una factura no puede
+ * duplicar el coste del coche.
+ */
+peritacionesRouter.post('/peritaciones/:id/factura', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const numero = nt(req.body?.numero);
+    const fecha = nt(req.body?.fecha) || null;
+    const importeCrudo = Number(req.body?.importe);
+    const importe = Number.isFinite(importeCrudo) && importeCrudo >= 0 ? importeCrudo : null;
+    if (!numero) {
+      res.status(400).json({
+        ok: false, error: 'sin_numero',
+        detail: 'Sin el número de su factura no hay nada que apuntar.',
+      });
+      return;
+    }
+
+    const r = await query<{ lead_id: string | null; perito: string; coste: string | null }>(
+      `UPDATE erp_peritaciones
+          SET factura_numero = $2, factura_fecha = $3,
+              coste = COALESCE($4, coste), updated_at = NOW()
+        WHERE id = $1
+        RETURNING lead_id, perito, coste::numeric AS coste`,
+      [req.params.id, numero, fecha, importe]
+    );
+    if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+
+    const { lead_id: leadId, perito, coste } = r.rows[0];
+    let enElPedido = false;
+    if (leadId && Number(coste)) {
+      const pedido = await query<{ id: string }>(
+        `SELECT id FROM erp_pedidos WHERE lead_id = $1 ORDER BY created_at LIMIT 1`,
+        [leadId]
+      ).catch(() => ({ rows: [] as { id: string }[] }));
+      const pedidoId = pedido.rows[0]?.id;
+      if (pedidoId) {
+        // Uno solo por pedido: se busca el que haya y se corrige.
+        const ya = await query<{ id: string }>(
+          `SELECT id FROM erp_gastos_pedido WHERE pedido_id = $1 AND concepto = 'Peritación en Alemania' LIMIT 1`,
+          [pedidoId]
+        ).catch(() => ({ rows: [] as { id: string }[] }));
+        if (ya.rows[0]) {
+          await query(
+            `UPDATE erp_gastos_pedido SET importe = $2, proveedor = $3, fecha = $4, notas = $5 WHERE id = $1`,
+            [ya.rows[0].id, coste, perito, fecha, `Factura ${numero}`]
+          );
+        } else {
+          await query(
+            `INSERT INTO erp_gastos_pedido (pedido_id, concepto, proveedor, importe, fecha, notas, creado_por)
+             VALUES ($1, 'Peritación en Alemania', $2, $3, $4, $5, $6)`,
+            [pedidoId, perito, coste, fecha, `Factura ${numero}`, req.actor?.name ?? req.actor?.sub ?? '']
+          );
+        }
+        enElPedido = true;
+      }
+    }
+
+    res.json({ ok: true, enElPedido });
+  } catch (err) {
+    console.error('[peritaciones] factura:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'factura_failed' });
+  }
+});
 
 /**
  * Las que faltan, abiertas de golpe.

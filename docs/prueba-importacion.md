@@ -254,8 +254,15 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Pulsa **«Encargarle la revisión»**. Se abre para revisarlo, como los
       demás. Le dice punto por punto qué mirar, y le dice que **puede parar la**
       **operación**: un perito que cree que solo puede confirmar, confirma.
-- [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas. Sube su
-      informe y sus fotos en Documentos.
+- [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
+- [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
+      que respalda la decisión de soltar 16.890 €.
+- [ ] Apunta **su factura**: número, fecha e importe.
+- [ ] Ve al **pedido**, a «Lo que cuesta»: los 289 € están ahí como *Peritación
+      en Alemania*. Un coste que solo vive en la pantalla donde se generó no
+      aparece en ninguna cuenta.
+- [ ] Corrige el importe y vuelve a apuntarla: tiene que **cambiar**, no sumarse
+      otra vez.
 - [ ] Vuelve al expediente: **«Coche visto en Alemania» se ha marcado solo**,
       con la fecha de la peritación. Ya no es una casilla que se pulsa.
 

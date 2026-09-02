@@ -42,6 +42,8 @@ interface Peritacion {
   veredicto: string | null;
   notas: string;
   coste: string | number | null;
+  factura_numero: string;
+  factura_fecha: string | null;
   encargo_enviado_at: string | null;
   encargo_enviado_a: string | null;
   created_at: string;
@@ -122,6 +124,21 @@ export default function PeritacionesPage() {
       setAbierta((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
     } catch (e) {
       setError((e as Error)?.message || 'No se ha podido mandar.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  /** Su factura, que además se apunta como coste del coche. */
+  async function anotaLaFactura(id: string, datos: Record<string, string>) {
+    setGuardando(true);
+    try {
+      const r = await api.post(`/peritaciones/${id}/factura`, datos);
+      if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido apuntar.'); return; }
+      const datosNuevos = await carga();
+      setAbierta((previo) => (previo && previo.id === id ? (datosNuevos.find((x) => x.id === id) ?? previo) : previo));
+    } catch (e) {
+      setError((e as Error)?.message || 'No se ha podido apuntar.');
     } finally {
       setGuardando(false);
     }
@@ -215,6 +232,7 @@ export default function PeritacionesPage() {
           onGuardar={(c) => void guarda(abierta.id, c)}
           onEncargar={() => void preparaElEncargo(abierta.id)}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
+          onFactura={(d) => void anotaLaFactura(abierta.id, d)}
         />
       )}
 
@@ -230,19 +248,23 @@ export default function PeritacionesPage() {
   );
 }
 
-function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onResultado }: {
+function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura }: {
   p: Peritacion;
   guardando: boolean;
   onCerrar: () => void;
   onGuardar: (c: Record<string, unknown>) => void;
   onEncargar: () => void;
   onResultado: (veredicto: string, notas: string) => void;
+  onFactura: (datos: Record<string, string>) => void;
 }) {
   const [datos, setDatos] = useState({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
     fecha_prevista: p.fecha_prevista ?? '', coste: String(p.coste ?? ''),
   });
   const [veredicto, setVeredicto] = useState(p.veredicto ?? '');
+  const [factura, setFactura] = useState({
+    numero: p.factura_numero ?? '', fecha: p.factura_fecha ?? '', importe: String(p.coste ?? ''),
+  });
   const [notas, setNotas] = useState(p.notas ?? '');
 
   return (
@@ -363,7 +385,43 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
           </button>
         </div>
 
+        {/*
+          * Su factura.
+          *
+          * No se queda aquí: se apunta como gasto del pedido, que es de donde
+          * salen «Lo que cuesta este coche» y el margen. Un coste que solo vive
+          * en la pantalla donde se generó no aparece en ninguna cuenta.
+          */}
         <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">Su factura</div>
+          {p.factura_numero && (
+            <div className="text-[13px] font-bold text-emerald-700 mb-2">
+              ✓ {p.factura_numero}{p.factura_fecha ? ` · ${dia(p.factura_fecha)}` : ''}
+              {Number(p.coste) ? ` · ${eur(p.coste)}` : ''}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <input value={factura.numero} placeholder="Nº de factura"
+                   onChange={(e) => setFactura((d) => ({ ...d, numero: e.target.value }))}
+                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <input type="date" value={factura.fecha}
+                   onChange={(e) => setFactura((d) => ({ ...d, fecha: e.target.value }))}
+                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </div>
+          <input value={factura.importe} inputMode="decimal" placeholder="Importe"
+                 onChange={(e) => setFactura((d) => ({ ...d, importe: e.target.value }))}
+                 className="w-full mb-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          <button onClick={() => onFactura(factura)} disabled={guardando || !factura.numero.trim()}
+                  className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
+            Apuntar su factura
+          </button>
+          <div className="text-[11px] text-brand-300 mt-1.5">
+            Se apunta también como coste de este coche, en el pedido.
+          </div>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">Su informe y las fotos</div>
           <Documentos ambito="peritacion" id={p.id} />
         </div>
       </div>
