@@ -205,6 +205,29 @@ expediente.
       se liquida al matricular.
 - [ ] Dice **«En la cuenta desde el …»**, con la fecha de tu pago.
 
+**La peritación** · se abrió sola al entrar el dinero
+
+Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
+
+- [ ] Ábrela y elige **quién va a verlo**. Está `checkdenwagen.de`, que va a
+      donde esté el coche en toda Alemania.
+- [ ] Pon **dónde está** —lo que te haya contestado el vendedor— y por quién
+      preguntar, y **guarda**.
+- [ ] Pulsa **«Encargarle la revisión»**. Se abre para revisarlo, como los
+      demás. Le dice punto por punto qué mirar, y le dice que **puede parar la**
+      **operación**: un perito que cree que solo puede confirmar, confirma.
+- [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas. Sube su
+      informe y sus fotos en Documentos.
+- [ ] Vuelve al expediente: **«Coche visto en Alemania» se ha marcado solo**,
+      con la fecha de la peritación. Ya no es una casilla que se pulsa.
+
+> Prueba también el otro veredicto: pon **«No es el que se anunció»** y vuelve
+> al expediente. El coche deja de estar visto y **no se puede liberar el pago**.
+> Eso es lo que hay que comprobar de todo esto.
+
+> El peritaje cuesta 289 €, y **sale de nuestro margen**, que son 1.136 € por
+> coche. No es un problema: es el precio de poder prometer lo que prometemos.
+
 **Y debajo, «Antes de soltar el dinero»**
 
 Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:

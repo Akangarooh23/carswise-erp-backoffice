@@ -14,6 +14,7 @@
     "test": "tsx --test \"apps/api/src/**/*.test.ts\" \"apps/web/src/**/*.test.ts\"",
     "alta:transportistas": "tsx apps/api/src/scripts/alta-transportistas.ts",
     "alta:bernal": "tsx apps/api/src/scripts/alta-gestoria-bernal.ts",
+    "alta:checkdenwagen": "tsx apps/api/src/scripts/alta-perito-checkdenwagen.ts",
     "garantias:muestra": "tsx apps/api/src/scripts/garantias-de-muestra.ts",
     "alta:garantias": "tsx apps/api/src/scripts/alta-garantias-provisionales.ts",
     "alta:tarifas-becker": "tsx apps/api/src/scripts/alta-tarifas-becker.ts",

@@ -15,14 +15,21 @@
  * también traen coches. Por eso el tipo es una lista, no un valor.
  */
 
+/**
+ * El **perito** es quien va a ver el coche a Alemania antes de que se suelte el
+ * dinero. No es un taller ni un transportista: es la persona de la que depende
+ * la única promesa de este producto, y por eso tiene su propio tipo — para
+ * poder elegirlo de una lista y saber a quién se le encargó cada revisión.
+ */
 export const TIPOS_PROVEEDOR =
-  ['transportista', 'gestoria', 'taller', 'vendedor', 'garantia', 'otro'] as const;
+  ['transportista', 'gestoria', 'taller', 'perito', 'vendedor', 'garantia', 'otro'] as const;
 export type TipoProveedor = (typeof TIPOS_PROVEEDOR)[number];
 
 export const ETIQUETA_TIPO: Record<TipoProveedor, string> = {
   transportista: 'Transportista',
   gestoria: 'Gestoría',
   taller: 'Taller',
+  perito: 'Perito',
   vendedor: 'Vendedor',
   garantia: 'Garantías',
   otro: 'Otro',

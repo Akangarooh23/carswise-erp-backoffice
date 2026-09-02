@@ -300,6 +300,46 @@ recuperable y quedarse corto es una promesa que no se puede cumplir.
 Es el número que más va a mejorar cuando entre Eurotax.
 
 ---
+## La peritación
+
+«No se le paga al vendedor hasta que uno de los nuestros ve el coche» es la
+única promesa que hace este negocio. Era **una casilla**: alguien pulsaba
+«Hemos visto el coche» y el sistema se lo creía, sin saber quién fue, qué día
+ni qué encontró.
+
+Ahora tiene pantalla propia, como los transportes y los trámites, y **nace sola**
+cuando el dinero entra. Se elige perito, se le manda el encargo con la lista de
+lo que tiene que mirar, y se anota lo que dijo.
+
+Su resultado es lo que marca el coche como visto: **solo un veredicto abre la
+puerta al pago**. Si el perito dice que no es el que se anunció, el coche no
+queda visto y el portero de la liberación sigue cerrado sin que nadie tenga que
+acordarse de nada. No hay nada que interpretar: el dinero vuelve al cliente.
+
+El encargo le dice al perito, con todas las letras, que **puede parar la
+operación**. Un perito que cree que solo puede confirmar, confirma.
+
+### Quién lo hace
+
+`checkdenwagen.de`, dado de alta como proveedor de tipo *perito*. Inspección
+móvil: va a donde esté el coche, en cualquier punto de Alemania, sin llevarlo a
+ningún taller. Más de cien puntos, informe con fotos en unas 24 h.
+
+| | |
+|---|---|
+| Estándar | 289 € IVA incluido |
+| Premium | 339 € IVA incluido |
+| Desplazamiento | Incluido, sin kilómetros aparte |
+
+**Eso sale del margen de PopCar, no del cliente.** Con 1.136 € por coche, una
+de cada cuatro pesetas de lo que se gana se va en mirar el coche. Es el precio
+de poder prometer lo que prometemos, pero conviene tenerlo delante al hablar de
+márgenes.
+
+> **Le falta el correo.** Solo está publicado el teléfono, +49 30 301 32 327.
+> Hasta que lo tengamos, el botón de encargar dirá que falta y no mandará nada.
+
+---
 ## Antes de soltar el dinero al vendedor
 
 Liberar el pago es **el único momento del sistema en que se mueve dinero
@@ -330,7 +370,7 @@ escritos en pedidos, transportes y trámites y da de alta a quien falte— pero
 aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
 
 ---
-## Los cinco correos que salen a proveedores
+## Los seis correos que salen a proveedores
 
 Uno por cada cosa que hay que pedirle a alguien de fuera, y cada uno en el
 momento en que esa cosa hace falta:
@@ -338,12 +378,13 @@ momento en que esa cosa hace falta:
 | Cuándo | A quién | Qué pide |
 |---|---|---|
 | Con el depósito dentro | El vendedor alemán | Si el coche **sigue disponible** y cuándo podemos verlo |
+| Con el depósito dentro | El perito | Que vaya a ver el coche, y qué mirar |
 | Al liberar el pago | El vendedor alemán | La factura del coche **a nombre del cliente** |
 | Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, y qué se lleva el conductor |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |
 
-Los cinco **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
+Los seis **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
 correo entero, se revisa y se manda. Un correo no se desenvía, y estos van a
 gente de fuera con nuestro nombre.
 

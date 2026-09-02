@@ -25,7 +25,7 @@ interface Proveedor {
 }
 
 export default function ElegirProveedor({ tipo, valor, onCambio, placeholder }: {
-  tipo: 'transportista' | 'gestoria' | 'taller' | 'vendedor' | 'otro';
+  tipo: 'transportista' | 'gestoria' | 'taller' | 'perito' | 'vendedor' | 'otro';
   valor: string;
   onCambio: (nombre: string) => void;
   placeholder?: string;

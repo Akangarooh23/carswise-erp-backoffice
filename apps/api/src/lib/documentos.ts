@@ -16,7 +16,7 @@
  * antes de tenerlo aparcado, no el día que la gestoría lo pide.
  */
 
-export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte'] as const;
+export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte', 'peritacion'] as const;
 export type Ambito = (typeof AMBITOS)[number];
 
 export function esAmbito(v: string): v is Ambito {

@@ -39,7 +39,7 @@ function pesa(bytes: number): string {
 }
 
 export default function Documentos({ ambito, id, origen, onCambio }: {
-  ambito: 'lead' | 'pedido' | 'tramite' | 'transporte';
+  ambito: 'lead' | 'pedido' | 'tramite' | 'transporte' | 'peritacion';
   id: string;
   /** Si se dice, sale la lista de lo que falta según a quién se le compró. */
   origen?: string;

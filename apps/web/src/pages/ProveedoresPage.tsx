@@ -22,6 +22,7 @@ const TIPOS = [
   ['transportista', 'Transportistas'],
   ['gestoria', 'Gestorías'],
   ['taller', 'Talleres'],
+  ['perito', 'Peritos'],
   ['vendedor', 'Vendedores'],
   ['garantia', 'Garantías'],
   ['otro', 'Otros'],

@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
+import { abrePeritacionDeImportacion } from './peritaciones.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
@@ -678,6 +679,23 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
      * que nadie mande un `status`: mirando el de la petición se liberaba el
      * dinero y no nacía ningún pedido.
      */
+    /**
+     * Con el dinero dentro, se abre la peritación.
+     *
+     * Ese es el momento: hay que mandar a alguien a ver el coche antes de
+     * soltarle el dinero al vendedor. Esperar a que alguien se acuerde de
+     * crearla a mano es esperar a que un día no se acuerde, y ese día el coche
+     * se paga sin que nadie lo haya visto.
+     */
+    if (finalStatus === 'Depósito retenido' && prev.status !== 'Depósito retenido'
+        && updatedLead.lead_type === 'import') {
+      abrePeritacionDeImportacion({
+        leadId: req.params.id,
+        vehiculoTitulo: updatedLead.vehicle_title ?? '',
+        creadoPor: operator,
+      }).catch((e: Error) => console.error('[leads] peritación:', e.message));
+    }
+
     if (finalStatus === 'Verificado y pagado' && prev.status !== 'Verificado y pagado'
         && updatedLead.lead_type === 'import') {
       creaPedidoDeImportacion({
