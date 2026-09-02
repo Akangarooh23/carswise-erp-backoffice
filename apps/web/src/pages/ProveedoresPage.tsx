@@ -416,6 +416,21 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
             <input value={datos.iban} placeholder="DE89 3704 0044 0532 0130 00"
                    onChange={(e) => setDatos((d) => ({ ...d, iban: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm font-mono border border-brand-200 rounded-lg" />
+            {/*
+              * El aviso va aquí y no en un manual.
+              *
+              * Este IBAN llega por correo, y el fraude más común de este negocio
+              * es exactamente ese: alguien se mete en medio del hilo y contesta
+              * con otra cuenta. Una transferencia salida no vuelve.
+              *
+              * Se lee justo cuando se está pegando el número, que es el único
+              * momento en que sirve de algo.
+              */}
+            <span className="block mt-1 text-[10.5px] text-brand-400 leading-snug">
+              Si te ha llegado por correo, <strong>confírmalo por teléfono</strong> antes de
+              transferir. Una cuenta cambiada en mitad de un hilo es el fraude más común
+              de esto, y el dinero no vuelve.
+            </span>
           </label>
           <label className="col-span-2 text-[11px] text-brand-400">
             Notas

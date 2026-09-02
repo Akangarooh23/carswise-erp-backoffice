@@ -210,10 +210,15 @@ expediente.
 Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 
 - [ ] Pulsa **«Preguntarle si sigue disponible»**. Se abre para revisarlo.
-- [ ] El correo hace tres preguntas y en este orden: si sigue disponible,
-      cuándo podemos ir a verlo —diciéndole que vamos **antes de pagar**— y que
-      el coche va a un particular español, que le cambia los papeles que tiene
-      que preparar.
+- [ ] El correo pregunta cuatro cosas y en este orden: si sigue disponible; si
+      lo está, **que lo reserve y que nos mande sus datos de pago** —IBAN,
+      titular de la cuenta, BIC y concepto—; cuándo podemos ir a verlo,
+      diciéndole que vamos **antes de pagar**; y que el coche va a un particular
+      español, que le cambia los papeles que tiene que preparar.
+- [ ] De ahí sale el IBAN que luego pide Proveedores. **Confírmalo por teléfono
+      antes de transferir**: una cuenta cambiada en mitad de un hilo de correo es
+      el fraude más común de esto, y el dinero no vuelve. El aviso está también
+      debajo del campo, en Proveedores.
 - [ ] Comprueba que **no promete el pago**: hasta que alguien vaya a verlo, lo
       único cierto es que hay un comprador.
 - [ ] Queda escrito **«✓ Preguntado al vendedor el …»**.

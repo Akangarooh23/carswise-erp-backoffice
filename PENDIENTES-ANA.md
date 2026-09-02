@@ -285,8 +285,15 @@ La tercera es la que más arrastra: sin esa factura, los 16.890 € del coche no
 son un suplido sino ingreso nuestro, con unos 3.500 € de IVA encima sobre dinero
 que no es nuestro. Es el punto que hay que cerrar con tu gestoría.
 
-Se rellena a mano, uno a uno, según vayan haciendo falta: no hay forma de
-sacarlos del anuncio.
+Ya no hay que perseguirlos: el primer correo al vendedor —«Preguntarle si sigue
+disponible»— le pide el IBAN, el titular de la cuenta, el BIC y el concepto,
+junto con la reserva. Llegan en su respuesta y se pegan en su ficha.
+
+> **Y esto no lo puede resolver ningún correo.** Un IBAN que llega por email hay
+> que **confirmarlo por teléfono** antes de transferir: alguien que se mete en
+> mitad del hilo y contesta con otra cuenta es el fraude más común de este
+> negocio, y una transferencia salida no vuelve. El aviso está debajo del campo
+> en Proveedores, pero quien paga eres tú.
 
 ## 6 · En Vercel
 

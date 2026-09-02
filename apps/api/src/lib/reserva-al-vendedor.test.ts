@@ -18,7 +18,7 @@ const CASO = {
   importe: 16890,
 };
 
-describe('las tres preguntas', () => {
+describe('las cuatro preguntas', () => {
   test('si sigue disponible, y va la primera', () => {
     const { html } = correoDeReservaAlVendedor(CASO);
     assert.match(html, /Ist das Fahrzeug noch verfügbar\?/);
@@ -26,6 +26,28 @@ describe('las tres preguntas', () => {
     assert.ok(
       html.indexOf('noch verfügbar') < html.indexOf('ansehen'),
       'la disponibilidad va antes que la visita: sin coche no hay nada que ver'
+    );
+  });
+
+  test('que lo reserve, y con qué datos le pagamos', () => {
+    // De aquí sale el IBAN que luego el ERP exige para dejar soltar el pago:
+    // este correo es el principio de esa cadena, no un trámite suelto.
+    const { html } = correoDeReservaAlVendedor(CASO);
+    assert.match(html, /möchten wir es reservieren/);
+    assert.match(html, /IBAN/);
+    assert.match(html, /Kontoinhaber/);
+    assert.match(html, /Verwendungszweck/);
+    assert.match(html, /we would like to reserve it/);
+    assert.match(html, /account holder/);
+  });
+
+  test('y reservar no es pagar: la visita va antes', () => {
+    // Pedir la reserva y los datos de la cuenta en el mismo correo podría
+    // leerse como que se paga al recibirlos. Lo que dice es lo contrario.
+    const { html } = correoDeReservaAlVendedor(CASO);
+    assert.ok(
+      html.indexOf('reservieren') < html.indexOf('bevor wir bezahlen'),
+      'la reserva va antes que el «vamos a verlo antes de pagar»'
     );
   });
 
