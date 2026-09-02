@@ -936,6 +936,25 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
  * que el anuncio esté vivo no dice nada, y el cliente ya ha transferido
  * veintiún mil euros.
  */
+/**
+ * Los cajones donde pueden estar los papeles de un coche.
+ *
+ * Son dos y no uno. La ficha del vehículo, el COC y la factura del vendedor se
+ * suben en el **pedido**, que es donde la pantalla los pide; el DNI del cliente
+ * y lo suyo, en el **expediente**. Mirando solo el expediente, la lista de
+ * adjuntos sale vacía justo cuando los papeles existen, y quien la ve piensa que
+ * no ha subido nada.
+ */
+async function cajonesDelCoche(leadId: string): Promise<{ ambito: string; id: string | null }[]> {
+  const r = await query<{ id: string }>(
+    `SELECT id FROM erp_pedidos WHERE lead_id = $1 ORDER BY created_at LIMIT 1`,
+    [leadId]
+  ).catch(() => ({ rows: [] as { id: string }[] }));
+  return [
+    { ambito: 'lead', id: leadId },
+    { ambito: 'pedido', id: r.rows[0]?.id ?? null },
+  ];
+}
 leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     const r = await query<Record<string, unknown>>(
@@ -984,7 +1003,9 @@ leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operation
     const { subject, html } = correoDeReservaAlVendedor(datos);
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
-    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+    // Los papeles de este coche, estén en el cajón que estén.
+    const cajones = await cajonesDelCoche(req.params.id);
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
       res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
@@ -993,7 +1014,7 @@ leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operation
 
     let adjuntos: { filename: string; content: string }[] = [];
     try {
-      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -1095,7 +1116,9 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
-    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+    // Los papeles de este coche, estén en el cajón que estén.
+    const cajones = await cajonesDelCoche(req.params.id);
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
       res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
@@ -1104,7 +1127,7 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
 
     let adjuntos: { filename: string; content: string }[] = [];
     try {
-      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -1228,7 +1251,9 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
-    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+    // Los papeles de este coche, estén en el cajón que estén.
+    const cajones = await cajonesDelCoche(req.params.id);
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
       res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
@@ -1237,7 +1262,7 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
 
     let adjuntos: { filename: string; content: string }[] = [];
     try {
-      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });

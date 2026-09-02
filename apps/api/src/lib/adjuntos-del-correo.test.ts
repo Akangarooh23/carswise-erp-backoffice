@@ -20,19 +20,22 @@ const FUENTE = readFileSync(new URL('./adjuntos-del-correo.ts', import.meta.url)
   .replace(/\r\n/g, '\n');
 
 describe('de dónde salen los papeles', () => {
-  test('siempre del expediente, no del identificador suelto', () => {
+  test('siempre de los cajones de este coche, no del identificador suelto', () => {
     // Con el identificador suelto se podría adjuntar el papel de otro cliente:
     // los identificadores no son secretos, y este correo sale fuera.
     const traer = FUENTE.slice(FUENTE.indexOf('export async function traeLosAdjuntos'));
-    assert.match(traer, /WHERE ambito = \$1 AND ambito_id = \$2 AND id::text = ANY\(\$3\)/);
+    assert.match(traer, /WHERE \(ambito, ambito_id\) IN \(/);
+    assert.match(traer, /AND id::text = ANY\(\$3\)/);
   });
 
-  test('y la lista de los que se pueden elegir, también', () => {
+  test('y la lista de los que se pueden elegir mira los mismos cajones', () => {
+    // La ficha y el COC se suben en el pedido; el DNI, en el expediente. Mirando
+    // uno solo, la lista sale vacía justo cuando los papeles existen.
     const listar = FUENTE.slice(
       FUENTE.indexOf('export async function papelesQueSePuedenAdjuntar'),
       FUENTE.indexOf('export class NoSePuedenAdjuntar')
     );
-    assert.match(listar, /WHERE ambito = \$1 AND ambito_id = \$2/);
+    assert.match(listar, /WHERE \(ambito, ambito_id\) IN \(/);
   });
 
   test('si falta alguno de los elegidos, no sale el correo', () => {
@@ -51,10 +54,15 @@ describe('sin nada elegido', () => {
   test('no se adjunta nada, y da igual lo que llegue', async () => {
     // Lo que viene del navegador puede ser cualquier cosa. Ninguna de esas
     // cosas puede acabar en una consulta.
-    assert.deepEqual(await traeLosAdjuntos('lead', 'imp-1', []), []);
-    assert.deepEqual(await traeLosAdjuntos('lead', 'imp-1', undefined), []);
-    assert.deepEqual(await traeLosAdjuntos('lead', 'imp-1', 'no es una lista'), []);
-    assert.deepEqual(await traeLosAdjuntos('lead', 'imp-1', { id: 1 }), []);
+    const cajones = [{ ambito: 'lead', id: 'imp-1' }];
+    assert.deepEqual(await traeLosAdjuntos(cajones, []), []);
+    assert.deepEqual(await traeLosAdjuntos(cajones, undefined), []);
+    assert.deepEqual(await traeLosAdjuntos(cajones, 'no es una lista'), []);
+    assert.deepEqual(await traeLosAdjuntos(cajones, { id: 1 }), []);
+  });
+
+  test('y sin cajones donde mirar, no se inventa de dónde sacarlos', async () => {
+    await assert.rejects(() => traeLosAdjuntos([], ['algo']), /No hay de dónde sacar/);
   });
 });
 

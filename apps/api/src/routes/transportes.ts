@@ -267,7 +267,15 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
-    const papeles = await papelesQueSePuedenAdjuntar('lead', String(t.lead_id ?? ''));
+    // Los tres cajones del coche: el expediente, el pedido y este tramo. La
+    // ficha y el COC se suben en el pedido; mirando solo uno, la lista sale
+    // vacía justo cuando los papeles existen.
+    const cajones = [
+      { ambito: 'lead', id: t.lead_id as string | null },
+      { ambito: 'pedido', id: t.pedido_id as string | null },
+      { ambito: 'transporte', id: req.params.id },
+    ];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
       res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
@@ -276,7 +284,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
 
     let adjuntos: { filename: string; content: string }[] = [];
     try {
-      adjuntos = await traeLosAdjuntos('lead', String(t.lead_id ?? ''), req.body?.adjuntos);
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });

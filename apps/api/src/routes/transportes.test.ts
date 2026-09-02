@@ -32,6 +32,11 @@ describe('el tramo sabe de qué expediente es', () => {
   });
 
   test('la orden de recogida cuenta con él para los papeles', () => {
-    assert.match(FUENTE, /papelesQueSePuedenAdjuntar\('lead', String\(t\.lead_id/);
+    // Los papeles del coche pueden estar en tres cajones: el expediente, el
+    // pedido y el propio tramo. La ficha y el COC se suben en el pedido, así
+    // que mirando solo uno la lista sale vacía justo cuando existen.
+    assert.match(FUENTE, /\{ ambito: 'lead', id: t\.lead_id/);
+    assert.match(FUENTE, /\{ ambito: 'pedido', id: t\.pedido_id/);
+    assert.match(FUENTE, /\{ ambito: 'transporte', id: req\.params\.id \}/);
   });
 });

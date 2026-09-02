@@ -25,7 +25,16 @@ export interface PapelDisponible {
   papel: string;
   nombre: string;
   tamano: number;
+  /** De qué cajón sale: el expediente, el pedido o el tramo. */
+  de?: string;
 }
+
+/** Cómo se llama cada cajón en la pantalla. */
+const DE_DONDE: Record<string, string> = {
+  lead: 'del expediente',
+  pedido: 'del pedido',
+  transporte: 'del transporte',
+};
 
 export interface VistaDelCorreo {
   para: string;
@@ -103,7 +112,7 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
         {vista.papeles && vista.papeles.length > 0 && (
           <div>
             <div className="text-[11px] text-brand-400 mb-1">
-              Papeles del expediente
+              Papeles de este coche
               <span className="text-brand-300"> · ninguno va si no lo marcas</span>
             </div>
             <div className="border border-brand-200 rounded-lg divide-y divide-brand-100">
@@ -115,6 +124,9 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
                            : m.filter((x) => x !== d.id)))} />
                   <span className="text-sm text-brand-600 flex-1 truncate">{d.nombre}</span>
                   {d.papel && <span className="text-[10px] text-brand-300">{d.papel}</span>}
+                  {/* De qué cajón sale: los del pedido y los del expediente se
+                      llaman parecido y se confunden. */}
+                  {d.de && <span className="text-[10px] text-brand-300">{DE_DONDE[d.de] ?? d.de}</span>}
                   <span className="text-[10px] text-brand-300 tabular-nums">{pesa(d.tamano)}</span>
                 </label>
               ))}

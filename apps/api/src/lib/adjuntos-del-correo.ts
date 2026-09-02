@@ -1,10 +1,16 @@
 /**
  * Los papeles que se pueden adjuntar a un correo a un proveedor.
  *
- * Salen de los documentos del expediente, los mismos que se suben en su
- * pantalla. No se adjunta nada por defecto y **se eligen uno a uno**: un correo
- * a la gestoría con el DNI del cliente anterior no es una errata, es un
- * incidente de protección de datos, y eso no se corrige con otro correo.
+ * Salen de los documentos del coche, y el coche tiene **tres cajones**: el
+ * expediente, el pedido y cada tramo de transporte. Los papeles del vehículo
+ * —la ficha, el COC, la factura del vendedor— se suben en el pedido, que es
+ * donde se piden; el DNI del cliente, en el expediente. Mirando uno solo, la
+ * lista sale vacía justo cuando los papeles existen, y quien la ve piensa que
+ * no ha subido nada.
+ *
+ * No se adjunta nada por defecto y **se eligen uno a uno**: un correo a la
+ * gestoría con el DNI del cliente anterior no es una errata, es un incidente de
+ * protección de datos, y eso no se corrige con otro correo.
  *
  * Por eso se enseñan con su nombre y su peso antes de mandar. Un adjunto se
  * reconoce por el nombre y por el tamaño: dos PDF de 200 kB llamados
@@ -30,16 +36,23 @@ export interface PapelDisponible {
   nombre: string;
   tipo: string;
   tamano: number;
+  /** De qué cajón sale, para poder decirlo en la lista. */
+  de: string;
 }
 
-/** Los que hay colgados de ese expediente, para poder elegirlos. */
-export async function papelesQueSePuedenAdjuntar(ambito: string, id: string): Promise<PapelDisponible[]> {
-  if (!id) return [];
+/** Un cajón de papeles: de qué es y de cuál. */
+export interface Cajon { ambito: string; id: string | null | undefined }
+
+/** Los que hay en cualquiera de esos cajones, para poder elegirlos. */
+export async function papelesQueSePuedenAdjuntar(cajones: Cajon[]): Promise<PapelDisponible[]> {
+  const utiles = (cajones ?? []).filter((c) => c && c.ambito && c.id);
+  if (!utiles.length) return [];
   const r = await query(
-    `SELECT id::text AS id, papel, nombre, tipo, tamano
-       FROM erp_documentos WHERE ambito = $1 AND ambito_id = $2
+    `SELECT id::text AS id, papel, nombre, tipo, tamano, ambito
+       FROM erp_documentos
+      WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
       ORDER BY created_at DESC`,
-    [ambito, id]
+    [utiles.map((c) => c.ambito), utiles.map((c) => String(c.id))]
   ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
   return (r.rows as Record<string, unknown>[]).map((x) => ({
     id: String(x.id),
@@ -47,6 +60,7 @@ export async function papelesQueSePuedenAdjuntar(ambito: string, id: string): Pr
     nombre: String(x.nombre ?? ''),
     tipo: String(x.tipo ?? ''),
     tamano: Number(x.tamano ?? 0),
+    de: String(x.ambito ?? ''),
   }));
 }
 
@@ -56,22 +70,25 @@ export class NoSePuedenAdjuntar extends Error {}
 /**
  * Los ficheros de verdad, listos para el correo.
  *
- * Se piden por su identificador **y por el expediente del que cuelgan**: con el
- * identificador suelto se podría adjuntar el papel de otro cliente.
+ * Se piden por su identificador **y por los cajones de este coche**: con el
+ * identificador suelto se podría adjuntar el papel de otro cliente, y estos
+ * correos salen fuera.
  */
 export async function traeLosAdjuntos(
-  ambito: string,
-  id: string,
+  cajones: Cajon[],
   quiere: unknown
 ): Promise<{ filename: string; content: string }[]> {
   const ids = Array.isArray(quiere) ? quiere.map((x) => String(x)).filter(Boolean) : [];
   if (!ids.length) return [];
+  const utiles = (cajones ?? []).filter((c) => c && c.ambito && c.id);
+  if (!utiles.length) throw new NoSePuedenAdjuntar('No hay de dónde sacar esos papeles.');
 
   const r = await query(
     `SELECT id::text AS id, nombre, tipo, ruta, tamano
        FROM erp_documentos
-      WHERE ambito = $1 AND ambito_id = $2 AND id::text = ANY($3)`,
-    [ambito, id, ids]
+      WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
+        AND id::text = ANY($3)`,
+    [utiles.map((c) => c.ambito), utiles.map((c) => String(c.id)), ids]
   );
   const filas = r.rows as { id: string; nombre: string; ruta: string; tamano: number }[];
   if (filas.length !== ids.length) {
