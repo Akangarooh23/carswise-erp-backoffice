@@ -280,6 +280,11 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'escrow_estado',         escrow_estado,
                   'escrow_liberado_at',    escrow_liberado_at,
                   'verificado_alemania_at', verificado_alemania_at,
+                  -- Los avisos a proveedores, para poder decir si ya salieron.
+                  'factura_vendedor_pedida_at',  factura_vendedor_pedida_at,
+                  'factura_vendedor_pedida_a',   factura_vendedor_pedida_a,
+                  'encargo_gestoria_enviado_at', encargo_gestoria_enviado_at,
+                  'encargo_gestoria_enviado_a',  encargo_gestoria_enviado_a,
                   'liquidacion_at',        liquidacion_at,
                   -- Lo que costó de verdad: sale del trámite, no de un campo
                   -- aparte. Un dato en dos sitios acaba diciendo dos cosas.
@@ -1022,12 +1027,13 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
 
     await query(
       `UPDATE moveadvisor_market_leads
-          SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
-                'factura_vendedor_pedida_at', to_jsonb(NOW()),
-                'factura_vendedor_pedida_a', to_jsonb($2::text))
+          SET factura_vendedor_pedida_at = NOW(),
+              factura_vendedor_pedida_a  = $2
         WHERE id = $1`,
       [req.params.id, aQuien]
-    ).catch((e: Error) => console.error('[leads] no se ha podido anotar la petición:', e.message));
+    // Sin `catch`: si esto falla, el correo salió y la pantalla diría que no.
+    // Enterarse tarde de eso es mandarlo dos veces.
+    );
 
     res.json({ ok: true, para: aQuien });
   } catch (err) {
@@ -1153,12 +1159,11 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
 
     await query(
       `UPDATE moveadvisor_market_leads
-          SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
-                'encargo_gestoria_enviado_at', to_jsonb(NOW()),
-                'encargo_gestoria_enviado_a', to_jsonb($2::text))
+          SET encargo_gestoria_enviado_at = NOW(),
+              encargo_gestoria_enviado_a  = $2
         WHERE id = $1`,
       [req.params.id, aQuien]
-    ).catch((e: Error) => console.error('[leads] no se ha podido anotar el encargo:', e.message));
+    );
 
     res.json({ ok: true, para: aQuien });
   } catch (err) {

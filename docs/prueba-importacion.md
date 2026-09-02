@@ -179,6 +179,21 @@ sería declarar la venta de un coche que no hemos vendido.
 
 ## 3 · Ver el coche y soltar el dinero · **en el ERP**
 
+> **Los tres correos a proveedores salen de aquí en adelante**, y como en
+> Proveedores están puestos correos de prueba, **te llegan a ti**. Ábrelos:
+> son los que un día van a salir a un concesionario alemán, a un transportista
+> y a una gestoría.
+>
+> | Cuándo | A quién | Paso |
+> |---|---|---|
+> | Al liberar el pago | Vendedor | 3 |
+> | En el tramo de transporte | Transportista | 6 |
+> | Al entrar en trámites | Gestoría | 8 |
+
+> **Para repetir esta parte sin empezar de cero**: el expediente se puede dejar
+> otra vez en «Depósito retenido», sin liberar y sin coche visto, y desde ahí
+> vuelve a recorrerse entero. Pídemelo y lo dejo así.
+
 Este es el paso que sostiene el producto. Ve a **Importaciones** y abre el
 expediente.
 

@@ -124,7 +124,17 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS escrow_liberado_at     TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_devuelto_at     TIMESTAMPTZ,
       -- La fecha en que alguien nuestro vio el coche. Sin esto no se libera.
-      ADD COLUMN IF NOT EXISTS verificado_alemania_at TIMESTAMPTZ
+      ADD COLUMN IF NOT EXISTS verificado_alemania_at TIMESTAMPTZ,
+      -- Los avisos que salen a proveedores: cuándo se mandaron y a qué correo.
+      --
+      -- Van en columnas y no dentro de meta, porque meta no es una columna: se
+      -- arma en el SELECT con un jsonb_build_object. Escribirle era un UPDATE
+      -- que fallaba en silencio, y el aviso salía como sin mandar aunque el
+      -- correo hubiera salido.
+      ADD COLUMN IF NOT EXISTS factura_vendedor_pedida_at  TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS factura_vendedor_pedida_a   TEXT,
+      ADD COLUMN IF NOT EXISTS encargo_gestoria_enviado_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS encargo_gestoria_enviado_a  TEXT
   `);
 
   await query(`
