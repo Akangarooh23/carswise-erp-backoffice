@@ -81,12 +81,30 @@ describe('el encargo al perito', () => {
     assert.match(QUE_MIRA_EL_PERITO[0].en, /the car from the listing/);
   });
 
-  test('le dice que puede parar la operación', () => {
-    // Un perito que cree que solo puede confirmar, confirma.
+  test('le dice que un «no» vale igual que un «sí»', () => {
+    // Es lo que le quita la presión de complacer a quien le paga, que es el
+    // sesgo real de este encargo.
     const { html } = correoDeEncargoAlPerito(CASO);
-    assert.match(html, /Geld unseres Kunden geht erst raus/);
-    assert.match(html, /kein Problem, zu stoppen/);
-    assert.match(html, /stopping is not a problem/);
+    assert.match(html, /Ein Nein ist für uns genauso nützlich wie ein Ja/);
+    assert.match(html, /A no is as useful to us as a yes/);
+  });
+
+  test('y no le cuelga el dinero del dictamen', () => {
+    // «El dinero no sale hasta que confirmes» es verdad, pero dicho a quien
+    // tiene que dictaminar suena a que su sí desbloquea una compra. Un perito
+    // con dieciséis mil euros colgando acaba matizando todo, y un dictamen
+    // lleno de matices no sirve para decidir.
+    const { html } = correoDeEncargoAlPerito(CASO);
+    assert.ok(!/Geld unseres Kunden geht erst raus/.test(html));
+    assert.ok(!/money does not go out until you confirm/.test(html));
+  });
+
+  test('la cita la cierra él con el vendedor, no nosotros en medio', () => {
+    // «Dinos cuándo puedes y lo cerramos con el vendedor» son tres correos
+    // para cuadrar una hora entre dos que ya tienen el teléfono del otro.
+    const { html } = correoDeEncargoAlPerito(CASO);
+    assert.match(html, /direkt mit dem Verkäufer/);
+    assert.match(html, /directly with the seller/);
   });
 
   test('con dónde está y por quién preguntar', () => {

@@ -251,9 +251,15 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
       donde esté el coche en toda Alemania.
 - [ ] Pon **dónde está** —lo que te haya contestado el vendedor— y por quién
       preguntar, y **guarda**.
-- [ ] Pulsa **«Encargarle la revisión»**. Se abre para revisarlo, como los
-      demás. Le dice punto por punto qué mirar, y le dice que **puede parar la**
-      **operación**: un perito que cree que solo puede confirmar, confirma.
+- [ ] Pulsa **«Encargarle la revisión»**. Se abre para revisarlo, como los demás.
+      Va **en alemán**, con el inglés debajo: el perito es alemán y una lista de
+      siete puntos en otro idioma se contesta con «ok» sin haberla mirado.
+- [ ] Le dice punto por punto qué mirar, y le dice que **un «no» vale igual que**
+      **un «sí»**: un perito que cree que solo puede confirmar, confirma.
+- [ ] Y le dice que **cierre la cita directamente con el vendedor**. Tiene su
+      nombre y su dirección arriba, y al vendedor ya se le avisó en el primer
+      correo de que iría alguien. Meternos en medio son tres correos para
+      cuadrar una hora entre dos que ya tienen el teléfono del otro.
 - [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
 - [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
       que respalda la decisión de soltar 16.890 €.

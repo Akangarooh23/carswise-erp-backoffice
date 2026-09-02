@@ -163,14 +163,35 @@ export function correoDeEncargoAlPerito(d: DatosDelEncargoAlPerito): { subject: 
     delCoche +
     p('Worauf es ankommt:') +
     lista('de') +
-    p('<strong>Das Geld unseres Kunden geht erst raus, wenn Sie uns bestätigen, dass es das Fahrzeug aus dem Inserat ist.</strong> Wenn nicht, sagen Sie es uns mit dem, was Sie gesehen haben, und wir stoppen den Kauf. Es ist kein Problem, zu stoppen.') +
+    /**
+     * Lo que se le pide es una respuesta clara, no un permiso.
+     *
+     * Antes ponía que el dinero del cliente no sale hasta que él confirme. Es
+     * verdad, pero dicho a quien tiene que dar un veredicto suena a lo que no
+     * queremos que suene: que su «sí» es lo que desbloquea una compra. Un
+     * perito al que le cuelgas dieciséis mil euros del dictamen acaba matizando
+     * todo, y un dictamen lleno de matices no sirve para decidir.
+     *
+     * Lo que sí hace falta decirle es lo otro: que un «no» vale igual. Es lo que
+     * le quita la presión de complacer a quien le paga, que es el sesgo real de
+     * este encargo.
+     */
+    p('Wir brauchen eine klare Aussage: <strong>Ist es das Fahrzeug aus dem Inserat oder nicht?</strong> Ein Nein ist für uns genauso nützlich wie ein Ja — dann kaufen wir es einfach nicht.') +
     String(d.nota ?? '') +
-    p('Sagen Sie uns, wann Sie hinfahren können, und wir stimmen es mit dem Verkäufer ab.') +
+    /**
+     * Y la cita, directamente con el vendedor.
+     *
+     * «Díganos cuándo puede ir y lo cerramos con el vendedor» nos mete en medio
+     * de una conversación de dos: tres correos para cuadrar una hora. El
+     * vendedor ya sabe que va a ir alguien —se le dijo en el primer correo— y
+     * aquí abajo va su nombre y su teléfono.
+     */
+    p('Bitte stimmen Sie den Termin <strong>direkt mit dem Verkäufer</strong> ab und sagen Sie uns kurz Bescheid, wann Sie hinfahren.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
     p('<em>we need you to inspect this car before we pay for it. What matters:</em>') +
     lista('en') +
-    p('<em><strong>Our customer\u2019s money does not go out until you confirm it is the car from the listing.</strong> If it is not, tell us what you saw and we stop the purchase — stopping is not a problem. Let us know when you can go and we will arrange it with the seller.</em>');
+    p('<em>We need a clear answer: <strong>is it the car from the listing or not?</strong> A no is as useful to us as a yes — we simply do not buy it. Please arrange the appointment <strong>directly with the seller</strong> and let us know when you are going.</em>');
 
   return { subject, html };
 }
