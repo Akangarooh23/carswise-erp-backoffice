@@ -123,6 +123,8 @@ export interface MetaImportacion {
     encargo_enviado_at?: string | null;
     cita_avisada_at?: string | null;
     coste?: number | string | null;
+    /** Su factura, cuando la manda. No bloquea nada, pero no puede olvidarse. */
+    factura_numero?: string | null;
     /**
      * Lo que vio roto y lo que estima que cuesta.
      *

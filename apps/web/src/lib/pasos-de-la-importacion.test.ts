@@ -255,3 +255,51 @@ describe('el número rojo del menú', () => {
     assert.equal(cuenta['/peritaciones'], 2);
   });
 });
+
+describe('la factura del perito, que llega cuando llega', () => {
+  const VISTO = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    verificado_alemania_at: '2026-09-07T10:00:00Z',
+    peritacion: {
+      id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
+      perito: 'checkdenwagen', fecha_hecha: '2026-09-09T10:00:00Z',
+      donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
+      encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+    },
+  };
+
+  test('no bloquea nada: sin ella se puede liberar el pago igual', () => {
+    // El portero del pago mira el veredicto, no la factura. Un coche parado
+    // porque su perito tarda en facturar sería absurdo.
+    const x = kia(VISTO);
+    assert.equal(paso(x, 'liberar').estado, 'toca');
+  });
+
+  test('pero queda pendiente, para que no se olvide', () => {
+    // 289 € que nadie apunta no llegan al coste del coche ni a lo que hay que
+    // pagar, y el margen sale mejor de lo que es.
+    assert.equal(paso(kia(VISTO), 'facturaPerito').estado, 'esperando');
+  });
+
+  test('y si tarda, se le reclama', () => {
+    const viejo = new Date(HOY.getTime() - (PLAZOS.perito + 1) * 86400000).toISOString();
+    const x = kia({ ...VISTO, peritacion: { ...VISTO.peritacion, fecha_hecha: viejo } });
+    assert.equal(paso(x, 'facturaPerito').estado, 'toca');
+    assert.match(paso(x, 'facturaPerito').titulo, /Reclamarle la factura/);
+  });
+
+  test('apuntada, deja de pedir nada', () => {
+    const x = kia({ ...VISTO, peritacion: { ...VISTO.peritacion, factura_numero: 'PE-DE-0001' } });
+    assert.equal(paso(x, 'facturaPerito').estado, 'hecho');
+    assert.equal(paso(x, 'facturaPerito').detalle, 'PE-DE-0001');
+  });
+
+  test('antes de la visita ni se menciona', () => {
+    const x = kia({
+      deposit_paid_at: '2026-09-01T10:00:00Z',
+      reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    });
+    assert.equal(paso(x, 'facturaPerito').estado, 'porVenir');
+  });
+});

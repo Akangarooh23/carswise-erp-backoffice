@@ -305,6 +305,8 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       'encargo_enviado_at', pr.encargo_enviado_at,
                       'cita_avisada_at', pr.cita_avisada_at,
                       'coste', pr.coste::numeric,
+                      'factura_numero', pr.factura_numero,
+                      'fecha_prevista_hecha', pr.fecha_hecha,
                       'fecha_prevista', TO_CHAR(pr.fecha_prevista, 'YYYY-MM-DD'),
                       -- Lo que vio roto y lo que estima que cuesta. Va aquí
                       -- porque quien da el precio de reacondicionamiento al

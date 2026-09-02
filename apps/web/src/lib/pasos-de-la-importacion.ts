@@ -219,7 +219,34 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     return pasos;
   }
 
-  // 8 · El dinero sale.
+  /*
+   * 8 · Su factura.
+   *
+   * No bloquea nada —el pago se libera con el veredicto, no con la factura—,
+   * y por eso mismo hace falta que esté escrita en alguna parte: 289 € que
+   * nadie apunta no llegan al coste del coche ni a la lista de lo que hay que
+   * pagar, y el margen sale mejor de lo que es.
+   */
+  const suFactura = Boolean(p?.factura_numero);
+  pasos.push(
+    suFactura
+      ? {
+          clave: 'facturaPerito',
+          titulo: 'Apuntada la factura del perito',
+          estado: 'hecho',
+          detalle: p?.factura_numero ?? undefined,
+          donde: '/peritaciones',
+        }
+      : p?.veredicto
+        ? esperando(
+            { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'esperando', donde: '/peritaciones' },
+            p?.fecha_hecha, PLAZOS.perito,
+            'Reclamarle la factura al perito', hoy
+          )
+        : { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'porVenir' }
+  );
+
+  // 9 · El dinero sale.
   const liberado = Boolean(m.escrow_liberado_at);
   pasos.push({
     clave: 'liberar',
@@ -229,7 +256,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/importaciones',
   });
 
-  // 9 · Y el papel que hace que ese dinero sea un suplido.
+  // 10 · Y el papel que hace que ese dinero sea un suplido.
   const pedida = Boolean(m.factura_vendedor_pedida_at);
   pasos.push({
     clave: 'factura',
@@ -239,7 +266,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/importaciones',
   });
 
-  // 10 · Traerlo.
+  // 11 · Traerlo.
   const enCamino = YA_ENVIADO.includes(x.status);
   pasos.push({
     clave: 'transporte',
@@ -248,7 +275,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/transportes',
   });
 
-  // 11 · Ponerlo legal aquí.
+  // 12 · Ponerlo legal aquí.
   const enTramites = x.status === 'En trámites' || x.status === 'Entregado';
   const conGestoria = Boolean(m.encargo_gestoria_enviado_at);
   pasos.push({
@@ -259,7 +286,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/gestoria',
   });
 
-  // 12 · Dárselo.
+  // 13 · Dárselo.
   const entregado = x.status === 'Entregado';
   pasos.push({
     clave: 'entrega',
