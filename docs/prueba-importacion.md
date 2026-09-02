@@ -322,11 +322,15 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
 - [ ] Vuelve a mirarlo: **ya no se puede liberar otra vez**. Un segundo clic con
       el dinero enviado sería un segundo pago.
 
-**Y el papel que hay que pedirle** · aparece al liberar
+**Avisarle del pago y pedirle la factura** · aparece al liberar
 
-- [ ] Sale un bloque nuevo: **«La factura del coche, a nombre del cliente»**.
-- [ ] Pulsa **«Pedírsela al vendedor»**. **No se manda todavía**: se abre el
-      correo para que lo revises, en alemán y en inglés.
+- [ ] Sale un bloque nuevo: **«Avisarle del pago y pedirle la factura»**.
+- [ ] Pulsa el botón. **No se manda todavía**: se abre el correo para que lo
+      revises, en alemán y en inglés.
+- [ ] Lo primero que dice es que **la transferencia ha salido**, con su importe
+      y con la fecha en que la liberaste. Una petición de factura a secas se
+      lee como un trámite que puede esperar; con el dinero enviado es el papel
+      que falta de una compra ya hecha.
 - [ ] Puedes cambiar **a quién va** y **el asunto**, y añadir una línea de este
       coche en concreto. El cuerpo se ve pero no se toca: cada uno de estos
       correos existe por una frase, y un cuadro con todo el HTML dentro es la
@@ -336,7 +340,8 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
       del cliente anterior no es una errata, y no se arregla con otro correo.
 - [ ] Marca uno y mira que el botón pasa a decir **«Mandarlo con 1 papel»**.
 - [ ] Pulsa **«Mandarlo»**. Ahora sí sale.
-- [ ] Queda escrito: **«✓ Pedida el … a …»**, con el correo al que ha ido.
+- [ ] Queda escrito: **«✓ Avisado y pedida el … a …»**, con el correo al que
+      ha ido.
 - [ ] Como en Proveedores has puesto tu correo, **te llega a ti**. Ábrelo y mira
       que dice que la factura va a nombre del cliente y **no a nombre de
       PopCar**, que es la que no sirve.

@@ -380,7 +380,7 @@ momento en que esa cosa hace falta:
 | Con el depósito dentro | El vendedor alemán | Si el coche **sigue disponible** y cuándo podemos verlo |
 | Con el depósito dentro | El perito | Que vaya a ver el coche, y qué mirar |
 | Con el día que dé el perito | El vendedor alemán | Qué día va, y que tenga el coche y los papeles listos |
-| Al liberar el pago | El vendedor alemán | La factura del coche **a nombre del cliente** |
+| Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
 | Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, y qué se lleva el conductor |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |

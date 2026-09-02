@@ -11,6 +11,11 @@
  * tiene que emitirla. «Mándanos la factura» a secas vuelve con la factura a
  * nombre de PopCar, que es justo la que no sirve.
  *
+ * Va **después de pagarle**, así que lo primero que dice es eso: que el dinero
+ * ha salido, cuánto y qué día. Pedir una factura sin decirlo se lee como un
+ * trámite que puede esperar; con la transferencia hecha es el papel que falta
+ * de una compra cerrada, y se contesta antes.
+ *
  * Va en alemán y en inglés, en ese orden. En alemán porque es el idioma del que
  * lo recibe y una petición formularia se contesta antes en el idioma propio; en
  * inglés debajo porque quien lo manda desde aquí tiene que poder leer lo que
@@ -26,6 +31,8 @@ export interface DatosDeLaPeticion {
   pedido?: string | null;
   /** Lo que se le paga por el coche. */
   importe?: number | null;
+  /** Qué día salió el dinero, si ya ha salido. */
+  pagadoEl?: string | null;
   /** A nombre de quién tiene que ir la factura. */
   /** Lo que añada quien revisa antes de mandarlo, ya en HTML. */
   nota?: string | null;
@@ -101,8 +108,21 @@ export function correoDeFacturaAlVendedor(d: DatosDeLaPeticion): { subject: stri
   const p = (html: string) =>
     `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#2A2A28">${html}</p>`;
 
+  /**
+   * Que el dinero ya ha salido, lo primero de todo.
+   *
+   * Se pide la factura justo después de pagar, y decirlo cambia lo que es el
+   * correo: no un trámite pendiente de una compra en curso, sino el papel que
+   * falta de una que ya está hecha.
+   */
+  const pagado = String(d.pagadoEl ?? '').trim();
+  const yaPagado = pagado
+    ? p(`<strong>Die Zahlung ist raus</strong>${d.importe ? ` &mdash; ${eur(Number(d.importe))}` : ''}, überwiesen am <strong>${esc(pagado)}</strong>.`)
+    : '';
+
   const html =
     p('Guten Tag,') +
+    yaPagado +
     p('wir kaufen dieses Fahrzeug im Auftrag unseres Kunden. <strong>Die Rechnung muss auf den Endkunden ausgestellt werden</strong>, nicht auf PopCar: wir handeln als Vermittler, das Fahrzeug geht direkt vom Verkäufer an den Käufer.') +
     p('Bitte stellen Sie die Rechnung mit diesen Daten aus:') +
     datosDelCliente +
@@ -112,7 +132,11 @@ export function correoDeFacturaAlVendedor(d: DatosDeLaPeticion): { subject: stri
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
-    p('<em>we are buying this vehicle on behalf of our customer. <strong>The invoice must be made out to the end customer</strong>, not to PopCar: we act as an intermediary and the car goes directly from the seller to the buyer. Please issue the invoice with the details above.</em>');
+    p('<em>' +
+      (pagado
+        ? `<strong>The payment has been made</strong>${d.importe ? ` &mdash; ${eur(Number(d.importe))}` : ''}, transferred on <strong>${esc(pagado)}</strong>. `
+        : '') +
+      'We are buying this vehicle on behalf of our customer. <strong>The invoice must be made out to the end customer</strong>, not to PopCar: we act as an intermediary and the car goes directly from the seller to the buyer. Please issue the invoice with the details above.</em>');
 
   return { subject, html };
 }

@@ -923,6 +923,10 @@ onEncargarALaGestoria, aviso }: PanelProps) {
               * coche no son un suplido: son ingreso nuestro con unos 3.500 € de
               * IVA sobre dinero que no es nuestro.
               *
+              * El correo hace dos cosas de una: le dice que la transferencia ya
+              * ha salido, con su importe y su fecha, y le pide la factura. Una
+              * petición a secas se lee como un trámite que puede esperar.
+              *
               * Es un botón y no un envío automático a propósito: con cuatro
               * coches al mes, un correo revisado vale lo mismo y no se arriesga
               * a salir con un dato mal puesto. Un correo no se desenvía.
@@ -930,12 +934,12 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             {depositoLiberado(x) && (
               <div className="mt-3 pt-3 border-t border-emerald-200/70">
                 <div className="text-xs font-semibold text-emerald-800 mb-1.5">
-                  La factura del coche, a nombre del cliente
+                  Avisarle del pago y pedirle la factura
                 </div>
                 {facturaDelVendedorPedida(x) ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[13px] font-bold text-emerald-700">
-                      ✓ Pedida el {dia(x.meta?.factura_vendedor_pedida_at)}
+                      ✓ Avisado y pedida el {dia(x.meta?.factura_vendedor_pedida_at)}
                       {x.meta?.factura_vendedor_pedida_a ? ` a ${String(x.meta.factura_vendedor_pedida_a)}` : ''}
                     </span>
                     <button onClick={() => onPedirFactura()} disabled={guardando}
@@ -947,10 +951,11 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                   <>
                     <button onClick={() => onPedirFactura()} disabled={guardando}
                             className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-                      Pedírsela al vendedor
+                      Avisarle del pago y pedirle la factura
                     </button>
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
-                      Sin ella, el precio del coche deja de ser un suplido y lleva IVA.
+                      Le dice que la transferencia ha salido y con qué datos emitirla.
+                      Sin esa factura, el precio del coche deja de ser un suplido y lleva IVA.
                     </div>
                   </>
                 )}

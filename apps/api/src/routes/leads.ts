@@ -1076,6 +1076,7 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
   try {
     const r = await query<Record<string, unknown>>(
       `SELECT l.id, l.vehicle_title, l.vehicle_id, l.user_email, l.lead_type,
+              TO_CHAR(l.escrow_liberado_at, 'DD.MM.YYYY') AS pagado_el,
               pe.id AS pedido, pe.proveedor, pe.importe::numeric AS importe,
               o.dealer_name, o.url AS anuncio, o.price::numeric AS precio,
               u.name, u.apellidos, u.tax_id, u.company_name,
@@ -1145,6 +1146,8 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
       anuncio: f.anuncio as string | null,
       pedido: f.pedido as string | null,
       importe: f.importe != null ? Number(f.importe) : (f.precio != null ? Number(f.precio) : null),
+      // En formato alemán, que es quien lo lee.
+      pagadoEl: f.pagado_el as string | null,
       cliente, nota,
     });
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;

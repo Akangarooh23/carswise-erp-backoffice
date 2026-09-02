@@ -110,6 +110,33 @@ describe('lo que hace falta antes de pedirla', () => {
   });
 });
 
+describe('que el dinero ya ha salido', () => {
+  // Este correo se manda justo después de pagarle. Decirlo cambia lo que es:
+  // no un trámite de una compra en curso, sino el papel que falta de una que
+  // ya está hecha, y eso se contesta antes.
+  test('la transferencia, con su día y su importe, en los dos idiomas', () => {
+    const { html } = correoDeFacturaAlVendedor({ ...CASO, pagadoEl: '14.09.2026' });
+    assert.match(html, /Die Zahlung ist raus/);
+    assert.match(html, /The payment has been made/);
+    assert.equal(html.split('14.09.2026').length - 1, 2);
+    assert.match(html, /16\.890,00 EUR/);
+  });
+
+  test('va delante de la petición, no enterrado al final', () => {
+    const { html } = correoDeFacturaAlVendedor({ ...CASO, pagadoEl: '14.09.2026' });
+    assert.ok(html.indexOf('Die Zahlung ist raus') < html.indexOf('Die Rechnung muss auf den Endkunden'));
+  });
+
+  test('y si todavía no se ha pagado, no se inventa una transferencia', () => {
+    // Se puede pedir la factura antes de liberar. Decir que se ha pagado
+    // cuando no se ha pagado es una mentira firmada por nosotros.
+    const { html } = correoDeFacturaAlVendedor(CASO);
+    assert.doesNotMatch(html, /Zahlung ist raus/);
+    assert.doesNotMatch(html, /payment has been made/);
+    assert.match(html, /Rechnung muss auf den Endkunden/);
+  });
+});
+
 describe('la dirección, en una línea', () => {
   test('calle, código postal, provincia y el país', () => {
     // El país no es adorno: quien la recibe está en Alemania y su programa de
