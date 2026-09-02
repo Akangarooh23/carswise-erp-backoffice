@@ -200,3 +200,81 @@ describe('las partidas habituales', () => {
     assert.equal(new Set(PARTIDAS_HABITUALES).size, PARTIDAS_HABITUALES.length);
   });
 });
+
+describe('el informe de verdad de un perito', () => {
+  /**
+   * La hoja tal y como la manda AutoCheck: tres columnas —punto, lo que vio y
+   * el coste— y once filas, de las que solo dos son daños.
+   */
+  const HOJA = [
+    'PUNTO DE CONTROL\tRESULTADO\tCOSTE ESTIMADO',
+    'Identificación\tCoincide con el anuncio.\t0 €',
+    'Kilometraje\t128.450 km; coincide.\t0 €',
+    'Frenos\tDesgaste moderado.\t0 €',
+    'Paragolpes trasero\tPequeños roces superficiales.\t200 €',
+    'Aleta delantera derecha\tLigera diferencia de tono; requiere pintura.\t300 €',
+    'Llaves\t2 llaves.\t0 €',
+  ].join('\n');
+
+  test('el coste es la tercera columna, no la segunda', () => {
+    // Leyendo la segunda como importe, el coste se guardaba de nota y todas las
+    // partidas quedaban sin valorar: el informe entero se perdía en silencio.
+    const { danos } = leeLoPegado(HOJA);
+    assert.deepEqual(danos.map((d) => d.coste), [200, 300]);
+  });
+
+  test('y lo que observó se guarda de nota', () => {
+    const { danos } = leeLoPegado(HOJA);
+    assert.equal(danos[0].notas, 'Pequeños roces superficiales.');
+  });
+
+  test('los puntos a 0 € no son daños: se cuentan aparte', () => {
+    // «Identificación · Coincide con el anuncio · 0 €» es una comprobación
+    // pasada. Guardarla diría «500 € en 7 partidas» habiendo dos dañadas.
+    const { danos, revisadosSinDano } = leeLoPegado(HOJA);
+    assert.equal(danos.length, 2);
+    assert.equal(revisadosSinDano, 4);
+  });
+
+  test('pero una partida sin valorar sí entra', () => {
+    // Un daño que vio y no puso precio no puede desaparecer: es justo el que
+    // deja el total corto.
+    const { danos, revisadosSinDano } = leeLoPegado('Aleta trasera\tGolpe.\t');
+    assert.equal(danos.length, 1);
+    assert.equal(danos[0].coste, null);
+    assert.equal(revisadosSinDano, 0);
+  });
+
+  test('«PUNTO DE CONTROL» tampoco entra como partida', () => {
+    assert.ok(!leeLoPegado(HOJA).danos.some((d) => /punto de control/i.test(d.pieza)));
+  });
+
+  test('el total sale igual que el suyo', () => {
+    // Él escribe «Coste estimado total: 500 €». Si nuestro total no coincide
+    // con el de su informe, alguien va a rehacer la suma a mano cada vez.
+    const { danos } = leeLoPegado(HOJA);
+    assert.equal(comoSeCuenta(resumenDeDanos(danos)), '500 € en 2 partidas');
+  });
+
+  test('y si estima en horquilla, se guarda la alta', () => {
+    // «150–250 €»: de ahí sale lo que se le cobra al cliente por dejarlo bien,
+    // y quedarse corto es comerse la diferencia en el taller.
+    const { danos } = leeLoPegado('Paragolpes trasero\tRoces.\t150–250 €');
+    assert.equal(danos[0].coste, 250);
+  });
+});
+
+describe('cuál de las columnas es el dinero', () => {
+  test('la de la derecha, aunque en medio haya números', () => {
+    // «Kilometraje · 128.450 · 0 €»: leyendo de izquierda a derecha, el primer
+    // número que parece un importe son los kilómetros, y esa partida entraría
+    // costando ciento veintiocho mil euros. El coste es la última columna que
+    // parece dinero, no la primera.
+    const { danos, revisadosSinDano } = leeLoPegado([
+      'Kilometraje\t128.450\t0 €',
+      'Paragolpes trasero\t2 roces\t200 €',
+    ].join('\n'));
+    assert.equal(revisadosSinDano, 1);
+    assert.deepEqual(danos.map((d) => [d.pieza, d.coste]), [['Paragolpes trasero', 200]]);
+  });
+});

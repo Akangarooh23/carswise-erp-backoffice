@@ -86,10 +86,33 @@ export function faltaParaApuntarUnDano(d: Dano): string[] {
  * coma de los decimales: «1.200,00» son mil doscientos euros. Leerlo como lo
  * lee `Number` da `NaN`, y un `NaN` aquí no es un error visible sino una
  * partida que se queda sin valorar y un total que va corto.
+ *
+ * ## Y las horquillas
+ *
+ * Un perito estima así: «Pequeños roces en el paragolpes trasero: 150–250 €»,
+ * porque depende del taller y del método de reparación. De esas dos cifras se
+ * guarda **la alta**.
+ *
+ * No es una elección cómoda, es la única que no hace daño: de ese total sale
+ * el precio de reacondicionamiento que se le da al cliente, y quedarse corto
+ * es comerse la diferencia en el taller. Pasarse solo cuesta una alegría
+ * cuando la factura llega por debajo.
  */
 export function costeQueSeGuarda(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null;
   if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? Math.round(v * 100) / 100 : null;
+
+  /*
+   * Una horquilla, con guion corto, largo, «a» o «hasta»: la alta.
+   *
+   * Va antes de limpiar, porque el guion se pierde al quitar los símbolos y
+   * «150–250» acabaría leyéndose como un número imposible.
+   */
+  const partes = String(v).split(/\s*(?:[-–—]|[aA]|hasta)\s*/).filter((t) => t.trim() !== '');
+  if (partes.length >= 2) {
+    const extremos = partes.map((t) => costeQueSeGuarda(t)).filter((n): n is number => n !== null);
+    if (extremos.length >= 2) return Math.max(...extremos);
+  }
 
   const limpio = String(v).replace(/[€\s]/g, '');
   if (!limpio || !/^[0-9.,]+$/.test(limpio)) return null;
@@ -142,10 +165,25 @@ export interface LoPegado {
   danos: Dano[];
   /** Las que no, tal cual venían, para poder enseñarlas. */
   malas: string[];
+  /**
+   * Cuántas líneas venían a **0 €**, que no son daños.
+   *
+   * Lo que manda el perito es una lista de comprobación, no una lista de
+   * daños: «Identificación · Coincide con el anuncio · 0 €» es un punto que
+   * está bien. Guardarlas dejaría «500 € en 11 partidas» cuando lo que hay
+   * son dos partidas dañadas y nueve comprobaciones pasadas.
+   *
+   * Se cuentan para poder decirlo, porque desaparecer once líneas de las que
+   * solo se guardan dos, sin explicar por qué, parece que se ha perdido algo.
+   */
+  revisadosSinDano: number;
 }
 
 /** Cabeceras que no son una partida: vienen del Excel y se saltan. */
-const CABECERAS = ['pieza', 'partida', 'partidas', 'concepto', 'daño', 'danos', 'daños', 'descripcion', 'descripción'];
+const CABECERAS = [
+  'pieza', 'partida', 'partidas', 'concepto', 'daño', 'danos', 'daños',
+  'descripcion', 'descripción', 'punto de control', 'punto', 'elemento',
+];
 
 /**
  * Partir una línea en pieza, importe y nota.
@@ -170,6 +208,7 @@ function troceaLinea(linea: string): string[] {
 export function leeLoPegado(texto: unknown): LoPegado {
   const danos: Dano[] = [];
   const malas: string[] = [];
+  let revisadosSinDano = 0;
   for (const cruda of String(texto ?? '').split(/\r?\n/)) {
     const linea = cruda.trim();
     if (!linea) continue;
@@ -177,13 +216,38 @@ export function leeLoPegado(texto: unknown): LoPegado {
     const pieza = (trozos[0] ?? '').replace(/^["']|["']$/g, '').trim();
     if (!pieza) { malas.push(linea); continue; }
     if (CABECERAS.includes(pieza.toLowerCase())) continue;
-    danos.push({
-      pieza,
-      coste: costeQueSeGuarda(trozos[1]),
-      notas: (trozos[2] ?? '').trim() || null,
-    });
+
+    /*
+     * El importe es la última columna que parece dinero, no la segunda.
+     *
+     * El informe del perito viene con tres: pieza, lo que observó y el coste
+     * —«Carrocería · Pequeños roces en el paragolpes trasero · 150–250 €»—.
+     * Leyendo la segunda como importe, el coste se guardaba de nota y todas
+     * las partidas quedaban sin valorar. Se busca desde el final porque en
+     * una observación caben números («2 llaves presentes») y el de la derecha
+     * es el que de verdad es dinero.
+     */
+    let dondeElCoste = -1;
+    for (let i = trozos.length - 1; i >= 1; i -= 1) {
+      if (costeQueSeGuarda(trozos[i]) !== null) { dondeElCoste = i; break; }
+    }
+    const notas = trozos
+      .slice(1)
+      .filter((_, k) => k + 1 !== dondeElCoste)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .join(' · ');
+
+    const coste = dondeElCoste >= 0 ? costeQueSeGuarda(trozos[dondeElCoste]) : null;
+
+    // Un cero es un punto revisado que está bien, no un daño de cero euros.
+    // Una partida **sin valorar** sí entra: eso es un daño que él vio y no
+    // puso precio, y sacarla dejaría el total corto justo donde importa.
+    if (coste === 0) { revisadosSinDano += 1; continue; }
+
+    danos.push({ pieza, coste, notas: notas || null });
   }
-  return { danos, malas };
+  return { danos, malas, revisadosSinDano };
 }
 
 export interface ResumenDeDanos {

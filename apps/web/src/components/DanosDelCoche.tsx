@@ -25,6 +25,8 @@ const eur = (n: unknown) =>
 interface LoLeido {
   danos: { pieza: string; coste: number | null; notas: string | null }[];
   malas: string[];
+  /** Los puntos que venían a 0 €: revisados y sin daño. */
+  revisadosSinDano?: number;
 }
 
 export default function DanosDelCoche({
@@ -57,7 +59,11 @@ export default function DanosDelCoche({
     try {
       const respuesta = await onPegar(texto) as { ok?: boolean; data?: LoLeido } & LoLeido;
       const d = (respuesta?.data ?? respuesta) as LoLeido;
-      setLeido({ danos: d?.danos ?? [], malas: d?.malas ?? [] });
+      setLeido({
+        danos: d?.danos ?? [],
+        malas: d?.malas ?? [],
+        revisadosSinDano: d?.revisadosSinDano ?? 0,
+      });
     } finally {
       setLeyendo(false);
     }
@@ -167,6 +173,20 @@ export default function DanosDelCoche({
                   </div>
                 ))}
               </div>
+              {/*
+                * Lo que ha entrado, y lo que no.
+                *
+                * Lo que manda el perito es una lista de comprobación de once
+                * puntos, y daños hay dos. Si nueve líneas desaparecen sin
+                * decir por qué, parece que se ha perdido algo.
+                */}
+              {(leido.revisadosSinDano ?? 0) > 0 && (
+                <div className="text-[11px] text-brand-400">
+                  {leido.revisadosSinDano} punto{leido.revisadosSinDano === 1 ? '' : 's'} más
+                  {leido.revisadosSinDano === 1 ? ' venía' : ' venían'} a 0 €: revisados y sin daño,
+                  no se guardan como partidas.
+                </div>
+              )}
               {leido.malas.length > 0 && (
                 <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
                   <strong>{leido.malas.length} línea{leido.malas.length === 1 ? '' : 's'} sin entender</strong>, y no

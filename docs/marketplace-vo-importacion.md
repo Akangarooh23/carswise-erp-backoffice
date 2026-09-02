@@ -388,10 +388,22 @@ duplica ni el pago ni el coste.
 ### Lo que costaría dejarlo bien
 
 Las partidas dañadas se apuntan una a una —pieza e importe— o se **pegan de**
-**una hoja de cálculo**, que es como llega media vez que el informe trae veinte.
-Vale lo copiado de Excel, un CSV con punto y coma, o «pieza importe» por línea;
-la cabecera se salta sola y **lo pegado se enseña antes de guardarse**. Veinte
-partidas mal leídas en la base son veinte borrados a mano.
+**una hoja de cálculo**, que es como llegan: el informe del perito viene con
+tres columnas —punto de control, lo que vio y el coste—. Vale lo copiado de
+Excel, un CSV con punto y coma, o «pieza importe» por línea; la cabecera se
+salta sola y **lo pegado se enseña antes de guardarse**. Veinte partidas mal
+leídas en la base son veinte borrados a mano.
+
+Tres cosas que hace al leerlo, y que son la diferencia entre que sirva o no:
+
+- **El coste es la columna de la derecha**, no la segunda. En medio va lo que
+  observó, y ahí caben números —«128.450 km», «2 llaves»— que no son dinero.
+- **Los puntos a 0 € no son daños.** Su informe es una lista de comprobación de
+  once puntos, de los que dos son daños; los otros nueve están bien. Se cuentan
+  aparte y se dice, para que no parezca que se ha perdido algo.
+- **De una horquilla se guarda la alta.** «150–250 €» entra como 250: de ese
+  total sale lo que se le cobra al cliente por dejarlo bien, y quedarse corto
+  es comerse la diferencia en el taller.
 
 De ahí sale el total, y de ese total sale el **precio de reacondicionamiento**
 que se le da al cliente — que hasta ahora salía de la memoria de quien cogía el

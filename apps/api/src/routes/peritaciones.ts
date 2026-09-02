@@ -578,9 +578,9 @@ peritacionesRouter.delete('/peritaciones/:id/danos/:danoId', requireRole(['admin
 peritacionesRouter.post('/peritaciones/:id/danos/pegadas', requireRole(['admin', 'operations']), async (req, res) => {
   await prepara();
   try {
-    const { danos, malas } = leeLoPegado(req.body?.texto);
+    const { danos, malas, revisadosSinDano } = leeLoPegado(req.body?.texto);
     if (req.body?.soloVista === true) {
-      res.json({ ok: true, vista: true, danos, malas });
+      res.json({ ok: true, vista: true, danos, malas, revisadosSinDano });
       return;
     }
     if (!danos.length) {
