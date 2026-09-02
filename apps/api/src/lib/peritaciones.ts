@@ -136,6 +136,8 @@ export interface DatosDeLaCita {
    * una empresa, espera a alguien.
    */
   quienVa?: string | null;
+  /** Y su teléfono, si lo han dado: es con lo que se arregla el día de la cita. */
+  telefonoDeQuienVa?: string | null;
   /** Lo que añada quien revisa, ya en HTML. */
   nota?: string | null;
 }
@@ -157,6 +159,7 @@ export function correoDeLaCitaAlVendedor(d: DatosDeLaCita): { subject: string; h
   const persona = String(d.quienVa ?? '').trim();
   // La persona delante, la empresa entre paréntesis: es a quien esperan.
   const quien = persona && empresa ? `${persona} (${empresa})` : persona || empresa;
+  const tel = String(d.telefonoDeQuienVa ?? '').trim();
   const subject = `Termin zur Fahrzeugprüfung / Inspection appointment — ${coche}`;
 
   const p = (html: string) =>
@@ -174,7 +177,7 @@ export function correoDeLaCitaAlVendedor(d: DatosDeLaCita): { subject: string; h
     p('Guten Tag,') +
     p(`wir haben den Termin zur Prüfung von <strong>${esc(coche)}</strong> für den <strong>${esc(cuando)}</strong> vorgesehen.`) +
     p(quien
-      ? `Es kommt <strong>${esc(quien)}</strong>, ein unabhängiger Prüfer. Er meldet sich vorher bei Ihnen.`
+      ? `Es kommt <strong>${esc(quien)}</strong>, ein unabhängiger Prüfer.${tel ? ` Sie erreichen ihn unter <strong>${esc(tel)}</strong>.` : ' Er meldet sich vorher bei Ihnen.'}`
       : 'Es kommt ein unabhängiger Prüfer. Er meldet sich vorher bei Ihnen.') +
     p('Damit der Termin nicht umsonst ist, bitten wir um Folgendes:') +
     pide +

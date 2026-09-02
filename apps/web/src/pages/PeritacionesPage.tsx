@@ -47,6 +47,8 @@ interface Peritacion {
   telefono: string;
   /** Quién va a ir de verdad, si la empresa nos ha dicho el nombre. */
   quien_va: string;
+  quien_va_email: string;
+  quien_va_tel: string;
   fecha_hecha: string | null;
   veredicto: string | null;
   notas: string;
@@ -322,7 +324,8 @@ function PeritacionAbierta({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
     telefono: p.telefono ?? '', fecha_prevista: p.fecha_prevista ?? '',
     hora_prevista: p.hora_prevista ?? '', coste: String(p.coste ?? ''),
-    quien_va: p.quien_va ?? '',
+    quien_va: p.quien_va ?? '', quien_va_email: p.quien_va_email ?? '',
+    quien_va_tel: p.quien_va_tel ?? '',
   });
   const [veredicto, setVeredicto] = useState(p.veredicto ?? '');
   const [factura, setFactura] = useState({
@@ -487,6 +490,28 @@ function PeritacionAbierta({
                    onChange={(e) => setDatos((d) => ({ ...d, quien_va: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+          {/*
+            * Su teléfono y su correo, también opcionales.
+            *
+            * El teléfono va en el aviso al vendedor: una nave que abre a las
+            * siete y un perito que llega a las diez se arreglan con una
+            * llamada, no con tres correos pasando por nosotros. El correo se
+            * queda aquí, para poder escribirle directamente si hace falta.
+            */}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <label className="text-[11px] text-brand-400">
+              Su teléfono <span className="text-brand-300">· opcional</span>
+              <input value={datos.quien_va_tel} inputMode="tel" placeholder="+49 176 382 941 65"
+                     onChange={(e) => setDatos((d) => ({ ...d, quien_va_tel: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+            <label className="text-[11px] text-brand-400">
+              Su correo <span className="text-brand-300">· opcional</span>
+              <input value={datos.quien_va_email} inputMode="email" placeholder="inspection@…"
+                     onChange={(e) => setDatos((d) => ({ ...d, quien_va_email: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          </div>
           <button onClick={() => onGuardar(datos)} disabled={guardando}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
             Guardar lo que ha contestado

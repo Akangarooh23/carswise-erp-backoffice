@@ -249,6 +249,28 @@ describe('la cita que ya viene del vendedor', () => {
     assert.ok(html.includes('Daniel Weber (checkdenwagen Automobile DE)'));
   });
 
+  test('y su teléfono, para que el vendedor pueda llamarle ese día', () => {
+    // Una nave que abre a las siete y un perito que llega a las diez se
+    // arreglan con una llamada, no con tres correos pasando por nosotros.
+    const { html } = correoDeLaCitaAlVendedor({
+      vehiculo: 'Un coche', cuando: '07/09/2026', hora: '10:00',
+      perito: 'checkdenwagen', quienVa: 'Daniel Weber',
+      telefonoDeQuienVa: '+49 176 382 941 65',
+    });
+    assert.match(html, /Sie erreichen ihn unter/);
+    assert.ok(html.includes('+49 176 382 941 65'));
+  });
+
+  test('sin teléfono, se dice que él se pondrá en contacto', () => {
+    // Lo que no se puede dejar es un hueco: el vendedor tiene que saber cómo
+    // se cierra el cabo suelto, con un número o con una espera.
+    const { html } = correoDeLaCitaAlVendedor({
+      vehiculo: 'Un coche', cuando: '07/09/2026', perito: 'checkdenwagen',
+    });
+    assert.match(html, /Er meldet sich vorher bei Ihnen/);
+    assert.doesNotMatch(html, /Sie erreichen ihn unter/);
+  });
+
   test('sin nombre, con la empresa basta y no se deja el hueco', () => {
     const { html } = correoDeLaCitaAlVendedor({
       vehiculo: 'Un coche', cuando: '07/09/2026', perito: 'checkdenwagen Automobile DE',

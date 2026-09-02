@@ -49,6 +49,8 @@ const ENSURE_TABLE = `
     hora_prevista   TEXT NOT NULL DEFAULT '',
     telefono        TEXT NOT NULL DEFAULT '',
     quien_va        TEXT NOT NULL DEFAULT '',
+    quien_va_email  TEXT NOT NULL DEFAULT '',
+    quien_va_tel    TEXT NOT NULL DEFAULT '',
     fecha_hecha     TIMESTAMPTZ,
     veredicto       TEXT,
     notas           TEXT NOT NULL DEFAULT '',
@@ -107,7 +109,9 @@ async function prepara(): Promise<void> {
        ADD COLUMN IF NOT EXISTS cita_avisada_a  TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS hora_prevista   TEXT NOT NULL DEFAULT '',
        ADD COLUMN IF NOT EXISTS telefono        TEXT NOT NULL DEFAULT '',
-       ADD COLUMN IF NOT EXISTS quien_va        TEXT NOT NULL DEFAULT ''`,
+       ADD COLUMN IF NOT EXISTS quien_va        TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS quien_va_email  TEXT NOT NULL DEFAULT '',
+       ADD COLUMN IF NOT EXISTS quien_va_tel    TEXT NOT NULL DEFAULT ''`,
     []
   ).catch(() => {});
   preparado = true;
@@ -126,7 +130,7 @@ function nt(v: unknown): string {
 }
 
 const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
-                telefono, hora_prevista, quien_va,
+                telefono, hora_prevista, quien_va, quien_va_email, quien_va_tel,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
                 factura_numero, cita_avisada_at, cita_avisada_a,
@@ -183,7 +187,8 @@ peritacionesRouter.patch(
     };
 
     for (const campo of [
-      'perito', 'donde', 'contacto', 'telefono', 'hora_prevista', 'quien_va', 'notas',
+      'perito', 'donde', 'contacto', 'telefono', 'hora_prevista',
+      'quien_va', 'quien_va_email', 'quien_va_tel', 'notas',
     ] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
@@ -421,6 +426,10 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
       // El nombre de quien va de verdad, si nos lo han dicho. Es lo que
       // pregunta el vendedor al contestar: con qué nombre va el perito.
       quienVa: nt(p.quien_va),
+      // Su teléfono, para que el vendedor pueda llamarle el día de la visita
+      // sin pasar por nosotros. Una nave que abre a las siete y un perito que
+      // llega a las diez se arreglan con una llamada, no con tres correos.
+      telefonoDeQuienVa: nt(p.quien_va_tel),
       nota: notaEnParrafos(req.body?.nota),
     };
     const falta = faltaParaAvisarDeLaCita(datos);
