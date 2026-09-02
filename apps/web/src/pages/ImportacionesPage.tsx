@@ -83,11 +83,11 @@ export default function ImportacionesPage() {
     }
     setErrorDelPanel('');
     const d = r.data as unknown as VistaDelCorreo;
-    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html }, ruta });
+    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, ruta });
   }
 
   /** Y ya revisado, se manda con lo que haya cambiado. */
-  async function mandaElCorreo(cambios: { para: string; asunto: string; nota: string }) {
+  async function mandaElCorreo(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
     if (!revisando) return;
     const id = abierto?.id;
     setGuardando(true);

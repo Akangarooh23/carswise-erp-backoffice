@@ -144,11 +144,11 @@ export default function TransportesPage() {
     }
     setErrorDelPanel('');
     const d = r.data as unknown as VistaDelCorreo;
-    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html }, id });
+    setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id });
   }
 
   /** Y ya revisada, se manda con lo que haya cambiado. */
-  async function mandaLaRevisada(cambios: { para: string; asunto: string; nota: string }) {
+  async function mandaLaRevisada(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
     if (!revisando) return;
     const { id } = revisando;
     setGuardando(true);

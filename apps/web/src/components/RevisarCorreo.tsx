@@ -19,22 +19,46 @@
 import { useEffect, useState } from 'react';
 import { Modal } from './ui/Modal.js';
 
+/** Un papel del expediente que se puede adjuntar. */
+export interface PapelDisponible {
+  id: string;
+  papel: string;
+  nombre: string;
+  tamano: number;
+}
+
 export interface VistaDelCorreo {
   para: string;
   subject: string;
   html: string;
+  papeles?: PapelDisponible[];
+}
+
+/** «230 kB», «1,4 MB». Se enseña porque es como se distingue un adjunto de otro. */
+function pesa(bytes: number): string {
+  const n = Number(bytes) || 0;
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} kB`;
+  return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} MB`;
 }
 
 export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerrar }: {
   vista: VistaDelCorreo | null;
   enviando: boolean;
   error: string;
-  onEnviar: (cambios: { para: string; asunto: string; nota: string }) => void;
+  onEnviar: (cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) => void;
   onCerrar: () => void;
 }) {
   const [para, setPara] = useState('');
   const [asunto, setAsunto] = useState('');
   const [nota, setNota] = useState('');
+  /**
+   * Los papeles marcados. Empieza **vacío**, siempre.
+   *
+   * Adjuntar por defecto es lo que hace que un día salga el DNI del cliente
+   * anterior. Eso no es una errata: es un incidente de protección de datos, y
+   * no se corrige con otro correo.
+   */
+  const [marcados, setMarcados] = useState<string[]>([]);
 
   // Al abrir uno nuevo, sus datos. Sin esto, el segundo correo que se revisa
   // sale con el asunto del primero.
@@ -42,6 +66,7 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
     setPara(vista?.para ?? '');
     setAsunto(vista?.subject ?? '');
     setNota('');
+    setMarcados([]);
   }, [vista]);
 
   if (!vista) return null;
@@ -70,6 +95,34 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
         </div>
 
         {/*
+          * Los papeles del expediente, para elegir cuáles van.
+          *
+          * Con su nombre y su peso: dos PDF de 200 kB llamados «documento.pdf»
+          * no se distinguen de otra forma, y el que se equivoca lo hace ahí.
+          */}
+        {vista.papeles && vista.papeles.length > 0 && (
+          <div>
+            <div className="text-[11px] text-brand-400 mb-1">
+              Papeles del expediente
+              <span className="text-brand-300"> · ninguno va si no lo marcas</span>
+            </div>
+            <div className="border border-brand-200 rounded-lg divide-y divide-brand-100">
+              {vista.papeles.map((d) => (
+                <label key={d.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer">
+                  <input type="checkbox" checked={marcados.includes(d.id)}
+                         onChange={(e) => setMarcados((m) => (e.target.checked
+                           ? [...m, d.id]
+                           : m.filter((x) => x !== d.id)))} />
+                  <span className="text-sm text-brand-600 flex-1 truncate">{d.nombre}</span>
+                  {d.papel && <span className="text-[10px] text-brand-300">{d.papel}</span>}
+                  <span className="text-[10px] text-brand-300 tabular-nums">{pesa(d.tamano)}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/*
           * El correo, tal cual va a salir.
           *
           * Se pinta dentro de un marco con fondo blanco para que se vea que es
@@ -93,10 +146,12 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
         )}
 
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={() => onEnviar({ para: para.trim(), asunto: asunto.trim(), nota })}
+          <button onClick={() => onEnviar({ para: para.trim(), asunto: asunto.trim(), nota, adjuntos: marcados })}
                   disabled={enviando || !para.trim()}
                   className="px-4 py-2 text-sm font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-            {enviando ? 'Mandando…' : 'Mandarlo'}
+            {enviando ? 'Mandando…' : marcados.length
+              ? `Mandarlo con ${marcados.length} ${marcados.length === 1 ? 'papel' : 'papeles'}`
+              : 'Mandarlo'}
           </button>
           <button onClick={onCerrar} disabled={enviando}
                   className="px-4 py-2 text-sm font-semibold text-brand-500 border border-brand-200 rounded-lg hover:bg-brand-100 disabled:opacity-50">

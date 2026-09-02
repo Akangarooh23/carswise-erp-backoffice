@@ -228,6 +228,10 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
       coche en concreto. El cuerpo se ve pero no se toca: cada uno de estos
       correos existe por una frase, y un cuadro con todo el HTML dentro es la
       forma más fácil de borrar una sin darse cuenta.
+- [ ] Si has subido papeles al expediente, salen listados con su nombre y su
+      peso. **Ninguno va marcado**: se eligen uno a uno. Un correo con el DNI
+      del cliente anterior no es una errata, y no se arregla con otro correo.
+- [ ] Marca uno y mira que el botón pasa a decir **«Mandarlo con 1 papel»**.
 - [ ] Pulsa **«Mandarlo»**. Ahora sí sale.
 - [ ] Queda escrito: **«✓ Pedida el … a …»**, con el correo al que ha ido.
 - [ ] Como en Proveedores has puesto tu correo, **te llega a ti**. Ábrelo y mira

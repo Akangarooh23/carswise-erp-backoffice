@@ -20,6 +20,7 @@ import { nombreComparable } from '../lib/proveedores.js';
 import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
 import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
+import { papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -997,11 +998,27 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
-    if (soloVista) { res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html }); return; }
+    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
 
     // `alClienteSiempre` porque el desvío de pruebas no puede tragarse esto: si
     // no sale, no hay factura, y quien pulsa tiene que enterarse de que no salió.
-    await enviar({ to: aQuien, subject: elAsunto, html, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
@@ -1113,10 +1130,26 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
-    if (soloVista) { res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html }); return; }
+    const papeles = await papelesQueSePuedenAdjuntar('lead', req.params.id);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos('lead', req.params.id, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
 
     // Salta el desvío de pruebas: si no sale, el coche no se matricula.
-    await enviar({ to: aQuien, subject: elAsunto, html, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
