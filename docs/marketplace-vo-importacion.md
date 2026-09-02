@@ -427,7 +427,7 @@ momento en que esa cosa hace falta:
 
 | Cuándo | A quién | Qué pide |
 |---|---|---|
-| Con el depósito dentro | El vendedor alemán | Si el coche **sigue disponible** y cuándo podemos verlo |
+| Con el depósito dentro | El vendedor alemán | Si el coche **sigue disponible**, cuándo podemos verlo y **en qué dirección exacta está** |
 | Con el depósito dentro | El perito | Que vaya a ver el coche, y qué mirar |
 | Con el día que dé el perito | El vendedor alemán | Qué día va, y que tenga el coche y los papeles listos |
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |

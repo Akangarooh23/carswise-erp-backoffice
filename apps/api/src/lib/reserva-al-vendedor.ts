@@ -7,25 +7,26 @@
  * desde julio—, así que **que el anuncio esté vivo no significa que el coche lo
  * esté**, y el cliente ya ha transferido veintiún mil euros.
  *
- * Por eso pregunta cuatro cosas y en este orden:
+ * Pregunta tres cosas, y en este orden:
  *
- * 1. **Si sigue disponible.** Si no lo está, aquí se acaba y se le devuelve todo.
- * 2. **Que lo reserve, y sus datos para pagarle**: IBAN, titular de la cuenta y
- *    concepto. Es de donde sale el IBAN que luego pide el ERP para dejar soltar
- *    el pago, así que este correo es el principio de esa cadena.
- * 3. **Cuándo podemos ir a verlo.** Es la condición para soltarle el dinero, y
- *    conviene que él sepa desde el principio que alguien va a ir.
- * 4. **Que se le vende a un particular español.** Se lo decimos ahora y no al
- *    final porque cambia los papeles que tiene que preparar, y descubrirlo el
- *    día de la recogida retrasa el coche tres semanas.
+ * 1. **Si sigue disponible**, y que si lo está lo reserve. Si no lo está, aquí
+ *    se acaba y se le devuelve todo al cliente.
+ * 2. **Cuándo podemos ir a verlo.** Es la condición para soltarle el dinero, y
+ *    conviene que sepa desde el principio que va a ir alguien: enterarse al
+ *    final de que hay una visita retrasa la recogida.
+ * 3. **La dirección exacta donde está el coche**, y que confirme que tiene
+ *    tiempo para atender a nuestro perito. Son los dos datos con los que se
+ *    encarga la revisión, y eran los que había que perseguir después.
  *
  * No promete el pago ni dice que el dinero esté esperando. Mientras no haya ido
  * nadie a ver el coche, lo único cierto es que hay un comprador: reservar no es
  * pagar, y la reserva se pide sabiendo que la visita va antes.
  *
- * **Un IBAN que llega por correo no se transfiere sin confirmarlo por teléfono.**
- * Es el fraude más común de este negocio: alguien se mete en medio del hilo y
- * contesta con otra cuenta. El correo no puede evitarlo; quien paga, sí.
+ * **Aquí ya no se piden datos bancarios.** Se pedían y se han quitado: un IBAN
+ * antes de saber si el coche siquiera existe se pide antes de tiempo, y es el
+ * hilo por el que entra el fraude más común de esto —alguien se mete en medio
+ * del correo y contesta con otra cuenta—. El IBAN se pide cuando se va a pagar y
+ * se confirma por teléfono; el ERP no deja soltar el dinero sin él.
  */
 
 export interface DatosDeLaReserva {
@@ -64,8 +65,8 @@ export function correoDeReservaAlVendedor(d: DatosDeLaReserva): { subject: strin
   const delCoche =
     '<table style="border-collapse:collapse;font-size:14px;margin:8px 0 16px 0">' +
     fila('Fahrzeug / Vehicle', coche) +
-    (d.importe ? fila('Preis laut Inserat / Listed price', eur(Number(d.importe))) : '') +
-    (d.anuncio ? fila('Inserat / Listing', String(d.anuncio)) : '') +
+    (d.importe ? fila('Preis / Price', eur(Number(d.importe))) : '') +
+    (d.anuncio ? fila('Anzeige / Listing', String(d.anuncio)) : '') +
     '</table>';
 
   const p = (html: string) =>
@@ -74,25 +75,32 @@ export function correoDeReservaAlVendedor(d: DatosDeLaReserva): { subject: strin
   const li = (html: string) =>
     `<li style="margin-bottom:8px">${html}</li>`;
 
+  /**
+   * Tres preguntas, y tres van en la lista.
+   *
+   * Antes decía «tres» y enumeraba cuatro. Un correo que no sabe contar lo que
+   * él mismo pide se lee como un formulario, y un formulario se contesta a
+   * medias.
+   */
   const preguntas =
     '<ol style="margin:8px 0 16px 0;padding-left:20px;font-size:15px;line-height:1.55;color:#2A2A28">' +
-    li('<strong>Ist das Fahrzeug noch verfügbar?</strong>') +
-    li('<strong>Wenn ja, möchten wir es reservieren.</strong> Bitte schicken Sie uns Ihre Zahlungsdaten: <strong>IBAN</strong>, <strong>Kontoinhaber</strong>, BIC und den gewünschten <strong>Verwendungszweck</strong>.') +
-    li('<strong>Wann könnten wir es bei Ihnen ansehen?</strong> Wir schicken jemanden vorbei, bevor wir bezahlen.') +
-    li('Das Fahrzeug geht an einen <strong>Privatkunden in Spanien</strong> und wird dort zugelassen. Die Rechnung wird auf ihn ausgestellt.') +
+    li('<strong>Ist das Fahrzeug noch verfügbar?</strong> Falls ja, würden wir es gerne reservieren.') +
+    li('<strong>Wann könnten wir das Fahrzeug besichtigen?</strong> Wir schicken jemanden zur Inspektion vorbei, bevor wir bezahlen.') +
+    li('<strong>Unter welcher genauen Adresse steht das Fahrzeug?</strong> Bitte bestätigen Sie uns auch, dass Sie Zeit für unseren Prüfer haben.') +
     '</ol>';
 
   const html =
     p('Guten Tag,') +
     p('wir haben einen Käufer für dieses Fahrzeug:') +
     delCoche +
-    p('Drei Fragen, bevor wir weitermachen:') +
+    p('Drei Fragen, bevor wir fortfahren:') +
     preguntas +
     String(d.nota ?? '') +
+    p('Bitte antworten Sie uns einfach auf diese E-Mail.') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
-    p('<em>we have a buyer for this vehicle. Four things before we go ahead: <strong>is it still available</strong>; if so, <strong>we would like to reserve it</strong> and we need your payment details —<strong>IBAN</strong>, <strong>account holder</strong>, BIC and the payment reference to use—; <strong>when could we come and see it</strong>, since we send someone before paying; and please note it goes to a <strong>private customer in Spain</strong> and will be registered there, so the invoice will be made out to them.</em>');
+    p('<em>we have a buyer for this vehicle. Three questions before we go ahead: <strong>is it still available</strong> —if so, we would like to reserve it—; <strong>when could we come and see it</strong>, since we send someone to inspect it before paying; and <strong>at exactly which address is the car</strong>, confirming that you can make time for our inspector. Just reply to this email.</em>');
 
   return { subject, html };
 }

@@ -808,10 +808,13 @@ onEncargarALaGestoria, aviso }: PanelProps) {
               {/*
                 * Y lo que conteste, apuntado aquí una sola vez.
                 *
-                * Su respuesta trae cuatro datos que hacen falta en tres pantallas:
-                * dónde se ve el coche y por quién preguntar —lo que necesita el
-                * perito— y su IBAN, que es lo que el ERP exige para dejar soltar el
-                * pago. Se teclea una vez y cae donde tiene que caer.
+                * Del correo vuelven la dirección exacta y por quién preguntar,
+                * que es lo que necesita el perito. El IBAN no: ese no se pide
+                * en el primer correo —un número de cuenta pedido antes de saber
+                * si el coche existe es el hilo por el que entra el fraude— y se
+                * apunta aquí cuando se consigue, confirmado por teléfono.
+                *
+                * Se teclea una vez y cae donde tiene que caer.
                 */}
               {reservaPreguntada(x) && (
                 <div className="mt-3 pt-3 border-t border-emerald-200/70">
@@ -835,8 +838,9 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                     Guardar lo que ha contestado
                   </button>
                   <div className="text-[11px] text-emerald-800/80 mt-1.5">
-                    La dirección va a la peritación y el IBAN a su ficha.
-                    <strong> Confirma el IBAN por teléfono</strong> antes de transferir.
+                    La dirección va a la peritación y el IBAN a su ficha. El correo no
+                    se lo pide: <strong>el IBAN se pide al ir a pagar y se confirma por
+                    teléfono</strong>, nunca solo por correo.
                   </div>
                 </div>
               )}

@@ -217,15 +217,14 @@ expediente.
 Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 
 - [ ] Pulsa **«Preguntarle si sigue disponible»**. Se abre para revisarlo.
-- [ ] El correo pregunta cuatro cosas y en este orden: si sigue disponible; si
-      lo está, **que lo reserve y que nos mande sus datos de pago** —IBAN,
-      titular de la cuenta, BIC y concepto—; cuándo podemos ir a verlo,
-      diciéndole que vamos **antes de pagar**; y que el coche va a un particular
-      español, que le cambia los papeles que tiene que preparar.
-- [ ] De ahí sale el IBAN que luego pide Proveedores. **Confírmalo por teléfono
-      antes de transferir**: una cuenta cambiada en mitad de un hilo de correo es
-      el fraude más común de esto, y el dinero no vuelve. El aviso está también
-      debajo del campo, en Proveedores.
+- [ ] El correo pregunta **tres** cosas, y son tres las que enumera: si sigue
+      disponible —y que si lo está lo reserve—; cuándo podemos ir a verlo,
+      diciéndole que vamos **antes de pagar**; y **en qué dirección exacta está
+      el coche**, pidiéndole que confirme que tiene tiempo para nuestro perito.
+- [ ] Comprueba que **no le pide el IBAN**. Un número de cuenta pedido antes de
+      saber si el coche existe se pide antes de tiempo, y es el hilo por el que
+      entra el fraude de esto: alguien se mete en medio del correo y contesta
+      con otra cuenta. Se le pide al ir a pagar y **se confirma por teléfono**.
 - [ ] Comprueba que **no promete el pago**: hasta que alguien vaya a verlo, lo
       único cierto es que hay un comprador.
 - [ ] Queda escrito **«✓ Preguntado al vendedor el …»**.
@@ -238,11 +237,13 @@ Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 
 **Lo que conteste, apuntado una sola vez**
 
-Su respuesta trae cuatro datos que hacen falta en tres pantallas distintas.
-Debajo del botón, en cuanto se ha preguntado, sale dónde escribirlos.
+Su respuesta trae los datos que hacen falta en otras dos pantallas. Debajo del
+botón, en cuanto se ha preguntado, sale dónde escribirlos: se teclean una vez
+y caen donde tienen que caer.
 
-- [ ] Pon **dónde se ve el coche**, **por quién preguntar**, el **IBAN** y el
-      **titular de la cuenta**, y guarda.
+- [ ] Pon **dónde se ve el coche** y **por quién preguntar** —eso sí lo trae su
+      respuesta— y, cuando lo tengas, el **IBAN** y el **titular de la cuenta**.
+      Guarda.
 - [ ] La dirección y el contacto caen solos en la **peritación**; el IBAN, en la
       **ficha del vendedor** en Proveedores. Compruébalo en las dos pantallas.
 - [ ] Copiarlo a mano de un correo a tres sitios es donde se cuelan los errores,
