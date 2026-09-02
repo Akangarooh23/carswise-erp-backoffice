@@ -64,6 +64,9 @@ export interface MetaImportacion {
   liquidacion_at?: string | null;
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
+  // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.
+  factura_vendedor_pedida_at?: string | null;
+  factura_vendedor_pedida_a?: string | null;
   // Cuándo alguien nuestro vio el coche. Sin esto no se libera nada.
   verificado_alemania_at?: string | null;
   delivery_estimate?: string | null;
@@ -107,6 +110,17 @@ export function verificadoEnAlemania(x: Expediente): boolean {
 /** Si el dinero ya salió hacia el vendedor. */
 export function depositoLiberado(x: Expediente): boolean {
   return Boolean(x.meta?.escrow_liberado_at);
+}
+
+/**
+ * Si ya se le ha pedido al vendedor la factura del coche.
+ *
+ * Sin ese papel, los 16.890 € del coche no son un suplido sino ingreso
+ * nuestro, con su IVA encima. Se enseña pedida o sin pedir para que no se
+ * quede en el aire, que es donde se quedan las cosas que no tienen casilla.
+ */
+export function facturaDelVendedorPedida(x: Expediente): boolean {
+  return Boolean(x.meta?.factura_vendedor_pedida_at);
 }
 
 /**

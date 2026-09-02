@@ -219,6 +219,23 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
 - [ ] Vuelve a mirarlo: **ya no se puede liberar otra vez**. Un segundo clic con
       el dinero enviado sería un segundo pago.
 
+**Y el papel que hay que pedirle** · aparece al liberar
+
+- [ ] Sale un bloque nuevo: **«La factura del coche, a nombre del cliente»**.
+- [ ] Pulsa **«Pedírsela al vendedor»**. Le llega un correo en alemán y en
+      inglés, con los datos del cliente para poder emitirla.
+- [ ] Queda escrito: **«✓ Pedida el … a …»**, con el correo al que ha ido.
+- [ ] Como en Proveedores has puesto tu correo, **te llega a ti**. Ábrelo y mira
+      que dice que la factura va a nombre del cliente y **no a nombre de
+      PopCar**, que es la que no sirve.
+
+> No sale solo, y es a propósito: con cuatro coches al mes, un correo revisado
+> vale lo mismo que uno automático y no se arriesga a salir con un dato mal
+> puesto. Un correo no se desenvía.
+
+> Sin esa factura, los 16.890 € del coche dejan de ser un suplido y pasan a ser
+> ingreso de PopCar, con unos 3.500 € de IVA sobre dinero que no es nuestro.
+
 > **Y comprueba que sigue vigilando**: vacía el IBAN en Proveedores e inténtalo
 > otra vez. Tiene que volver a negarse, y decir que lo que falta es el IBAN. Un
 > portero que solo mira la primera vez no es un portero.

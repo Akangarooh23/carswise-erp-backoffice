@@ -6,6 +6,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
+  facturaDelVendedorPedida,
   liquidacionDelImpuesto,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
@@ -85,6 +86,29 @@ export default function ImportacionesPage() {
   const porEtapa = useMemo(() => agrupaPorEtapa(expedientes), [expedientes]);
   const cerrados = useMemo(() => fueraDelCamino(expedientes), [expedientes]);
   const cuentas = useMemo(() => resumen(expedientes), [expedientes]);
+
+  /**
+   * Pedirle al vendedor la factura del coche.
+   *
+   * El aviso va donde está mirando, igual que el de liberar: si el vendedor no
+   * tiene correo o al cliente le falta el NIF, hay que enterarse aquí.
+   */
+  async function pideLaFactura(id: string) {
+    setGuardando(true);
+    const r = await api.post<{ para?: string }>(`/leads/${id}/factura-vendedor`, {});
+    setGuardando(false);
+    if (!r.ok) {
+      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido pedir.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    }
+    setErrorDelPanel('');
+    const lista = await carga();
+    setAbierto((previo) => (previo && previo.id === id
+      ? (lista.find((y) => y.id === id) ?? previo)
+      : previo));
+  }
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -282,6 +306,7 @@ export default function ImportacionesPage() {
           siguiente={siguienteEtapa(abierto.status)}
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
+          onPedirFactura={() => void pideLaFactura(abierto.id)}
           aviso={errorDelPanel}
           onDevolver={() => void devuelveFianza(abierto.id)}
           onNotificar={(respuesta, notas) => void notifica(abierto.id, respuesta, notas)}
@@ -450,6 +475,7 @@ interface PanelProps {
   siguiente: Etapa | null;
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
+  onPedirFactura: () => void;
   aviso: string;
   onDevolver: () => void;
   onNotificar: (respuesta: string, notas: string) => void;
@@ -462,7 +488,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, aviso }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPedirFactura, aviso }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -670,6 +696,48 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                 </>
               )}
             </div>
+
+            {/*
+              * Y el papel que hay que pedirle.
+              *
+              * Sale una vez liberado el pago porque es cuando la compra existe
+              * de verdad. Sin esa factura a nombre del cliente, los 16.890 € del
+              * coche no son un suplido: son ingreso nuestro con unos 3.500 € de
+              * IVA sobre dinero que no es nuestro.
+              *
+              * Es un botón y no un envío automático a propósito: con cuatro
+              * coches al mes, un correo revisado vale lo mismo y no se arriesga
+              * a salir con un dato mal puesto. Un correo no se desenvía.
+              */}
+            {depositoLiberado(x) && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/70">
+                <div className="text-xs font-semibold text-emerald-800 mb-1.5">
+                  La factura del coche, a nombre del cliente
+                </div>
+                {facturaDelVendedorPedida(x) ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-bold text-emerald-700">
+                      ✓ Pedida el {dia(x.meta?.factura_vendedor_pedida_at)}
+                      {x.meta?.factura_vendedor_pedida_a ? ` a ${String(x.meta.factura_vendedor_pedida_a)}` : ''}
+                    </span>
+                    <button onClick={() => onPedirFactura()} disabled={guardando}
+                            className="text-[11px] text-brand-400 underline underline-offset-2">
+                      pedirla otra vez
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onPedirFactura()} disabled={guardando}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                      Pedírsela al vendedor
+                    </button>
+                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                      Sin ella, el precio del coche deja de ser un suplido y lleva IVA.
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 

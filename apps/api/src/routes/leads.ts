@@ -17,6 +17,7 @@ import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
 import { nombreComparable } from '../lib/proveedores.js';
+import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -899,6 +900,107 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
   }
 }
 
+/**
+ * Pedirle al vendedor alemán la factura del coche, a nombre del cliente.
+ *
+ * Es el papel del que depende que los 16.890 € sean un suplido y no ingreso
+ * nuestro. Y no sale solo: **se manda pulsando un botón**, a propósito.
+ *
+ * Con cuatro coches al mes, un correo preparado que alguien revisa y manda vale
+ * lo mismo que uno automático y no se arriesga a lo que un automático sí: salir
+ * a un concesionario alemán con un dato mal puesto. Un correo no se desenvía.
+ * Cuando el volumen crezca y este texto haya salido igual cien veces, se
+ * automatiza; hoy no.
+ *
+ * Lleva los datos del cliente —nombre, NIF y dirección— porque la factura tiene
+ * que ir a su nombre y el vendedor los necesita para emitirla. Es lo mínimo para
+ * que la compra exista, y no se manda nada más.
+ */
+leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT l.id, l.vehicle_title, l.vehicle_id, l.user_email, l.lead_type,
+              l.meta,
+              pe.id AS pedido, pe.proveedor, pe.importe::numeric AS importe,
+              o.dealer_name, o.url AS anuncio, o.price::numeric AS precio,
+              u.name, u.apellidos, u.tax_id, u.company_name,
+              u.billing_street, u.billing_postal_code, u.billing_province
+         FROM moveadvisor_market_leads l
+         LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+         LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
+         LEFT JOIN moveadvisor_users u ON lower(u.email) = lower(l.user_email)
+        WHERE l.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const f = r.rows[0];
+    if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+    if (f.lead_type !== 'import') {
+      res.status(409).json({ ok: false, error: 'no_es_importacion', detail: 'Esto solo es de una importación.' });
+      return;
+    }
+
+    // A quién: el correo de su ficha de Proveedores, buscada como la busca el
+    // portero de la liberación — por el nombre normalizado, no a pelo.
+    const nombreDelVendedor = String(f.proveedor ?? f.dealer_name ?? '').trim();
+    const v = nombreDelVendedor
+      ? await query<{ email: string | null; nombre: string }>(
+          `SELECT email, nombre FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+          [nombreComparable(nombreDelVendedor)]
+        ).catch(() => ({ rows: [] as { email: string | null; nombre: string }[] }))
+      : { rows: [] as { email: string | null; nombre: string }[] };
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_vendedor',
+        detail: `No hay correo de ${nombreDelVendedor || 'el vendedor'}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const cliente = {
+      nombre: String(f.company_name ?? '').trim()
+        || [f.name, f.apellidos].map((x) => String(x ?? '').trim()).filter(Boolean).join(' '),
+      nif: f.tax_id as string | null,
+      direccion: f.billing_street as string | null,
+      cp: f.billing_postal_code as string | null,
+      provincia: f.billing_province as string | null,
+    };
+    const falta = faltaParaPedirLaFactura({ vehiculo: String(f.vehicle_title ?? ''), cliente });
+    if (falta.length) {
+      // Sin sus datos, la factura vuelve mal hecha y hay que pedirla otra vez.
+      res.status(409).json({
+        ok: false, error: 'faltan_datos_del_cliente',
+        detail: `Falta ${escritoEnLista(falta)}. Lo rellena él en su perfil de PopCar.`,
+      });
+      return;
+    }
+
+    const { subject, html } = correoDeFacturaAlVendedor({
+      vehiculo: String(f.vehicle_title ?? ''),
+      anuncio: f.anuncio as string | null,
+      pedido: f.pedido as string | null,
+      importe: f.importe != null ? Number(f.importe) : (f.precio != null ? Number(f.precio) : null),
+      cliente,
+    });
+
+    // `alClienteSiempre` porque el desvío de pruebas no puede tragarse esto: si
+    // no sale, no hay factura, y quien pulsa tiene que enterarse de que no salió.
+    await enviar({ to: para, subject, html, alClienteSiempre: true });
+
+    await query(
+      `UPDATE moveadvisor_market_leads
+          SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
+                'factura_vendedor_pedida_at', to_jsonb(NOW()),
+                'factura_vendedor_pedida_a', to_jsonb($2::text))
+        WHERE id = $1`,
+      [req.params.id, para]
+    ).catch((e: Error) => console.error('[leads] no se ha podido anotar la petición:', e.message));
+
+    res.json({ ok: true, para });
+  } catch (err) {
+    falloInterno(res, 'factura_vendedor_failed', err);
+  }
+});
 leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operations']), async (req, res) => {
   try {
     const leadResult = await query(
