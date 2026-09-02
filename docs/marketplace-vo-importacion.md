@@ -350,6 +350,7 @@ Del perito vuelven tres cosas y cada una tiene su sitio en la pantalla:
   como visto y abre la puerta al pago.
 - **Su informe y las fotos.** Al bloque de Documentos de la peritación, igual
   que los papeles del coche van a los del expediente.
+- **Los daños, partida por partida**, con lo que estima que cuesta cada uno.
 - **Su factura.** Número, fecha e importe.
 
 Esos 289 € van a **dos sitios**, porque son dos preguntas distintas:
@@ -363,6 +364,30 @@ Lo segundo llega más tarde y es a propósito: el perito cobra **antes** de que
 exista el pedido —el pedido nace al liberar el pago—, así que es el pedido el
 que recoge el gasto al nacer. Apuntar la factura dos veces la corrige; no
 duplica ni el pago ni el coste.
+
+### Lo que costaría dejarlo bien
+
+Las partidas dañadas se apuntan una a una —pieza e importe— o se **pegan de**
+**una hoja de cálculo**, que es como llega media vez que el informe trae veinte.
+Vale lo copiado de Excel, un CSV con punto y coma, o «pieza importe» por línea;
+la cabecera se salta sola y **lo pegado se enseña antes de guardarse**. Veinte
+partidas mal leídas en la base son veinte borrados a mano.
+
+De ahí sale el total, y de ese total sale el **precio de reacondicionamiento**
+que se le da al cliente — que hasta ahora salía de la memoria de quien cogía el
+teléfono. Aparece en la peritación y también en el expediente, que es donde
+está mirando quien habla con él.
+
+Dos cosas que el total dice a la cara, y que son el motivo de que esté escrito
+así y no como una suma a secas:
+
+- **Cuántas partidas van sin valorar.** El perito ve un golpe y no siempre le
+  pone precio. Si esas se cuentan como cero, el total va corto justo en los
+  coches peores, que son los que más caro salen si el presupuesto se queda por
+  debajo. Con alguna sin valorar, la cifra sale en ámbar.
+- **Que no es un presupuesto de taller.** Es lo que estima un perito alemán
+  mirando el coche; se repara aquí, con otras manos y otros precios. Sirve para
+  saber de qué orden hablamos, no para cerrar un precio con nadie.
 
 ---
 ## Antes de soltar el dinero al vendedor
@@ -680,6 +705,7 @@ que hay que poder cumplir: no la hace el sistema, la haces tú al llamar.
 | Los papeles del coche | **Documentos**, en el expediente |
 | Quién vio el coche, qué día y qué encontró | **Peritaciones**, repartidas por estado |
 | El informe del perito y sus fotos | **Documentos**, en la peritación |
+| Qué está roto y qué costaría arreglarlo | **Los daños que vio**, en la peritación, y el total en el expediente |
 | Lo que nos cobró el perito, y pagárselo | **Facturación proveedores → Recibidas** |
 | Lo que cuesta este coche, con la peritación dentro | **Lo que cuesta**, en su pedido |
 | El día que has quedado para entregarlo | **Día de la entrega**, en el expediente |

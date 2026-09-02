@@ -15,6 +15,8 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
+import DanosDelCoche from '../components/DanosDelCoche.js';
+import { type Dano, resumenDeDanos, comoSeCuenta } from '../lib/danos.js';
 
 const ESTADOS = ['Por encargar', 'Encargada', 'Hecha'] as const;
 
@@ -49,6 +51,8 @@ interface Peritacion {
   encargo_enviado_at: string | null;
   encargo_enviado_a: string | null;
   created_at: string;
+  /** Lo que vio roto, con lo que estima que cuesta cada partida. */
+  danos?: Dano[];
 }
 
 const eur = (n: unknown) =>
@@ -146,6 +150,27 @@ export default function PeritacionesPage() {
     }
   }
 
+  /**
+   * Los daños: apuntar, corregir, quitar y pegar de una hoja.
+   *
+   * Todos recargan la lista entera en vez de tocar el estado a mano. Es una
+   * llamada de más y a cambio el total de la pantalla es siempre el de la
+   * base: un total que se calcula en dos sitios acaba diciendo dos cosas.
+   */
+  async function conLosDanos(id: string, hazlo: () => Promise<{ ok: boolean; error?: string }>) {
+    setGuardando(true);
+    try {
+      const r = await hazlo();
+      if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido guardar.'); return; }
+      const datos = await carga();
+      setAbierta((previo) => (previo && previo.id === id ? (datos.find((x) => x.id === id) ?? previo) : previo));
+    } catch (e) {
+      setError((e as Error)?.message || 'No se ha podido guardar.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function anotaElResultado(id: string, veredicto: string, notas: string) {
     setGuardando(true);
     try {
@@ -217,6 +242,11 @@ export default function PeritacionesPage() {
                         {VEREDICTOS.find(([k]) => k === p.veredicto)?.[1]}
                       </div>
                     )}
+                    {(p.danos?.length ?? 0) > 0 && (
+                      <div className="text-[11px] text-brand-500 mt-1">
+                        Daños: {comoSeCuenta(resumenDeDanos(p.danos ?? []))}
+                      </div>
+                    )}
                     <div className="text-[10px] text-brand-300 mt-1">{p.id}</div>
                   </button>
                 ))}
@@ -236,6 +266,16 @@ export default function PeritacionesPage() {
           onAvisarCita={() => void preparaElCorreo(abierta.id, 'cita')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
           onFactura={(d) => void anotaLaFactura(abierta.id, d)}
+          onApuntarDano={(d) => void conLosDanos(abierta.id, () =>
+            api.post(`/peritaciones/${abierta.id}/danos`, d))}
+          onCorregirDano={(danoId, d) => void conLosDanos(abierta.id, () =>
+            api.patch(`/peritaciones/${abierta.id}/danos/${danoId}`, d))}
+          onQuitarDano={(danoId) => void conLosDanos(abierta.id, () =>
+            api.delete(`/peritaciones/${abierta.id}/danos/${danoId}`))}
+          onPegar={(texto) => api.post<{ danos: Dano[]; malas: string[] }>(
+            `/peritaciones/${abierta.id}/danos/pegadas`, { texto, soloVista: true })}
+          onGuardarPegado={(texto) => void conLosDanos(abierta.id, () =>
+            api.post(`/peritaciones/${abierta.id}/danos/pegadas`, { texto }))}
         />
       )}
 
@@ -251,7 +291,10 @@ export default function PeritacionesPage() {
   );
 }
 
-function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura, onAvisarCita }: {
+function PeritacionAbierta({
+  p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura, onAvisarCita,
+  onApuntarDano, onCorregirDano, onQuitarDano, onPegar, onGuardarPegado,
+}: {
   p: Peritacion;
   guardando: boolean;
   onCerrar: () => void;
@@ -260,6 +303,11 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
   onResultado: (veredicto: string, notas: string) => void;
   onFactura: (datos: Record<string, string>) => void;
   onAvisarCita: () => void;
+  onApuntarDano: (d: { pieza: string; coste: string; notas: string }) => void;
+  onCorregirDano: (danoId: string, d: Record<string, string>) => void;
+  onQuitarDano: (danoId: string) => void;
+  onPegar: (texto: string) => Promise<unknown>;
+  onGuardarPegado: (texto: string) => void;
 }) {
   const [datos, setDatos] = useState({
     perito: p.perito ?? '', donde: p.donde ?? '', contacto: p.contacto ?? '',
@@ -421,6 +469,24 @@ function PeritacionAbierta({ p, guardando, onCerrar, onGuardar, onEncargar, onRe
             Anotar lo que vio
           </button>
         </div>
+
+        {/*
+          * Los daños, y lo que estima que cuesta arreglarlos.
+          *
+          * Va debajo del veredicto porque es su detalle: el veredicto dice si
+          * el coche es el que se anunció, y esto, en qué estado está. De aquí
+          * sale el precio de reacondicionamiento que se le da al cliente, que
+          * hasta ahora salía de la memoria de quien cogía el teléfono.
+          */}
+        <DanosDelCoche
+          danos={p.danos ?? []}
+          guardando={guardando}
+          onApuntar={onApuntarDano}
+          onCorregir={onCorregirDano}
+          onQuitar={onQuitarDano}
+          onPegar={onPegar}
+          onGuardarPegado={onGuardarPegado}
+        />
 
         {/*
           * Su factura.

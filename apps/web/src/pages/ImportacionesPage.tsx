@@ -4,6 +4,7 @@ import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
+import { comoSeCuenta } from '../lib/danos.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
@@ -868,6 +869,27 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                     Peritación {x.meta.peritacion.estado.toLowerCase()}
                     {x.meta.peritacion.perito ? ` · ${x.meta.peritacion.perito}` : ' · sin perito todavía'}
                   </span>
+                )}
+                {/*
+                  * Lo que costaría dejarlo bien.
+                  *
+                  * Es el dato con el que se le da al cliente un precio de
+                  * reacondicionamiento, y hasta ahora no estaba en ningún
+                  * sitio: salía de la memoria de quien cogía el teléfono.
+                  *
+                  * Con partidas sin valorar se pinta en ámbar y se dice
+                  * cuántas son. Un total que va corto y no lo avisa es peor
+                  * que no tener total.
+                  */}
+                {(x.meta.peritacion.danos?.cuantas ?? 0) > 0 && (
+                  <div className={`text-[12px] mt-1 font-semibold ${
+                    x.meta.peritacion.danos?.sinValorar ? 'text-amber-700' : 'text-emerald-800/80'}`}>
+                    Daños: {comoSeCuenta({
+                      cuantas: x.meta.peritacion.danos?.cuantas ?? 0,
+                      total: Number(x.meta.peritacion.danos?.total ?? 0),
+                      sinValorar: x.meta.peritacion.danos?.sinValorar ?? 0,
+                    })}
+                  </div>
                 )}
                 <div className="mt-1">
                   <a href="/peritaciones" className="text-[11px] text-brand-400 underline underline-offset-2">

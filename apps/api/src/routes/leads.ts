@@ -293,7 +293,18 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'peritacion', (
                     SELECT json_build_object(
                       'id', pr.id, 'estado', pr.estado, 'veredicto', pr.veredicto,
-                      'perito', pr.perito, 'fecha_hecha', pr.fecha_hecha)
+                      'perito', pr.perito, 'fecha_hecha', pr.fecha_hecha,
+                      -- Lo que vio roto y lo que estima que cuesta. Va aquí
+                      -- porque quien da el precio de reacondicionamiento al
+                      -- cliente está mirando el expediente, no la peritación.
+                      'danos', (
+                        SELECT json_build_object(
+                          'cuantas',    COUNT(*),
+                          'total',      COALESCE(SUM(d.coste), 0),
+                          'sinValorar', COUNT(*) FILTER (WHERE d.coste IS NULL))
+                          FROM erp_peritacion_danos d
+                         WHERE d.peritacion_id = pr.id
+                      ))
                       FROM erp_peritaciones pr
                      WHERE pr.lead_id = moveadvisor_market_leads.id
                      LIMIT 1

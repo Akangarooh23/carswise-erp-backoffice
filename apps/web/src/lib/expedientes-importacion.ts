@@ -78,6 +78,16 @@ export interface MetaImportacion {
     veredicto: string | null;
     perito: string | null;
     fecha_hecha: string | null;
+    /**
+     * Lo que vio roto y lo que estima que cuesta.
+     *
+     * Va en el expediente y no solo en la peritación porque quien le da al
+     * cliente un precio de reacondicionamiento está mirando esto.
+     *
+     * `sinValorar` viaja pegado al total a propósito: sin él, un total de
+     * 400 € con tres partidas sin precio se lee como un coche casi sano.
+     */
+    danos?: { cuantas: number; total: number | string; sinValorar: number } | null;
   } | null;
   // Cuándo se le preguntó al vendedor si el coche seguía ahí.
   reserva_preguntada_at?: string | null;

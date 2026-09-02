@@ -285,6 +285,31 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 - [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
 - [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
       que respalda la decisión de soltar 16.890 €.
+
+**Y lo que costaría dejarlo bien** · en «Los daños que vio»
+
+- [ ] Añade una partida **a mano**: «Paragolpes delantero», 480. Y otra **sin
+      importe**: «Aleta trasera izquierda». Se puede, y es lo normal.
+- [ ] Mira el total: dice **«480 € en 2 partidas, y 1 sin valorar»**, en ámbar.
+      Un total que va corto y no lo avisa es peor que no tener total.
+- [ ] Pulsa **«pegar de una hoja»** y pega esto tal cual, con tabuladores o
+      copiándolo de un Excel:
+
+      Pieza	Coste
+      Faro izquierdo	610,50
+      Capó	1.200,00
+      Llanta 18
+
+- [ ] Pulsa **«Ver lo que se ha entendido»**. **No se guarda todavía**: se
+      enseña. La cabecera «Pieza / Coste» **no** está, «Capó» son 1.200 € —no
+      1, ni un error— y «Llanta 18» entra como pieza sin valorar, porque son
+      pulgadas y no dieciocho euros.
+- [ ] Guárdalo. El total sube y las partidas se listan una a una.
+- [ ] Corrige un importe en la lista y déjalo **en blanco**: vuelve a «sin
+      valorar», no a cero.
+- [ ] Vuelve al **expediente**: debajo de la peritación sale el mismo total.
+      Es donde está mirando quien le da al cliente el precio de
+      reacondicionamiento.
 - [ ] Apunta **su factura**: número, fecha e importe.
 - [ ] Ve a **Facturación proveedores → Recibidas de proveedores**: ahí está,
       pendiente de pagar. Es la pregunta de «a quién le debemos dinero».

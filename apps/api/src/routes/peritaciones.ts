@@ -27,6 +27,7 @@ import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de
 import {
   papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar,
 } from '../lib/adjuntos-del-correo.js';
+import { costeQueSeGuarda, faltaParaApuntarUnDano, leeLoPegado } from '../lib/danos-del-coche.js';
 import {
   correoDeEncargoAlPerito, faltaParaEncargarLaRevision,
   correoDeLaCitaAlVendedor, faltaParaAvisarDeLaCita,
@@ -58,6 +59,30 @@ const ENSURE_TABLE = `
     updated_at      TIMESTAMPTZ DEFAULT NOW()
   )`;
 
+/**
+ * Lo que vio roto, partida por partida.
+ *
+ * En tabla aparte y no en un campo de texto de la peritación porque la
+ * pregunta que hay detrás es una suma: cuánto cuesta dejar el coche bien. Un
+ * párrafo con «golpe en la aleta y el faro» no se suma, y el precio de
+ * reacondicionamiento que se le da al cliente acaba saliendo de la memoria de
+ * quien coge el teléfono.
+ */
+const ENSURE_DANOS = `
+  CREATE TABLE IF NOT EXISTS erp_peritacion_danos (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    peritacion_id TEXT NOT NULL,
+    pieza         TEXT NOT NULL DEFAULT '',
+    coste         NUMERIC(12,2),
+    notas         TEXT NOT NULL DEFAULT '',
+    creado_por    TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
+const ENSURE_DANOS_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_peritacion_danos_peritacion
+    ON erp_peritacion_danos (peritacion_id)`;
+
 /** Una peritación por coche: si ya hay, no se abre otra. */
 const ENSURE_UNICA = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_peritaciones_lead
@@ -68,6 +93,8 @@ async function prepara(): Promise<void> {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
   await query(ENSURE_UNICA, []).catch(() => {});
+  await query(ENSURE_DANOS, []).catch(() => {});
+  await query(ENSURE_DANOS_INDEX, []).catch(() => {});
   // Para las tablas que ya existían antes de que hubiera factura.
   await query(
     `ALTER TABLE erp_peritaciones
@@ -78,6 +105,14 @@ async function prepara(): Promise<void> {
     []
   ).catch(() => {});
   preparado = true;
+}
+
+interface DanoDeFila {
+  id: string;
+  peritacion_id: string;
+  pieza: string;
+  coste: string | null;
+  notas: string;
 }
 
 function nt(v: unknown): string {
@@ -101,8 +136,25 @@ peritacionesRouter.get(
     // entrado no llega al ERP, así que se mira lo que hay.
     await abreLasQueFalten().catch(() => 0);
     try {
-      const r = await query(`SELECT ${CAMPOS} FROM erp_peritaciones ORDER BY created_at DESC`, []);
-      res.json({ ok: true, data: r.rows });
+      const r = await query<{ id: string }>(
+        `SELECT ${CAMPOS} FROM erp_peritaciones ORDER BY created_at DESC`, []);
+      // Los daños van con su peritación y no en otra llamada: la pantalla
+      // enseña el total al lado del veredicto, y dos llamadas se pintan en
+      // dos momentos distintos.
+      const danos = await query<DanoDeFila>(
+        `SELECT id, peritacion_id, pieza, coste::numeric AS coste, notas
+           FROM erp_peritacion_danos ORDER BY created_at`, []
+      ).catch(() => ({ rows: [] as DanoDeFila[] }));
+      const porPeritacion = new Map<string, DanoDeFila[]>();
+      for (const d of danos.rows) {
+        const suyos = porPeritacion.get(d.peritacion_id) ?? [];
+        suyos.push(d);
+        porPeritacion.set(d.peritacion_id, suyos);
+      }
+      res.json({
+        ok: true,
+        data: r.rows.map((p) => ({ ...p, danos: porPeritacion.get(p.id) ?? [] })),
+      });
     } catch (err) {
       console.error('[peritaciones] listar:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'peritaciones_failed' });
@@ -397,6 +449,140 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
   } catch (err) {
     console.error('[peritaciones] cita:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'cita_failed' });
+  }
+});
+
+// ── Los daños que vio ───────────────────────────────────────────────────────
+/**
+ * Apuntar una partida dañada, con lo que el perito estima que cuesta.
+ *
+ * El importe es opcional a propósito: un perito lista un golpe en la aleta y
+ * no siempre le pone precio. Si esa partida no se pudiera apuntar sin importe,
+ * o se quedaría fuera o alguien le pondría un cero — y un cero dice que
+ * arreglarlo es gratis, que es peor que no saberlo.
+ */
+peritacionesRouter.post('/peritaciones/:id/danos', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const pieza = nt(req.body?.pieza);
+    const falta = faltaParaApuntarUnDano({ pieza });
+    if (falta.length) {
+      res.status(400).json({ ok: false, error: 'faltan_datos', detail: `Falta ${escritoEnLista(falta)}.` });
+      return;
+    }
+    const suya = await query<{ id: string }>(
+      `SELECT id FROM erp_peritaciones WHERE id = $1`, [req.params.id]);
+    if (!suya.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+
+    const r = await query<DanoDeFila>(
+      `INSERT INTO erp_peritacion_danos (peritacion_id, pieza, coste, notas, creado_por)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, peritacion_id, pieza, coste::numeric AS coste, notas`,
+      [req.params.id, pieza, costeQueSeGuarda(req.body?.coste), nt(req.body?.notas),
+       req.actor?.name ?? req.actor?.sub ?? '']
+    );
+    res.json({ ok: true, data: r.rows[0] });
+  } catch (err) {
+    console.error('[peritaciones] apuntar daño:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'dano_failed' });
+  }
+});
+
+/** Corregir una partida ya apuntada. */
+peritacionesRouter.patch('/peritaciones/:id/danos/:danoId', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const sets: string[] = [];
+    const valores: unknown[] = [req.params.danoId, req.params.id];
+    const pon = (campo: string, valor: unknown) => {
+      valores.push(valor);
+      sets.push(`${campo} = $${valores.length}`);
+    };
+    if (req.body?.pieza !== undefined) pon('pieza', nt(req.body.pieza));
+    if (req.body?.notas !== undefined) pon('notas', nt(req.body.notas));
+    // `coste` se puede dejar en blanco a posta: es volver a «sin valorar».
+    if (req.body?.coste !== undefined) pon('coste', costeQueSeGuarda(req.body.coste));
+    if (!sets.length) { res.status(400).json({ ok: false, error: 'nada_que_cambiar' }); return; }
+
+    const r = await query<DanoDeFila>(
+      `UPDATE erp_peritacion_danos SET ${sets.join(', ')}
+        WHERE id = $1 AND peritacion_id = $2
+        RETURNING id, peritacion_id, pieza, coste::numeric AS coste, notas`,
+      valores
+    );
+    if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrado' }); return; }
+    res.json({ ok: true, data: r.rows[0] });
+  } catch (err) {
+    console.error('[peritaciones] corregir daño:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'dano_failed' });
+  }
+});
+
+/**
+ * Quitar una partida.
+ *
+ * Se pide el número de la peritación además del de la partida: un borrado que
+ * solo mira el identificador de la fila borra la de cualquier otro coche si el
+ * identificador viene equivocado.
+ */
+peritacionesRouter.delete('/peritaciones/:id/danos/:danoId', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query(
+      `DELETE FROM erp_peritacion_danos WHERE id = $1 AND peritacion_id = $2`,
+      [req.params.danoId, req.params.id]
+    );
+    if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrado' }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[peritaciones] quitar daño:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'dano_failed' });
+  }
+});
+
+/**
+ * Lo pegado de una hoja de cálculo, de una vez.
+ *
+ * Con `soloVista` no guarda nada: devuelve lo que ha entendido y lo que no,
+ * para poder enseñarlo antes. Veinte partidas escritas mal en la base son
+ * veinte borrados a mano; una vista previa es un vistazo.
+ */
+peritacionesRouter.post('/peritaciones/:id/danos/pegadas', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const { danos, malas } = leeLoPegado(req.body?.texto);
+    if (req.body?.soloVista === true) {
+      res.json({ ok: true, vista: true, danos, malas });
+      return;
+    }
+    if (!danos.length) {
+      res.status(400).json({
+        ok: false, error: 'nada_que_apuntar',
+        detail: 'No se ha entendido ninguna partida de lo pegado.',
+      });
+      return;
+    }
+    const suya = await query<{ id: string }>(
+      `SELECT id FROM erp_peritaciones WHERE id = $1`, [req.params.id]);
+    if (!suya.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+
+    // De un golpe: si una fila falla, no se quedan quince dentro y cinco fuera.
+    await query(
+      `INSERT INTO erp_peritacion_danos (peritacion_id, pieza, coste, notas, creado_por)
+       SELECT $1, pieza, coste, notas, $5
+         FROM UNNEST($2::text[], $3::numeric[], $4::text[]) AS t(pieza, coste, notas)`,
+      [
+        req.params.id,
+        danos.map((d) => d.pieza),
+        danos.map((d) => d.coste),
+        danos.map((d) => d.notas ?? ''),
+        req.actor?.name ?? req.actor?.sub ?? 'pegado de una hoja',
+      ]
+    );
+    res.json({ ok: true, cuantas: danos.length, malas });
+  } catch (err) {
+    console.error('[peritaciones] pegar daños:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'danos_failed' });
   }
 });
 
