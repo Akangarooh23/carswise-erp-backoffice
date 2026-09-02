@@ -1,0 +1,77 @@
+/**
+ * Qué se enseña de un tramo de transporte en cada fase.
+ *
+ * Un tramo recién nacido enseñaba a la vez el transportista, el precio, la
+ * dirección exacta de recogida, el día, el botón de preguntarle al vendedor y
+ * el de mandarle la orden al transportista. La mitad de eso no se puede hacer
+ * todavía, y **un hueco vacío parece una tarea pendiente**: puesto delante en
+ * la fase que no toca se rellena con lo primero que sirva.
+ *
+ * Y uno de esos botones hacía daño de verdad. La orden de recogida se podía
+ * mandar antes de preguntarle al vendedor dónde y cuándo se recoge, así que
+ * salía con la ciudad del anuncio por dirección. Un camión no va a una ciudad:
+ * va a una calle, un día, a una hora y preguntando por alguien. Un camión en la
+ * puerta equivocada no se deshace.
+ *
+ * Es el mismo criterio que en los pedidos y en las peritaciones: se enseña lo
+ * de la fase, y lo demás sigue estando detrás de «Ver todo».
+ */
+
+export type BloqueDeTramo = 'quien' | 'dondeRecoger' | 'ruta' | 'orden' | 'fotos';
+
+export const LO_DE_CADA_FASE: Record<string, BloqueDeTramo[]> = {
+  // Buscando quién lo trae. Y, si sale del vendedor, preguntarle dónde y cuándo.
+  'Por organizar': ['quien', 'dondeRecoger'],
+  // Contratado: con su respuesta se cierra la ruta y se manda la orden.
+  'Contratado':    ['quien', 'dondeRecoger', 'ruta', 'orden'],
+  // Ya lo tiene: lo que queda son las fotos del viaje.
+  'Recogido':      ['ruta', 'orden', 'fotos'],
+  'En tránsito':   ['ruta', 'fotos'],
+  'Entregado':     ['ruta', 'fotos'],
+  // Una incidencia puede pasar en cualquier momento: se enseña todo.
+  'Con incidencia': ['quien', 'dondeRecoger', 'ruta', 'orden', 'fotos'],
+};
+
+export function bloquesDelTramo(estado: string): BloqueDeTramo[] {
+  return LO_DE_CADA_FASE[estado] ?? ['quien'];
+}
+
+/**
+ * Preguntarle al vendedor dónde se recoge **solo tiene sentido en el tramo 1**.
+ *
+ * Es el que sale de la nave del vendedor alemán. El segundo sale de nuestra
+ * campa, y ahí no hay a quién preguntar: el correo iría igualmente al
+ * concesionario, preguntándole por una recogida que no es suya.
+ */
+export function seLePreguntaAlVendedor(tramo: number | string | null | undefined): boolean {
+  return Number(tramo) === 1;
+}
+
+/** Lo que impide mandar la orden de recogida, si algo lo impide. */
+export function faltaParaLaOrden(t: {
+  transportista?: string | null;
+  desde?: string | null;
+  hasta?: string | null;
+  tramo?: number | string | null;
+  recogida_preguntada_at?: string | null;
+}): string[] {
+  const falta: string[] = [];
+  if (!String(t.transportista ?? '').trim()) falta.push('elegir quién lo trae');
+  if (!String(t.desde ?? '').trim()) falta.push('de dónde sale');
+  if (!String(t.hasta ?? '').trim()) falta.push('a dónde va');
+  // En el primer tramo, la dirección buena la da el vendedor. Sin preguntarle,
+  // lo que hay escrito en «Desde» es la ciudad del anuncio.
+  if (seLePreguntaAlVendedor(t.tramo) && !t.recogida_preguntada_at) {
+    falta.push('preguntarle antes al vendedor dónde y cuándo se recoge');
+  }
+  return falta;
+}
+
+/** Cuándo se sabe cada dato, para no dejarlo a la intuición. */
+export const PISTAS: Record<string, string> = {
+  transportista: 'De la lista de Proveedores. Sin él no hay a quién mandarle la orden.',
+  coste: 'Lo que nos cobra por este tramo, no lo que paga el cliente.',
+  desde: 'La dirección exacta, la que dé el vendedor. Una ciudad no es una dirección.',
+  hasta: 'A dónde lo lleva: nuestra campa, o la dirección del cliente en el último tramo.',
+  recogida_prevista: 'El día que dice el vendedor que se lo pueden llevar.',
+};

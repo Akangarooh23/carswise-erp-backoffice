@@ -608,6 +608,12 @@ El tramo pone «München → Zaragoza» porque la ciudad es lo único que trae e
 anuncio. Un transportista no va a una ciudad.
 
 - [ ] Pulsa **«Preguntárselo al vendedor»**. Se abre para revisarlo.
+- [ ] Fíjate en que **«Mandársela al transportista» está apagada** hasta que le
+      hayas preguntado al vendedor y haya transportista elegido. Dice qué falta.
+      Sin su respuesta, «Desde» es la ciudad del anuncio, y un camión no va a una
+      ciudad: va a una calle, un día, a una hora y preguntando por alguien.
+- [ ] Y en el **segundo tramo** ese bloque no sale: no hay vendedor a quien
+      preguntar, el coche sale de nuestra campa.
 - [ ] Pregunta cuatro cosas: la **dirección exacta**, **desde cuándo** está listo
       y con qué horario, **por quién pregunta el conductor** y su teléfono, y
       **qué se lleva con el coche** —llaves, Zulassungsbescheinigung I y II, COC—.

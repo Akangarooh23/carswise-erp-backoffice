@@ -17,6 +17,10 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  * viene de camino, con los días que lleva.
  */
 
+import {
+  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
+} from '../lib/fases-transporte.js';
+
 const ESTADOS = ['Por organizar', 'Contratado', 'Recogido', 'En tránsito', 'Entregado'] as const;
 type Estado = (typeof ESTADOS)[number];
 const INCIDENCIA = 'Con incidencia';
@@ -331,6 +335,22 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_recogida);
 
+  /**
+   * Qué toca en este tramo, y qué no todavía.
+   *
+   * Igual que en los pedidos: se enseña lo de la fase y lo demás se queda
+   * detrás de «Ver todo». Un hueco vacío puesto delante en la fase que no
+   * toca parece una tarea pendiente, y se rellena con lo primero que sirva.
+   */
+  const [verTodo, setVerTodo] = useState(false);
+  const bloques = bloquesDelTramo(t.estado);
+  const toca = (b: string) => verTodo || bloques.includes(b as never);
+  const alVendedor = seLePreguntaAlVendedor(t.tramo);
+  const faltaOrden = faltaParaLaOrden({
+    transportista: datos.transportista, desde: datos.desde, hasta: datos.hasta,
+    tramo: t.tramo, recogida_preguntada_at: t.recogida_preguntada_at,
+  });
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
       <div className="w-full max-w-md h-full overflow-y-auto bg-white shadow-xl p-5" onClick={(e) => e.stopPropagation()}>
@@ -395,6 +415,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           )}
         </div>
 
+        {toca('quien') && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="col-span-2 text-[11px] text-brand-400">
             Quién lo trae
@@ -413,23 +434,39 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           <div className="col-span-2">
             <LoQueTieneAcordado nombre={datos.transportista} />
           </div>
+          <div className="col-span-2 text-[10px] text-brand-300 -mt-1">{PISTAS.transportista}</div>
+        </div>
+        )}
+
+        {/*
+          * La ruta, con la respuesta del vendedor delante.
+          *
+          * «Desde» no es una ciudad: es una calle, un número y un código
+          * postal. Sale de lo que conteste el vendedor, así que aparece con la
+          * fase en la que ya se le ha preguntado.
+          */}
+        {toca('ruta') && (
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <label className="text-[11px] text-brand-400">
             Recogida prevista
             <input type="date" value={datos.recogida_prevista}
                    onChange={(e) => setDatos((d) => ({ ...d, recogida_prevista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
-          <label className="text-[11px] text-brand-400">
+          <div />
+          <label className="col-span-2 text-[11px] text-brand-400">
             Desde
             <input value={datos.desde} onChange={(e) => setDatos((d) => ({ ...d, desde: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{PISTAS.desde}</span>
           </label>
-          <label className="text-[11px] text-brand-400">
+          <label className="col-span-2 text-[11px] text-brand-400">
             Hasta
             <input value={datos.hasta} onChange={(e) => setDatos((d) => ({ ...d, hasta: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
         </div>
+        )}
         {/*
           * La orden de recogida.
           *
@@ -449,6 +486,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * hora y preguntando por alguien. La respuesta a este correo es lo que
           * se escribe arriba.
           */}
+        {toca('dondeRecoger') && alVendedor && (
         <div className="mt-4 pt-3 border-t border-brand-200">
           <div className="text-xs font-semibold text-brand-600 mb-1.5">Dónde y cuándo se recoge</div>
           {t.recogida_preguntada_at ? (
@@ -469,11 +507,14 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
               </button>
               <div className="text-[11px] text-brand-300 mt-1.5">
                 La dirección exacta, desde cuándo, el horario y por quién preguntar.
+                Va antes que la orden: sin su respuesta, «Desde» es la ciudad del anuncio.
               </div>
             </>
           )}
         </div>
+        )}
 
+        {toca('orden') && (
         <div className="mt-4 pt-3 border-t border-brand-200">
           <div className="text-xs font-semibold text-brand-600 mb-1.5">La orden de recogida</div>
           {t.orden_enviada_at ? (
@@ -489,17 +530,26 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             </div>
           ) : (
             <>
-              <button onClick={onMandarOrden} disabled={guardando}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+              {/*
+                * Apagada hasta que se pueda mandar de verdad.
+                *
+                * Un camión que se presenta en la puerta equivocada no se
+                * deshace, y la puerta sale de lo que conteste el vendedor.
+                */}
+              <button onClick={onMandarOrden} disabled={guardando || faltaOrden.length > 0}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
                 Mandársela al transportista
               </button>
               <div className="text-[11px] text-brand-300 mt-1.5">
-                Guarda antes los cambios: la orden sale con lo que hay grabado.
+                {faltaOrden.length > 0
+                  ? `Antes hay que ${faltaOrden.join(', ')}.`
+                  : 'Guarda antes los cambios: la orden sale con lo que hay grabado.'}
               </div>
             </>
           )}
           {aviso && <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>}
         </div>
+        )}
 
         <button onClick={() => onCambiar(datos)} disabled={guardando}
                 className="w-full px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
@@ -507,8 +557,14 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         </button>
 
         {/* Las fotos van aquí, del viaje y no del coche: son lo único que
-            distingue un golpe que ya venía de uno que se hizo por el camino. */}
-        <Documentos ambito="transporte" id={t.id} />
+            distingue un golpe que ya venía de uno que se hizo por el camino.
+            Antes de que lo recojan no hay viaje del que hacer fotos. */}
+        {toca('fotos') && <Documentos ambito="transporte" id={t.id} />}
+
+        <button onClick={() => setVerTodo((v) => !v)}
+                className="mt-4 w-full px-3 py-2 text-[11px] font-semibold text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
+          {verTodo ? 'Ver solo lo de esta fase' : 'Ver todos los datos del tramo'}
+        </button>
 
         {t.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">

@@ -290,6 +290,14 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
   });
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_enviado);
+  /**
+   * Cuándo puede haber matrícula.
+   *
+   * En un coche de importación la da este mismo trámite, así que hasta que no
+   * está en la gestoría no hay ninguna que escribir. Un hueco vacío puesto
+   * antes parece una tarea pendiente y se rellena con la matrícula alemana.
+   */
+  const daMatricula = ['Enviado a gestoría', 'En trámite', 'Resuelto'].includes(t.estado);
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
@@ -371,16 +379,28 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
                                onCambio={(v) => setDatos((d) => ({ ...d, gestoria: v }))} />
             </div>
           </div>
-          <label className="text-[11px] text-brand-400">
-            Matrícula
-            <input value={datos.matricula} onChange={(e) => setDatos((d) => ({ ...d, matricula: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
+          {/*
+            * La matrícula no existe hasta el final.
+            *
+            * En un coche de importación la da este mismo trámite: puesta
+            * delante desde el primer día es un hueco vacío que parece una
+            * tarea pendiente, y se rellena con la matrícula alemana. Se
+            * enseña cuando ya está en la gestoría, que es cuando puede
+            * llegar, y siempre si ya hay algo escrito.
+            */}
+          {(daMatricula || String(datos.matricula ?? '').trim()) && (
+            <label className="text-[11px] text-brand-400">
+              Matrícula
+              <input value={datos.matricula} onChange={(e) => setDatos((d) => ({ ...d, matricula: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+          )}
           <label className="text-[11px] text-brand-400">
             Coste
             <input value={datos.coste} inputMode="decimal"
                    onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">Lo que nos cobra la gestoría por este trámite.</span>
           </label>
         </div>
         <button onClick={() => onCambiar(datos)} disabled={guardando}
