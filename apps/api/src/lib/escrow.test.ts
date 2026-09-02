@@ -121,7 +121,12 @@ describe('el portero está puesto en la ruta', () => {
   test('y se busca a quién se le va a mandar el dinero', () => {
     // El vendedor sale del anuncio del que nació el expediente, y su ficha de
     // Proveedores es donde están el IBAN, el NIF y el correo.
-    assert.match(FUENTE, /JOIN erp_proveedores p ON p\.clave = lower\(trim\(o\.dealer_name\)\)/);
+    // Por el nombre normalizado en JavaScript, no con un lower() de SQL: la
+    // clave del proveedor va sin acentos y con los espacios juntos, así que
+    // comparando a pelo un vendedor con acento no casaba con su propia ficha.
+    // El portero no encontraba a nadie y dejaba pasar el pago.
+    assert.match(FUENTE, /nombreComparable\(nombreDelVendedor\)/);
+    assert.match(FUENTE, /FROM erp_proveedores WHERE clave = /);
     assert.match(FUENTE, /vendedor,/);
   });
 

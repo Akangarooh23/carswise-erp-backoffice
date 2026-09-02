@@ -16,6 +16,7 @@ import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } f
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
+import { nombreComparable } from '../lib/proveedores.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -534,15 +535,43 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
      * haber sabido buscar sería peor que no comprobarlo.
      */
     let vendedor: Record<string, unknown> | undefined;
-    if (fila.vehicle_id) {
-      const v = await query(
-        `SELECT p.iban, p.nif, p.email, p.nombre
-           FROM moveadvisor_market_offers o
-           JOIN erp_proveedores p ON p.clave = lower(trim(o.dealer_name))
-          WHERE o.id = $1`,
-        [fila.vehicle_id]
-      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
-      if (v.rows.length) vendedor = v.rows[0] as Record<string, unknown>;
+    {
+      /**
+       * Su nombre: el del pedido si ya hay, y si no el del anuncio.
+       *
+       * El del pedido manda porque se puede haber corregido a mano —un pedido
+       * creado sin oferta detrás, o un vendedor que cambió de razón social— y
+       * es el que va a salir en los papeles.
+       */
+      const n = await query<{ nombre: string | null }>(
+        `SELECT COALESCE(NULLIF(TRIM(pe.proveedor), ''), o.dealer_name) AS nombre
+           FROM moveadvisor_market_leads l
+           LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+           LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
+          WHERE l.id = $1
+          LIMIT 1`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] as { nombre: string | null }[] }));
+      const nombreDelVendedor = String(n.rows[0]?.nombre ?? '').trim();
+
+      /**
+       * Y su ficha, buscada por el nombre normalizado **en JavaScript**.
+       *
+       * `clave` se guarda pasada por `nombreComparable`, que quita los acentos
+       * y junta los espacios de más. Comparando con un `lower(trim(...))` de
+       * SQL, un vendedor con acento o con dos espacios seguidos no casaba con su
+       * propia ficha: el portero no encontraba a nadie y **dejaba pasar el pago**
+       * sin comprobar nada. Un portero que falla abriendo es peor que no tenerlo.
+       */
+      if (nombreDelVendedor) {
+        const v = await query(
+          `SELECT iban, nif, email, nombre FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+          [nombreComparable(nombreDelVendedor)]
+        ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+        // Sin ficha, se comprueba igual: faltan los tres y hay que crearla.
+        vendedor = (v.rows[0] as Record<string, unknown> | undefined)
+          ?? { nombre: nombreDelVendedor };
+      }
     }
 
     const veredicto = sePuedeLiberar({
