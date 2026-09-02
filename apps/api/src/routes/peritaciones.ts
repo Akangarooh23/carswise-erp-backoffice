@@ -187,8 +187,9 @@ peritacionesRouter.patch(
       pon('fecha_prevista', nt(req.body.fecha_prevista) || null);
     }
     if (req.body?.coste !== undefined) {
-      const n = Number(req.body.coste);
-      pon('coste', Number.isFinite(n) && n >= 0 ? n : null);
+      // En blanco es «todavía no lo ha dicho», no «cero euros»: `Number("")`
+      // da 0, y así una peritación sin presupuesto salía costando 0,00 €.
+      pon('coste', costeQueSeGuarda(req.body.coste));
     }
     if (req.body?.estado !== undefined) {
       const estado = nt(req.body.estado);

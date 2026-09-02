@@ -597,8 +597,6 @@ interface PanelProps {
  */
 function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onGuardarRespuesta, onPedirFactura,
 onEncargarALaGestoria, aviso }: PanelProps) {
-  // Lo que conteste el vendedor. Vacío hasta que alguien lo teclee: aquí no se
-  // adivina nada.
   /**
    * Lo que trae su respuesta al primer correo, en el mismo orden en que lo
    * escribe él: Besichtigung, Uhrzeit, Adresse, Ansprechpartner, Telefon.
@@ -606,9 +604,19 @@ onEncargarALaGestoria, aviso }: PanelProps) {
    * Copiar de un correo a un formulario que ordena las cosas de otra manera
    * es donde se cambian dos campos de sitio. Si la pantalla va en el orden de
    * la carta, se copia de arriba abajo sin pensar.
+   *
+   * **Y se rellena con lo que ya hay apuntado.** Empezaba siempre en blanco,
+   * así que al volver al expediente parecía que no se había guardado nada —y
+   * lo siguiente es teclearlo otra vez encima de lo que ya estaba bien—. Los
+   * datos viven en la peritación; esto es la misma ficha vista desde aquí.
    */
+  const dePeritacion = x.meta?.peritacion;
   const [delVendedor, setDelVendedor] = useState({
-    fecha: '', hora: '', donde: '', contacto: '', telefono: '',
+    fecha: dePeritacion?.fecha_prevista ?? '',
+    hora: dePeritacion?.hora_prevista ?? '',
+    donde: dePeritacion?.donde ?? '',
+    contacto: dePeritacion?.contacto ?? '',
+    telefono: dePeritacion?.telefono ?? '',
   });
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
@@ -833,6 +841,17 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                   <div className="text-[11px] font-semibold text-emerald-800 mb-1.5">
                     Lo que ha contestado
                   </div>
+                  {/*
+                    * Que se vea que está guardado, y dónde ha ido.
+                    *
+                    * Sin esto, un formulario relleno no se distingue de uno a
+                    * medio escribir que nadie ha mandado.
+                    */}
+                  {(dePeritacion?.donde || dePeritacion?.contacto) && (
+                    <div className="text-[12px] font-bold text-emerald-700 mb-1.5">
+                      ✓ Apuntado en la peritación {dePeritacion.id}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-1.5 mb-1.5">
                     <label className="text-[11px] text-emerald-800/80">
                       Qué día va

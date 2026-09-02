@@ -294,6 +294,13 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                     SELECT json_build_object(
                       'id', pr.id, 'estado', pr.estado, 'veredicto', pr.veredicto,
                       'perito', pr.perito, 'fecha_hecha', pr.fecha_hecha,
+                      -- Lo que contestó el vendedor, para poder volver a
+                      -- enseñarlo donde se escribió. Un formulario que se
+                      -- vacía al recargar se lee como que no se ha guardado,
+                      -- y lo siguiente es teclearlo otra vez.
+                      'donde', pr.donde, 'contacto', pr.contacto,
+                      'telefono', pr.telefono, 'hora_prevista', pr.hora_prevista,
+                      'fecha_prevista', TO_CHAR(pr.fecha_prevista, 'YYYY-MM-DD'),
                       -- Lo que vio roto y lo que estima que cuesta. Va aquí
                       -- porque quien da el precio de reacondicionamiento al
                       -- cliente está mirando el expediente, no la peritación.

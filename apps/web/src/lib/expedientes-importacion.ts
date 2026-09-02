@@ -78,6 +78,12 @@ export interface MetaImportacion {
     veredicto: string | null;
     perito: string | null;
     fecha_hecha: string | null;
+    /** Lo que contestó el vendedor, que se escribe en el expediente. */
+    donde?: string | null;
+    contacto?: string | null;
+    telefono?: string | null;
+    fecha_prevista?: string | null;
+    hora_prevista?: string | null;
     /**
      * Lo que vio roto y lo que estima que cuesta.
      *
