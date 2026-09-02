@@ -11,12 +11,16 @@
  *
  * 1. **Si sigue disponible**, y que si lo está lo reserve. Si no lo está, aquí
  *    se acaba y se le devuelve todo al cliente.
- * 2. **Cuándo podemos ir a verlo.** Es la condición para soltarle el dinero, y
- *    conviene que sepa desde el principio que va a ir alguien: enterarse al
- *    final de que hay una visita retrasa la recogida.
- * 3. **La dirección exacta donde está el coche**, y que confirme que tiene
- *    tiempo para atender a nuestro perito. Son los dos datos con los que se
- *    encarga la revisión, y eran los que había que perseguir después.
+ * 2. **Cuándo podemos ir a verlo, con día y hora concretos.** «Esta semana
+ *    cuando quieran» no es una cita: no se puede encargar una revisión con
+ *    eso, y devuelve el problema a un segundo correo. Y conviene que sepa
+ *    desde el principio que va a ir alguien — enterarse al final de que hay
+ *    una visita retrasa la recogida.
+ * 3. **Dónde está el coche exactamente, por quién preguntar y en qué**
+ *    **teléfono.** Son los tres datos con los que se encarga la revisión, y
+ *    son exactamente los tres huecos que hay que rellenar en el ERP cuando
+ *    conteste. Un perito que llega a una nave y pregunta por nadie se vuelve
+ *    sin ver el coche, y volver otro día son otros 289 €.
  *
  * No promete el pago ni dice que el dinero esté esperando. Mientras no haya ido
  * nadie a ver el coche, lo único cierto es que hay un comprador: reservar no es
@@ -85,8 +89,8 @@ export function correoDeReservaAlVendedor(d: DatosDeLaReserva): { subject: strin
   const preguntas =
     '<ol style="margin:8px 0 16px 0;padding-left:20px;font-size:15px;line-height:1.55;color:#2A2A28">' +
     li('<strong>Ist das Fahrzeug noch verfügbar?</strong> Falls ja, würden wir es gerne reservieren.') +
-    li('<strong>Wann könnten wir das Fahrzeug besichtigen?</strong> Wir schicken jemanden zur Inspektion vorbei, bevor wir bezahlen.') +
-    li('<strong>Unter welcher genauen Adresse steht das Fahrzeug?</strong> Bitte bestätigen Sie uns auch, dass Sie Zeit für unseren Prüfer haben.') +
+    li('<strong>Wann könnten wir das Fahrzeug besichtigen?</strong> Bitte nennen Sie uns einen <strong>konkreten Tag und eine Uhrzeit</strong>. Wir schicken jemanden zur Inspektion vorbei, bevor wir bezahlen.') +
+    li('<strong>Unter welcher genauen Adresse steht das Fahrzeug, nach wem sollen wir fragen, und unter welcher Telefonnummer erreichen wir diese Person?</strong> Bitte bestätigen Sie uns auch, dass Sie zu diesem Termin Zeit für unseren Prüfer haben.') +
     '</ol>';
 
   const html =
@@ -100,7 +104,7 @@ export function correoDeReservaAlVendedor(d: DatosDeLaReserva): { subject: strin
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
-    p('<em>we have a buyer for this vehicle. Three questions before we go ahead: <strong>is it still available</strong> —if so, we would like to reserve it—; <strong>when could we come and see it</strong>, since we send someone to inspect it before paying; and <strong>at exactly which address is the car</strong>, confirming that you can make time for our inspector. Just reply to this email.</em>');
+    p('<em>we have a buyer for this vehicle. Three questions before we go ahead: <strong>is it still available</strong> —if so, we would like to reserve it—; <strong>when could we come and see it</strong>, giving us a <strong>specific day and time</strong>, since we send someone to inspect it before paying; and <strong>at exactly which address is the car, who should we ask for, and on what phone number</strong>, confirming that you can make time for our inspector then. Just reply to this email.</em>');
 
   return { subject, html };
 }

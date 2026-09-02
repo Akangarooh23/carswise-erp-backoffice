@@ -43,13 +43,30 @@ describe('las tres preguntas', () => {
     );
   });
 
-  test('la dirección exacta y que tenga tiempo para el perito', () => {
-    // Son los dos datos con los que se encarga la revisión. Sin pedirlos
-    // aquí hay que perseguirlos después, con el coche ya pagado a medias.
+  test('un día y una hora concretos, no «cuando quieran»', () => {
+    // «Esta semana cuando les venga bien» no es una cita: no se puede
+    // encargar una revisión con eso, y devuelve el problema a otro correo.
+    const { html } = correoDeReservaAlVendedor(CASO);
+    assert.match(html, /konkreten Tag und eine Uhrzeit/);
+    assert.match(html, /specific day and time/);
+  });
+
+  test('dónde está, por quién preguntar y en qué teléfono', () => {
+    // Son los tres huecos que hay que rellenar en el ERP con su respuesta.
+    // Un perito que llega a una nave y pregunta por nadie se vuelve sin ver
+    // el coche, y volver otro día son otros 289 €.
     const { html } = correoDeReservaAlVendedor(CASO);
     assert.match(html, /genauen Adresse/);
-    assert.match(html, /Zeit für unseren Prüfer/);
+    assert.match(html, /nach wem sollen wir fragen/);
+    assert.match(html, /Telefonnummer/);
     assert.match(html, /at exactly which address/);
+    assert.match(html, /who should we ask for/);
+    assert.match(html, /phone number/);
+  });
+
+  test('y que confirme que tiene tiempo para el perito ese día', () => {
+    const { html } = correoDeReservaAlVendedor(CASO);
+    assert.match(html, /Zeit für unseren Prüfer/);
     assert.match(html, /make time for our inspector/);
   });
 

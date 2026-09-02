@@ -217,10 +217,15 @@ expediente.
 Lo primero de todo, **preguntarle al vendedor si el coche sigue ahí**:
 
 - [ ] Pulsa **«Preguntarle si sigue disponible»**. Se abre para revisarlo.
-- [ ] El correo pregunta **tres** cosas, y son tres las que enumera: si sigue
-      disponible —y que si lo está lo reserve—; cuándo podemos ir a verlo,
-      diciéndole que vamos **antes de pagar**; y **en qué dirección exacta está
-      el coche**, pidiéndole que confirme que tiene tiempo para nuestro perito.
+- [ ] El correo pregunta **tres** cosas, y son tres las que enumera:
+      1. Si **sigue disponible**, y que si lo está lo reserve.
+      2. **Qué día y a qué hora** podemos ir a verlo — un día y una hora
+         concretos, no «cuando quieran»—, diciéndole que vamos **antes de pagar**.
+      3. **Dónde está exactamente, por quién preguntar y en qué teléfono**, y
+         que confirme que ese día tiene tiempo para nuestro perito.
+- [ ] Esos tres datos del punto 3 son **los tres huecos** que vas a rellenar
+      justo debajo cuando conteste. Un perito que llega a una nave y pregunta
+      por nadie se vuelve sin ver el coche, y volver otro día son otros 289 €.
 - [ ] Comprueba que **no le pide el IBAN**. Un número de cuenta pedido antes de
       saber si el coche existe se pide antes de tiempo, y es el hilo por el que
       entra el fraude de esto: alguien se mete en medio del correo y contesta
