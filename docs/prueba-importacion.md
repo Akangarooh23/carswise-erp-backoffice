@@ -465,7 +465,22 @@ organizar*.
 
 ---
 
-**Y la orden de recogida** · el correo que hoy escribes a mano
+**Primero, preguntarle al vendedor dónde y cuándo**
+
+El tramo pone «München → Zaragoza» porque la ciudad es lo único que trae el
+anuncio. Un transportista no va a una ciudad.
+
+- [ ] Pulsa **«Preguntárselo al vendedor»**. Se abre para revisarlo.
+- [ ] Pregunta cuatro cosas: la **dirección exacta**, **desde cuándo** está listo
+      y con qué horario, **por quién pregunta el conductor** y su teléfono, y
+      **qué se lleva con el coche** —llaves, Zulassungsbescheinigung I y II, COC—.
+- [ ] Ese último punto no es de adorno: un coche que sale de Alemania sin la
+      parte II no se puede matricular aquí, y se descubre con el coche ya en
+      Zaragoza.
+- [ ] Con su respuesta, **escribe la dirección en «Desde» y la fecha en**
+      **«Recogida prevista»**, y guarda.
+
+**Y luego la orden de recogida** · el correo que hoy escribes a mano
 
 - [ ] Rellena el tramo —transportista, coste, fechas— y **guarda**.
 - [ ] Pulsa **«Mandársela al transportista»**. Se abre para revisarla antes de

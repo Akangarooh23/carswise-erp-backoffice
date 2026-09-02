@@ -58,6 +58,9 @@ interface Transporte {
   // Cuándo se le mandó la orden de recogida, y a qué correo.
   orden_enviada_at?: string | null;
   orden_enviada_a?: string | null;
+  // Cuándo se le preguntó al vendedor dónde y cuándo se recoge.
+  recogida_preguntada_at?: string | null;
+  recogida_preguntada_a?: string | null;
 }
 
 const enCamino = (e: string) => e === 'Recogido' || e === 'En tránsito';
@@ -121,7 +124,7 @@ export default function TransportesPage() {
   // Lo que se le dice a quien acaba de pulsar, donde está mirando.
   const [errorDelPanel, setErrorDelPanel] = useState('');
   // La orden que se está revisando antes de mandarla.
-  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; id: string } | null>(null);
+  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; id: string; ruta: string } | null>(null);
 
   /**
    * Mandarle al transportista la orden de recogida.
@@ -130,15 +133,25 @@ export default function TransportesPage() {
    * está mirando el tramo, y un error detrás del panel abierto se lee como que
    * el botón no hace nada.
    */
-  async function mandaLaOrden(id: string) {
-    // No manda: pide el correo sin enviarlo y lo abre para revisarlo. Un
-    // camión que se presenta en la puerta equivocada no se deshace.
-    //
-    // Con `finally`: sin él, una llamada que revienta deja el panel entero en
-    // «guardando» y todos los botones apagados sin decir por qué.
+  /** Preguntarle al vendedor dónde y cuándo se recoge. */
+  const preguntaLaRecogida = (id: string) =>
+    abreParaRevisar(`/transportes/${id}/datos-recogida`, id);
+
+  const mandaLaOrden = (id: string) => abreParaRevisar(`/transportes/${id}/orden`, id);
+
+  /**
+   * Pide un correo sin mandarlo y lo abre para revisarlo.
+   *
+   * Los dos de esta pantalla se revisan igual y solo cambia la ruta. Un camión
+   * que se presenta en la puerta equivocada no se deshace.
+   *
+   * Con `finally`: sin él, una llamada que revienta deja el panel entero en
+   * «guardando» y todos los botones apagados sin decir por qué.
+   */
+  async function abreParaRevisar(ruta: string, id: string) {
     setGuardando(true);
     try {
-      const r = await api.post<VistaDelCorreo>(`/transportes/${id}/orden`, { soloVista: true });
+      const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true });
       if (!r.ok) {
         const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
         setError(dice);
@@ -147,7 +160,7 @@ export default function TransportesPage() {
       }
       setErrorDelPanel('');
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id });
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id, ruta });
     } catch (e) {
       const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);
@@ -160,10 +173,10 @@ export default function TransportesPage() {
   /** Y ya revisada, se manda con lo que haya cambiado. */
   async function mandaLaRevisada(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
     if (!revisando) return;
-    const { id } = revisando;
+    const { id, ruta } = revisando;
     setGuardando(true);
     try {
-      const r = await api.post(`/transportes/${id}/orden`, cambios);
+      const r = await api.post(ruta, cambios);
       if (!r.ok) { setErrorDelPanel((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.'); return; }
       setRevisando(null);
       const datos = await carga();
@@ -240,6 +253,7 @@ export default function TransportesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(c) => void cambia(abierto.id, c)}
           onMandarOrden={() => void mandaLaOrden(abierto.id)}
+          onPreguntarRecogida={() => void preguntaLaRecogida(abierto.id)}
           aviso={errorDelPanel}
         />
       )}
@@ -303,9 +317,9 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
   );
 }
 
-function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, aviso }: {
+function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPreguntarRecogida, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
-  onMandarOrden: () => void; aviso: string;
+  onMandarOrden: () => void; onPreguntarRecogida: () => void; aviso: string;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
   const [porQue, setPorQue] = useState('');
@@ -427,6 +441,39 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, a
           * Con botón y no automático: un camión que se presenta en la puerta
           * equivocada no se deshace.
           */}
+        {/*
+          * Primero se le pregunta al vendedor, luego se manda la orden.
+          *
+          * «Desde» dice solo una ciudad, porque es lo único que trae el anuncio.
+          * Un transportista no va a una ciudad: va a una calle, un día, a una
+          * hora y preguntando por alguien. La respuesta a este correo es lo que
+          * se escribe arriba.
+          */}
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">Dónde y cuándo se recoge</div>
+          {t.recogida_preguntada_at ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-bold text-emerald-700">
+                ✓ Preguntado al vendedor el {new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}
+              </span>
+              <button onClick={onPreguntarRecogida} disabled={guardando}
+                      className="text-[11px] text-brand-400 underline underline-offset-2">
+                preguntar otra vez
+              </button>
+            </div>
+          ) : (
+            <>
+              <button onClick={onPreguntarRecogida} disabled={guardando}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                Preguntárselo al vendedor
+              </button>
+              <div className="text-[11px] text-brand-300 mt-1.5">
+                La dirección exacta, desde cuándo, el horario y por quién preguntar.
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="mt-4 pt-3 border-t border-brand-200">
           <div className="text-xs font-semibold text-brand-600 mb-1.5">La orden de recogida</div>
           {t.orden_enviada_at ? (

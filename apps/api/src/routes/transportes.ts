@@ -18,6 +18,7 @@ import { enviar } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
+import { correoDeDatosDeRecogida, faltaParaPedirLaRecogida } from '../lib/datos-de-recogida.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import { papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 import {
@@ -64,7 +65,9 @@ const ENSURE_HISTORY = `
 const ENSURE_ORDEN = `
   ALTER TABLE erp_transportes
     ADD COLUMN IF NOT EXISTS orden_enviada_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS orden_enviada_a  TEXT NOT NULL DEFAULT ''`;
+    ADD COLUMN IF NOT EXISTS orden_enviada_a  TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS recogida_preguntada_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS recogida_preguntada_a  TEXT NOT NULL DEFAULT ''`;
 
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_transportes_estado
@@ -89,7 +92,8 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 TO_CHAR(recogida_prevista, 'YYYY-MM-DD') AS recogida_prevista,
                 TO_CHAR(entrega_prevista, 'YYYY-MM-DD')  AS entrega_prevista,
                 fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at,
-                orden_enviada_at, orden_enviada_a`;
+                orden_enviada_at, orden_enviada_a,
+                recogida_preguntada_at, recogida_preguntada_a`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -176,6 +180,107 @@ transportesRouter.post('/transportes', requireRole(['admin', 'operations']), asy
  * este volumen, un correo revisado vale igual que uno automático y no se
  * arriesga a salir con un dato mal puesto.
  */
+/**
+ * Preguntarle al vendedor dónde y cuándo se recoge el coche.
+ *
+ * El tramo dice «München → Zaragoza» porque la ciudad es lo único que trae el
+ * anuncio, y un transportista no va a una ciudad: va a una calle, un día, a una
+ * hora y preguntando por alguien.
+ *
+ * Va antes que la orden al transportista a propósito: la respuesta a esto es lo
+ * que se escribe en «Desde» y en «Recogida prevista», y sin eso la orden sale
+ * con media dirección.
+ */
+transportesRouter.post('/transportes/:id/datos-recogida', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT t.*, pe.proveedor, pe.id AS pedido
+         FROM erp_transportes t
+         LEFT JOIN erp_pedidos pe ON pe.id = t.pedido_id
+        WHERE t.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const t = r.rows[0];
+    if (!t) { res.status(404).json({ ok: false, error: 'transporte_no_encontrado' }); return; }
+
+    const nombre = String(t.proveedor ?? '').trim();
+    if (!nombre) {
+      res.status(409).json({
+        ok: false, error: 'sin_vendedor',
+        detail: 'Este tramo no viene de un pedido, así que no se sabe a quién preguntarle.',
+      });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_vendedor',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+    const datos = {
+      vehiculo: String(t.vehiculo_titulo ?? ''),
+      matricula: t.matricula as string | null,
+      pedido: t.pedido as string | null,
+      ciudad: t.desde as string | null,
+      nota,
+    };
+    const falta = faltaParaPedirLaRecogida(datos);
+    if (falta.length) {
+      res.status(409).json({ ok: false, error: 'faltan_datos', detail: `Falta ${escritoEnLista(falta)}.` });
+      return;
+    }
+
+    const { subject, html } = correoDeDatosDeRecogida(datos);
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+    const cajones = [
+      { ambito: 'lead', id: t.lead_id as string | null },
+      { ambito: 'pedido', id: t.pedido_id as string | null },
+      { ambito: 'transporte', id: req.params.id },
+    ];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    try {
+      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+
+    await query(
+      `UPDATE erp_transportes
+          SET recogida_preguntada_at = NOW(), recogida_preguntada_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    );
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    console.error('[transportes] datos de recogida:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'datos_recogida_failed' });
+  }
+});
 transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operations']), async (req, res) => {
   await prepara();
   try {
