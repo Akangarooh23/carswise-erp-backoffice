@@ -300,6 +300,36 @@ recuperable y quedarse corto es una promesa que no se puede cumplir.
 Es el número que más va a mejorar cuando entre Eurotax.
 
 ---
+## Antes de soltar el dinero al vendedor
+
+Liberar el pago es **el único momento del sistema en que se mueve dinero
+ajeno**. Por eso tiene tres porteros, y los tres miran lo que hay guardado y no
+lo que venga en la petición:
+
+1. **El cliente ha depositado.** El estado del depósito dice «retenido».
+2. **Alguien nuestro ha visto el coche** en Alemania y ha confirmado que es el
+   que se anunció.
+3. **Sabemos a quién se le manda**: el vendedor tiene IBAN, NIF y correo en su
+   ficha de Proveedores.
+
+El tercero es el más nuevo y el que menos parece un portero. Lo es: el IBAN
+porque sin él no hay transferencia posible, el NIF porque va en la factura del
+coche y permite comprobar que la sociedad existe, y el correo porque es a quien
+se le pide **esa factura, a nombre del cliente**. Sin ella los 16.890 € no son
+un suplido —son ingreso de PopCar, con unos 3.500 € de IVA sobre dinero que no
+es nuestro—.
+
+El teléfono y la dirección no bloquean nada. Se agradecen, pero parar un pago
+por no tener un teléfono sería pararlo por nada.
+
+Va aquí y no al confirmar el pedido a propósito: **confirmar es decir que el
+vendedor acepta; soltar es transferirle diecisiete mil euros de un cliente**.
+
+Los vendedores aparecen solos en Proveedores —una rutina barre los nombres ya
+escritos en pedidos, transportes y trámites y da de alta a quien falte— pero
+aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
+
+---
 ## La garantía
 
 **No la damos nosotros.** No le vendemos el coche —se lo vende el concesionario

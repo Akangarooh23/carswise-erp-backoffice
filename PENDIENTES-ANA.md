@@ -269,6 +269,25 @@ Lo que **no** está: una pantalla en el ERP para gestionarlos. Cuando me pases
 los productos los cargo yo, como hice con los transportistas y con Bernal; la
 pantalla la monto cuando haya suficientes como para que compense.
 
+## 5d · Los datos de los vendedores alemanes
+
+En Proveedores están sus nombres —salen solos de los anuncios— y nada más. Para
+poder soltarle el pago a uno hacen falta tres cosas suyas, y el ERP ya no deja
+hacerlo sin ellas:
+
+| Dato | Para qué |
+|---|---|
+| **IBAN** | Adónde se le transfiere. Sin esto no hay pago posible |
+| **NIF** (USt-IdNr) | Va en la factura del coche y permite comprobar que la sociedad existe |
+| **Correo** | A quien se le pide la factura **a nombre del cliente** |
+
+La tercera es la que más arrastra: sin esa factura, los 16.890 € del coche no
+son un suplido sino ingreso nuestro, con unos 3.500 € de IVA encima sobre dinero
+que no es nuestro. Es el punto que hay que cerrar con tu gestoría.
+
+Se rellena a mano, uno a uno, según vayan haciendo falta: no hay forma de
+sacarlos del anuncio.
+
 ## 6 · En Vercel
 
 Todo lo que hay que tocar fuera del código está aquí. Nada de esto se despliega

@@ -21,6 +21,9 @@ fecha futura y cualquier CVC.
 - [ ] **Sabes a qué transportista y a qué gestoría vas a apuntar.** Se eligen
       de una lista en **Proveedores**; si no está, se añade en el momento sin
       salir de la pantalla.
+- [ ] **Y ten a mano el IBAN, el NIF y el correo del vendedor alemán.** Sin los
+      tres, el ERP no deja soltarle el pago. En el paso 3 se explica por qué y
+      dónde se rellenan; para la prueba valen inventados.
 
 ---
 
@@ -192,9 +195,33 @@ expediente.
 - [ ] El botón **«Liberar el pago al vendedor»** está **apagado**, y dice por
       qué: hasta que alguien nuestro no vea el coche, ese dinero no se mueve.
 - [ ] Pulsa **«Hemos visto el coche en Alemania»**. Ahora el otro se enciende.
-- [ ] Púlsalo. El expediente pasa **solo** a «Verificado y pagado».
+- [ ] Púlsalo. **Te va a decir que no**, y esto es a propósito: «Falta el IBAN,
+      el NIF y el correo de Autowelt Kaufmann GmbH. Se rellena en Proveedores».
+
+**Los datos del vendedor** · el paso que falta antes de mover dinero
+
+Vas a transferirle 16.890 € de un cliente a una sociedad alemana. El ERP no te
+deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
+
+| Dato | Para qué |
+|---|---|
+| **IBAN** | Adónde va la transferencia. Es el que más caro sale equivocado |
+| **NIF** | Va en la factura del coche, y permite comprobar que la sociedad existe |
+| **Correo** | A quien se le pide **la factura a nombre del cliente**. Sin ella esos 16.890 € no son un suplido: son ingreso nuestro, con su IVA encima |
+
+- [ ] Ve a **Proveedores** y busca **Autowelt Kaufmann GmbH**. Está ya, dado de
+      alta solo a partir del anuncio, pero **vacío**.
+- [ ] Rellena IBAN, NIF y correo. Para la prueba valen inventados: el IBAN
+      alemán de ejemplo es `DE89 3704 0044 0532 0130 00`.
+- [ ] Guarda y vuelve al expediente.
+- [ ] Ahora sí: **«Liberar el pago al vendedor»**. El expediente pasa **solo** a
+      «Verificado y pagado».
 - [ ] Vuelve a mirarlo: **ya no se puede liberar otra vez**. Un segundo clic con
       el dinero enviado sería un segundo pago.
+
+> **Y comprueba que sigue vigilando**: vacía el IBAN en Proveedores e inténtalo
+> otra vez. Tiene que volver a negarse, y decir que lo que falta es el IBAN. Un
+> portero que solo mira la primera vez no es un portero.
 
 > Si te lo encuentras al revés —el botón encendido sin haber marcado que has
 > visto el coche— páralo y dímelo. Esa es la única regla del sistema que no
