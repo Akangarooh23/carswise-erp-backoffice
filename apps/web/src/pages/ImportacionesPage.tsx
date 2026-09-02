@@ -5,6 +5,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { comoSeCuenta } from '../lib/danos.js';
+import CaminoDelCoche from '../components/CaminoDelCoche.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
@@ -656,6 +657,14 @@ onEncargarALaGestoria, aviso }: PanelProps) {
           </div>
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
+
+        {/*
+          * Lo primero de todo: en qué punto está y qué toca.
+          *
+          * Es la pregunta con la que se abre un expediente, y hasta ahora la
+          * contestaba uno mirando cinco pantallas y acordándose.
+          */}
+        <CaminoDelCoche x={x} />
 
         {/*
           * Lo que no se ha podido hacer, arriba del todo.

@@ -300,6 +300,11 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       -- y lo siguiente es teclearlo otra vez.
                       'donde', pr.donde, 'contacto', pr.contacto,
                       'telefono', pr.telefono, 'hora_prevista', pr.hora_prevista,
+                      -- Y por dónde va la peritación, para poder dibujar el
+                      -- camino del coche sin abrir su pantalla.
+                      'encargo_enviado_at', pr.encargo_enviado_at,
+                      'cita_avisada_at', pr.cita_avisada_at,
+                      'coste', pr.coste::numeric,
                       'fecha_prevista', TO_CHAR(pr.fecha_prevista, 'YYYY-MM-DD'),
                       -- Lo que vio roto y lo que estima que cuesta. Va aquí
                       -- porque quien da el precio de reacondicionamiento al

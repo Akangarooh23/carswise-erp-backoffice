@@ -84,6 +84,10 @@ export interface MetaImportacion {
     telefono?: string | null;
     fecha_prevista?: string | null;
     hora_prevista?: string | null;
+    /** Por dónde va: el encargo, la cita y lo que nos cobra. */
+    encargo_enviado_at?: string | null;
+    cita_avisada_at?: string | null;
+    coste?: number | string | null;
     /**
      * Lo que vio roto y lo que estima que cuesta.
      *
