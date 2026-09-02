@@ -410,6 +410,24 @@ export async function abreTransporteDePedido(datos: {
 }): Promise<string | null> {
   await prepara();
   const tramo = Math.max(1, Math.floor(Number(datos.tramo) || 1));
+
+  /**
+   * De qué expediente es, no solo de qué pedido.
+   *
+   * Faltaba, y el tramo se quedaba con `lead_id` a nulo. Eso rompe dos cosas
+   * que no se ven hasta que hacen falta: **el segundo tramo se queda sin la
+   * dirección del cliente** —sale del expediente, no del pedido— y la orden de
+   * recogida no encuentra ningún papel que adjuntar, porque cuelgan del
+   * expediente también.
+   *
+   * Sale del pedido y no de quien llama: quien llama ya lo sabe, pero uno de
+   * los dos sitios acabaría olvidándoselo.
+   */
+  const delPedido = await query<{ lead_id: string | null }>(
+    `SELECT lead_id FROM erp_pedidos WHERE id = $1`,
+    [datos.pedidoId]
+  ).catch(() => ({ rows: [] as { lead_id: string | null }[] }));
+  const leadId = delPedido.rows[0]?.lead_id ?? null;
   // Se mira ese tramo, no si hay alguno: si no, el segundo viaje no cabría.
   const yaHay = await query(
     `SELECT id FROM erp_transportes WHERE pedido_id = $1 AND tramo = $2`,
@@ -423,9 +441,9 @@ export async function abreTransporteDePedido(datos: {
       async (nuevoId) => {
         await query(
           // En orden: un $8 metido en medio se lee mal y se copia peor.
-          `INSERT INTO erp_transportes (id, pedido_id, tramo, vehiculo_titulo, matricula, desde, hasta, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [nuevoId, datos.pedidoId, tramo, datos.vehiculoTitulo, datos.matricula ?? '',
+          `INSERT INTO erp_transportes (id, pedido_id, lead_id, tramo, vehiculo_titulo, matricula, desde, hasta, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [nuevoId, datos.pedidoId, leadId, tramo, datos.vehiculoTitulo, datos.matricula ?? '',
            datos.desde, datos.hasta, datos.creadoPor]
         );
       }
