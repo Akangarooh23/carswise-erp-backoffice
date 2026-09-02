@@ -18,6 +18,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
+import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -999,6 +1000,106 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
     res.json({ ok: true, para });
   } catch (err) {
     falloInterno(res, 'factura_vendedor_failed', err);
+  }
+});
+/**
+ * Mandarle a la gestoría el encargo de matricular el coche.
+ *
+ * **Un correo por coche, no uno por trámite.** Son tres papeleos pero es el
+ * mismo coche y la misma persona quien los hace; tres correos seguidos del
+ * mismo Kia se contestan una vez y preguntando cuál es cuál.
+ *
+ * La gestoría sale de los propios trámites: si están repartidos entre dos
+ * —que no debería, pero puede—, manda a la del primero y lo dice.
+ */
+leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT l.id, l.vehicle_title, l.lead_type, l.user_email,
+              u.name, u.apellidos, u.tax_id, u.company_name,
+              u.billing_street, u.billing_postal_code, u.billing_province
+         FROM moveadvisor_market_leads l
+         LEFT JOIN moveadvisor_users u ON lower(u.email) = lower(l.user_email)
+        WHERE l.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const f = r.rows[0];
+    if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    const t = await query<{ id: string; tipo: string; gestoria: string; bastidor: string; matricula: string }>(
+      `SELECT id, tipo, gestoria, bastidor, matricula FROM erp_tramites
+        WHERE lead_id = $1 ORDER BY created_at`,
+      [req.params.id]
+    ).catch(() => ({ rows: [] as { id: string; tipo: string; gestoria: string; bastidor: string; matricula: string }[] }));
+    if (!t.rows.length) {
+      res.status(409).json({
+        ok: false, error: 'sin_tramites',
+        detail: 'Todavía no hay trámites abiertos. Se abren al pasar el expediente a «En trámites».',
+      });
+      return;
+    }
+
+    // A quién: la gestoría de los trámites, y su correo de Proveedores.
+    const nombre = t.rows.map((x) => String(x.gestoria ?? '').trim()).find(Boolean) ?? '';
+    if (!nombre) {
+      res.status(409).json({
+        ok: false, error: 'sin_gestoria',
+        detail: 'Elige antes qué gestoría los lleva, en Gestoría.',
+      });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_de_la_gestoria',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const datos = {
+      vehiculo: String(f.vehicle_title ?? ''),
+      bastidor: t.rows.map((x) => String(x.bastidor ?? '').trim()).find(Boolean) ?? null,
+      matricula: t.rows.map((x) => String(x.matricula ?? '').trim()).find(Boolean) ?? null,
+      tramites: t.rows.map((x) => ({ id: String(x.id), tipo: String(x.tipo) })),
+      titular: {
+        nombre: String(f.company_name ?? '').trim()
+          || [f.name, f.apellidos].map((x) => String(x ?? '').trim()).filter(Boolean).join(' '),
+        nif: f.tax_id as string | null,
+        direccion: f.billing_street as string | null,
+        cp: f.billing_postal_code as string | null,
+        provincia: f.billing_province as string | null,
+      },
+    };
+    const falta = faltaParaElEncargo(datos);
+    if (falta.length) {
+      res.status(409).json({
+        ok: false, error: 'faltan_datos_del_encargo',
+        detail: `Falta ${escritoEnLista(falta)}.`,
+      });
+      return;
+    }
+
+    const { subject, html } = correoDeEncargoALaGestoria(datos);
+    // Salta el desvío de pruebas: si no sale, el coche no se matricula.
+    await enviar({ to: para, subject, html, alClienteSiempre: true });
+
+    await query(
+      `UPDATE moveadvisor_market_leads
+          SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
+                'encargo_gestoria_enviado_at', to_jsonb(NOW()),
+                'encargo_gestoria_enviado_a', to_jsonb($2::text))
+        WHERE id = $1`,
+      [req.params.id, para]
+    ).catch((e: Error) => console.error('[leads] no se ha podido anotar el encargo:', e.message));
+
+    res.json({ ok: true, para });
+  } catch (err) {
+    falloInterno(res, 'encargo_gestoria_failed', err);
   }
 });
 leadsRouter.post('/leads/:id/notify', requireRole(['admin', 'support', 'operations']), async (req, res) => {

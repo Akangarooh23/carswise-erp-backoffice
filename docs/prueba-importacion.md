@@ -486,6 +486,25 @@ de matriculación, ITV de homologación y matriculación.
 
 ---
 
+**Y el encargo a la gestoría** · en el expediente, no aquí
+
+Vuelve a **Importaciones** y abre el expediente. Con el coche en «En trámites»
+sale un bloque nuevo: **«El encargo a la gestoría»**.
+
+- [ ] Pulsa **«Mandárselo a la gestoría»**. Queda escrito **«✓ Mandado el … a …»**.
+- [ ] Ábrelo (te llega a ti) y comprueba las dos cosas que lo hacen servir:
+- [ ] Dice **«Se matricula a nombre del cliente, no del nuestro»**, con su nombre,
+      su NIF y su domicilio. Es lo que más caro sale equivocado: a nombre de
+      PopCar serían **dos** cambios de titularidad en vez de uno.
+- [ ] Y pide **el importe real del impuesto de matriculación**. Sin esa cifra no
+      se le puede devolver ni cobrar la diferencia al cliente, y no llega sola.
+- [ ] Es **un solo correo con los tres trámites**, no tres correos. El asunto es
+      del coche, no de un trámite.
+
+> Pruébalo **antes** de que haya trámites abiertos: el bloque no sale. Y con los
+> trámites abiertos pero **sin gestoría elegida**, te manda a elegirla en vez de
+> mandar un correo a nadie.
+
 ## 9 · Lo que ha costado · **en el ERP**
 
 En el pedido, abajo:

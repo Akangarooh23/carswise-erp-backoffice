@@ -67,6 +67,9 @@ export interface MetaImportacion {
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.
   factura_vendedor_pedida_at?: string | null;
   factura_vendedor_pedida_a?: string | null;
+  // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.
+  encargo_gestoria_enviado_at?: string | null;
+  encargo_gestoria_enviado_a?: string | null;
   // Cuándo alguien nuestro vio el coche. Sin esto no se libera nada.
   verificado_alemania_at?: string | null;
   delivery_estimate?: string | null;
@@ -121,6 +124,16 @@ export function depositoLiberado(x: Expediente): boolean {
  */
 export function facturaDelVendedorPedida(x: Expediente): boolean {
   return Boolean(x.meta?.factura_vendedor_pedida_at);
+}
+
+/**
+ * Si ya se le ha mandado a la gestoría el encargo de matricular.
+ *
+ * Es un correo por coche y no por trámite: son tres papeleos pero es la misma
+ * carpeta y la misma persona quien los hace.
+ */
+export function encargoALaGestoriaEnviado(x: Expediente): boolean {
+  return Boolean(x.meta?.encargo_gestoria_enviado_at);
 }
 
 /**

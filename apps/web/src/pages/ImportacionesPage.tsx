@@ -6,7 +6,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
-  facturaDelVendedorPedida,
+  facturaDelVendedorPedida, encargoALaGestoriaEnviado,
   liquidacionDelImpuesto,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Expediente,
@@ -93,6 +93,29 @@ export default function ImportacionesPage() {
    * El aviso va donde está mirando, igual que el de liberar: si el vendedor no
    * tiene correo o al cliente le falta el NIF, hay que enterarse aquí.
    */
+  /**
+   * Mandarle a la gestoría el encargo de matricular.
+   *
+   * Comparte forma con la petición de factura al vendedor: pulsa, se manda, y
+   * si no se puede se dice qué falta donde está mirando.
+   */
+  async function encargaALaGestoria(id: string) {
+    setGuardando(true);
+    const r = await api.post<{ para?: string }>(`/leads/${id}/encargo-gestoria`, {});
+    setGuardando(false);
+    if (!r.ok) {
+      const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido mandar.';
+      setError(dice);
+      setErrorDelPanel(dice);
+      return;
+    }
+    setErrorDelPanel('');
+    const lista = await carga();
+    setAbierto((previo) => (previo && previo.id === id
+      ? (lista.find((y) => y.id === id) ?? previo)
+      : previo));
+  }
+
   async function pideLaFactura(id: string) {
     setGuardando(true);
     const r = await api.post<{ para?: string }>(`/leads/${id}/factura-vendedor`, {});
@@ -307,6 +330,7 @@ export default function ImportacionesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onPedirFactura={() => void pideLaFactura(abierto.id)}
+          onEncargarALaGestoria={() => void encargaALaGestoria(abierto.id)}
           aviso={errorDelPanel}
           onDevolver={() => void devuelveFianza(abierto.id)}
           onNotificar={(respuesta, notas) => void notifica(abierto.id, respuesta, notas)}
@@ -476,6 +500,7 @@ interface PanelProps {
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
   onPedirFactura: () => void;
+  onEncargarALaGestoria: () => void;
   aviso: string;
   onDevolver: () => void;
   onNotificar: (respuesta: string, notas: string) => void;
@@ -488,7 +513,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPedirFactura, aviso }: PanelProps) {
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPedirFactura, onEncargarALaGestoria, aviso }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
@@ -733,6 +758,43 @@ function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar,
                     </button>
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
                       Sin ella, el precio del coche deja de ser un suplido y lleva IVA.
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/*
+              * Y el encargo a la gestoría.
+              *
+              * Sale cuando ya hay trámites abiertos, que es al entrar en «En
+              * trámites». Un correo por coche y no por trámite: son tres
+              * papeleos pero la misma carpeta y la misma persona.
+              */}
+            {x.status === 'En trámites' && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/70">
+                <div className="text-xs font-semibold text-emerald-800 mb-1.5">
+                  El encargo a la gestoría
+                </div>
+                {encargoALaGestoriaEnviado(x) ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-bold text-emerald-700">
+                      ✓ Mandado el {dia(x.meta?.encargo_gestoria_enviado_at)}
+                      {x.meta?.encargo_gestoria_enviado_a ? ` a ${String(x.meta.encargo_gestoria_enviado_a)}` : ''}
+                    </span>
+                    <button onClick={() => onEncargarALaGestoria()} disabled={guardando}
+                            className="text-[11px] text-brand-400 underline underline-offset-2">
+                      mandarlo otra vez
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onEncargarALaGestoria()} disabled={guardando}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                      Mandárselo a la gestoría
+                    </button>
+                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                      Los tres trámites en un correo, y les pide el importe real del impuesto.
                     </div>
                   </>
                 )}
