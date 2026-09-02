@@ -7,7 +7,7 @@ import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { comoSeCuenta } from '../lib/danos.js';
 import CaminoDelCoche from '../components/CaminoDelCoche.js';
 import {
-  ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha,
+  ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha, bloquesDelExpediente,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
   facturaDelVendedorPedida, encargoALaGestoriaEnviado, reservaPreguntada,
   liquidacionDelImpuesto,
@@ -622,6 +622,18 @@ onEncargarALaGestoria, aviso }: PanelProps) {
   const pagada = fianzaPagada(x);
   const devuelta = Boolean(x.meta?.deposit_refunded_at);
   const hechoElPedido = puedeDarFecha(x.status);
+
+  /**
+   * Qué partes de este expediente tienen sentido hoy.
+   *
+   * Con el coche sin ver en Alemania no hay día de entrega que dar, ni
+   * papeles que reunir, ni kilómetros de salida. Un hueco vacío puesto
+   * delante en la etapa que no toca parece una tarea pendiente y se rellena
+   * con lo primero que sirva.
+   */
+  const [verTodo, setVerTodo] = useState(false);
+  const bloques = bloquesDelExpediente(x.status);
+  const toca = (b: string) => verTodo || bloques.includes(b as never);
   const [respuesta, setRespuesta] = useState("");
   const [notas, setNotas] = useState(x.meta?.erp_notes ?? "");
   /** La etapa a la que se va a pasar, mientras se escribe por qué. */
@@ -1262,6 +1274,7 @@ onEncargarALaGestoria, aviso }: PanelProps) {
           </div>
         </div>
 
+        {toca('entregaCita') && (<>
         {/* ── El día de la entrega ──
 
             Es una cita como cualquier otra: el cliente recibe el aviso de la
@@ -1299,10 +1312,20 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             Guardar el día de la entrega
           </button>
         </div>
+        </>)}
 
-        <LaEntrega leadId={x.id} />
+        {/* Lo que se le da al firmar. Antes de que el coche esté aquí no hay
+            nada que marcar, y las casillas vacías parecen deberes. */}
+        {toca('entregaFirma') && <LaEntrega leadId={x.id} />}
 
-        <Documentos ambito="lead" id={x.id} origen="importacion" />
+        {/* Los papeles empiezan a llegar cuando el coche ya se ha comprado:
+            antes, la lista de «faltan por reunir» es la lista entera. */}
+        {toca('papeles') && <Documentos ambito="lead" id={x.id} origen="importacion" />}
+
+        <button onClick={() => setVerTodo((v) => !v)}
+                className="mt-4 w-full px-3 py-2 text-[11px] font-semibold text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
+          {verTodo ? 'Ver solo lo de esta etapa' : 'Ver todo el expediente'}
+        </button>
 
         {/* ── El rastro ── */}
         <div className="mt-4 pt-4 border-t border-brand-100">

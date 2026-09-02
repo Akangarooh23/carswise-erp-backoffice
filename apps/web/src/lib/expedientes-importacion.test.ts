@@ -12,6 +12,7 @@ import {
   ETAPAS, QUE_TOCA, siguienteEtapa, puedePedirlo, puedeDarFecha,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   puedeLiberar, repartoDelDeposito,
+  bloquesDelExpediente,
   type Expediente,
 } from './expedientes-importacion.js';
 
@@ -259,5 +260,35 @@ describe('el reparto del depósito', () => {
     // Los de antes del cambio de modelo no tienen estas columnas: inventarles un
     // reparto de ceros sería peor que no enseñar el bloque.
     assert.deepEqual(repartoDelDeposito(exp({ deposit_quoted: 5000 })), []);
+  });
+});
+
+describe('qué partes del expediente tienen sentido en cada etapa', () => {
+  test('con el coche sin ver, ninguna de las tres', () => {
+    // Ni día de entrega, ni papeles que reunir, ni casillas que marcar: el
+    // coche no es nuestro todavía. Un hueco vacío parece una tarea pendiente.
+    assert.deepEqual(bloquesDelExpediente('Depósito retenido'), []);
+    assert.deepEqual(bloquesDelExpediente('Pendiente'), []);
+  });
+
+  test('comprado, empiezan los papeles', () => {
+    // Del vendedor alemán llegan la factura, las fichas y el COC.
+    assert.deepEqual(bloquesDelExpediente('Verificado y pagado'), ['papeles']);
+  });
+
+  test('de camino, ya se puede quedar con el cliente', () => {
+    assert.ok(bloquesDelExpediente('En transporte').includes('entregaCita'));
+    assert.ok(!bloquesDelExpediente('En transporte').includes('entregaFirma'));
+  });
+
+  test('aquí, lo que se le da al firmar', () => {
+    assert.deepEqual(
+      bloquesDelExpediente('En trámites'),
+      ['papeles', 'entregaCita', 'entregaFirma']
+    );
+  });
+
+  test('una etapa que no existe no abre nada', () => {
+    assert.deepEqual(bloquesDelExpediente('Lo que sea'), []);
   });
 });

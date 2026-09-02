@@ -40,6 +40,41 @@ export const QUE_TOCA: Record<Etapa, string> = {
   'Entregado':           'Cerrado',
 };
 
+/**
+ * Qué partes del expediente tienen sentido en cada etapa.
+ *
+ * El panel enseñaba, con el coche todavía sin ver en Alemania, el día de la
+ * entrega al cliente, la lista de papeles que hay que darle al firmar y los
+ * kilómetros de salida. Nada de eso se puede saber: el coche no es nuestro
+ * todavía.
+ *
+ * Y no es solo ruido. **Un hueco vacío parece una tarea pendiente**: puesto
+ * delante en la etapa que no toca, alguien lo rellena con lo primero que
+ * sirva, y entonces hay un dato falso donde había un hueco honesto.
+ *
+ * Nada se quita: lo que no es de esta etapa sigue estando detrás de «Ver
+ * todo». A veces hay que corregir algo tres etapas después.
+ */
+export type BloqueDelExpediente = 'entregaCita' | 'entregaFirma' | 'papeles';
+
+export const LO_DE_CADA_ETAPA: Record<string, BloqueDelExpediente[]> = {
+  // Todavía no hay coche comprado: ni papeles que reunir ni día que dar.
+  Pendiente: [],
+  Contactado: [],
+  'Depósito retenido': [],
+  // Comprado: empiezan a llegar los papeles del vendedor alemán.
+  'Verificado y pagado': ['papeles'],
+  // De camino: ya se puede quedar con el cliente.
+  'En transporte': ['papeles', 'entregaCita'],
+  // Aquí: se cierra el día y se prepara lo que se le da al firmar.
+  'En trámites': ['papeles', 'entregaCita', 'entregaFirma'],
+  Entregado: ['papeles', 'entregaCita', 'entregaFirma'],
+};
+
+export function bloquesDelExpediente(status: string): BloqueDelExpediente[] {
+  return LO_DE_CADA_ETAPA[status] ?? [];
+}
+
 export interface MetaImportacion {
   name?: string;
   phone?: string;

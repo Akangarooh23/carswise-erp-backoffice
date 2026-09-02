@@ -757,6 +757,22 @@ Si el perito dice que **no era el coche del anuncio**, el camino se corta ahí:
 lo único que queda es devolverle el depósito al cliente. El transporte y los
 trámites no se enseñan ni en gris — invitarían a buscar la forma de seguir.
 
+### El expediente también enseña solo lo de su etapa
+
+Con el coche todavía sin ver en Alemania, el panel ofrecía el **día de la
+entrega al cliente**, la lista de **lo que se le da al firmar** y los
+**kilómetros de salida**. Nada de eso se puede saber: el coche no es nuestro.
+
+| Cuando está… | Además del depósito y sus pasos, se ve |
+|---|---|
+| Pendiente · Contactado · Depósito retenido | Nada más: no hay coche comprado |
+| Verificado y pagado | **Los papeles**, que es cuando empiezan a llegar del vendedor |
+| En transporte | Y el **día de la entrega**: ya se puede quedar con el cliente |
+| En trámites · Entregado | Y **lo que se le da al firmar**, con los kilómetros y la garantía |
+
+Detrás de «Ver todo el expediente» sigue estando entero: a veces hay que
+corregir algo tres etapas después.
+
 ### El número rojo del menú
 
 Sale de la misma cuenta, y **va donde está el botón**: encargar una peritación
