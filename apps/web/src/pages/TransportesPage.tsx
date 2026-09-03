@@ -164,7 +164,7 @@ export default function TransportesPage() {
       }
       setErrorDelPanel('');
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id, ruta });
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles, idioma: d.idioma }, id, ruta });
     } catch (e) {
       const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);

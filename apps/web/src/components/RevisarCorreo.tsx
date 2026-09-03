@@ -16,8 +16,9 @@
  * Lo que de verdad hace falta al revisar es lo de este coche en concreto: «el
  * jueves está cerrado», «llamad antes a Miguel». Para eso está la línea.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal } from './ui/Modal.js';
+import { lineaDeAdjuntos, type IdiomaDelCorreo } from '../lib/lo-que-va-adjunto.js';
 
 /** Un papel del expediente que se puede adjuntar. */
 export interface PapelDisponible {
@@ -41,6 +42,8 @@ export interface VistaDelCorreo {
   subject: string;
   html: string;
   papeles?: PapelDisponible[];
+  /** En qué idioma está, para anunciar los adjuntos en el suyo. */
+  idioma?: IdiomaDelCorreo;
 }
 
 /** «230 kB», «1,4 MB». Se enseña porque es como se distingue un adjunto de otro. */
@@ -77,6 +80,20 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
     setNota('');
     setMarcados([]);
   }, [vista]);
+
+  /**
+   * Lo que va adjunto, dicho en el cuerpo.
+   *
+   * Se calcula aquí con la misma función que usa el correo al salir, así que
+   * la vista previa enseña la frase de verdad y no una aproximación. Un
+   * adjunto que el cuerpo no menciona es un adjunto que no se abre —y al
+   * revés: si el cuerpo dice que va la factura y no va, se ve antes de
+   * mandarlo, que es justo para lo que sirve este cuadro.
+   */
+  const dicho = useMemo(() => lineaDeAdjuntos(
+    (vista?.papeles ?? []).filter((p) => marcados.includes(p.id)),
+    vista?.idioma ?? 'es'
+  ), [vista, marcados]);
 
   if (!vista) return null;
 
@@ -138,9 +155,13 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
           * El correo, tal cual va a salir.
           *
           * Se pinta dentro de un marco con fondo blanco para que se vea que es
-          * el correo y no la pantalla. La línea añadida no aparece aquí hasta
-          * que se manda; decirlo es más honesto que fingir una vista previa que
-          * se recalcula sola y que puede no coincidir con lo que se envía.
+          * el correo y no la pantalla. Lo que se marca arriba aparece aquí en el
+          * momento y con la misma función que lo escribe al salir: si la frase
+          * de los adjuntos solo se viera al mandarlo, esto sería una
+          * aproximación, y una aproximación revisada no es una revisión.
+          *
+          * Lo único que no se pinta es la línea que se añade a mano, que va
+          * antes de la despedida y se dice ahí arriba.
           */}
         <div>
           <div className="text-[11px] text-brand-400 mb-1">
@@ -148,7 +169,7 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
             {nota.trim() ? <span className="text-brand-300"> · tu línea se añade antes de la despedida</span> : null}
           </div>
           <div className="border border-brand-200 rounded-lg bg-white p-4 max-h-[42vh] overflow-y-auto"
-               dangerouslySetInnerHTML={{ __html: vista.html }} />
+               dangerouslySetInnerHTML={{ __html: vista.html + dicho }} />
         </div>
 
         {error && (

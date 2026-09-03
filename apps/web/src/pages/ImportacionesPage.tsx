@@ -91,7 +91,7 @@ export default function ImportacionesPage() {
       }
       setErrorDelPanel('');
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, ruta });
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles, idioma: d.idioma }, ruta });
     } catch (e) {
       const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);

@@ -18,6 +18,7 @@
  */
 import { query } from '../db/pool.js';
 import { config } from '../config.js';
+import { lineaDeAdjuntos, type IdiomaDelCorreo } from './lo-que-va-adjunto.js';
 
 const BUCKET = 'vehicle-files';
 
@@ -77,20 +78,20 @@ export class NoSePuedenAdjuntar extends Error {}
 export async function traeLosAdjuntos(
   cajones: Cajon[],
   quiere: unknown
-): Promise<{ filename: string; content: string }[]> {
+): Promise<{ filename: string; content: string; papel: string }[]> {
   const ids = Array.isArray(quiere) ? quiere.map((x) => String(x)).filter(Boolean) : [];
   if (!ids.length) return [];
   const utiles = (cajones ?? []).filter((c) => c && c.ambito && c.id);
   if (!utiles.length) throw new NoSePuedenAdjuntar('No hay de dónde sacar esos papeles.');
 
   const r = await query(
-    `SELECT id::text AS id, nombre, tipo, ruta, tamano
+    `SELECT id::text AS id, nombre, papel, tipo, ruta, tamano
        FROM erp_documentos
       WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
         AND id::text = ANY($3)`,
     [utiles.map((c) => c.ambito), utiles.map((c) => String(c.id)), ids]
   );
-  const filas = r.rows as { id: string; nombre: string; ruta: string; tamano: number }[];
+  const filas = r.rows as { id: string; nombre: string; papel: string; ruta: string; tamano: number }[];
   if (filas.length !== ids.length) {
     throw new NoSePuedenAdjuntar('Alguno de los papeles ya no está. Vuelve a abrirlo.');
   }
@@ -107,7 +108,7 @@ export async function traeLosAdjuntos(
     throw new NoSePuedenAdjuntar('El almacén de papeles no está configurado.');
   }
 
-  const salida: { filename: string; content: string }[] = [];
+  const salida: { filename: string; content: string; papel: string }[] = [];
   for (const f of filas) {
     const bajada = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${f.ruta}`, {
       headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
@@ -118,7 +119,28 @@ export async function traeLosAdjuntos(
     salida.push({
       filename: String(f.nombre).replace(/[\r\n"]/g, ''),
       content: Buffer.from(await bajada.arrayBuffer()).toString('base64'),
+      papel: String(f.papel ?? ''),
     });
   }
   return salida;
+}
+
+/**
+ * Los ficheros y **lo que hay que decir en el cuerpo** para que se abran.
+ *
+ * Van juntos a propósito. Adjuntar el fichero y anunciarlo son la misma
+ * decisión, y separarlas es como se llega a un correo que dice que va la
+ * factura sin que vaya, o al revés. Quien manda el correo elige los papeles;
+ * la frase la escribe esto, y por eso no se puede olvidar.
+ */
+export async function loQueSeAdjunta(
+  cajones: Cajon[],
+  quiere: unknown,
+  idioma: IdiomaDelCorreo
+): Promise<{ attachments: { filename: string; content: string }[]; linea: string }> {
+  const traidos = await traeLosAdjuntos(cajones, quiere);
+  return {
+    attachments: traidos.map(({ filename, content }) => ({ filename, content })),
+    linea: lineaDeAdjuntos(traidos.map((a) => ({ nombre: a.filename, papel: a.papel })), idioma),
+  };
 }

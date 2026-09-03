@@ -24,7 +24,7 @@ import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factu
 import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
 import { correoDeReservaAlVendedor, faltaParaLaReserva } from '../lib/reserva-al-vendedor.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
-import { papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
+import { papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 
 /** Si esa solicitud es de importación. La entrega no dice de qué tipo es. */
 async function esDeImportacion(leadId: string): Promise<boolean> {
@@ -1093,13 +1093,18 @@ leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operation
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -1108,7 +1113,7 @@ leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operation
       throw e;
     }
 
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
@@ -1209,13 +1214,18 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -1226,7 +1236,7 @@ leadsRouter.post('/leads/:id/factura-vendedor', requireRole(['admin', 'operation
 
     // `alClienteSiempre` porque el desvío de pruebas no puede tragarse esto: si
     // no sale, no hay factura, y quien pulsa tiene que enterarse de que no salió.
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads
@@ -1433,13 +1443,18 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'es' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'es');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -1449,7 +1464,7 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
     }
 
     // Salta el desvío de pruebas: si no sale, el coche no se matricula.
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE moveadvisor_market_leads

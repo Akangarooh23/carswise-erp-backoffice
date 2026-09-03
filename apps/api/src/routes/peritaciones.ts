@@ -26,7 +26,7 @@ import { escritoEnLista } from '../lib/escrow.js';
 import { apuntaFacturaRecibida, apuntaFacturaEsperada } from './provider-billing.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import {
-  papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar,
+  papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar,
 } from '../lib/adjuntos-del-correo.js';
 import { costeQueSeGuarda, faltaParaApuntarUnDano, leeLoPegado } from '../lib/danos-del-coche.js';
 import {
@@ -294,13 +294,18 @@ peritacionesRouter.post(
       const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
       if (soloVista) {
-        res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+        res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
         return;
       }
 
       let adjuntos: { filename: string; content: string }[] = [];
+      // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+      // menciona es un adjunto que no se abre.
+      let dicho = '';
       try {
-        adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+        const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+        adjuntos = va.attachments;
+        dicho = va.linea;
       } catch (e) {
         if (e instanceof NoSePuedenAdjuntar) {
           res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -309,7 +314,7 @@ peritacionesRouter.post(
         throw e;
       }
 
-      await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+      await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
       await query(
         `UPDATE erp_peritaciones
@@ -473,13 +478,18 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -488,7 +498,7 @@ peritacionesRouter.post('/peritaciones/:id/cita', requireRole(['admin', 'operati
       throw e;
     }
 
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
     await query(
       `UPDATE erp_peritaciones SET cita_avisada_at = NOW(), cita_avisada_a = $2, updated_at = NOW()
         WHERE id = $1`,
@@ -699,13 +709,18 @@ peritacionesRouter.post('/peritaciones/:id/pedir-factura', requireRole(['admin',
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -714,7 +729,7 @@ peritacionesRouter.post('/peritaciones/:id/pedir-factura', requireRole(['admin',
       throw e;
     }
 
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
     await query(
       `UPDATE erp_peritaciones SET factura_pedida_at = NOW(), factura_pedida_a = $2, updated_at = NOW()
         WHERE id = $1`,

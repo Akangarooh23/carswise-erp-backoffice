@@ -138,7 +138,7 @@ export default function PeritacionesPage() {
       const r = await api.post<VistaDelCorreo>(`/peritaciones/${id}/${que}`, { soloVista: true });
       if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido preparar.'); return; }
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles }, id, que });
+      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles, idioma: d.idioma }, id, que });
     } catch (e) {
       setError((e as Error)?.message || 'No se ha podido preparar.');
     } finally {

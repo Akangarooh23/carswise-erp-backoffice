@@ -21,7 +21,7 @@ import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import { correoDeDatosDeRecogida, faltaParaPedirLaRecogida } from '../lib/datos-de-recogida.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
-import { papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
+import { papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 import {
   INCIDENCIA, esEstadoTransporteValido, puedeContratarse, notaDelCambio, fotosQueFaltan,
 } from '../lib/transportes.js';
@@ -255,13 +255,18 @@ transportesRouter.post('/transportes/:id/datos-recogida', requireRole(['admin', 
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -270,7 +275,7 @@ transportesRouter.post('/transportes/:id/datos-recogida', requireRole(['admin', 
       throw e;
     }
 
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE erp_transportes
@@ -387,13 +392,18 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'es' });
       return;
     }
 
     let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
     try {
-      adjuntos = await traeLosAdjuntos(cajones, req.body?.adjuntos);
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'es');
+      adjuntos = va.attachments;
+      dicho = va.linea;
     } catch (e) {
       if (e instanceof NoSePuedenAdjuntar) {
         res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
@@ -403,7 +413,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     }
 
     // Salta el desvío de pruebas: si no sale, nadie recoge el coche.
-    await enviar({ to: aQuien, subject: elAsunto, html, attachments: adjuntos, alClienteSiempre: true });
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
     await query(
       `UPDATE erp_transportes
