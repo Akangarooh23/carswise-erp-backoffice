@@ -98,6 +98,9 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  // Los tramos que falten, antes de enseñarlos: un coche pagado sin tramo es
+  // trabajo que no aparece en ninguna pantalla.
+  await abreLosTramosQueFalten().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -523,6 +526,47 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
  * hay que organizar cómo llega. Solo uno: los demás tramos los añade quien los
  * necesite, porque cuántos hacen falta no lo sabe el sistema.
  */
+/**
+ * Los primeros tramos que falten, abiertos de golpe.
+ *
+ * El tramo nace con el pedido, pero los pedidos de antes de esa regla se
+ * quedaron sin él — y sin tramo no hay dónde preguntarle al vendedor por la
+ * recogida, que es justo lo que el expediente pide. Un coche pagado sin tramo
+ * es trabajo que no aparece en ninguna pantalla.
+ *
+ * Se mira lo que hay en vez de confiar en que se creó en su día: es
+ * idempotente —`abreTransporteDePedido` no abre dos veces el mismo tramo— y se
+ * ejecuta al abrir las pantallas que los enseñan.
+ */
+export async function abreLosTramosQueFalten(): Promise<number> {
+  await prepara();
+  const faltan = await query<{
+    id: string; vehiculo_titulo: string; proveedor: string; matricula: string;
+  }>(
+    `SELECT pe.id, pe.vehiculo_titulo, pe.proveedor, pe.matricula
+       FROM erp_pedidos pe
+       LEFT JOIN erp_transportes t ON t.pedido_id = pe.id AND t.tramo = 1
+      WHERE pe.origen = 'importacion'
+        AND pe.estado <> 'Cancelado'
+        AND t.id IS NULL
+      LIMIT 50`
+  ).catch(() => ({ rows: [] as { id: string; vehiculo_titulo: string; proveedor: string; matricula: string }[] }));
+
+  let abiertos = 0;
+  for (const p of faltan.rows) {
+    const id = await abreTransporteDePedido({
+      pedidoId: p.id,
+      vehiculoTitulo: p.vehiculo_titulo ?? '',
+      matricula: p.matricula ?? '',
+      desde: p.proveedor || 'El vendedor',
+      hasta: 'Zaragoza',
+      creadoPor: 'al mirar los transportes',
+    }).catch(() => null);
+    if (id) abiertos += 1;
+  }
+  return abiertos;
+}
+
 export async function abreTransporteDePedido(datos: {
   pedidoId: string;
   vehiculoTitulo: string;

@@ -6,6 +6,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
+import { abreLosTramosQueFalten } from './transportes.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
@@ -227,6 +228,9 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // Las peritaciones que falten, para que el expediente las enseñe sin tener
   // que pasar antes por su pantalla.
   await abreLasQueFalten().catch(() => 0);
+  // Y los primeros tramos: sin tramo no hay dónde preguntarle al vendedor
+  // por la recogida, que es lo que el propio expediente pide.
+  await abreLosTramosQueFalten().catch(() => 0);
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
   const type    = String(req.query.type   || '').trim();

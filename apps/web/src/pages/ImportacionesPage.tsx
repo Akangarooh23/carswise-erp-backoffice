@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, descargaConSesion } from '../api/client.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -1276,8 +1276,9 @@ onEncargarALaGestoria, aviso }: PanelProps) {
         </dl>
 
         {/* ── Escribirle ── */}
-        <div className="mt-4 pt-4 border-t border-brand-100">
-          <div className="text-xs font-semibold text-brand-500 mb-1.5">Mensaje para el cliente</div>
+        <Plegable titulo="Mensaje para el cliente"
+                  resumen="lo verá en su panel y le llegará por correo">
+        <div>
           <textarea
             value={respuesta}
             onChange={(e) => setRespuesta(e.target.value)}
@@ -1293,10 +1294,11 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             Guardar y avisar al cliente
           </button>
         </div>
+        </Plegable>
 
         {/* ── Notas internas: estas no salen ── */}
-        <div className="mt-4">
-          <div className="text-xs font-semibold text-brand-500 mb-1.5">Notas internas</div>
+        <Plegable titulo="Notas internas" resumen="no se envían al cliente">
+        <div>
           <textarea
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
@@ -1327,15 +1329,17 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             )}
           </div>
         </div>
+        </Plegable>
 
-        {toca('entregaCita') && (<>
         {/* ── El día de la entrega ──
 
             Es una cita como cualquier otra: el cliente recibe el aviso de la
             víspera y el del mismo día. Lo que no hace es mover el expediente
             de etapa — sigue donde estaba hasta que se entrega. */}
-        <div className="mt-4 pt-4 border-t border-brand-100">
-          <div className="text-xs font-semibold text-brand-500 mb-1.5">Día de la entrega</div>
+        {toca('entregaCita') && (
+        <Plegable titulo="Día de la entrega"
+                  resumen={x.meta?.appointment_date ? dia(x.meta.appointment_date) : 'sin fecha'}>
+        <div>
           <p className="text-[11px] text-brand-400 mb-2">
             Si quedas con él, se lo recordamos la víspera y el mismo día.
           </p>
@@ -1366,7 +1370,8 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             Guardar el día de la entrega
           </button>
         </div>
-        </>)}
+        </Plegable>
+        )}
 
         {/* Lo que se le da al firmar. Antes de que el coche esté aquí no hay
             nada que marcar, y las casillas vacías parecen deberes. */}
@@ -1375,7 +1380,9 @@ onEncargarALaGestoria, aviso }: PanelProps) {
         {/* Los papeles empiezan a llegar cuando el coche ya se ha comprado:
             antes, la lista de «faltan por reunir» es la lista entera. */}
         {toca('papeles') && (
-          <Documentos ambito="lead" id={x.id} origen="importacion" coche={x.id} />
+          <Plegable titulo="Documentos" resumen="los papeles del coche">
+            <Documentos ambito="lead" id={x.id} origen="importacion" coche={x.id} />
+          </Plegable>
         )}
 
         <button onClick={() => setVerTodo((v) => !v)}
@@ -1384,8 +1391,8 @@ onEncargarALaGestoria, aviso }: PanelProps) {
         </button>
 
         {/* ── El rastro ── */}
-        <div className="mt-4 pt-4 border-t border-brand-100">
-          <div className="text-xs font-semibold text-brand-500 mb-2">Historial</div>
+        <Plegable titulo="Historial" resumen="quién tocó qué y cuándo">
+        <div>
           {historial === null ? (
             <p className="text-[11px] text-brand-300">Cargando…</p>
           ) : historial.length === 0 ? (
@@ -1410,7 +1417,43 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             </ul>
           )}
         </div>
+        </Plegable>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Una sección que se abre cuando hace falta.
+ *
+ * El expediente enseña de todo —el depósito, los correos, el mensaje al
+ * cliente, las notas, el día de la entrega, los papeles, el historial— y con
+ * todo abierto a la vez hay que bajar tres pantallas para llegar al único
+ * botón que toca hoy.
+ *
+ * Lo que **no** se pliega es lo de arriba: el camino, el depósito y los pasos
+ * de antes de soltar el dinero. Ahí está siempre lo que toca, y esconderlo
+ * sería cambiar un problema por otro.
+ */
+function Plegable({ titulo, resumen, abiertaPorDefecto = false, children }: {
+  titulo: string;
+  /** Lo que se ve sin abrirla: una fecha, un número, lo que falta. */
+  resumen?: string;
+  abiertaPorDefecto?: boolean;
+  children: ReactNode;
+}) {
+  const [abierta, setAbierta] = useState(abiertaPorDefecto);
+  return (
+    <div className="mt-3 pt-3 border-t border-brand-100">
+      <button onClick={() => setAbierta((v) => !v)}
+              className="w-full flex items-center gap-2 text-left">
+        <span className="text-[11px] text-brand-300 w-3">{abierta ? '▾' : '▸'}</span>
+        <span className="text-xs font-semibold text-brand-500 flex-1">{titulo}</span>
+        {resumen && !abierta && (
+          <span className="text-[11px] text-brand-300 truncate max-w-[55%]">{resumen}</span>
+        )}
+      </button>
+      {abierta && <div className="mt-2">{children}</div>}
     </div>
   );
 }

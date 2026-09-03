@@ -40,3 +40,31 @@ describe('el tramo sabe de qué expediente es', () => {
     assert.match(FUENTE, /\{ ambito: 'transporte', id: req\.params\.id \}/);
   });
 });
+
+describe('los tramos que faltan', () => {
+  /**
+   * El tramo nace con el pedido, pero los pedidos anteriores a esa regla se
+   * quedaron sin él. Y sin tramo no hay dónde preguntarle al vendedor por la
+   * recogida —que es lo que el expediente pide—, así que un coche pagado sin
+   * tramo es trabajo que no aparece en ninguna pantalla.
+   */
+  const fuente = readFileSync('apps/api/src/routes/transportes.ts', 'utf8');
+
+  test('se abren mirando lo que hay, no confiando en que se crearon', () => {
+    assert.match(fuente, /export async function abreLosTramosQueFalten/);
+    assert.match(fuente, /LEFT JOIN erp_transportes t ON t\.pedido_id = pe\.id AND t\.tramo = 1/);
+    assert.match(fuente, /t\.id IS NULL/);
+  });
+
+  test('solo importaciones, y ninguna cancelada', () => {
+    // Un pedido de concesionario se recoge de otra manera, y uno cancelado no
+    // se trae: abrirle un tramo sería inventar trabajo.
+    const trozo = fuente.slice(fuente.indexOf('abreLosTramosQueFalten'));
+    assert.match(trozo, /pe\.origen = 'importacion'/);
+    assert.match(trozo, /pe\.estado <> 'Cancelado'/);
+  });
+
+  test('y se abren al mirar los transportes', () => {
+    assert.match(fuente, /await abreLosTramosQueFalten\(\)\.catch/);
+  });
+});
