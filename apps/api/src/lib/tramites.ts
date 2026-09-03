@@ -123,12 +123,22 @@ export function notaDelCambio(
  * **impuesto de transmisiones**, que lo paga quien compra. Comprándole a una
  * empresa no lo hay, porque esa venta lleva IVA en su factura.
  */
+/**
+ * Y una importación abre **uno**, no tres.
+ *
+ * Eran tres papeleos separados —impuesto, ITV de homologación y matrícula—
+ * con la idea de saber cuál se atasca. Pero los lleva la misma gestoría, con
+ * una sola factura y un solo interlocutor, así que lo único que se multiplicaba
+ * era el trabajo: elegir gestoría tres veces, apuntar costes en tres sitios y
+ * repartir los papeles en tres cajones que nadie ve juntos.
+ *
+ * Lo decidió Ana después de verlo en pantalla, y tiene razón: tres fichas de
+ * un mismo encargo no son tres cosas, son la misma contada tres veces. Lo que
+ * se cobra por dentro se ve en las **partidas**, que es donde de verdad hace
+ * falta el detalle: ahí se separa lo que es de terceros de lo que es suyo.
+ */
 export const TRAMITES_POR_ORIGEN: Record<string, string[]> = {
-  importacion: [
-    'Impuesto de matriculación',
-    'ITV de homologación',
-    'Matriculación de importación',
-  ],
+  importacion: ['Matriculación de importación'],
   concesionario: ['Transferencia de titularidad'],
   'ex-renting':  ['Transferencia de titularidad'],
   particular:    ['Transferencia de titularidad', 'Impuesto de transmisiones'],

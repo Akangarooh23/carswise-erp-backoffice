@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { papeleosPorCoche } from '../lib/papeleos-por-coche.js';
+import {
+  PARTIDAS_HABITUALES, resumenDeLaGestoria, comoSeCuenta, leeLoPegado,
+  queEsPorDefecto, type Partida,
+} from '../lib/partidas-de-la-gestoria.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
@@ -60,6 +64,8 @@ interface Tramite {
   /** Si al expediente de este coche ya se le ha mandado el encargo. */
   encargo_enviado_at?: string | null;
   coste: string | number | null;
+  /** Lo que factura la gestoría, partida a partida. */
+  partidas?: Partida[] | null;
   fecha_enviado: string | null;
   fecha_resuelto: string | null;
   notas: string;
@@ -424,6 +430,31 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
     tipo: t.tipo ?? '', gestoria: t.gestoria ?? '', matricula: t.matricula ?? '',
     bastidor: t.bastidor ?? '', coste: String(t.coste ?? ''),
   });
+
+  /*
+   * Las partidas, que es de donde sale el coste.
+   *
+   * Se editan aquí y se mandan con el resto al guardar: el servidor recalcula
+   * `coste` con ellas, así que no hay dos números que puedan discrepar.
+   */
+  const [partidas, setPartidas] = useState<Partida[]>(t.partidas ?? []);
+  const [pegado, setPegado] = useState('');
+
+  const cambiaPartida = (i: number, cambio: Partial<Partida>) =>
+    setPartidas((ps) => ps.map((p, j) => (j === i ? { ...p, ...cambio } : p)));
+  const quitaPartida = (i: number) =>
+    setPartidas((ps) => ps.filter((_, j) => j !== i));
+  const anadePartida = (concepto: string) => {
+    const nombre = concepto === '__otra' ? '' : concepto;
+    setPartidas((ps) => [...ps, { concepto: nombre, importe: '', que: queEsPorDefecto(nombre) }]);
+  };
+  /** Lo pegado se añade a lo que hay: puede llegar en dos tandas. */
+  const pegaLasPartidas = () => {
+    const { partidas: nuevas } = leeLoPegado(pegado);
+    if (nuevas.length) setPartidas((ps) => [...ps, ...nuevas]);
+    setPegado('');
+  };
+
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_enviado);
   /**
@@ -531,15 +562,79 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             </label>
           )}
-          <label className="text-[11px] text-brand-400">
-            Coste
-            <input value={datos.coste} inputMode="decimal"
-                   onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">Lo que nos cobra la gestoría por este trámite.</span>
-          </label>
+          {/* El coste sale de las partidas, ahí abajo: dos números que dicen
+              lo mismo acaban diciendo cosas distintas. */}
         </div>
-        <button onClick={() => onCambiar(datos)} disabled={guardando}
+        {/*
+          * Lo que factura la gestoría, partida a partida.
+          *
+          * Un solo número mete el impuesto de matriculación en el coste del
+          * coche como si fuera gasto nuestro, y son mil cuatrocientos euros de
+          * Hacienda. La columna de la derecha —suplido o nuestro— es la que hace
+          * que el margen del coche sea verdad.
+          */}
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">Lo que cobra la gestoría</div>
+
+          {partidas.length > 0 && (
+            <div className="mb-2 divide-y divide-brand-100 border-y border-brand-100">
+              {partidas.map((p, i) => (
+                <div key={i} className="flex items-center gap-1.5 py-1.5">
+                  <input value={p.concepto}
+                         onChange={(e) => cambiaPartida(i, { concepto: e.target.value })}
+                         className="flex-1 min-w-0 px-2 py-1 text-[12px] border border-brand-200 rounded" />
+                  <input value={String(p.importe ?? '')} inputMode="decimal"
+                         onChange={(e) => cambiaPartida(i, { importe: e.target.value })}
+                         className="w-20 px-2 py-1 text-[12px] text-right border border-brand-200 rounded tabular-nums" />
+                  <select value={p.que ?? 'suplido'}
+                          onChange={(e) => cambiaPartida(i, { que: e.target.value as Partida['que'] })}
+                          className="px-1 py-1 text-[11px] border border-brand-200 rounded bg-white">
+                    <option value="suplido">Suplido</option>
+                    <option value="nuestro">Nuestro</option>
+                  </select>
+                  <button onClick={() => quitaPartida(i)}
+                          className="text-[11px] text-brand-300 hover:text-red-600 px-1">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-1.5">
+            <select value="" onChange={(e) => { if (e.target.value) anadePartida(e.target.value); }}
+                    className="flex-1 px-2 py-1.5 text-[12px] border border-brand-200 rounded-lg bg-white">
+              <option value="">Añadir partida…</option>
+              {PARTIDAS_HABITUALES.map((p) => (
+                <option key={p.concepto} value={p.concepto}>{p.concepto}</option>
+              ))}
+              <option value="__otra">Otra… (escribirla)</option>
+            </select>
+          </div>
+
+          {/* O pegada de su factura: volver a teclear ocho líneas es donde se
+              cuela un cero. */}
+          <textarea value={pegado} rows={2}
+                    placeholder="…o pega aquí las líneas de su factura"
+                    onChange={(e) => setPegado(e.target.value)}
+                    className="w-full mt-1.5 px-2 py-1.5 text-[12px] border border-brand-200 rounded-lg" />
+          {pegado.trim() && (
+            <div className="flex items-center gap-2 mt-1">
+              <button onClick={pegaLasPartidas}
+                      className="px-2.5 py-1 text-[11px] font-bold text-white bg-brand-600 rounded">
+                Meter {leeLoPegado(pegado).partidas.length} partidas
+              </button>
+              {leeLoPegado(pegado).malas.length > 0 && (
+                <span className="text-[10px] text-amber-700">
+                  {leeLoPegado(pegado).malas.length} líneas sin entender, se quedan fuera
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="text-[11px] text-brand-500 mt-2 font-medium">
+            {comoSeCuenta(resumenDeLaGestoria(partidas))}
+          </div>
+        </div>
+        <button onClick={() => onCambiar({ ...datos, partidas })} disabled={guardando}
                 className="w-full px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
           Guardar los datos
         </button>

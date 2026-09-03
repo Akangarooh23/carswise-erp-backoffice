@@ -508,8 +508,8 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     const losPapeleos = [...tablas.tramites];
     tablas.tramites = [];
     await api('/leads?limit=50');
-    assert.equal(tablas.tramites.length, 3,
-      'un coche en Zaragoza sin papeleos abiertos no aparece en ningún tablero');
+    assert.equal(tablas.tramites.length, 1,
+      'un coche en Zaragoza sin su expediente de gestoría no aparece en ningún tablero');
     tablas.tramites = losPapeleos;
 
     // Y el segundo viaje, cuando los papeleos ya están resueltos.
@@ -595,7 +595,8 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
 
     // ── 7. Con el coche aquí, se abren sus papeleos ────────────────────────
     const tipos = tablas.tramites.map((x) => String(x.tipo));
-    assert.equal(tipos.length, 3, 'un coche de fuera necesita impuesto, ITV de homologación y matrícula');
+    assert.equal(tipos.length, 1,
+      'los tres papeleos van en un solo expediente: los lleva la misma gestoría');
     assert.ok(tipos.some((x) => /matriculaci/i.test(x)));
     assert.ok(!tipos.some((x) => /transferencia/i.test(x)),
       'no se transfiere lo que nunca ha estado a nombre de nadie aquí');
@@ -627,8 +628,8 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     const coste = await api(`/pedidos/${pedido.id}/coste`);
     assert.equal(coste.codigo, 200);
     const partidas = (coste.cuerpo.data as { partidas: { concepto: string; importe: number }[]; total: number });
-    assert.equal(partidas.total, 9000 + 620 + 1200 + 480,
-      'proveedor, transporte, tres trámites a 400 y los neumáticos');
+    assert.equal(partidas.total, 9000 + 620 + 400 + 480,
+      'proveedor, transporte, el expediente de gestoría y los neumáticos');
     assert.equal(partidas.partidas.length, 4);
 
     // ── 11. La entrega, y la garantía que empieza ese día ──────────────────

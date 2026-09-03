@@ -104,11 +104,15 @@ describe('la nota de un cambio', () => {
 });
 
 describe('qué papeleo sale de cada compra', () => {
-  test('un coche de Alemania se matricula: no existe aquí todavía', () => {
-    const tocan = tramitesQueTocan('importacion').join(' | ').toLowerCase();
-    assert.match(tocan, /matriculaci/);
-    assert.match(tocan, /itv/);
-    assert.ok(!/transferencia/.test(tocan),
+  test('un coche de Alemania abre un solo expediente de gestoría', () => {
+    // Eran tres papeleos —impuesto, ITV de homologación y matrícula— y los lleva
+    // la misma gestoría, con una factura y un interlocutor. Tres fichas del
+    // mismo encargo no son tres cosas: son la misma contada tres veces. El
+    // detalle de lo que cobra vive en las partidas, que es donde hace falta.
+    const t = tramitesQueTocan('importacion');
+    assert.equal(t.length, 1);
+    assert.match(t[0].toLowerCase(), /matriculaci/);
+    assert.ok(!t.some((x) => /transferencia/i.test(x)),
       'no se transfiere lo que nunca ha estado a nombre de nadie aquí');
   });
 

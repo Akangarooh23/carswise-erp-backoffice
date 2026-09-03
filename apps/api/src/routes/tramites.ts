@@ -12,6 +12,7 @@
  */
 import { Router } from 'express';
 import { query } from '../db/pool.js';
+import { resumenDeLaGestoria, type Partida } from '../lib/partidas-de-la-gestoria.js';
 import { ponAlDiaLasEtapas } from './transportes.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
@@ -78,6 +79,10 @@ let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
+  // Lo que factura la gestoría, partida a partida. Un número suelto mete el
+  // impuesto de matriculación en el coste del coche como si fuera gasto
+  // nuestro, y son mil cuatrocientos euros de Hacienda.
+  await query(`ALTER TABLE erp_tramites ADD COLUMN IF NOT EXISTS partidas JSONB NOT NULL DEFAULT '[]'::jsonb`, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
@@ -90,7 +95,8 @@ function nt(v: unknown): string {
 }
 
 const CAMPOS = `id, tipo, estado, gestoria, vehiculo_titulo, matricula, bastidor, cliente_email,
-                pedido_id, lead_id, coste::numeric AS coste, fecha_enviado, fecha_resuelto,
+                pedido_id, lead_id, coste::numeric AS coste, partidas,
+                fecha_enviado, fecha_resuelto,
                 notas, creado_por, created_at, updated_at`;
 
 // ── Lo que se puede escribir en «qué trámite es» ────────────────────────────
@@ -224,6 +230,28 @@ tramitesRouter.patch('/tramites/:id', requireRole(['admin', 'operations', 'sales
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.coste !== undefined) pon('coste', req.body.coste === '' || req.body.coste === null ? null : Number(req.body.coste));
+
+    /*
+     * Las partidas, y el coste que sale de ellas.
+     *
+     * El coste deja de escribirse a mano cuando hay partidas: es su suma, y
+     * dos números que dicen lo mismo acaban diciendo cosas distintas. Se guarda
+     * igualmente en `coste` porque es de donde lo lee todo lo demás —lo que
+     * cuesta el coche, los totales de la pantalla— y ahí no hace falta el
+     * detalle.
+     */
+    if (req.body?.partidas !== undefined) {
+      const lista = Array.isArray(req.body.partidas) ? (req.body.partidas as Partida[]) : [];
+      const limpias = lista
+        .filter((p) => p && String(p?.concepto ?? '').trim())
+        .map((p) => ({
+          concepto: String(p.concepto).trim(),
+          importe: p.importe ?? null,
+          que: p.que === 'nuestro' ? 'nuestro' : 'suplido',
+        }));
+      pon('partidas', JSON.stringify(limpias));
+      pon('coste', limpias.length ? resumenDeLaGestoria(limpias as Partida[]).total : null);
+    }
 
     const notasNuevas = estado && estado !== previo.estado
       ? notaDelCambio(String(previo.notas ?? ''), String(previo.estado ?? ''), estado, nt(req.body?.nota))

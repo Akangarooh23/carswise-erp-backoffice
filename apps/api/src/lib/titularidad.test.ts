@@ -76,8 +76,11 @@ describe('cuántos cambios de nombre salen', () => {
   });
 
   test('una importación se matricula igual, vaya a nombre de quien vaya', () => {
-    assert.equal(tramitesQueTocan('importacion', 'cliente').length, 3);
-    assert.equal(tramitesQueTocan('importacion', 'popcar').length, 3);
+    // Y es un solo expediente de gestoría: los tres papeleos los lleva la
+    // misma, con una factura y un interlocutor. El detalle de lo que cobra
+    // vive en sus partidas, que es donde hace falta.
+    assert.equal(tramitesQueTocan('importacion', 'cliente').length, 1);
+    assert.equal(tramitesQueTocan('importacion', 'popcar').length, 1);
   });
 });
 
