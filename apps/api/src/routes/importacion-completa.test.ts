@@ -116,6 +116,85 @@ before(async () => {
     if (/MAX\(substring/i.test(t)) return responde([{ ultimo: serie }]);
     if (/COALESCE\(MAX\(tramo\)/i.test(t)) return responde([{ siguiente: 1 }]);
 
+    /*
+     * ── Los que se ponen al día solos ──
+     *
+     * Van **antes** que los genéricos y contestan mirando las tablas, porque
+     * son consultas con condiciones de verdad: un doble que devuelve todo hace
+     * que estas funciones parezcan funcionar apagadas. La prueba entera pasaba
+     * con los cuatro desactivados, que es lo mismo que no probarlos.
+     */
+
+    // Etapas que se han quedado atrás respecto a su tramo.
+    if (/JOIN erp_transportes t ON t\.lead_id = l\.id AND t\.tramo = 1/i.test(t)) {
+      return responde(tablas.leads.filter((l) => {
+        if (l.lead_type !== 'import') return false;
+        const tramo = tablas.transportes.find((x) => x.lead_id === l.id && Number(x.tramo) === 1);
+        if (!tramo) return false;
+        if (l.status === 'Verificado y pagado') return Boolean(tramo.fecha_recogida);
+        if (l.status === 'En transporte') return Boolean(tramo.fecha_entrega);
+        return false;
+      }).map((l) => ({ id: l.id, status: l.status })));
+    }
+
+    // Coches con papeleos que abrir.
+    if (/FROM moveadvisor_market_leads l WHERE l\.lead_type = 'import'/i.test(t)) {
+      return responde(tablas.leads.filter((l) =>
+        l.lead_type === 'import' && ['En trámites', 'Entregado'].includes(String(l.status))));
+    }
+
+    // Pedidos a los que les toca el segundo viaje: con los papeleos resueltos.
+    if (/LEFT JOIN erp_transportes t ON t\.pedido_id = pe\.id AND t\.tramo = 2/i.test(t)) {
+      return responde(tablas.pedidos.filter((pe) => {
+        const l = tablas.leads.find((x) => x.id === pe.lead_id);
+        if (!l || pe.origen !== 'importacion' || pe.estado === 'Cancelado') return false;
+        if (!['En trámites', 'Entregado'].includes(String(l.status))) return false;
+        if (!String(l.entrega_direccion ?? '').trim()) return false;
+        if (tablas.transportes.some((x) => x.pedido_id === pe.id && Number(x.tramo) === 2)) return false;
+        const suyos = tablas.tramites.filter((x) => x.lead_id === l.id);
+        return suyos.length > 0 && suyos.every((x) => x.estado === 'Resuelto');
+      }).map((pe) => {
+        const l = tablas.leads.find((x) => x.id === pe.lead_id) ?? {};
+        return {
+          id: pe.id, vehiculo_titulo: pe.vehiculo_titulo, matricula: pe.matricula,
+          hasta: [l.entrega_direccion, l.entrega_cp, l.entrega_ciudad, l.entrega_provincia]
+            .map((x) => String(x ?? '').trim()).filter(Boolean).join(', '),
+        };
+      }));
+    }
+
+    // Y el tramo de entrega abierto antes de tiempo, que se cierra.
+    if (/^DELETE FROM erp_transportes t WHERE t\.tramo = 2/i.test(t)) {
+      const fuera = tablas.transportes.filter((x) =>
+        Number(x.tramo) === 2 && x.estado === 'Por organizar'
+        && !String(x.transportista ?? '').trim() && x.coste == null
+        && !x.recogida_prevista && !x.fecha_recogida && !x.orden_enviada_at
+        && !x.presupuesto_pedido_at && !String(x.notas ?? '').trim()
+        && tablas.tramites.some((tr) => tr.lead_id === x.lead_id && tr.estado !== 'Resuelto'));
+      tablas.transportes = tablas.transportes.filter((x) => !fuera.includes(x));
+      return responde(fuera);
+    }
+
+    /*
+     * ¿Este coche ya tiene ese papeleo?
+     *
+     * Se pregunta por el coche entero —su expediente y sus pedidos— porque se
+     * abren por dos caminos: al llegar a Zaragoza cuelgan del expediente, y al
+     * darse el pedido por recibido cuelgan del pedido. Mirando una sola
+     * columna, el mismo coche acababa con seis.
+     */
+    if (/^SELECT id FROM erp_tramites WHERE tipo = \$2/i.test(t)) {
+      const clave = String(p[0] ?? '');
+      const tipo = String(p[1] ?? '');
+      const delCoche = new Set<string>([clave]);
+      for (const pe of tablas.pedidos) {
+        if (pe.id === clave && pe.lead_id) delCoche.add(String(pe.lead_id));
+        if (pe.lead_id === clave) delCoche.add(String(pe.id));
+      }
+      return responde(tablas.tramites.filter((x) => x.tipo === tipo
+        && (delCoche.has(String(x.lead_id ?? '')) || delCoche.has(String(x.pedido_id ?? '')))));
+    }
+
     // ── Solicitudes ──
     if (/FROM moveadvisor_market_leads/i.test(t)) {
       return responde(tablas.leads.filter((x) => !p.length || x.id === p[0]));
@@ -287,6 +366,17 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     assert.equal(contratado.codigo, 200);
     await api(`/transportes/${transporte.id}`, 'PATCH', { estado: 'Recogido', nota: 'Recogido en Múnich' });
 
+    /*
+     * Y con eso el expediente se mueve solo, sin que nadie toque la etapa.
+     *
+     * Marcar el tramo recogido **es** decir que el coche va de camino. Hasta
+     * que esto existió había que repetirlo en Importaciones, y el cliente veía
+     * «verificado y pagado» en su panel con el coche cruzando Francia.
+     */
+    await api('/leads?limit=50');
+    assert.equal(tablas.leads[0].status, 'En transporte',
+      'recogido el coche, el expediente va de camino sin que nadie lo mueva');
+
     // Sin mirar el coche no se cierra el tramo. Con el camión delante es el
     // único momento en que se puede: en un CMR los daños visibles se reservan
     // en el acto, y después se presume que llegó bien.
@@ -298,6 +388,36 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
       estado: 'Entregado', nota: 'Ha llegado', llegada: { conforme: true },
     });
     assert.equal(entregado.codigo, 200);
+
+    /*
+     * Y entregado en Zaragoza, el expediente entra en trámites solo.
+     *
+     * De esa etapa cuelgan los tres papeleos: mientras se movía a mano, un
+     * coche podía pasarse una semana aquí sin que nadie hubiera empezado a
+     * matricularlo y sin aparecer en ningún tablero.
+     */
+    await api('/leads?limit=50');
+    assert.equal(tablas.leads[0].status, 'En trámites',
+      'llegado el coche, el expediente entra en trámites sin que nadie lo mueva');
+
+    /*
+     * Y si ese salto no llegó a ocurrir, se recupera solo.
+     *
+     * El salto pasa en el momento de marcar el tramo, y un momento se pierde:
+     * si el código no estaba desplegado cuando alguien pulsó, si la escritura
+     * falló, si el tramo se arregló a mano en la base. Le pasó a Ana dos veces
+     * y el coche se quedó con la etapa de antes, porque nada volvía a mirar.
+     *
+     * Se simula poniendo la etapa atrás con el tramo ya entregado, que es
+     * exactamente el estado en el que se quedó su Kia.
+     */
+    tablas.leads[0].status = 'Verificado y pagado';
+    await api('/leads?limit=50');
+    assert.equal(tablas.leads[0].status, 'En transporte',
+      'la etapa atrasada se recupera, un salto por pasada');
+    await api('/transportes');
+    assert.equal(tablas.leads[0].status, 'En trámites',
+      'y en la siguiente pasada llega hasta donde está el coche');
     assert.ok(
       (entregado.cuerpo.faltanFotos as string[]).length > 0,
       'se echan en falta las fotos: sin ellas no hay forma de sostener una reclamación'

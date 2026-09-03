@@ -1146,11 +1146,45 @@ export async function abreElTramoAlCliente(): Promise<number> {
       matricula: p.matricula ?? '',
       desde: 'Zaragoza',
       hasta: p.hasta ?? '',
-      creadoPor: 'al entrar en trámites',
+      creadoPor: 'con los papeleos resueltos',
       tramo: 2,
     }).catch(() => null);
     if (id) abiertos += 1;
   }
+
+  /*
+   * Y se cierra el que sobre.
+   *
+   * La regla cambió —antes se abría al empezar los trámites y ahora al
+   * terminarlos— y los que se abrieron con la vieja se quedaban ahí, pidiendo
+   * un trabajo que todavía no se puede hacer. Cambiar una regla sin recoger lo
+   * que dejó la anterior es dejar el tablero contando algo que ya no es.
+   *
+   * Solo los **intactos**: sin transportista, sin precio, sin fechas, sin
+   * correos y sin notas. Uno con algo escrito no lo abrió esta función sola, y
+   * lo que alguien escribió no se borra por una regla.
+   */
+  const sobran = await query(
+    `DELETE FROM erp_transportes t
+      WHERE t.tramo = 2
+        AND t.estado = 'Por organizar'
+        AND COALESCE(t.transportista, '') = ''
+        AND t.coste IS NULL
+        AND t.recogida_prevista IS NULL
+        AND t.fecha_recogida IS NULL
+        AND t.orden_enviada_at IS NULL
+        AND t.presupuesto_pedido_at IS NULL
+        AND COALESCE(t.notas, '') = ''
+        AND EXISTS (SELECT 1 FROM erp_tramites tr
+                     WHERE tr.lead_id = t.lead_id AND tr.estado <> 'Resuelto')`
+  ).catch((e: Error) => {
+    console.error('[transportes] no se ha podido cerrar el tramo que sobra:', e.message);
+    return { rowCount: 0 };
+  });
+  if (sobran.rowCount) {
+    console.log('[transportes] cerrados %d tramos de entrega abiertos antes de tiempo', sobran.rowCount);
+  }
+
   return abiertos;
 }
 

@@ -359,8 +359,18 @@ async function abreTramites(tipos: string[], datos: {
     const valor = datos.pedidoId ?? datos.leadId ?? "";
     if (!valor) continue;
 
+    /*
+     * Lo mismo por el otro lado: se mira el coche entero, no la columna.
+     *
+     * Un pedido y su expediente son el mismo coche, y cada uno abría su juego
+     * de papeleos sin ver el del otro.
+     */
     const yaHay = await query(
-      `SELECT id FROM erp_tramites WHERE ${columna} = $1 AND tipo = $2`,
+      `SELECT id FROM erp_tramites
+        WHERE tipo = $2
+          AND (${columna} = $1
+            OR lead_id IN (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = $1)
+            OR pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1))`,
       [valor, tipo]
     );
     if (yaHay.rows.length) continue;
@@ -409,21 +419,42 @@ async function abreTramites(tipos: string[], datos: {
  */
 export async function abreLosTramitesQueFalten(): Promise<number> {
   await prepara();
-  const coches = await query<{ id: string; vehicle_title: string; user_email: string }>(
-    `SELECT l.id, l.vehicle_title, l.user_email
-       FROM moveadvisor_market_leads l
-      WHERE l.lead_type = 'import'
+  /*
+   * Cuelgan **del pedido**, no del expediente.
+   *
+   * Es donde ya colgaban, y no es un detalle de gusto: lo que cuesta un coche
+   * se suma por el pedido, así que un papeleo colgado del expediente sale del
+   * total y el coche parece 1.200 € más barato de lo que fue. Con dos sitios
+   * abriéndolos, además, el mismo coche acababa con seis.
+   *
+   * Lo que cambia respecto a antes es **cuándo**: ya no hay que esperar a que
+   * alguien dé el pedido por recibido; en cuanto el coche está aquí, los tres
+   * papeleos existen y aparecen en Gestoría.
+   */
+  const coches = await query<{
+    id: string; origen: string; titularidad: string; vehiculo_titulo: string;
+    matricula: string; cliente_email: string;
+  }>(
+    `SELECT pe.id, pe.origen, pe.titularidad, pe.vehiculo_titulo, pe.matricula, pe.cliente_email
+       FROM erp_pedidos pe
+       JOIN moveadvisor_market_leads l ON l.id = pe.lead_id
+      WHERE pe.origen = 'importacion' AND pe.estado <> 'Cancelado'
         AND l.status IN ('En trámites', 'Entregado')
-      ORDER BY l.created_at DESC
       LIMIT 50`
-  ).catch(() => ({ rows: [] as { id: string; vehicle_title: string; user_email: string }[] }));
+  ).catch(() => ({ rows: [] as {
+    id: string; origen: string; titularidad: string; vehiculo_titulo: string;
+    matricula: string; cliente_email: string;
+  }[] }));
 
   let abiertos = 0;
   for (const c of coches.rows) {
-    const creados = await abreTramitesDeImportacion({
-      leadId: c.id,
-      vehiculoTitulo: c.vehicle_title ?? '',
-      clienteEmail: c.user_email ?? '',
+    const creados = await abreTramitesDePedido({
+      pedidoId: c.id,
+      origen: c.origen,
+      titularidad: c.titularidad ?? 'popcar',
+      vehiculoTitulo: c.vehiculo_titulo ?? '',
+      matricula: c.matricula ?? '',
+      clienteEmail: c.cliente_email ?? '',
       creadoPor: 'al llegar el coche',
     }).catch(() => [] as string[]);
     abiertos += creados.length;
@@ -442,8 +473,22 @@ export async function abreTramitesDeImportacion(datos: {
   const creados: string[] = [];
 
   for (const tipo of DE_IMPORTACION) {
+    /*
+     * ¿Ya lo tiene **el coche**? No basta con mirar el expediente.
+     *
+     * Un mismo coche los abre por dos caminos: al llegar a Zaragoza cuelgan
+     * del expediente, y al darse el pedido por recibido cuelgan del pedido.
+     * Mirando solo `lead_id`, el segundo camino no veía al primero y el coche
+     * acababa con seis papeleos: dos impuestos de matriculación, dos ITV y dos
+     * matrículas. Seis tarjetas en Gestoría para tres cosas que hacer.
+     *
+     * El papeleo es del coche, no de la fila desde la que se abrió.
+     */
     const yaHay = await query(
-      `SELECT id FROM erp_tramites WHERE lead_id = $1 AND tipo = $2`,
+      `SELECT id FROM erp_tramites
+        WHERE tipo = $2
+          AND (lead_id = $1
+            OR pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1))`,
       [datos.leadId, tipo]
     );
     if (yaHay.rows.length) continue;

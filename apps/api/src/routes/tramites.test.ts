@@ -77,9 +77,22 @@ before(async () => {
       return responde([fila]);
     }
     if (/FROM erp_tramite_history/i.test(t)) return responde(historial.filter((h) => h.tramite_id === p[0]));
-    if (/SELECT id FROM erp_tramites WHERE (lead_id|pedido_id)/i.test(t)) {
-      const columna = /pedido_id/.test(t) ? 'pedido_id' : 'lead_id';
-      return responde(tramites.filter((x) => x[columna] === p[0] && x.tipo === p[1]));
+    /*
+     * ¿Este coche ya tiene ese papeleo?
+     *
+     * Se pregunta por el coche entero —su expediente y sus pedidos— y no por
+     * una columna: se abren por dos caminos y mirando solo una, el mismo coche
+     * acababa con seis papeleos para tres cosas que hacer.
+     */
+    if (/^SELECT id FROM erp_tramites WHERE tipo = \$2/i.test(t)) {
+      const clave = String(p[0] ?? '');
+      const delCoche = new Set<string>([clave]);
+      for (const pe of [] as { id?: string; lead_id?: string }[]) {
+        if (pe.id === clave && pe.lead_id) delCoche.add(String(pe.lead_id));
+        if (pe.lead_id === clave) delCoche.add(String(pe.id));
+      }
+      return responde(tramites.filter((x) => x.tipo === p[1]
+        && (delCoche.has(String(x.lead_id ?? '')) || delCoche.has(String(x.pedido_id ?? '')))));
     }
     if (/FROM erp_tramites WHERE id = \$1/i.test(t)) return responde(tramites.filter((x) => x.id === p[0]));
     if (/FROM erp_tramites/i.test(t)) return responde(tramites);
