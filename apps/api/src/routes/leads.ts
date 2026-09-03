@@ -6,7 +6,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
-import { abreLosTramosQueFalten, abreElTramoAlCliente } from './transportes.js';
+import { abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas } from './transportes.js';
 import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
 import { abreLosTramitesQueFalten, abreTramitesDeVenta } from './tramites.js';
 import {
@@ -232,6 +232,9 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // Y los primeros tramos: sin tramo no hay dónde preguntarle al vendedor
   // por la recogida, que es lo que el propio expediente pide.
   await abreLosTramosQueFalten().catch(() => 0);
+  // La etapa, antes que lo que cuelga de ella: así en la misma pasada se
+  // abren los papeleos y el segundo tramo.
+  await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);

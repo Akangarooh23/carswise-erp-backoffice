@@ -23,7 +23,7 @@ import {
   ESTADOS_PEDIDO, CANCELADO, esEstadoValido, esOrigenPedido,
   puedeEncargarse, notaDelCambio, alMenos, importeAcordado, faltaPorEstado, compraPagada,
 } from '../lib/pedidos.js';
-import { papelesQueFaltan } from '../lib/documentos.js';
+import { papelesQueFaltan, faltaAlgoImprescindible } from '../lib/documentos.js';
 import { preparaDocumentos } from './documentos.js';
 import { abreTramitesDePedido } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
@@ -349,6 +349,54 @@ export async function ponAlDiaLosPedidosDeImportacion(): Promise<number> {
     return { rowCount: 0 };
   });
   movidos += enCamino.rowCount ?? 0;
+
+  /*
+   * Y mirado el coche, recibido.
+   *
+   * Esto no se automatizaba porque el paso a «Recibido» exige que alguien haya
+   * leído los kilómetros y contado las llaves, y eso no lo hace el sistema.
+   * Pero cuando ya están apuntados, ese acto **ya ha ocurrido**: dejarlo en «En
+   * camino» es decir que el coche viene de camino con los kilómetros que marca
+   * escritos delante.
+   *
+   * Se piden **las mismas condiciones que a mano**, no menos: los papeles
+   * imprescindibles de su origen y el pago de la compra. Una puerta automática
+   * más laxa que la manual es una puerta abierta.
+   */
+  const paraRecibir = await query<{
+    id: string; origen: string; papeles: string[] | null;
+  }>(
+    `SELECT pe.id, pe.origen,
+            COALESCE((SELECT array_agg(d.papel) FROM erp_documentos d
+                       WHERE (d.ambito = 'pedido' AND d.ambito_id = pe.id)
+                          OR (d.ambito = 'lead' AND d.ambito_id = pe.lead_id)
+                          OR (d.ambito = 'transporte' AND d.ambito_id IN (
+                               SELECT t2.id FROM erp_transportes t2 WHERE t2.pedido_id = pe.id))
+                     ), '{}') AS papeles
+       FROM erp_pedidos pe
+      WHERE pe.origen = 'importacion' AND pe.estado = 'En camino'
+        AND pe.factura_pagada_el IS NOT NULL
+        AND COALESCE(pe.recepcion->>'km', '') <> ''
+        AND COALESCE(pe.recepcion->>'llaves', '') <> ''
+        AND EXISTS (SELECT 1 FROM erp_transportes t
+                     WHERE t.pedido_id = pe.id AND t.tramo = 1
+                       AND t.fecha_entrega IS NOT NULL)
+      LIMIT 50`
+  ).catch(() => ({ rows: [] as { id: string; origen: string; papeles: string[] | null }[] }));
+
+  for (const p of paraRecibir.rows) {
+    if (faltaAlgoImprescindible(p.origen, p.papeles ?? [])) continue;
+    const r = await query(
+      `UPDATE erp_pedidos SET estado = 'Recibido', ${conNota(`[${hoy} · En camino → Recibido] Mirado al llegar: kilómetros y llaves apuntados.`)},
+              fecha_recepcion = COALESCE(fecha_recepcion, NOW()), updated_at = NOW()
+        WHERE id = $1 AND estado = 'En camino'`,
+      [p.id]
+    ).catch((e: Error) => {
+      console.error('[pedidos] no se ha podido dar por recibido:', e.message);
+      return { rowCount: 0 };
+    });
+    movidos += r.rowCount ?? 0;
+  }
 
   return movidos;
 }

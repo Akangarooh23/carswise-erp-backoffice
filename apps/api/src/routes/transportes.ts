@@ -155,6 +155,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   // Los tramos que falten, antes de enseñarlos: un coche pagado sin tramo es
   // trabajo que no aparece en ninguna pantalla.
   await abreLosTramosQueFalten().catch(() => 0);
+  await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
   const estado = nt(req.query.estado);
@@ -1062,6 +1063,58 @@ export async function abreLosTramosQueFalten(): Promise<number> {
  * Solo si hay dirección de entrega. Si el cliente lo recoge en Zaragoza no hay
  * segundo viaje, y un tramo vacío es una tarea que nadie tiene que hacer.
  */
+/**
+ * Las etapas que se han quedado atrás respecto a su coche.
+ *
+ * El salto de etapa ocurría **en el momento** de marcar el tramo, y un momento
+ * se pierde: si el código no estaba desplegado cuando alguien pulsó, si la
+ * escritura falló, si el tramo se arregló a mano en la base. Entonces el coche
+ * se queda con la etapa de antes para siempre, porque nada vuelve a mirar.
+ *
+ * Todo lo demás de este flujo ya se pone al día mirando lo que hay —los tramos
+ * que faltan, los pedidos, los papeleos de la gestoría— y la etapa era lo único
+ * que seguía siendo un disparo. Ahora también se reconcilia.
+ *
+ * Un salto por pasada y desde su etapa anterior: así no se salta ninguna, y un
+ * coche que llegó estando la etapa dos atrás tarda dos pasadas en ponerse al
+ * día en vez de saltar de golpe.
+ */
+export async function ponAlDiaLasEtapas(): Promise<number> {
+  await prepara();
+  const atrasados = await query<{
+    id: string; status: string; recogido: string | null; entregado: string | null;
+  }>(
+    `SELECT l.id, l.status,
+            t.fecha_recogida::text AS recogido, t.fecha_entrega::text AS entregado
+       FROM moveadvisor_market_leads l
+       JOIN erp_transportes t ON t.lead_id = l.id AND t.tramo = 1
+      WHERE l.lead_type = 'import'
+        AND ((l.status = 'Verificado y pagado' AND t.fecha_recogida IS NOT NULL)
+          OR (l.status = 'En transporte'       AND t.fecha_entrega  IS NOT NULL))
+      LIMIT 50`
+  ).catch(() => ({ rows: [] as { id: string; status: string; recogido: string | null; entregado: string | null }[] }));
+
+  let movidos = 0;
+  for (const l of atrasados.rows) {
+    const etapaNueva = l.status === 'Verificado y pagado' ? 'En transporte' : 'En trámites';
+    const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const linea = `[${cuando} · ${l.status} → ${etapaNueva}] El coche ya ${etapaNueva === 'En transporte' ? 'había salido' : 'había llegado'}: la etapa se había quedado atrás.`;
+    const r = await query(
+      `UPDATE moveadvisor_market_leads
+          SET status = $3::text,
+              erp_notes = CASE WHEN COALESCE(erp_notes, '') = '' THEN $2
+                               ELSE erp_notes || E'\n' || $2 END
+        WHERE id = $1 AND status = $4::text`,
+      [l.id, linea, etapaNueva, l.status]
+    ).catch((e: Error) => {
+      console.error('[transportes] no se ha podido poner al día la etapa:', e.message);
+      return { rowCount: 0 };
+    });
+    movidos += r.rowCount ?? 0;
+  }
+  return movidos;
+}
+
 export async function abreElTramoAlCliente(): Promise<number> {
   await prepara();
   const faltan = await query<{
