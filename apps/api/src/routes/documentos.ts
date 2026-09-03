@@ -129,7 +129,8 @@ documentosRouter.get(
       const ids = cajones.map((c) => c.id ?? '');
 
       const r = await query(
-        `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at, ambito
+        `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at,
+                ambito, ambito_id
            FROM erp_documentos
           WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
           ORDER BY created_at DESC`,

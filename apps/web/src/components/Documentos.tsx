@@ -18,6 +18,17 @@ import { api, descargaConSesion } from '../api/client.js';
 
 export interface Documento {
   id: string;
+  /**
+   * En qué cajón está: el expediente, el pedido o la peritación.
+   *
+   * La lista enseña los tres —los papeles son del coche—, pero cada papel
+   * vive en uno. Sin saber cuál, abrir o quitar una factura subida en el
+   * expediente desde la pantalla del pedido va a buscarla al cajón
+   * equivocado y contesta que no existe.
+   */
+  ambito?: string;
+  /** Y el identificador de ese cajón: el del expediente, el del pedido… */
+  ambito_id?: string;
   papel: string;
   nombre: string;
   tipo: string;
@@ -70,6 +81,21 @@ export default function Documentos({ ambito, id, origen, coche, onCambio }: {
   const [subiendo, setSubiendo] = useState(false);
   const [fallo, setFallo] = useState('');
 
+  /**
+   * En qué cajón está de verdad un papel.
+   *
+   * La lista enseña los tres cajones del coche, pero cada papel vive en uno.
+   * Sin esto, quitar desde el pedido una factura subida en el expediente iba
+   * a buscarla al cajón del pedido y contestaba que no existe.
+   *
+   * Los que no traen ámbito —de una versión anterior— se quedan con el de
+   * esta pantalla, que es donde estaban antes de que hubiera cajón común.
+   */
+  const cajonDe = (d: Documento) => ({
+    ambito: d.ambito ?? ambito,
+    id: d.ambito_id ?? id,
+  });
+
   const carga = useCallback(async () => {
     const partes = [
       origen ? `origen=${encodeURIComponent(origen)}` : null,
@@ -120,8 +146,10 @@ export default function Documentos({ ambito, id, origen, coche, onCambio }: {
 
   async function quita(doc: Documento) {
     if (!window.confirm(`¿Quitar «${doc.nombre}»? Se borra también del almacén.`)) return;
-    const r = await api.delete(`/documentos/${ambito}/${id}/${doc.id}`);
-    if (!r.ok) { setFallo('No se ha podido quitar.'); return; }
+    // Al cajón donde está de verdad, no al de la pantalla.
+    const suyo = cajonDe(doc);
+    const r = await api.delete(`/documentos/${suyo.ambito}/${suyo.id}/${doc.id}`);
+    if (!r.ok) { setFallo((r as { detail?: string }).detail || 'No se ha podido quitar.'); return; }
     await carga();
     onCambio?.();
   }
@@ -165,7 +193,11 @@ export default function Documentos({ ambito, id, origen, coche, onCambio }: {
           {lista.map((d) => (
             <li key={d.id} className="flex items-center gap-2 text-[12px]">
               <button
-                onClick={() => { void descargaConSesion(`/documentos/${ambito}/${id}/${d.id}`, d.nombre).catch(() => setFallo('No se ha podido abrir.')); }}
+                onClick={() => {
+                  const suyo = cajonDe(d);
+                  void descargaConSesion(`/documentos/${suyo.ambito}/${suyo.id}/${d.id}`, d.nombre)
+                    .catch(() => setFallo('No se ha podido abrir.'));
+                }}
                 className="flex-1 text-left text-brand-600 underline underline-offset-2 truncate"
                 title={d.nombre}
               >
