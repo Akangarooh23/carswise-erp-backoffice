@@ -41,6 +41,15 @@ export default function DanosDelCoche({
   onGuardarPegado: (texto: string) => void;
 }) {
   const [nuevo, setNuevo] = useState({ pieza: '', coste: '', notas: '' });
+  /**
+   * Escribir la pieza a mano en vez de elegirla.
+   *
+   * La lista sugería con un `datalist`, que en la práctica no se ve: no hay
+   * flecha ni nada que diga que hay una lista, así que parecía un campo
+   * libre… y a la vez daba la impresión de admitir solo lo que sugería. Un
+   * desplegable de verdad se ve, y «Otra» deja escribir lo que no está.
+   */
+  const [escribiendo, setEscribiendo] = useState(false);
   const [pegando, setPegando] = useState(false);
   const [texto, setTexto] = useState('');
   const [leido, setLeido] = useState<LoLeido | null>(null);
@@ -52,6 +61,7 @@ export default function DanosDelCoche({
     if (!nuevo.pieza.trim()) return;
     onApuntar(nuevo);
     setNuevo({ pieza: '', coste: '', notas: '' });
+    setEscribiendo(false);
   }
 
   async function lee() {
@@ -129,19 +139,42 @@ export default function DanosDelCoche({
       {!pegando ? (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
-            <input list="partidas-habituales" value={nuevo.pieza} placeholder="Qué pieza"
-                   onChange={(e) => setNuevo((d) => ({ ...d, pieza: e.target.value }))}
-                   onKeyDown={(e) => { if (e.key === 'Enter') apunta(); }}
-                   className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            {/*
+              * La lista es una ayuda, no una jaula.
+              *
+              * Se elige de un desplegable —que se ve— y «Otra» abre el campo
+              * para escribir lo que no esté. Un perito no rellena nuestros
+              * formularios: una pieza que no está en la lista no puede
+              * quedarse fuera del total por eso.
+              */}
+            {escribiendo ? (
+              <input value={nuevo.pieza} placeholder="Qué pieza" autoFocus
+                     onChange={(e) => setNuevo((d) => ({ ...d, pieza: e.target.value }))}
+                     onKeyDown={(e) => { if (e.key === 'Enter') apunta(); }}
+                     className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            ) : (
+              <select value={nuevo.pieza}
+                      onChange={(e) => {
+                        if (e.target.value === '__otra') { setEscribiendo(true); setNuevo((d) => ({ ...d, pieza: '' })); return; }
+                        setNuevo((d) => ({ ...d, pieza: e.target.value }));
+                      }}
+                      className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+                <option value="">Qué pieza…</option>
+                {PARTIDAS_HABITUALES.map((x) => <option key={x} value={x}>{x}</option>)}
+                <option value="__otra">Otra… (escribirla)</option>
+              </select>
+            )}
             <input value={nuevo.coste} inputMode="decimal" placeholder="Coste"
                    onChange={(e) => setNuevo((d) => ({ ...d, coste: e.target.value }))}
                    onKeyDown={(e) => { if (e.key === 'Enter') apunta(); }}
                    className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </div>
-          {/* La lista es una ayuda, no una jaula: se puede escribir cualquier otra. */}
-          <datalist id="partidas-habituales">
-            {PARTIDAS_HABITUALES.map((x) => <option key={x} value={x} />)}
-          </datalist>
+          {escribiendo && (
+            <button onClick={() => { setEscribiendo(false); setNuevo((d) => ({ ...d, pieza: '' })); }}
+                    className="text-[11px] text-brand-400 underline underline-offset-2">
+              elegir una de la lista
+            </button>
+          )}
           <button onClick={apunta} disabled={guardando || !nuevo.pieza.trim()}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
             Añadir la partida

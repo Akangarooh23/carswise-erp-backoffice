@@ -325,8 +325,13 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 
 **Y lo que costaría dejarlo bien** · en «Los daños que vio»
 
-- [ ] Añade una partida **a mano**: «Paragolpes delantero», 480. Y otra **sin
-      importe**: «Aleta trasera izquierda». Se puede, y es lo normal.
+- [ ] Añade una partida **a mano**: elige «Paragolpes delantero» del
+      desplegable y pon 480. Y otra **sin importe**: «Aleta trasera
+      izquierda». Se puede, y es lo normal.
+- [ ] Elige **«Otra… (escribirla)»** y comprueba que el campo se abre para
+      teclear lo que quieras. La lista es una ayuda, no una jaula: un perito
+      no rellena nuestros formularios, y una pieza que no esté no puede
+      quedarse fuera del total por eso.
 - [ ] Mira el total: dice **«480 € en 2 partidas, y 1 sin valorar»**, en ámbar.
       Un total que va corto y no lo avisa es peor que no tener total.
 - [ ] Pulsa **«pegar de una hoja»** y pega esto tal cual, con tabuladores o
