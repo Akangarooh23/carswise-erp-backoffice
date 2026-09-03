@@ -6,6 +6,7 @@ import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { comoSeCuenta } from '../lib/danos.js';
 import CaminoDelCoche from '../components/CaminoDelCoche.js';
+import Plegable from '../components/Plegable.js';
 import {
   ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha, bloquesDelExpediente,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
@@ -1471,37 +1472,3 @@ onEncargarALaGestoria, aviso }: PanelProps) {
   );
 }
 
-/**
- * Una sección que se abre cuando hace falta.
- *
- * El expediente enseña de todo —el depósito, los correos, el mensaje al
- * cliente, las notas, el día de la entrega, los papeles, el historial— y con
- * todo abierto a la vez hay que bajar tres pantallas para llegar al único
- * botón que toca hoy.
- *
- * Lo que **no** se pliega es lo de arriba: el camino, el depósito y los pasos
- * de antes de soltar el dinero. Ahí está siempre lo que toca, y esconderlo
- * sería cambiar un problema por otro.
- */
-function Plegable({ titulo, resumen, abiertaPorDefecto = false, children }: {
-  titulo: string;
-  /** Lo que se ve sin abrirla: una fecha, un número, lo que falta. */
-  resumen?: string;
-  abiertaPorDefecto?: boolean;
-  children: ReactNode;
-}) {
-  const [abierta, setAbierta] = useState(abiertaPorDefecto);
-  return (
-    <div className="mt-3 pt-3 border-t border-brand-100">
-      <button onClick={() => setAbierta((v) => !v)}
-              className="w-full flex items-center gap-2 text-left">
-        <span className="text-[11px] text-brand-300 w-3">{abierta ? '▾' : '▸'}</span>
-        <span className="text-xs font-semibold text-brand-500 flex-1">{titulo}</span>
-        {resumen && !abierta && (
-          <span className="text-[11px] text-brand-300 truncate max-w-[55%]">{resumen}</span>
-        )}
-      </button>
-      {abierta && <div className="mt-2">{children}</div>}
-    </div>
-  );
-}

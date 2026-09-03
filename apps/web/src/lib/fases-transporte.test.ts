@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 
 import {
   bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
+  queTocaEnElTramo,
 } from './fases-transporte.js';
 
 describe('qué se ve en cada fase', () => {
@@ -177,5 +178,80 @@ describe('las pistas', () => {
 
   test('la de «desde» avisa de lo que se hace mal', () => {
     assert.match(PISTAS.desde, /ciudad no es una dirección/);
+  });
+});
+
+describe('qué toca ahora en un tramo', () => {
+  const CERRADO = {
+    estado: 'Por organizar',
+    transportista: 'Business Ontime GmbH', coste: 890,
+    desde: 'Musterstraße 18, 80331 München', recogida_prevista: '2026-09-10',
+    tramo: 1,
+    recogida_preguntada_at: '2026-09-03T09:40:00Z',
+    aviso_recogida_at: '2026-09-03T10:49:00Z',
+  };
+
+  test('sin transportista, lo primero es buscarlo', () => {
+    assert.match(queTocaEnElTramo({ ...CERRADO, transportista: '' }), /Elige quién lo trae/);
+    assert.match(queTocaEnElTramo({ ...CERRADO, coste: 0 }), /pídele precio/);
+  });
+
+  test('con precio pero sin preguntar al vendedor, se le pregunta', () => {
+    assert.match(
+      queTocaEnElTramo({ ...CERRADO, recogida_preguntada_at: null }),
+      /Pregúntale al vendedor/
+    );
+  });
+
+  test('preguntado y sin apuntar su respuesta, se apunta', () => {
+    assert.match(queTocaEnElTramo({ ...CERRADO, recogida_prevista: '' }), /Apunta lo que ha contestado/);
+  });
+
+  test('con la respuesta puesta, avisar al vendedor de quién va', () => {
+    assert.match(
+      queTocaEnElTramo({ ...CERRADO, aviso_recogida_at: null }),
+      /Dile al vendedor quién va/
+    );
+  });
+
+  test('y con todo, confirmárselo al transportista', () => {
+    assert.match(queTocaEnElTramo(CERRADO), /Confírmaselo al transportista/);
+  });
+
+  test('con la orden fuera, se espera a que lo recojan', () => {
+    assert.match(
+      queTocaEnElTramo({ ...CERRADO, orden_enviada_at: '2026-09-03T11:02:00Z' }),
+      /Esperando a que lo recojan/
+    );
+  });
+
+  test('con el coche fuera, lo que toca es mirarlo al llegar', () => {
+    // Es el aviso que Ana no veía: el campo estaba al final del panel y el
+    // botón de «Entregado» apagado sin decir por qué delante.
+    for (const estado of ['Recogido', 'En tránsito']) {
+      assert.match(queTocaEnElTramo({ ...CERRADO, estado }), /míralo antes de darlo por entregado/);
+    }
+  });
+
+  test('entregado sin haberlo mirado, eso es lo que falta', () => {
+    assert.match(
+      queTocaEnElTramo({ ...CERRADO, estado: 'Entregado' }),
+      /Falta decir si el coche llegó como salió/
+    );
+  });
+
+  test('y mirado, se acabó', () => {
+    assert.equal(
+      queTocaEnElTramo({ ...CERRADO, estado: 'Entregado', llegada: { conforme: true } }),
+      'Entregado.'
+    );
+  });
+
+  test('en el segundo tramo no se pregunta a ningún vendedor', () => {
+    // Sale de nuestra campa: ahí no hay a quién preguntarle ni a quién avisar.
+    assert.match(
+      queTocaEnElTramo({ ...CERRADO, tramo: 2, recogida_preguntada_at: null, aviso_recogida_at: null }),
+      /Confírmaselo al transportista/
+    );
   });
 });

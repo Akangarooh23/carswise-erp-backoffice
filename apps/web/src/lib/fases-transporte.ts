@@ -84,6 +84,61 @@ export function seLePreguntaAlVendedor(tramo: number | string | null | undefined
   return Number(tramo) === 1;
 }
 
+
+/**
+ * Qué toca ahora en un tramo, en una frase.
+ *
+ * El panel enseña ocho campos y cuatro botones, y con todo delante no se
+ * distingue lo que falta de lo que ya está: el único dato que toca queda
+ * debajo de dos pantallas de datos correctos, y ni siquiera se ve que falta.
+ *
+ * Se mira **lo que hay**, no el estado: un tramo «En tránsito» al que le falta
+ * mirar el coche y otro al que no están en el mismo sitio aunque digan lo
+ * mismo en el desplegable.
+ */
+export function queTocaEnElTramo(t: {
+  estado?: string | null;
+  transportista?: string | null;
+  coste?: unknown;
+  desde?: string | null;
+  recogida_prevista?: string | null;
+  tramo?: number | string | null;
+  recogida_preguntada_at?: string | null;
+  aviso_recogida_at?: string | null;
+  orden_enviada_at?: string | null;
+  llegada?: { conforme?: boolean } | null;
+}): string {
+  const estado = String(t.estado ?? '');
+  if (estado === 'Entregado') {
+    return typeof t.llegada?.conforme === 'boolean'
+      ? 'Entregado.'
+      : 'Falta decir si el coche llegó como salió.';
+  }
+
+  // Con el coche fuera, lo único que queda es mirarlo al bajarlo del camión.
+  if (estado === 'Recogido' || estado === 'En tránsito') {
+    return 'Cuando llegue, míralo antes de darlo por entregado: ahí se dice si llegó como salió.';
+  }
+
+  // Y antes de que salga, en el orden en que se hace.
+  if (!String(t.transportista ?? '').trim() || !(Number(t.coste ?? 0) > 0)) {
+    return 'Elige quién lo trae y pídele precio.';
+  }
+  if (seLePreguntaAlVendedor(t.tramo) && !t.recogida_preguntada_at) {
+    return 'Pregúntale al vendedor dónde y cuándo se recoge, desde el expediente.';
+  }
+  if (!String(t.desde ?? '').trim() || !String(t.recogida_prevista ?? '').trim()) {
+    return 'Apunta lo que ha contestado el vendedor: la dirección exacta y el día.';
+  }
+  if (seLePreguntaAlVendedor(t.tramo) && !t.aviso_recogida_at) {
+    return 'Dile al vendedor quién va a por el coche y qué día.';
+  }
+  if (!t.orden_enviada_at) {
+    return 'Confírmaselo al transportista y mándale la orden.';
+  }
+  return 'Esperando a que lo recojan.';
+}
+
 /** Lo que impide mandar la orden de recogida, si algo lo impide. */
 export function faltaParaLaOrden(t: {
   transportista?: string | null;

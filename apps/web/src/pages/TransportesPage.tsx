@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
+import Plegable from '../components/Plegable.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
 
 /**
@@ -18,7 +19,7 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  */
 
 import {
-  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
+  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, PISTAS,
 } from '../lib/fases-transporte.js';
 import {
   faltaPorMirarAlLlegar, queHacerAlLlegar, type LlegoComoSalio,
@@ -391,6 +392,19 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
    */
   const [verTodo, setVerTodo] = useState(false);
   const [llegada, setLlegada] = useState<LlegoComoSalio>(t.llegada ?? {});
+
+  /*
+   * Qué está hecho ya, para poder plegarlo.
+   *
+   * Con todo abierto a la vez, lo que falta no se distingue de lo que sobra:
+   * el único campo que toca queda debajo de dos pantallas de datos correctos,
+   * y ni siquiera se ve que falta. Se pliega lo terminado, con una línea que
+   * dice lo que guarda dentro para no tener que abrirlo por curiosidad.
+   */
+  const hayTransportista = Boolean(datos.transportista.trim()) && Number(datos.coste || 0) > 0;
+  const rutaPuesta = Boolean(datos.desde.trim() && datos.hasta.trim() && datos.recogida_prevista);
+  const vendedorAvisado = Boolean(t.recogida_preguntada_at && t.aviso_recogida_at);
+  const ordenFuera = Boolean(t.orden_enviada_at);
   // Con lo que se está editando, no con lo último grabado: quien acaba de
   // escribir el precio espera ver el botón, no tener que guardar para saber
   // si va a aparecer.
@@ -430,6 +444,20 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             Recogido el {dia(t.fecha_recogida)} · lleva {dias} días de viaje
           </div>
         )}
+
+        {/*
+          * Lo que toca ahora, antes que nada.
+          *
+          * Es la respuesta a «y ahora qué», que es la pregunta con la que se
+          * abre un tramo. Sin ella hay que leer ocho campos para deducirlo, y
+          * lo que falta no se distingue de lo que ya está.
+          */}
+        <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+          <div className="text-[10px] uppercase tracking-wide text-brand-400">Ahora toca</div>
+          <div className="text-[13px] font-bold text-amber-800">
+            {queTocaEnElTramo({ ...t, ...datos, llegada })}
+          </div>
+        </div>
 
         <div className="mb-4">
           <div className="text-xs font-semibold text-brand-500 mb-1.5">Estado</div>
@@ -497,6 +525,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         </div>
 
         {toca('quien') && (
+        <Plegable titulo="Quién lo trae" abiertaPorDefecto={!hayTransportista}
+                  resumen={hayTransportista ? `${datos.transportista} · ${datos.coste} €` : 'sin elegir'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="col-span-2 text-[11px] text-brand-400">
             Quién lo trae
@@ -580,6 +610,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           </div>
           )}
         </div>
+        </Plegable>
         )}
 
         {/*
@@ -590,6 +621,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * fase en la que ya se le ha preguntado.
           */}
         {toca('ruta') && (
+        <Plegable titulo="Dónde y cuándo se recoge" abiertaPorDefecto={!rutaPuesta}
+                  resumen={rutaPuesta ? `${datos.desde} · ${datos.recogida_prevista}` : 'falta la dirección o el día'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <label className="text-[11px] text-brand-400">
             Recogida prevista
@@ -668,6 +701,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             </span>
           </label>
         </div>
+        </Plegable>
         )}
         {/*
           * La orden de recogida.
@@ -697,8 +731,9 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * que es lo que se escribe en «Desde» y en «Recogida prevista».
           */}
         {toca('dondeRecoger') && alVendedor && (
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">Dónde y cuándo se recoge</div>
+        <Plegable titulo="Lo que se le ha dicho al vendedor" abiertaPorDefecto={!vendedorAvisado}
+                  resumen={vendedorAvisado ? 'preguntado y avisado' : 'falta preguntarle o avisarle'}>
+        <div>
           {t.recogida_preguntada_at ? (
             <span className="text-[13px] font-bold text-emerald-700">
               ✓ Preguntado al vendedor el {new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}
@@ -753,11 +788,15 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             </div>
           )}
         </div>
+        </Plegable>
         )}
 
         {toca('orden') && (
-        <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">La orden de recogida</div>
+        <Plegable titulo="La orden de recogida" abiertaPorDefecto={!ordenFuera}
+                  resumen={ordenFuera && t.orden_enviada_at
+                    ? `mandada el ${new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}`
+                    : 'sin mandar'}>
+        <div>
           {t.orden_enviada_at ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[13px] font-bold text-emerald-700">
@@ -796,6 +835,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           )}
           {aviso && <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>}
         </div>
+        </Plegable>
         )}
 
         {/*
