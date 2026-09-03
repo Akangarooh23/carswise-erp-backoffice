@@ -1519,6 +1519,29 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
       [req.params.id, aQuien]
     );
 
+    /*
+     * Y el papeleo pasa a estar fuera, que es donde está.
+     *
+     * Con el correo mandado deja de depender de nosotros: la pelota es de la
+     * gestoría. Sin esto se quedaba en «En casa» diciendo «Pendiente», que es
+     * mentira, y encima **el reloj no empezaba**: el tablero ordena por lo que
+     * lleva esperando, y sin `fecha_enviado` un expediente puede pasarse un mes
+     * en la DGT sin subir un puesto.
+     *
+     * Solo los que todavía no habían salido: volver a mandar el correo no
+     * reinicia el contador de uno que lleva tres semanas fuera.
+     */
+    await query(
+      `UPDATE erp_tramites
+          SET estado = 'Enviado a gestoría',
+              fecha_enviado = COALESCE(fecha_enviado, NOW()),
+              updated_at = NOW()
+        WHERE (lead_id = $1
+            OR pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1))
+          AND estado IN ('Pendiente', 'Documentación incompleta')`,
+      [req.params.id]
+    ).catch((e: Error) => console.error('[leads] no se han podido poner los papeleos fuera:', e.message));
+
     res.json({ ok: true, para: aQuien });
   } catch (err) {
     falloInterno(res, 'encargo_gestoria_failed', err);

@@ -23,6 +23,14 @@ export interface PapeleoDeUnCoche {
   bastidor?: string | null;
   lead_id?: string | null;
   pedido_id?: string | null;
+  /**
+   * De qué coche es, ya resuelto por el servidor.
+   *
+   * Cuelgan del expediente o del pedido según por dónde se abrieran, y desde
+   * la pantalla no hay forma de saber que son el mismo coche: salían en dos
+   * tarjetas, una al lado de la otra, con el mismo título.
+   */
+  coche?: string | null;
   coste?: string | number | null;
   fecha_enviado?: string | null;
   /** Cuándo se le mandó el encargo al expediente de este coche. */
@@ -77,7 +85,8 @@ export function papeleosPorCoche<T extends PapeleoDeUnCoche>(
   const grupos = new Map<string, CocheConPapeleos<T>>();
 
   for (const p of papeleos ?? []) {
-    const clave = String(p.lead_id ?? '').trim()
+    const clave = String(p.coche ?? '').trim()
+      || String(p.lead_id ?? '').trim()
       || String(p.pedido_id ?? '').trim()
       || `suelto:${p.id}`;
 
@@ -88,7 +97,7 @@ export function papeleosPorCoche<T extends PapeleoDeUnCoche>(
         titulo: String(p.vehiculo_titulo ?? '').trim() || 'Sin coche',
         identifica: String(p.matricula ?? '').trim() || String(p.bastidor ?? '').trim(),
         gestoria: String(p.gestoria ?? '').trim(),
-        lead: String(p.lead_id ?? '').trim(),
+        lead: String(p.lead_id ?? '').trim() || String(p.coche ?? '').trim(),
         encargado: p.encargo_enviado_at ?? null,
         papeleos: [],
         coste: 0,

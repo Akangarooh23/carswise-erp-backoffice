@@ -141,9 +141,16 @@ tramitesRouter.get('/tramites', requireRole(['admin', 'support', 'operations', '
     // uno por coche y sale del expediente, así que desde aquí no había forma
     // de saber si estaba pedido o no.
     const r = await query(
+      // Y de qué coche es, resolviendo el pedido: cuelgan de uno o de otro
+      // según por dónde se abrieran, y el mismo coche salía en dos tarjetas.
       `SELECT ${CAMPOS},
+              COALESCE(erp_tramites.lead_id,
+                       (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = erp_tramites.pedido_id),
+                       erp_tramites.pedido_id) AS coche,
               (SELECT l.encargo_gestoria_enviado_at FROM moveadvisor_market_leads l
-                WHERE l.id = erp_tramites.lead_id) AS encargo_enviado_at
+                WHERE l.id = COALESCE(erp_tramites.lead_id,
+                       (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = erp_tramites.pedido_id))
+              ) AS encargo_enviado_at
          FROM erp_tramites ${where} ORDER BY created_at DESC LIMIT 200`,
       valores
     );
@@ -487,6 +494,83 @@ export async function abreLosTramitesQueFalten(): Promise<number> {
     }).catch(() => [] as string[]);
     abiertos += creados.length;
   }
+
+  /*
+   * Y se recogen los que dejó la regla vieja.
+   *
+   * Una importación abría tres papeleos y ahora abre uno. Los tres que ya
+   * existían se quedarían ahí para siempre pidiendo trabajo por triplicado:
+   * cambiar una regla sin recoger lo que dejó la anterior es dejar el tablero
+   * contando algo que ya no es.
+   *
+   * Solo los **intactos** —sin coste, sin partidas, sin salir y sin resolver—
+   * y solo si el coche ya tiene el que abre la regla de ahora. Uno con algo
+   * escrito no lo abrió esta función sola, y lo que alguien escribió no se
+   * borra por un cambio de criterio.
+   */
+  const sobran = await query(
+    `DELETE FROM erp_tramites t
+      WHERE t.tipo IN ('Impuesto de matriculación', 'ITV de homologación')
+        AND t.estado = 'Pendiente'
+        AND t.coste IS NULL
+        AND COALESCE(jsonb_array_length(t.partidas), 0) = 0
+        AND t.fecha_enviado IS NULL
+        AND t.fecha_resuelto IS NULL
+        AND EXISTS (
+          SELECT 1 FROM erp_pedidos pe
+           WHERE pe.id = t.pedido_id OR pe.lead_id = t.lead_id
+             AND pe.origen = 'importacion')
+        -- Y solo si ya tiene el de ahora, para no dejarlo sin ninguno.
+        AND EXISTS (
+          SELECT 1 FROM erp_tramites otro
+           WHERE otro.tipo = 'Matriculación de importación'
+             AND (otro.lead_id = t.lead_id
+               OR otro.pedido_id = t.pedido_id
+               OR otro.lead_id IN (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = t.pedido_id)
+               OR otro.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = t.lead_id)))`
+  ).catch((e: Error) => {
+    console.error('[tramites] no se han podido recoger los que sobran:', e.message);
+    return { rowCount: 0 };
+  });
+  if (sobran.rowCount) {
+    console.log('[tramites] recogidos %d papeleos de la regla vieja', sobran.rowCount);
+  }
+
+  /*
+   * Y los gemelos, uno en cada cajón.
+   *
+   * El mismo papeleo del mismo coche podía abrirse dos veces —colgando del
+   * expediente y colgando del pedido— porque durante un rato cada camino
+   * miraba solo su columna. Dos fichas idénticas del mismo trámite no son dos
+   * cosas que hacer: son la misma contada dos veces.
+   *
+   * Se queda **el más viejo**, que es el que puede tener historia detrás, y se
+   * va el intacto. Con algo escrito, ninguno se toca.
+   */
+  const gemelos = await query(
+    `DELETE FROM erp_tramites t
+      WHERE t.estado = 'Pendiente'
+        AND t.coste IS NULL
+        AND COALESCE(jsonb_array_length(t.partidas), 0) = 0
+        AND t.fecha_enviado IS NULL
+        AND t.fecha_resuelto IS NULL
+        AND EXISTS (
+          SELECT 1 FROM erp_tramites viejo
+           WHERE viejo.id <> t.id
+             AND viejo.tipo = t.tipo
+             AND viejo.created_at <= t.created_at
+             AND (viejo.lead_id = t.lead_id
+               OR viejo.pedido_id = t.pedido_id
+               OR viejo.lead_id IN (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = t.pedido_id)
+               OR viejo.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = t.lead_id)))`
+  ).catch((e: Error) => {
+    console.error('[tramites] no se han podido recoger los gemelos:', e.message);
+    return { rowCount: 0 };
+  });
+  if (gemelos.rowCount) {
+    console.log('[tramites] recogidos %d papeleos repetidos', gemelos.rowCount);
+  }
+
   return abiertos;
 }
 

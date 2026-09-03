@@ -329,8 +329,17 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
         */}
       <div className="grid gap-2 md:grid-cols-2">
         {papeleosPorCoche(lista).map((coche) => (
-          <div key={coche.clave}
-               className="px-3 py-2.5 rounded-lg bg-white border border-brand-200">
+          /*
+           * La caja entera se abre de un clic.
+           *
+           * Es un solo expediente de gestoría: pinchar línea a línea era pedir
+           * tres clics para lo mismo. Las líneas de dentro dejan de ser botones
+           * y pasan a ser lo que son, el detalle de lo que se le ha encargado.
+           */
+          <div key={coche.clave} role="button" tabIndex={0}
+               onClick={() => onAbrir(coche.papeleos[0])}
+               onKeyDown={(e) => { if (e.key === 'Enter') onAbrir(coche.papeleos[0]); }}
+               className="cursor-pointer px-3 py-2.5 rounded-lg bg-white border border-brand-200 hover:border-brand-400 transition">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-brand-600 leading-tight truncate">
@@ -352,8 +361,7 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
               {coche.papeleos.map((p) => {
                 const dias = conDias ? diasDesde(p.fecha_enviado) : null;
                 return (
-                  <button key={p.id} onClick={() => onAbrir(p)}
-                          className="w-full text-left flex items-center gap-2 py-1.5 hover:bg-brand-50">
+                  <div key={p.id} className="flex items-center gap-2 py-1.5">
                     <span className="text-[12px] text-brand-600 flex-1 truncate">{p.tipo}</span>
                     {dias !== null && (
                       <span className={`text-[10px] ${dias > 14 ? 'text-red-600 font-bold' : 'text-brand-300'}`}>
@@ -368,7 +376,7 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${COLOR[p.estado] ?? ''}`}>
                       {p.estado}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -394,14 +402,14 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
                     <span className="text-[11px] font-bold text-emerald-700">
                       ✓ Encargado el {new Date(coche.encargado).toLocaleDateString('es-ES')}
                     </span>
-                    <button onClick={() => onEncargar(coche.lead)}
+                    <button onClick={(e) => { e.stopPropagation(); onEncargar(coche.lead); }}
                             className="text-[10px] text-brand-400 underline underline-offset-2">
                       volver a mandarlo
                     </button>
                   </div>
                 ) : (
                   <>
-                    <button onClick={() => onEncargar(coche.lead)}
+                    <button onClick={(e) => { e.stopPropagation(); onEncargar(coche.lead); }}
                             className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800">
                       Encargárselo a la gestoría
                     </button>
