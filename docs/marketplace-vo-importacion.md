@@ -814,6 +814,29 @@ entrega al cliente**, la lista de **lo que se le da al firmar** y los
 Detrás de «Ver todo el expediente» sigue estando entero: a veces hay que
 corregir algo tres etapas después.
 
+### El pedido de una importación nace comprado
+
+Los estados del pedido son los mismos para los cuatro orígenes, pero no
+significan lo mismo. Un pedido de importación **se crea al liberar el dinero**:
+ya está comprado y pagado. La tarjeta decía «Pedido · esperando que lo
+acepten» de un coche que ya es del cliente y ya está cobrado, y eso no es que
+se entienda mal — es falso.
+
+| Estado | Qué significa en una importación |
+|---|---|
+| Pedido | **Comprado y pagado.** Falta apuntar su factura y cuándo estará listo |
+| Confirmado | **Listo para recoger**: organiza el transporte |
+| En camino | De camino a España |
+| Recibido | Ya está aquí: los trámites y lo que cueste dejarlo listo |
+
+Los nombres del estado no cambian —son datos y los comparten los cuatro
+orígenes—; lo que cambia es la frase de arriba del panel, que dice qué hacer.
+
+Y ahí vive un paso del camino: **apuntar el número de la factura del vendedor**
+**y la fecha del pago**. Los 16.890 € ya han salido del banco; sin esos dos
+datos queda un cargo de dieciséis mil euros sin concepto, y aparece al cuadrar
+el mes. No mueve el coche, así que va aparte — pero cuenta en el número rojo.
+
 ### El número rojo del menú
 
 Sale de la misma cuenta, y **va donde está el botón**: encargar una peritación

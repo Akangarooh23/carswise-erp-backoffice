@@ -418,3 +418,47 @@ describe('la factura del vendedor: pedirla, esperarla y tenerla', () => {
     assert.match(paso(x, 'factura').titulo, /Subir la factura del vendedor/);
   });
 });
+
+describe('lo que vive en Pedidos', () => {
+  const PAGADO = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    verificado_alemania_at: '2026-09-07T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
+    factura_vendedor_subida: true,
+    recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    peritacion: {
+      id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
+      perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
+      donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
+      encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+      factura_numero: 'PE-DE-0001',
+    },
+    pedido: { id: 'PED-2026-001', estado: 'Pedido' },
+  };
+
+  test('sin el número de su factura, hay algo que hacer en Pedidos', () => {
+    // Los 16.890 € ya han salido del banco. Sin ese número queda un cargo de
+    // dieciséis mil euros sin concepto, y aparece al cuadrar el mes.
+    const x = kia(PAGADO);
+    assert.equal(paso(x, 'pedidoPagado').estado, 'toca');
+    assert.equal(pendientesPorPantalla([x], HOY)['/pedidos'], 1);
+  });
+
+  test('apuntado, deja de pedirlo', () => {
+    const x = kia({ ...PAGADO, pedido: { ...PAGADO.pedido, factura_proveedor: 'ACD-2026-0903-001' } });
+    assert.equal(paso(x, 'pedidoPagado').estado, 'hecho');
+    assert.equal(pendientesPorPantalla([x], HOY)['/pedidos'], undefined);
+  });
+
+  test('pero no le quita el titular al transporte', () => {
+    // Apuntar un número no mueve el coche: es trabajo nuestro, va aparte.
+    assert.equal(loQueToca(pasosDeLaImportacion(kia(PAGADO), HOY))?.clave, 'transporte');
+  });
+
+  test('sin pedido todavía, ese paso ni se menciona', () => {
+    const x = kia({ deposit_paid_at: '2026-09-01T10:00:00Z' });
+    assert.ok(!pasosDeLaImportacion(x, HOY).some((p) => p.clave === 'pedidoPagado'));
+  });
+});

@@ -4,7 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
 import {
-  toca as tocaEnFase, camposDe,
+  toca as tocaEnFase, camposDe, queTocaEnElPedido,
   type Bloque, type Campo, type CampoDePedido,
 } from '../lib/fases-pedido.js';
 
@@ -685,6 +685,21 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
             <p className="text-xs text-brand-400 mt-0.5">{p.id} · {etiquetaOrigen(p.origen)}</p>
           </div>
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
+        </div>
+
+        {/*
+          * Qué toca en este pedido, antes de nada.
+          *
+          * Es la misma pregunta con la que se abre un expediente, y la
+          * respuesta depende del origen: un pedido de importación nace
+          * comprado y pagado, así que «esperando que lo acepten» —que es lo
+          * que decía— no solo se entiende mal, es falso.
+          */}
+        <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+          <div className="text-[10px] uppercase tracking-wide text-amber-700/80">Ahora toca</div>
+          <div className="text-[13px] font-bold text-amber-800">
+            {queTocaEnElPedido(p.estado, p.origen, QUE_TOCA[p.estado as Estado] ?? p.estado)}
+          </div>
         </div>
 
         {toca('titular') && <ANombreDeQuien p={p} guardando={guardando} onCambiar={onCambiar} />}

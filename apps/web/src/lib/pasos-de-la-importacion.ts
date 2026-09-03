@@ -318,6 +318,33 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
   );
 
   /*
+   * 10b · Atar el pago a este coche, en el pedido.
+   *
+   * Los 16.890 € han salido del banco. El número de la factura del vendedor
+   * y la fecha del pago son lo que los ata a este coche; sin ellos queda un
+   * cargo de dieciséis mil euros sin concepto, y aparece al cuadrar el mes.
+   *
+   * Va por su cuenta: no mueve el coche, pero es trabajo nuestro y cuenta.
+   */
+  const pedido = m.pedido ?? null;
+  const atado = Boolean(String(pedido?.factura_proveedor ?? '').trim());
+  if (pedido) {
+    pasos.push(
+      atado
+        ? {
+            clave: 'pedidoPagado', titulo: 'El pago, apuntado en el pedido',
+            estado: 'hecho', detalle: pedido.factura_proveedor ?? undefined,
+            donde: '/pedidos', via: 'aparte',
+          }
+        : {
+            clave: 'pedidoPagado',
+            titulo: 'Apuntar en el pedido el número de su factura y el pago',
+            estado: liberado ? 'toca' : 'porVenir', donde: '/pedidos', via: 'aparte',
+          }
+    );
+  }
+
+  /*
    * 11 · Traerlo.
    *
    * Antes de contratar a nadie hay que preguntarle al vendedor **dónde y

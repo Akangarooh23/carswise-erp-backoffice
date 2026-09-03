@@ -1,6 +1,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LO_DE_CADA_FASE, CAMPOS, toca, tocaCampo, camposDe } from './fases-pedido.js';
+import {
+  LO_DE_CADA_FASE, CAMPOS, toca, tocaCampo, camposDe, queTocaEnElPedido,
+} from './fases-pedido.js';
 
 /**
  * Lo que se enseña en cada fase.
@@ -112,5 +114,37 @@ describe('qué campos se rellenan en cada fase', () => {
       assert.ok(c.fases.includes(c.haceFaltaPara),
         `${c.campo} hace falta para ${c.haceFaltaPara} y no sale en esa fase`);
     }
+  });
+});
+
+describe('qué toca en un pedido, según de dónde viene el coche', () => {
+  test('en importación, un pedido «Pedido» ya está comprado y pagado', () => {
+    // Nace al liberar el dinero. «Esperando que lo acepten» no es que se
+    // entienda mal: es falso, y quien lo lee cree que falta que el vendedor
+    // conteste algo.
+    assert.match(
+      queTocaEnElPedido('Pedido', 'importacion', 'Esperando que lo acepten'),
+      /Comprado y pagado/
+    );
+  });
+
+  test('y «Confirmado» es que está listo para recoger', () => {
+    assert.match(
+      queTocaEnElPedido('Confirmado', 'importacion', 'Organizar la recogida'),
+      /Listo para recoger/
+    );
+  });
+
+  test('en los demás orígenes se queda la frase de siempre', () => {
+    // Un coche de concesionario sí se encarga y sí hay que esperar que lo
+    // acepten: ahí la frase vieja es la correcta.
+    assert.equal(
+      queTocaEnElPedido('Pedido', 'concesionario', 'Esperando que lo acepten'),
+      'Esperando que lo acepten'
+    );
+  });
+
+  test('y un estado que no esté en la tabla no deja el hueco vacío', () => {
+    assert.equal(queTocaEnElPedido('Cancelado', 'importacion', 'Cancelado'), 'Cancelado');
   });
 });

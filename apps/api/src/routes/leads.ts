@@ -340,6 +340,16 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                                  SELECT pe2.id FROM erp_pedidos pe2
                                   WHERE pe2.lead_id = moveadvisor_market_leads.id)))
                   ),
+                  -- El pedido, para poder decir qué le falta sin abrirlo.
+                  'pedido', (
+                    SELECT json_build_object(
+                      'id', pe2.id, 'estado', pe2.estado,
+                      'factura_proveedor', pe2.factura_proveedor,
+                      'factura_pagada_el', pe2.factura_pagada_el)
+                      FROM erp_pedidos pe2
+                     WHERE pe2.lead_id = moveadvisor_market_leads.id
+                     ORDER BY pe2.created_at LIMIT 1
+                  ),
                   -- Y si ya se le ha preguntado dónde y cuándo se recoge.
                   'recogida_preguntada_at', (
                     SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t

@@ -144,6 +144,19 @@ export interface MetaImportacion {
   factura_vendedor_pedida_a?: string | null;
   /** Si su factura ya está subida, en cualquiera de los cajones del coche. */
   factura_vendedor_subida?: boolean | null;
+  /**
+   * El pedido de este coche, para poder decir qué le falta sin abrirlo.
+   *
+   * El número de su factura y la fecha del pago son lo que ata los 16.890 €
+   * que salieron del banco a este coche. Sin ellos queda un cargo de
+   * dieciséis mil euros sin concepto.
+   */
+  pedido?: {
+    id: string;
+    estado: string;
+    factura_proveedor?: string | null;
+    factura_pagada_el?: string | null;
+  } | null;
   /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
   recogida_preguntada_at?: string | null;
   // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.

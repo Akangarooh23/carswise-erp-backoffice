@@ -15,6 +15,33 @@
 
 export type Bloque = 'titular' | 'comprobaciones' | 'papeles' | 'alLlegar' | 'gastos';
 
+/**
+ * Qué toca en un pedido, dicho según de dónde viene el coche.
+ *
+ * Los estados son los mismos para todos los orígenes, pero no significan lo
+ * mismo. Un pedido de importación **nace comprado y pagado** —se crea al
+ * liberar el dinero—, así que la tarjeta decía «Pedido · esperando que lo
+ * acepten» de un coche que ya es del cliente y ya está cobrado. Eso no es que
+ * se entienda mal: es falso.
+ *
+ * Los nombres del estado no se tocan —son datos, y los comparten cuatro
+ * orígenes—; lo que cambia es la frase que explica qué hacer.
+ */
+export const QUE_TOCA_POR_ORIGEN: Record<string, Record<string, string>> = {
+  importacion: {
+    'Borrador':   'Prepararlo',
+    'Pedido':     'Comprado y pagado. Falta apuntar su factura y cuándo estará listo',
+    'Confirmado': 'Listo para recoger: organiza el transporte',
+    'En camino':  'De camino a España',
+    'Recibido':   'Ya está aquí: los trámites y lo que cueste dejarlo listo',
+  },
+};
+
+/** La frase de este pedido, con la genérica de repuesto. */
+export function queTocaEnElPedido(estado: string, origen: string, generica: string): string {
+  return QUE_TOCA_POR_ORIGEN[origen]?.[estado] ?? generica;
+}
+
 export const LO_DE_CADA_FASE: Record<string, Bloque[]> = {
   // Preparándolo: a quién y a nombre de quién.
   'Borrador':   ['titular', 'comprobaciones'],
