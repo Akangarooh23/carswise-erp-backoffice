@@ -1180,18 +1180,21 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                   </div>
                 ) : (
                   <>
-                    <button onClick={() => onEncargarALaGestoria()} disabled={guardando}
-                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-                      Mandárselo a la gestoría
-                    </button>
-                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
-                      Los tres trámites en un correo, y les pide el importe real del impuesto.
-                      {/* Y lo que hay que haber hecho antes. Sin decirlo, el botón
-                          parece roto: se pulsa, no sale nada y el motivo aparece
-                          en un aviso que quien mira el botón no está mirando. */}
-                      {' '}Antes hay que <strong>elegir qué gestoría los lleva</strong>,
-                      en cada trámite, dentro de{' '}
-                      <a href="/gestoria" className="underline underline-offset-2">Gestoría</a>.
+                    {/*
+                      * Este correo se manda desde Gestoría.
+                      *
+                      * Va dirigido a ella, lleva dentro los tres papeleos y
+                      * necesita saber quién los lleva, un dato que se pone allí.
+                      * Con el botón aquí se pulsaba, decía que falta elegir la
+                      * gestoría, había que ir, elegirla y volver.
+                      *
+                      * Cada pantalla manda los correos de su interlocutor.
+                      */}
+                    <div className="text-[11px] text-emerald-800/80">
+                      Los tres trámites en un correo, y les pide el importe real del
+                      impuesto. Se le encarga desde{' '}
+                      <a href="/gestoria" className="underline underline-offset-2 font-semibold">Gestoría</a>,
+                      en la tarjeta de este coche, que es donde se elige quién los lleva.
                     </div>
                     {/*
                       * Y el motivo, aquí y no arriba del todo.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { papeleosPorCoche } from '../lib/papeleos-por-coche.js';
+import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
@@ -94,6 +95,53 @@ export default function GestoriaPage() {
   const [nuevo, setNuevo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [verResueltos, setVerResueltos] = useState(false);
+  /**
+   * El encargo a la gestoría, que se manda desde aquí.
+   *
+   * Estaba en el expediente y su requisito estaba aquí: se pulsaba allí, decía
+   * que falta elegir gestoría, había que venir, elegirla y volver. El correo va
+   * dirigido a ella y los datos que lleva son estos tres papeleos: es de esta
+   * pantalla.
+   */
+  const [revisando, setRevisando] = useState<{ vista: VistaDelCorreo; lead: string } | null>(null);
+  const [avisoDelCorreo, setAvisoDelCorreo] = useState('');
+
+  async function preparaElEncargo(lead: string) {
+    setGuardando(true);
+    setAvisoDelCorreo('');
+    try {
+      const r = await api.post<VistaDelCorreo>(`/leads/${lead}/encargo-gestoria`, { soloVista: true });
+      if (!r.ok) {
+        setAvisoDelCorreo((r as { detail?: string }).detail || r.error || 'No se ha podido preparar.');
+        return;
+      }
+      const d = r.data as unknown as VistaDelCorreo;
+      setRevisando({
+        vista: {
+          para: d.para, subject: d.subject, html: d.html, papeles: d.papeles,
+          idioma: d.idioma, clave: `encargo:${lead}`,
+        }, lead,
+      });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function mandaElEncargo(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
+    if (!revisando) return;
+    setGuardando(true);
+    try {
+      const r = await api.post(`/leads/${revisando.lead}/encargo-gestoria`, cambios);
+      if (!r.ok) {
+        setAvisoDelCorreo((r as { detail?: string }).detail || r.error || 'No se ha podido mandar.');
+        return;
+      }
+      setRevisando(null);
+      await carga();
+    } finally {
+      setGuardando(false);
+    }
+  }
 
   const carga = useCallback(async (): Promise<Tramite[]> => {
     setCargando(true);
@@ -235,11 +283,14 @@ export default function GestoriaPage() {
             onAbrir={setAbierto}
             conDias
           />
+          {/* El encargo se ofrece donde todavía no ha salido: en «En casa».
+              Los que ya están fuera es que se encargaron. */}
           <Bloque
             titulo="En casa"
             pie="Depende de nosotros o del cliente"
             lista={enCasa}
             onAbrir={setAbierto}
+            onEncargar={(lead) => void preparaElEncargo(lead)}
           />
           {resueltos.length > 0 && (
             <div className="mt-4">
@@ -250,6 +301,21 @@ export default function GestoriaPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Ninguno sale sin que alguien lo haya visto. */}
+      <RevisarCorreo
+        vista={revisando?.vista ?? null}
+        enviando={guardando}
+        error={avisoDelCorreo}
+        onEnviar={(cambios) => void mandaElEncargo(cambios)}
+        onCerrar={() => setRevisando(null)}
+      />
+
+      {avisoDelCorreo && !revisando && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+          {avisoDelCorreo}
+        </div>
       )}
 
       {abierto && (
@@ -274,8 +340,11 @@ export default function GestoriaPage() {
   );
 }
 
-function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
-  titulo: string; pie: string; lista: Tramite[]; onAbrir: (t: Tramite) => void; conDias?: boolean;
+function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
+  titulo: string; pie: string; lista: Tramite[]; onAbrir: (t: Tramite) => void;
+  /** Mandarle el encargo a la gestoría, si desde este bloque tiene sentido. */
+  onEncargar?: (lead: string) => void;
+  conDias?: boolean;
 }) {
   if (!lista.length && titulo) {
     return (
@@ -347,6 +416,41 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
             {coche.coste > 0 && (
               <div className="text-[10px] text-brand-400 mt-1.5 text-right tabular-nums">
                 {coche.coste.toLocaleString('es-ES')} € en papeleos
+              </div>
+            )}
+
+            {/*
+              * Y el encargo, aquí.
+              *
+              * Estaba en el expediente y su requisito —elegir qué gestoría los
+              * lleva— está en estos papeleos: se pulsaba allí, decía que falta,
+              * había que venir, elegirla y volver. El correo va dirigido a ella
+              * y lo que lleva dentro son estos tres: es de esta pantalla.
+              */}
+            {onEncargar && coche.lead && (
+              <div className="mt-2 pt-2 border-t border-brand-100">
+                {coche.encargado ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      ✓ Encargado el {new Date(coche.encargado).toLocaleDateString('es-ES')}
+                    </span>
+                    <button onClick={() => onEncargar(coche.lead)}
+                            className="text-[10px] text-brand-400 underline underline-offset-2">
+                      volver a mandarlo
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onEncargar(coche.lead)}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800">
+                      Encargárselo a la gestoría
+                    </button>
+                    <div className="text-[10px] text-brand-300 mt-1">
+                      Los tres en un correo, con el importe real del impuesto.
+                      {!coche.gestoria && ' Antes, elige arriba qué gestoría los lleva.'}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

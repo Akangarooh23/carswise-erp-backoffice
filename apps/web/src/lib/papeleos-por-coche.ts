@@ -25,6 +25,8 @@ export interface PapeleoDeUnCoche {
   pedido_id?: string | null;
   coste?: string | number | null;
   fecha_enviado?: string | null;
+  /** Cuándo se le mandó el encargo al expediente de este coche. */
+  encargo_enviado_at?: string | null;
 }
 
 export interface CocheConPapeleos<T extends PapeleoDeUnCoche> {
@@ -36,6 +38,10 @@ export interface CocheConPapeleos<T extends PapeleoDeUnCoche> {
   identifica: string;
   /** Quién los lleva, si todos son de la misma. */
   gestoria: string;
+  /** De qué expediente son, que es a quien se le encarga el correo. */
+  lead: string;
+  /** Cuándo se le encargó a la gestoría, si ya se hizo. */
+  encargado: string | null;
   papeleos: T[];
   /** Lo que suman, para no tener que abrirlos uno a uno. */
   coste: number;
@@ -82,6 +88,8 @@ export function papeleosPorCoche<T extends PapeleoDeUnCoche>(
         titulo: String(p.vehiculo_titulo ?? '').trim() || 'Sin coche',
         identifica: String(p.matricula ?? '').trim() || String(p.bastidor ?? '').trim(),
         gestoria: String(p.gestoria ?? '').trim(),
+        lead: String(p.lead_id ?? '').trim(),
+        encargado: p.encargo_enviado_at ?? null,
         papeleos: [],
         coste: 0,
         diasFuera: null,
