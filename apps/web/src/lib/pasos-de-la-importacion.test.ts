@@ -269,6 +269,33 @@ describe('el final del camino', () => {
     assert.match(paso(enCamino, 'llegada').titulo, /llegue a España/);
   });
 
+  test('recogido y con el expediente sin mover, eso es tarea nuestra', () => {
+    // El tramo se marca en Transportes, pero la etapa del coche la mueve una
+    // persona: es lo que ve el cliente en su panel. Sin este paso, el camino
+    // diría «que el transportista lo recoja» con el coche cruzando Francia.
+    const recogido = kia({
+      ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: {
+        recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
+        fecha_recogida: '2026-09-15T08:30:00Z',
+      },
+    });
+    assert.equal(paso(recogido, 'llegada').estado, 'toca');
+    assert.match(paso(recogido, 'llegada').titulo, /Pasarlo a «En transporte»/);
+    assert.equal(pendientesPorPantalla([recogido], HOY)['/importaciones'], 1);
+  });
+
+  test('y una vez movido, deja de pedirlo', () => {
+    const enCamino = kia({
+      ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: {
+        recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
+        fecha_recogida: '2026-09-15T08:30:00Z',
+      },
+    }, 'En transporte');
+    assert.equal(paso(enCamino, 'llegada').estado, 'esperando');
+  });
+
   test('en trámites, toca la gestoría', () => {
     assert.equal(loQueToca(pasosDeLaImportacion(kia(TODO, 'En trámites'), HOY))?.clave, 'tramites');
   });

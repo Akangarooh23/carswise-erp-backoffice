@@ -444,20 +444,33 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
    * Europa, y «nada pendiente» en un expediente abierto se lee como que algo
    * se ha perdido.
    */
-  pasos.push({
-    clave: 'llegada',
-    titulo: enTramites
-      ? 'El coche ha llegado a España'
-      // Antes de salir se espera al transportista, que es distinto de
-      // esperar a que cruce Europa. Decir «que llegue» con el coche aún en la
-      // nave del vendedor hace pensar que ya va de camino.
+  /*
+   * Y cuando se lo llevan, el expediente tiene que enterarse.
+   *
+   * El tramo se marca «Recogido» en Transportes, pero la etapa del coche la
+   * mueve una persona: es lo que ve el cliente en su panel, y no se cambia
+   * sola desde otra pantalla. Mientras no se mueva, el camino diría «que el
+   * transportista lo recoja» con el coche ya cruzando Francia.
+   */
+  const yaRecogido = Boolean(String(m.tramo?.fecha_recogida ?? '').trim());
+  pasos.push(
+    enTramites
+      ? { clave: 'llegada', titulo: 'El coche ha llegado a España', estado: 'hecho' }
       : enCamino
-        ? 'Que el coche llegue a España'
-        : ordenMandada ? 'Que el transportista lo recoja' : 'Que el coche llegue a España',
-    estado: enTramites ? 'hecho' : (enCamino || ordenMandada) ? 'esperando' : 'porVenir',
-    donde: ordenMandada && !enCamino ? '/transportes' : undefined,
-    apuntarEn: ordenMandada && !enCamino ? '/transportes' : undefined,
-  });
+        ? { clave: 'llegada', titulo: 'Que el coche llegue a España', estado: 'esperando' }
+        : yaRecogido
+          ? {
+              clave: 'llegada', titulo: 'Pasarlo a «En transporte»: ya se lo han llevado',
+              estado: 'toca', donde: '/importaciones',
+              cuando: m.tramo?.fecha_recogida ?? null,
+            }
+          : ordenMandada
+            ? {
+                clave: 'llegada', titulo: 'Que el transportista lo recoja',
+                estado: 'esperando', donde: '/transportes', apuntarEn: '/transportes',
+              }
+            : { clave: 'llegada', titulo: 'Que el coche llegue a España', estado: 'porVenir' }
+  );
 
   // 13 · Ponerlo legal aquí.
   const conGestoria = Boolean(m.encargo_gestoria_enviado_at);

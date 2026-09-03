@@ -170,6 +170,8 @@ export interface MetaImportacion {
     recogida_prevista?: string | null;
     transportista?: string | null;
     orden_enviada_at?: string | null;
+    /** Cuándo se lo llevaron de verdad, que no es cuando se contrató. */
+    fecha_recogida?: string | null;
   } | null;
   /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
   recogida_preguntada_at?: string | null;

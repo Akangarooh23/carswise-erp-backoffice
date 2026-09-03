@@ -369,7 +369,8 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                     SELECT json_build_object(
                       'recogida_prevista', TO_CHAR(t.recogida_prevista, 'YYYY-MM-DD'),
                       'transportista', t.transportista,
-                      'orden_enviada_at', t.orden_enviada_at)
+                      'orden_enviada_at', t.orden_enviada_at,
+                      'fecha_recogida', t.fecha_recogida)
                       FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 1
                      ORDER BY t.created_at LIMIT 1
