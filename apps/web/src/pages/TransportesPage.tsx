@@ -400,6 +400,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const faltaOrden = faltaParaLaOrden({
     transportista: datos.transportista, desde: datos.desde, hasta: datos.hasta,
     tramo: t.tramo, recogida_preguntada_at: t.recogida_preguntada_at,
+    aviso_recogida_at: t.aviso_recogida_at,
   });
 
   return (

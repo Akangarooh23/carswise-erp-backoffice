@@ -74,6 +74,7 @@ export function faltaParaLaOrden(t: {
   hasta?: string | null;
   tramo?: number | string | null;
   recogida_preguntada_at?: string | null;
+  aviso_recogida_at?: string | null;
 }): string[] {
   const falta: string[] = [];
   if (!String(t.transportista ?? '').trim()) falta.push('elegir quién lo trae');
@@ -83,6 +84,17 @@ export function faltaParaLaOrden(t: {
   // lo que hay escrito en «Desde» es la ciudad del anuncio.
   if (seLePreguntaAlVendedor(t.tramo) && !t.recogida_preguntada_at) {
     falta.push('preguntarle antes al vendedor dónde y cuándo se recoge');
+  }
+  /*
+   * Y el vendedor tiene que saber quién va antes de que salga el camión.
+   *
+   * Lo puso Ana como regla y es la que evita el fallo caro: un conductor que
+   * llega a una nave donde nadie le espera se va vacío, y ese viaje se paga
+   * igual. Mandar la orden primero es apostar a que el vendedor se entera a
+   * tiempo por su cuenta.
+   */
+  if (seLePreguntaAlVendedor(t.tramo) && t.recogida_preguntada_at && !t.aviso_recogida_at) {
+    falta.push('avisar al vendedor de quién va y qué día');
   }
   return falta;
 }

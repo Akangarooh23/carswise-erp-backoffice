@@ -416,6 +416,11 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       coste: t.coste != null ? Number(t.coste) : null,
     };
     const falta = faltaParaLaOrden(datos);
+    // Y que el vendedor sepa quién va. La pantalla apaga el botón, pero entre
+    // lo que se cargó y el clic caben unos minutos y otra persona.
+    if (esElPrimero && t.recogida_preguntada_at && !t.aviso_recogida_at) {
+      falta.push('avisarle antes al vendedor de quién va y qué día');
+    }
     if (falta.length) {
       res.status(409).json({
         ok: false, error: 'faltan_datos_del_tramo',

@@ -74,6 +74,38 @@ describe('a quién se le pregunta por la recogida', () => {
   });
 });
 
+describe('el vendedor se entera antes que el camión', () => {
+  const CERRADO = {
+    transportista: 'TransLog Fahrzeugtransporte GmbH',
+    desde: 'Musterstraße 18, 80331 München',
+    hasta: 'Zaragoza', tramo: 1,
+    recogida_preguntada_at: '2026-09-03T09:40:00Z',
+  };
+
+  test('sin avisarle, la orden no sale', () => {
+    // Un conductor que llega a una nave donde nadie le espera se va vacío, y
+    // ese viaje se paga igual.
+    assert.deepEqual(faltaParaLaOrden(CERRADO), ['avisar al vendedor de quién va y qué día']);
+  });
+
+  test('avisado, ya no falta nada', () => {
+    assert.deepEqual(faltaParaLaOrden({ ...CERRADO, aviso_recogida_at: '2026-09-03T12:00:00Z' }), []);
+  });
+
+  test('en el segundo tramo no aplica: no sale de casa de ningún vendedor', () => {
+    assert.deepEqual(faltaParaLaOrden({ ...CERRADO, tramo: 2, recogida_preguntada_at: null }), []);
+  });
+
+  test('y primero se pregunta, que es lo que da la dirección', () => {
+    // Sin la pregunta no se pide el aviso todavía: pedir las dos cosas a la vez
+    // esconde cuál es la que toca.
+    assert.deepEqual(
+      faltaParaLaOrden({ ...CERRADO, recogida_preguntada_at: null }),
+      ['preguntarle antes al vendedor dónde y cuándo se recoge']
+    );
+  });
+});
+
 describe('lo que impide mandar la orden de recogida', () => {
   const LISTO = {
     transportista: 'Business Ontime GmbH',
@@ -81,6 +113,9 @@ describe('lo que impide mandar la orden de recogida', () => {
     hasta: 'Zaragoza',
     tramo: 1,
     recogida_preguntada_at: '2026-09-02T10:00:00Z',
+    // Listo del todo incluye que el vendedor sepa quién va: eso se comprueba
+    // arriba, y aquí estorbaría en cada caso.
+    aviso_recogida_at: '2026-09-03T12:00:00Z',
   };
 
   test('con todo puesto, nada', () => {
