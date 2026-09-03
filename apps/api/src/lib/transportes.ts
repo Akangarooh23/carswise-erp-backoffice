@@ -107,17 +107,38 @@ export function aQueEtapaLoLleva(t: {
   lead_id?: string | null;
 }, estadoNuevo: string): string | null {
   if (!String(t.lead_id ?? '').trim()) return null;
-  // Solo el primer tramo: el segundo sale de nuestra campa con el expediente
-  // ya en trámites, y su entrega es un acto con firma que no se automatiza.
-  if (Number(t.tramo ?? 1) > 1) return null;
+
+  /*
+   * El segundo viaje también mueve la etapa, pero solo al salir.
+   *
+   * Cuando el camión lo carga en Zaragoza para llevárselo al cliente, el coche
+   * **vuelve a estar en transporte**: los papeleos ya están hechos y decir «en
+   * trámites» es contar lo de antes. En el tablero la tarjeta retrocede una
+   * columna, y es correcto: el coche está donde dice.
+   *
+   * Su entrega no la mueve nadie: es un acto con firma, con garantía que
+   * empieza a contar ese día, y eso no se automatiza.
+   */
+  if (Number(t.tramo ?? 1) > 1) {
+    return estaEnCamino(estadoNuevo) ? 'En transporte' : null;
+  }
+
   if (estaEnCamino(estadoNuevo)) return 'En transporte';
   if (estadoNuevo === 'Entregado') return 'En trámites';
   return null;
 }
 
-/** De qué etapa tiene que venir para que ese salto no se salte ninguna. */
-export function deQueEtapaSale(etapaNueva: string): string {
-  return etapaNueva === 'En trámites' ? 'En transporte' : 'Verificado y pagado';
+/**
+ * De qué etapa tiene que venir para que ese salto no se salte ninguna.
+ *
+ * El mismo destino sale de sitios distintos según el viaje: «En transporte»
+ * viene de «Verificado y pagado» cuando el coche sale de Alemania, y de «En
+ * trámites» cuando sale de Zaragoza hacia el cliente. Sin esa distinción el
+ * segundo salto no encontraba ninguna fila que mover.
+ */
+export function deQueEtapaSale(etapaNueva: string, tramo: number | string | null = 1): string {
+  if (etapaNueva === 'En trámites') return 'En transporte';
+  return Number(tramo ?? 1) > 1 ? 'En trámites' : 'Verificado y pagado';
 }
 
 /**

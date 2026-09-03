@@ -886,7 +886,7 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
      */
     const etapaNueva = estado ? aQueEtapaLoLleva(previo, estado) : null;
     if (etapaNueva) {
-      const etapaVieja = deQueEtapaSale(etapaNueva);
+      const etapaVieja = deQueEtapaSale(etapaNueva, previo.tramo as number);
       const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
       const linea = `[${cuando} · ${etapaVieja} → ${etapaNueva}] El transporte ${req.params.id} pasó a «${estado}».`;
       /*

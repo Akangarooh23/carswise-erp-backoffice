@@ -108,15 +108,31 @@ describe('el expediente se mueve con el coche', () => {
     assert.equal(deQueEtapaSale('En trámites'), 'En transporte');
   });
 
-  test('el segundo tramo no mueve nada, tampoco al entregarlo', () => {
-    // Su entrega es al cliente, y eso es un acto con firma y garantía que no
-    // se automatiza.
+  test('el segundo tramo devuelve el coche a «En transporte» al salir', () => {
+    // Cargado en Zaragoza para llevárselo al cliente, el coche vuelve a estar
+    // en transporte: los papeleos ya están hechos y decir «en trámites» es
+    // contar lo de antes.
+    assert.equal(aQueEtapaLoLleva({ ...TRAMO, tramo: 2 }, 'Recogido'), 'En transporte');
+    assert.equal(aQueEtapaLoLleva({ ...TRAMO, tramo: 2 }, 'En tránsito'), 'En transporte');
+  });
+
+  test('pero su entrega no la mueve nadie', () => {
+    // Es un acto con firma, y con una garantía que empieza a contar ese día.
     assert.equal(aQueEtapaLoLleva({ ...TRAMO, tramo: 2 }, 'Entregado'), null);
   });
 
-  test('solo el primer tramo, que es el que trae el coche a España', () => {
-    // El segundo sale de nuestra campa con el expediente ya en trámites.
-    assert.equal(mueveElExpediente({ ...TRAMO, tramo: 2 }, 'Recogido'), false);
+  test('y ese salto sale de «En trámites», no de donde salió el primero', () => {
+    // El mismo destino viene de sitios distintos según el viaje. Sin esa
+    // distinción, el segundo salto no encontraba ninguna fila que mover.
+    assert.equal(deQueEtapaSale('En transporte', 1), 'Verificado y pagado');
+    assert.equal(deQueEtapaSale('En transporte', 2), 'En trámites');
+  });
+
+  test('los dos viajes mueven la etapa, cada uno a la suya', () => {
+    // El primero saca el coche de Alemania; el segundo lo saca de Zaragoza
+    // hacia el cliente, y entonces vuelve a estar en transporte.
+    assert.equal(mueveElExpediente({ ...TRAMO, tramo: 1 }, 'Recogido'), true);
+    assert.equal(mueveElExpediente({ ...TRAMO, tramo: 2 }, 'Recogido'), true);
   });
 
   test('y un tramo sin expediente no mueve nada', () => {

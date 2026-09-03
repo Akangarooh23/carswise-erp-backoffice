@@ -96,6 +96,7 @@ const TEXTOS: Record<Idioma, {
   siPortacoches: string; noPortacoches: string; referencia: string;
   saludo: string; entradilla: string; tresCosas: string;
   puede: string; queDia: string; queDiaCon: (f: string) => string; cuanto: string;
+  quienViene: string; cuandoLlega: string;
   cierre: string; gracias: string;
 }> = {
   es: {
@@ -108,11 +109,13 @@ const TEXTOS: Record<Idioma, {
     referencia: 'Nuestra referencia',
     saludo: 'Hola,',
     entradilla: 'Nos gustaría pediros precio para traer este coche:',
-    tresCosas: 'Tres cosas:',
+    tresCosas: 'Cinco cosas:',
     puede: '<strong>¿Podéis con este viaje?</strong>',
     queDia: '<strong>¿Qué día lo recogeríais?</strong>',
     queDiaCon: (f) => `<strong>¿Qué día lo recogeríais?</strong> Está listo desde el ${f}.`,
     cuanto: '<strong>¿Cuánto costaría</strong>, con todo incluido y sin IVA?',
+    quienViene: '<strong>¿Quién viene a recogerlo y en qué teléfono?</strong> El conductor tiene que preguntar por alguien, y alguien tiene que poder llamarle.',
+    cuandoLlega: '<strong>¿Cuándo estimáis la llegada a destino?</strong>',
     cierre: 'Con vuestra respuesta os confirmamos y os mandamos la orden con todos los datos.',
     gracias: 'Gracias.',
   },
@@ -126,11 +129,13 @@ const TEXTOS: Record<Idioma, {
     referencia: 'Unsere Referenz',
     saludo: 'Guten Tag,',
     entradilla: 'wir möchten Sie um ein Angebot für den Transport dieses Fahrzeugs bitten:',
-    tresCosas: 'Drei Fragen:',
+    tresCosas: 'Fünf Fragen:',
     puede: '<strong>Können Sie diesen Transport übernehmen?</strong>',
     queDia: '<strong>An welchem Tag würden Sie abholen?</strong>',
     queDiaCon: (f) => `<strong>An welchem Tag würden Sie abholen?</strong> Das Fahrzeug steht ab dem ${f} bereit.`,
     cuanto: '<strong>Was würde der Transport kosten?</strong> Bitte alles inklusive und netto.',
+    quienViene: '<strong>Wer holt das Fahrzeug ab und unter welcher Nummer ist er erreichbar?</strong>',
+    cuandoLlega: '<strong>Wann rechnen Sie mit der Ankunft am Zielort?</strong>',
     cierre: 'Nach Ihrer Rückmeldung bestätigen wir Ihnen den Auftrag mit allen Daten.',
     gracias: 'Vielen Dank.',
   },
@@ -144,11 +149,13 @@ const TEXTOS: Record<Idioma, {
     referencia: 'Our reference',
     saludo: 'Hello,',
     entradilla: 'we would like a quote to move this car:',
-    tresCosas: 'Three things:',
+    tresCosas: 'Five things:',
     puede: '<strong>Can you take this job?</strong>',
     queDia: '<strong>Which day would you collect it?</strong>',
     queDiaCon: (f) => `<strong>Which day would you collect it?</strong> It is ready from ${f}.`,
     cuanto: '<strong>How much would it cost?</strong> All included, before VAT.',
+    quienViene: '<strong>Who will collect it, and on what phone number?</strong>',
+    cuandoLlega: '<strong>When do you expect it to arrive?</strong>',
     cierre: 'Once you reply we will confirm and send you the pick-up order with all the details.',
     gracias: 'Thank you.',
   },
@@ -198,6 +205,11 @@ export function correoDePresupuestoAlTransportista(
     li(t.puede) +
     li(desdeCuando ? t.queDiaCon(esc(desdeCuando)) : t.queDia) +
     li(t.cuanto) +
+    // Y las dos que evitan la llamada del día de la recogida: quién se
+    // presenta —el de la nave pregunta por alguien— y cuándo llega, que es lo
+    // que hay que decirle al cliente.
+    li(t.quienViene) +
+    li(t.cuandoLlega) +
     '</ol>';
 
   const html =

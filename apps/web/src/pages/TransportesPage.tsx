@@ -644,7 +644,20 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                    onChange={(e) => setDatos((d) => ({ ...d, recogida_prevista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
-          <div />
+          {/*
+            * Cuándo estiman llegar.
+            *
+            * Lo dice el transportista al dar el precio, y es lo que se le
+            * cuenta al cliente: sin esta fecha, «va de camino» no responde a la
+            * única pregunta que él tiene, que es cuándo lo tiene.
+            */}
+          <label className="text-[11px] text-brand-400">
+            Llegada estimada
+            <input type="date" value={datos.entrega_prevista}
+                   onChange={(e) => setDatos((d) => ({ ...d, entrega_prevista: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">La que te dé el transportista al aceptar.</span>
+          </label>
           <label className="col-span-2 text-[11px] text-brand-400">
             Desde
             <input value={datos.desde} onChange={(e) => setDatos((d) => ({ ...d, desde: e.target.value }))}
