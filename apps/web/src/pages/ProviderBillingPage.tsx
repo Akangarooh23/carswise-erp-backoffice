@@ -185,6 +185,7 @@ export default function ProviderBillingPage() {
 
   // Mark received invoice paid modal
   const [recvMarkModal, setRecvMarkModal] = useState<ReceivedInvoice | null>(null);
+  const [recvMarkFallo, setRecvMarkFallo] = useState('');
   const [recvMarkNotes, setRecvMarkNotes] = useState('');
   const [recvMarking, setRecvMarking]     = useState(false);
 
@@ -304,12 +305,32 @@ export default function ProviderBillingPage() {
     setMarking(false);
   }
 
+  /**
+   * Confirmar que se le ha pagado.
+   *
+   * Antes, si la llamada fallaba no pasaba nada: el cuadro se quedaba
+   * abierto, sin mensaje, y desde fuera parecía que el botón estaba roto. Un
+   * botón que falla en silencio es peor que uno que no está.
+   */
   async function handleRecvMark() {
     if (!recvMarkModal) return;
     setRecvMarking(true);
-    const r = await api.patch(`/provider-billing/invoices/${recvMarkModal.id}`, { status: 'paid', notes: recvMarkNotes });
-    if (r.ok) { setRecvMarkModal(null); setRecvMarkNotes(''); await load(page); }
-    setRecvMarking(false);
+    setRecvMarkFallo('');
+    try {
+      const r = await api.patch(`/provider-billing/invoices/${recvMarkModal.id}`, { status: 'paid', notes: recvMarkNotes });
+      if (!r.ok) {
+        setRecvMarkFallo((r as { detail?: string }).detail || r.error || 'No se ha podido guardar.');
+        return;
+      }
+      setRecvMarkModal(null);
+      setRecvMarkNotes('');
+      await load(page);
+      await api.get<Summary>('/provider-billing/summary').then((res) => { if (res.ok) setSummary(res.data); });
+    } catch (e) {
+      setRecvMarkFallo((e as Error)?.message || 'No se ha podido guardar.');
+    } finally {
+      setRecvMarking(false);
+    }
   }
 
   async function handleRectify() {
@@ -884,6 +905,11 @@ export default function ProviderBillingPage() {
             <textarea value={recvMarkNotes} onChange={e => setRecvMarkNotes(e.target.value)}
               rows={2} placeholder="Notas (referencia pago, fecha transferencia…)"
               className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            {recvMarkFallo && (
+              <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
+                {recvMarkFallo}
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setRecvMarkModal(null)} className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">Volver</button>
               <button onClick={handleRecvMark} disabled={recvMarking}

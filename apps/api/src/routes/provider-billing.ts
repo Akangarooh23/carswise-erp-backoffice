@@ -430,10 +430,23 @@ providerBillingRouter.patch('/provider-billing/invoices/:id', requireRole(['admi
     return;
   }
   try {
+    /*
+     * La nota se **añade**, no sustituye.
+     *
+     * Al confirmar un pago se escribe «pagado el 10/07 a las 9:00», y eso
+     * borraba lo que hubiera: en la factura del perito, «Factura
+     * ACD-2026-0907-001 · Peritación en Alemania» — que es lo único que ata
+     * esa fila a su concepto y a su coche.
+     */
     const r = await query(
       `UPDATE moveadvisor_provider_invoices
-       SET status = $1, notes = COALESCE($2, notes),
-           paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END,
+       SET status = $1::text,
+           notes = CASE
+             WHEN COALESCE($2::text, '') = '' THEN notes
+             WHEN COALESCE(notes, '') = '' THEN $2::text
+             WHEN notes LIKE '%' || $2::text || '%' THEN notes
+             ELSE notes || ' · ' || $2::text END,
+           paid_at = CASE WHEN $1::text = 'paid' THEN NOW() ELSE paid_at END,
            updated_at = NOW()
        WHERE id = $3
        RETURNING *`,
