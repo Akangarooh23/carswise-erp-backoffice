@@ -1407,8 +1407,13 @@ leadsRouter.post('/leads/:id/encargo-gestoria', requireRole(['admin', 'operation
     if (!f) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
 
     const t = await query<{ id: string; tipo: string; gestoria: string; bastidor: string; matricula: string }>(
+      // Del coche entero: cuelgan del expediente o del pedido según por dónde
+      // se abrieran, y mirando solo una columna el encargo decía que no hay
+      // ningún trámite con los tres abiertos.
       `SELECT id, tipo, gestoria, bastidor, matricula FROM erp_tramites
-        WHERE lead_id = $1 ORDER BY created_at`,
+        WHERE lead_id = $1
+           OR pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1)
+        ORDER BY created_at`,
       [req.params.id]
     ).catch(() => ({ rows: [] as { id: string; tipo: string; gestoria: string; bastidor: string; matricula: string }[] }));
     if (!t.rows.length) {

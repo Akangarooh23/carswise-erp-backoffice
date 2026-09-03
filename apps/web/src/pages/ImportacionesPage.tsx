@@ -1186,6 +1186,12 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                     </button>
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
                       Los tres trámites en un correo, y les pide el importe real del impuesto.
+                      {/* Y lo que hay que haber hecho antes. Sin decirlo, el botón
+                          parece roto: se pulsa, no sale nada y el motivo aparece
+                          en un aviso que quien mira el botón no está mirando. */}
+                      {' '}Antes hay que <strong>elegir qué gestoría los lleva</strong>,
+                      en cada trámite, dentro de{' '}
+                      <a href="/gestoria" className="underline underline-offset-2">Gestoría</a>.
                     </div>
                   </>
                 )}

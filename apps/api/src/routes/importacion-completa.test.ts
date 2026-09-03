@@ -151,7 +151,7 @@ before(async () => {
         if (!['En trámites', 'Entregado'].includes(String(l.status))) return false;
         if (!String(l.entrega_direccion ?? '').trim()) return false;
         if (tablas.transportes.some((x) => x.pedido_id === pe.id && Number(x.tramo) === 2)) return false;
-        const suyos = tablas.tramites.filter((x) => x.lead_id === l.id);
+        const suyos = tablas.tramites.filter((x) => x.lead_id === l.id || x.pedido_id === pe.id);
         return suyos.length > 0 && suyos.every((x) => x.estado === 'Resuelto');
       }).map((pe) => {
         const l = tablas.leads.find((x) => x.id === pe.lead_id) ?? {};
@@ -170,7 +170,8 @@ before(async () => {
         && !String(x.transportista ?? '').trim() && x.coste == null
         && !x.recogida_prevista && !x.fecha_recogida && !x.orden_enviada_at
         && !x.presupuesto_pedido_at && !String(x.notas ?? '').trim()
-        && tablas.tramites.some((tr) => tr.lead_id === x.lead_id && tr.estado !== 'Resuelto'));
+        && tablas.tramites.some((tr) =>
+          (tr.lead_id === x.lead_id || tr.pedido_id === x.pedido_id) && tr.estado !== 'Resuelto'));
       tablas.transportes = tablas.transportes.filter((x) => !fuera.includes(x));
       return responde(fuera);
     }
@@ -193,6 +194,49 @@ before(async () => {
       }
       return responde(tablas.tramites.filter((x) => x.tipo === tipo
         && (delCoche.has(String(x.lead_id ?? '')) || delCoche.has(String(x.pedido_id ?? '')))));
+    }
+
+    /*
+     * Los pedidos que se ponen al día con sus propios hechos.
+     *
+     * Van sin parámetros —la nota se escribe dentro del SQL— así que el
+     * genérico, que busca la fila por el último parámetro, no encontraba nada
+     * y estas tres puertas parecían funcionar apagadas.
+     */
+    if (/^UPDATE erp_pedidos SET estado = 'Confirmado'/i.test(t)) {
+      const fuera = tablas.pedidos.filter((x) =>
+        x.origen === 'importacion' && x.estado === 'Pedido' && x.factura_pagada_el);
+      for (const x of fuera) x.estado = 'Confirmado';
+      return responde(fuera);
+    }
+    if (/^UPDATE erp_pedidos pe SET estado = 'En camino'/i.test(t)) {
+      const fuera = tablas.pedidos.filter((x) =>
+        x.origen === 'importacion' && ['Pedido', 'Confirmado'].includes(String(x.estado))
+        && tablas.transportes.some((tr) =>
+          tr.pedido_id === x.id && Number(tr.tramo) === 1 && tr.fecha_entrega));
+      for (const x of fuera) x.estado = 'En camino';
+      return responde(fuera);
+    }
+    if (/FROM erp_pedidos pe WHERE pe.origen = 'importacion' AND pe.estado = 'En camino'/i.test(t)) {
+      return responde(tablas.pedidos.filter((x) => {
+        if (x.origen !== 'importacion' || x.estado !== 'En camino') return false;
+        if (!x.factura_pagada_el) return false;
+        const rec = (x.recepcion ?? {}) as Record<string, unknown>;
+        if (!String(rec.km ?? '').trim() || !String(rec.llaves ?? '').trim()) return false;
+        return tablas.transportes.some((tr) =>
+          tr.pedido_id === x.id && Number(tr.tramo) === 1 && tr.fecha_entrega);
+      }).map((x) => ({
+        id: x.id, origen: x.origen,
+        papeles: tablas.documentos.filter((d) =>
+          d.ambito_id === x.id || d.ambito_id === x.lead_id).map((d) => d.papel),
+      })));
+    }
+
+    // ¿Ese pedido ya tiene ese viaje? Sin esto el doble decía que sí siempre,
+    // y el segundo tramo no llegaba a abrirse nunca.
+    if (/^SELECT id FROM erp_transportes WHERE pedido_id = \$1 AND tramo = \$2/i.test(t)) {
+      return responde(tablas.transportes.filter((x) =>
+        x.pedido_id === p[0] && Number(x.tramo) === Number(p[1])));
     }
 
     // ── Solicitudes ──
@@ -418,6 +462,78 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     await api('/transportes');
     assert.equal(tablas.leads[0].status, 'En trámites',
       'y en la siguiente pasada llega hasta donde está el coche');
+
+    /*
+     * Y lo mismo con todo lo demás que se abre solo.
+     *
+     * Cada una de estas cuatro cosas ocurre en un momento —al crear el pedido,
+     * al marcar el tramo, al llegar el coche— y un momento se pierde. Lo que se
+     * comprueba aquí no es que ocurran en su momento, que eso ya lo prueba el
+     * recorrido de arriba, sino que **si no ocurrieron, se recuperan**. Sin
+     * esto, apagar cualquiera de ellas dejaba la prueba en verde.
+     */
+
+    // El primer tramo, si el pedido se quedó sin él.
+    const tramoUno = tablas.transportes.find((x) => Number(x.tramo) === 1);
+    tablas.transportes = tablas.transportes.filter((x) => Number(x.tramo) !== 1);
+    await api('/leads?limit=50');
+    assert.ok(tablas.transportes.some((x) => Number(x.tramo) === 1),
+      'un pedido de fuera sin tramo es un coche que nadie ha quedado en recoger');
+    tablas.transportes = tablas.transportes.filter((x) => Number(x.tramo) !== 1);
+    tablas.transportes.push(tramoUno as Fila);
+
+    /*
+     * El estado del pedido, si se quedó atrás de sus propios hechos.
+     *
+     * Con sus papeles: la puerta automática pide lo mismo que la de mano, y
+     * eso incluye los imprescindibles del origen. Una puerta automática más
+     * laxa que la manual es una puerta abierta.
+     */
+    for (const papel of [
+      'Ficha del vehículo (parte II)', 'Ficha del vehículo (parte I)',
+      'COC (certificado de conformidad)', 'Factura del vendedor alemán',
+    ]) {
+      tablas.documentos.push({ papel, ambito: 'pedido', ambito_id: pedido.id } as Fila);
+    }
+    const elPedido = tablas.pedidos.find((x) => x.id === pedido.id) as Fila;
+    const comoEstaba = { estado: elPedido.estado, recepcion: elPedido.recepcion };
+    elPedido.estado = 'Pedido';
+    elPedido.recepcion = { km: 84000, llaves: 2 };
+    elPedido.factura_pagada_el = '2026-09-08';
+    await api('/leads?limit=50');
+    assert.equal(elPedido.estado, 'Recibido',
+      'pagado, recogido y mirado: el pedido no puede seguir esperando que lo acepten');
+
+    // Los papeleos, si el coche llegó y no se abrió ninguno.
+    const losPapeleos = [...tablas.tramites];
+    tablas.tramites = [];
+    await api('/leads?limit=50');
+    assert.equal(tablas.tramites.length, 3,
+      'un coche en Zaragoza sin papeleos abiertos no aparece en ningún tablero');
+    tablas.tramites = losPapeleos;
+
+    // Y el segundo viaje, cuando los papeleos ya están resueltos.
+    assert.ok(!tablas.transportes.some((x) => Number(x.tramo) === 2),
+      'con los papeleos pendientes no hay viaje que organizar');
+    for (const tr of tablas.tramites) tr.estado = 'Resuelto';
+    await api('/leads?limit=50');
+    assert.ok(tablas.transportes.some((x) => Number(x.tramo) === 2),
+      'matriculado el coche, toca llevárselo al cliente');
+    tablas.transportes = tablas.transportes.filter((x) => Number(x.tramo) !== 2);
+    for (const tr of tablas.tramites) tr.estado = 'Pendiente';
+
+    /*
+     * Y se recoge lo que estos cuatro han movido.
+     *
+     * Son simulaciones —«¿y si esto no hubiera ocurrido?»— y el recorrido
+     * sigue después: dejar el pedido pagado y con papeles que no subió nadie
+     * hace que las puertas de más abajo se abran por el motivo equivocado, y
+     * entonces lo que se prueba no es lo que se cree.
+     */
+    tablas.documentos = tablas.documentos.filter((d) => d.ambito_id !== pedido.id);
+    delete (elPedido as Record<string, unknown>).factura_pagada_el;
+    elPedido.estado = comoEstaba.estado;
+    elPedido.recepcion = comoEstaba.recepcion;
     assert.ok(
       (entregado.cuerpo.faltanFotos as string[]).length > 0,
       'se echan en falta las fotos: sin ellas no hay forma de sostener una reclamación'

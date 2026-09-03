@@ -1132,9 +1132,15 @@ export async function abreElTramoAlCliente(): Promise<number> {
         AND COALESCE(l.entrega_direccion, '') <> ''
         AND t.id IS NULL
         -- Y con los papeleos terminados: antes no hay viaje que organizar.
-        AND EXISTS (SELECT 1 FROM erp_tramites tr WHERE tr.lead_id = l.id)
+        --
+        -- Del coche, no del expediente: cuelgan del pedido, y buscándolos solo
+        -- por el expediente, esta condición no se cumplía nunca. El segundo viaje
+        -- no se habría abierto jamás.
+        AND EXISTS (SELECT 1 FROM erp_tramites tr
+                     WHERE tr.lead_id = l.id OR tr.pedido_id = pe.id)
         AND NOT EXISTS (SELECT 1 FROM erp_tramites tr
-                         WHERE tr.lead_id = l.id AND tr.estado <> 'Resuelto')
+                         WHERE (tr.lead_id = l.id OR tr.pedido_id = pe.id)
+                           AND tr.estado <> 'Resuelto')
       LIMIT 50`
   ).catch(() => ({ rows: [] as { id: string; vehiculo_titulo: string; matricula: string; hasta: string }[] }));
 
@@ -1176,7 +1182,8 @@ export async function abreElTramoAlCliente(): Promise<number> {
         AND t.presupuesto_pedido_at IS NULL
         AND COALESCE(t.notas, '') = ''
         AND EXISTS (SELECT 1 FROM erp_tramites tr
-                     WHERE tr.lead_id = t.lead_id AND tr.estado <> 'Resuelto')`
+                     WHERE (tr.lead_id = t.lead_id OR tr.pedido_id = t.pedido_id)
+                       AND tr.estado <> 'Resuelto')`
   ).catch((e: Error) => {
     console.error('[transportes] no se ha podido cerrar el tramo que sobra:', e.message);
     return { rowCount: 0 };
