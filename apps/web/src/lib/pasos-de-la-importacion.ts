@@ -482,6 +482,42 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/gestoria',
   });
 
+  /*
+   * 13b · El segundo viaje.
+   *
+   * Una importación hace **dos**, y el camino solo contaba uno. El primero lo
+   * trae a Zaragoza; este se lo lleva al cliente, y va después de los trámites
+   * porque un coche sin matricular no se entrega. Sin este paso, entre «los
+   * trámites hechos» y «entregado» había un viaje entero que no aparecía en
+   * ningún sitio y que alguien tenía que recordar.
+   *
+   * No sale si el cliente lo recoge en Zaragoza: entonces no hay segundo
+   * viaje, y un paso que nadie tiene que hacer es ruido.
+   */
+  const alCliente = m.tramo_al_cliente;
+  if (alCliente?.id) {
+    const entregadoAlli = Boolean(String(alCliente.fecha_entrega ?? '').trim());
+    const ordenAlCliente = Boolean(String(alCliente.orden_enviada_at ?? '').trim());
+    pasos.push(
+      entregadoAlli
+        ? {
+            clave: 'transporteAlCliente', titulo: 'Llevado a casa del cliente',
+            estado: 'hecho', cuando: alCliente.fecha_entrega ?? null, donde: '/transportes',
+          }
+        : ordenAlCliente
+          ? {
+              clave: 'transporteAlCliente', titulo: 'Que lo lleven a casa del cliente',
+              estado: 'esperando', donde: '/transportes',
+              detalle: String(alCliente.transportista ?? '').trim() || undefined,
+            }
+          : {
+              clave: 'transporteAlCliente', titulo: 'Organizar el viaje hasta el cliente',
+              estado: enTramites || x.status === 'Entregado' ? 'toca' : 'porVenir', donde: '/transportes',
+              detalle: String(alCliente.hasta ?? '').trim() || undefined,
+            }
+    );
+  }
+
   // 14 · Dárselo.
   const entregado = x.status === 'Entregado';
   pasos.push({

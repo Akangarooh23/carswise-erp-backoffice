@@ -19,7 +19,7 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  */
 
 import {
-  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, PISTAS,
+  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, queViajeEs, PISTAS,
 } from '../lib/fases-transporte.js';
 import {
   faltaPorMirarAlLlegar, queHacerAlLlegar, type LlegoComoSalio,
@@ -72,6 +72,8 @@ interface Transporte {
   aviso_recogida_at?: string | null;
   /** Lo que se vio al bajarlo del camión. */
   llegada?: LlegoComoSalio | null;
+  /** De qué compra viene, para saber si el coche hace uno o dos viajes. */
+  origen?: string | null;
   entrega_prevista: string | null;
   fecha_recogida: string | null;
   fecha_entrega: string | null;
@@ -352,7 +354,9 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
                     {dias} días de viaje
                   </span>
                 )}
-                <span className="text-[10px] text-brand-300">tramo {t.tramo} · {t.id}</span>
+                <span className="text-[10px] text-brand-300">
+                  {queViajeEs(t.tramo, t.origen) || `tramo ${t.tramo}`} · {t.id}
+                </span>
               </div>
             </button>
           );
@@ -434,7 +438,10 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             <h2 className="text-base font-bold text-brand-600 leading-tight">
               {t.vehiculo_titulo || t.matricula || 'Sin coche'}
             </h2>
-            <p className="text-xs text-brand-400 mt-0.5">{t.desde} → {t.hasta} · tramo {t.tramo}</p>
+            <p className="text-xs text-brand-400 mt-0.5">
+              {t.desde} → {t.hasta}
+              {' · viaje '}{queViajeEs(t.tramo, t.origen) || `tramo ${t.tramo}`}
+            </p>
           </div>
           <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>

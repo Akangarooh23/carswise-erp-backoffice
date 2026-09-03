@@ -73,6 +73,21 @@ export function bloquesDelTramo(
   return base;
 }
 
+
+/**
+ * De qué viaje es este tramo, dicho para quien lo lee.
+ *
+ * Una importación hace **dos**: de Alemania a Zaragoza y de Zaragoza a casa
+ * del cliente, con los trámites en medio. Los demás coches hacen uno. «Tramo
+ * 1» no dice ninguna de las dos cosas, y dos tarjetas del mismo coche en el
+ * mismo tablero, sin decir cuál es cuál, se leen como un duplicado.
+ */
+export function queViajeEs(tramo: number | string | null | undefined, origen?: string | null): string {
+  const n = Number(tramo) || 1;
+  if (String(origen ?? '') !== 'importacion') return '';
+  return n <= 1 ? '1 de 2 · traerlo a Zaragoza' : '2 de 2 · llevárselo al cliente';
+}
+
 /**
  * Preguntarle al vendedor dónde se recoge **solo tiene sentido en el tramo 1**.
  *

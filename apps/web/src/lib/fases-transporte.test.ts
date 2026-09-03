@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import {
   bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
   queTocaEnElTramo,
+  queViajeEs,
 } from './fases-transporte.js';
 
 describe('qué se ve en cada fase', () => {
@@ -253,5 +254,25 @@ describe('qué toca ahora en un tramo', () => {
       queTocaEnElTramo({ ...CERRADO, tramo: 2, recogida_preguntada_at: null, aviso_recogida_at: null }),
       /Confírmaselo al transportista/
     );
+  });
+});
+
+describe('de qué viaje es un tramo', () => {
+  test('una importación hace dos, y se dice cuál es cuál', () => {
+    // Dos tarjetas del mismo coche en el mismo tablero, sin decirlo, se leen
+    // como un duplicado.
+    assert.match(queViajeEs(1, 'importacion'), /1 de 2 · traerlo a Zaragoza/);
+    assert.match(queViajeEs(2, 'importacion'), /2 de 2 · llevárselo al cliente/);
+  });
+
+  test('los demás coches hacen uno, y no se dice nada', () => {
+    // «Tramo 1 de 1» es ruido: solo hay uno y se ve.
+    assert.equal(queViajeEs(1, 'concesionario'), '');
+    assert.equal(queViajeEs(1, null), '');
+    assert.equal(queViajeEs(1, undefined), '');
+  });
+
+  test('sin número de tramo se supone el primero', () => {
+    assert.match(queViajeEs(null, 'importacion'), /1 de 2/);
   });
 });

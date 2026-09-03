@@ -6,7 +6,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
-import { abreLosTramosQueFalten } from './transportes.js';
+import { abreLosTramosQueFalten, abreElTramoAlCliente } from './transportes.js';
 import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
@@ -232,6 +232,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // Y los primeros tramos: sin tramo no hay dónde preguntarle al vendedor
   // por la recogida, que es lo que el propio expediente pide.
   await abreLosTramosQueFalten().catch(() => 0);
+  await abreElTramoAlCliente().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
@@ -380,6 +381,22 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'recogida_preguntada_at', (
                     SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id
+                  ),
+                  -- Una importación hace **dos viajes**: de Alemania a
+                  -- Zaragoza, y de Zaragoza a casa del cliente, con los
+                  -- trámites en medio. El segundo se abre al entrar en
+                  -- trámites y hasta entonces no existe.
+                  'tramo_al_cliente', (
+                    SELECT json_build_object(
+                      'id', t.id,
+                      'estado', t.estado,
+                      'hasta', t.hasta,
+                      'transportista', t.transportista,
+                      'orden_enviada_at', t.orden_enviada_at,
+                      'fecha_entrega', t.fecha_entrega)
+                      FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 2
+                     ORDER BY t.created_at LIMIT 1
                   ),
                   'aviso_recogida_at', (
                     SELECT MIN(t.aviso_recogida_at) FROM erp_transportes t

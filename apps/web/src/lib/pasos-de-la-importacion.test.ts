@@ -560,3 +560,55 @@ describe('lo que vive en Pedidos', () => {
     assert.ok(!pasosDeLaImportacion(x, HOY).some((p) => p.clave === 'pedidoPagado'));
   });
 });
+
+describe('el segundo viaje: de Zaragoza a casa del cliente', () => {
+  const EN_TRAMITES = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    tramo: { recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z' },
+  };
+
+  test('mientras no exista, el camino no lo menciona', () => {
+    // Si el cliente lo recoge en Zaragoza no hay segundo viaje, y un paso que
+    // nadie tiene que hacer es ruido.
+    const x = kia(EN_TRAMITES, 'En trámites');
+    assert.ok(!pasosDeLaImportacion(x, HOY).some((p) => p.clave === 'transporteAlCliente'));
+  });
+
+  test('abierto y en trámites, hay que organizarlo', () => {
+    const x = kia({
+      ...EN_TRAMITES,
+      tramo_al_cliente: { id: 'TRP-2026-002', hasta: 'Calle Mauricio Legendre 45, MADRID' },
+    }, 'En trámites');
+    assert.equal(paso(x, 'transporteAlCliente').estado, 'toca');
+    assert.match(paso(x, 'transporteAlCliente').titulo, /Organizar el viaje hasta el cliente/);
+    assert.equal(pendientesPorPantalla([x], HOY)['/transportes'], 1);
+  });
+
+  test('con la orden mandada, se espera a que lo lleven', () => {
+    const x = kia({
+      ...EN_TRAMITES,
+      tramo_al_cliente: { id: 'TRP-2026-002', orden_enviada_at: '2026-10-01T09:00:00Z', transportista: 'Gómez' },
+    }, 'En trámites');
+    assert.equal(paso(x, 'transporteAlCliente').estado, 'esperando');
+    assert.equal(paso(x, 'transporteAlCliente').detalle, 'Gómez');
+  });
+
+  test('y entregado allí, hecho', () => {
+    const x = kia({
+      ...EN_TRAMITES,
+      tramo_al_cliente: { id: 'TRP-2026-002', fecha_entrega: '2026-10-05T11:00:00Z' },
+    }, 'En trámites');
+    assert.equal(paso(x, 'transporteAlCliente').estado, 'hecho');
+  });
+
+  test('antes de los trámites está, pero todavía no toca', () => {
+    // El coche no se entrega sin matricular: organizarlo antes es apuntar un
+    // trabajo que no se puede terminar.
+    const x = kia({
+      ...EN_TRAMITES, tramo_al_cliente: { id: 'TRP-2026-002' },
+    }, 'En transporte');
+    assert.equal(paso(x, 'transporteAlCliente').estado, 'porVenir');
+  });
+});

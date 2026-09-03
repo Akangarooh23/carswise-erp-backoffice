@@ -858,6 +858,30 @@ solo cambia una vez. Y si el correo no sale, el coche sigue estando de camino y
 el fallo queda escrito en las notas internas: un cliente sin avisar y nadie
 enterado es peor que un correo que no salió.
 
+### Dos viajes, no uno
+
+Una importación hace **dos transportes en el mismo expediente**: de Alemania a
+Zaragoza y de Zaragoza a casa del cliente, con los trámites en medio. Un coche
+comprado aquí hace uno solo, y por eso «tramo 1» no dice nada: en Transportes
+cada tramo de una importación se llama **«1 de 2 · traerlo a Zaragoza»** y
+**«2 de 2 · llevárselo al cliente»**. Dos tarjetas del mismo coche en el mismo
+tablero, sin decir cuál es cuál, se leen como un duplicado.
+
+El primero nace con el pedido. El **segundo se abre al entrar en trámites**, no
+al terminarlos: así se puede ir pidiendo precio mientras la DGT hace lo suyo,
+que son dos semanas ganadas. Comprometerse es otra cosa —el coche no se entrega
+sin matricular—, y es la misma regla que con el vendedor: preguntar pronto,
+comprometerse tarde. Si el cliente lo recoge en Zaragoza no hay segundo viaje y
+no se abre ninguno: un tramo vacío es una tarea que nadie tiene que hacer.
+
+En el camino del coche aparece como un paso propio entre los trámites y la
+entrega. Antes, entre «los trámites hechos» y «entregado» había un viaje entero
+que no salía en ningún sitio y que alguien tenía que recordar.
+
+Y por eso la columna de Pedidos se llama **«Recibido por nosotros»**: la compra
+termina cuando el coche es nuestro y está en Zaragoza. Lo que le queda al
+cliente —trámites, segundo viaje y entrega— vive en el expediente.
+
 ### Dos revisiones al llegar, y no una
 
 Se confundían en el mismo sitio, y de ahí salen reclamaciones mandadas a quien

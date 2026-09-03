@@ -154,6 +154,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   // Los tramos que falten, antes de enseñarlos: un coche pagado sin tramo es
   // trabajo que no aparece en ninguna pantalla.
   await abreLosTramosQueFalten().catch(() => 0);
+  await abreElTramoAlCliente().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -165,7 +166,10 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   try {
     await prepara();
     const r = await query(
-      `SELECT ${CAMPOS} FROM erp_transportes ${where} ORDER BY created_at DESC, tramo ASC LIMIT 200`,
+      `SELECT ${CAMPOS},
+              (SELECT pe.origen FROM erp_pedidos pe
+                WHERE pe.id = erp_transportes.pedido_id) AS origen
+         FROM erp_transportes ${where} ORDER BY created_at DESC, tramo ASC LIMIT 200`,
       valores
     );
     res.json({ ok: true, data: r.rows });
@@ -1024,6 +1028,59 @@ export async function abreLosTramosQueFalten(): Promise<number> {
       desde: p.proveedor || 'El vendedor',
       hasta: 'Zaragoza',
       creadoPor: 'al mirar los transportes',
+    }).catch(() => null);
+    if (id) abiertos += 1;
+  }
+  return abiertos;
+}
+
+/**
+ * El segundo tramo de una importación: de Zaragoza a casa del cliente.
+ *
+ * Una importación hace **dos viajes**, no uno. El primero lo trae de Alemania a
+ * nuestras instalaciones; el segundo se lo lleva al cliente, y entre los dos van
+ * los trámites. Estaba previsto en el código —el segundo no le pregunta a ningún
+ * vendedor y el destino sale del expediente— pero no lo abría nadie: había que
+ * acordarse y crearlo a mano, con el coche ya en Zaragoza.
+ *
+ * Se abre **al entrar en trámites**, no al terminarlos: así se puede ir pidiendo
+ * precio y comparando mientras la DGT hace lo suyo, que son dos semanas ganadas.
+ * Comprometerse es otra cosa —la orden no sale hasta que el coche tiene
+ * matrícula—, y esa es la misma regla que ya usamos con el vendedor: preguntar
+ * pronto, comprometerse tarde.
+ *
+ * Solo si hay dirección de entrega. Si el cliente lo recoge en Zaragoza no hay
+ * segundo viaje, y un tramo vacío es una tarea que nadie tiene que hacer.
+ */
+export async function abreElTramoAlCliente(): Promise<number> {
+  await prepara();
+  const faltan = await query<{
+    id: string; vehiculo_titulo: string; matricula: string; hasta: string;
+  }>(
+    `SELECT pe.id, pe.vehiculo_titulo, pe.matricula,
+            CONCAT_WS(', ', NULLIF(l.entrega_direccion, ''), NULLIF(l.entrega_cp, ''),
+                            NULLIF(l.entrega_ciudad, ''), NULLIF(l.entrega_provincia, '')) AS hasta
+       FROM erp_pedidos pe
+       JOIN moveadvisor_market_leads l ON l.id = pe.lead_id
+       LEFT JOIN erp_transportes t ON t.pedido_id = pe.id AND t.tramo = 2
+      WHERE pe.origen = 'importacion'
+        AND pe.estado <> 'Cancelado'
+        AND l.status IN ('En trámites', 'Entregado')
+        AND COALESCE(l.entrega_direccion, '') <> ''
+        AND t.id IS NULL
+      LIMIT 50`
+  ).catch(() => ({ rows: [] as { id: string; vehiculo_titulo: string; matricula: string; hasta: string }[] }));
+
+  let abiertos = 0;
+  for (const p of faltan.rows) {
+    const id = await abreTransporteDePedido({
+      pedidoId: p.id,
+      vehiculoTitulo: p.vehiculo_titulo ?? '',
+      matricula: p.matricula ?? '',
+      desde: 'Zaragoza',
+      hasta: p.hasta ?? '',
+      creadoPor: 'al entrar en trámites',
+      tramo: 2,
     }).catch(() => null);
     if (id) abiertos += 1;
   }

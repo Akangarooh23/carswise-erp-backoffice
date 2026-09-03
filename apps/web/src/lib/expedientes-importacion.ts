@@ -165,6 +165,20 @@ export interface MetaImportacion {
   tramo_del_vendedor?: string | null;
   /** Cuándo se le dijo al vendedor quién va a por el coche y qué día. */
   aviso_recogida_at?: string | null;
+  /**
+   * El segundo viaje: de Zaragoza a casa del cliente.
+   *
+   * Una importación hace dos, con los trámites en medio. Este no existe hasta
+   * que se entra en trámites, y no existe nunca si el cliente lo recoge aquí.
+   */
+  tramo_al_cliente?: {
+    id?: string | null;
+    estado?: string | null;
+    hasta?: string | null;
+    transportista?: string | null;
+    orden_enviada_at?: string | null;
+    fecha_entrega?: string | null;
+  } | null;
   /** Lo que ese tramo ya sabe, para no confundir esperar con poder hacer. */
   tramo?: {
     recogida_prevista?: string | null;
