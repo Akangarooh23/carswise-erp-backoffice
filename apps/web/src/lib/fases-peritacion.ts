@@ -29,6 +29,9 @@ export interface DondeVa {
   coste?: number | string | null;
   /** Cuándo se le confirmó el día al vendedor. */
   cita_avisada_at?: string | null;
+  /** Su factura, y si ya se le ha pedido. */
+  factura_numero?: string | null;
+  factura_pedida_at?: string | null;
 }
 
 export const FASES = [
@@ -62,8 +65,21 @@ export function faseDeLaPeritacion(p: DondeVa): 0 | 1 | 2 {
  * había contestado, y entonces el cartel deja de leerse.
  */
 export function queTocaAhora(p: DondeVa): string {
+  /*
+   * Con la revisión hecha, lo que queda es una cosa concreta.
+   *
+   * Decía «apunta lo que vio, sus daños, su informe y su factura» aunque las
+   * tres primeras ya estuvieran hechas. Enumerar lo que ya está hecho no es
+   * un recordatorio: obliga a repasar los cuatro para descubrir cuál falta,
+   * que es justo lo que el cartel debería ahorrar.
+   */
   if (p.estado === 'Hecha') {
-    return 'Ya se sabe lo que hay. Apunta lo que vio, sus daños, su informe y su factura.';
+    if (String(p.factura_numero ?? '').trim()) {
+      return 'Nada pendiente aquí: esta peritación está cerrada.';
+    }
+    return p.factura_pedida_at
+      ? 'Solo falta su factura. Ya se le ha pedido: apúntala en cuanto llegue.'
+      : 'Solo falta su factura. Pídesela abajo, o apúntala si ya la ha mandado.';
   }
   if (!p.encargo_enviado_at) {
     return 'Elige quién va a verlo, comprueba los datos de la visita y mándale el encargo.';

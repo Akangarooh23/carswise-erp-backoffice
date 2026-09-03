@@ -88,7 +88,26 @@ describe('lo que toca ahora, dentro de «Encargada»', () => {
     assert.match(queTocaAhora({ estado: 'Encargada' }), /mándale el encargo/);
   });
 
-  test('hecha, lo que toca es apuntar lo que vio', () => {
-    assert.match(queTocaAhora({ estado: 'Hecha', coste: 289 }), /Apunta lo que vio/);
+  test('hecha y sin factura, se dice que es lo único que falta', () => {
+    // Decía «apunta lo que vio, sus daños, su informe y su factura» con las
+    // tres primeras ya hechas. Enumerar lo hecho obliga a repasar los cuatro
+    // para descubrir cuál falta, que es lo que el cartel debería ahorrar.
+    const hecha = { estado: 'Hecha', encargo_enviado_at: '2026-09-02T10:00:00Z', coste: 289 };
+    assert.match(queTocaAhora(hecha), /Solo falta su factura/);
+    assert.match(queTocaAhora(hecha), /Pídesela/);
+  });
+
+  test('y si ya se le ha pedido, que se espera a que llegue', () => {
+    assert.match(
+      queTocaAhora({ estado: 'Hecha', coste: 289, factura_pedida_at: '2026-09-09T10:00:00Z' }),
+      /Ya se le ha pedido/
+    );
+  });
+
+  test('con la factura apuntada, no queda nada aquí', () => {
+    assert.match(
+      queTocaAhora({ estado: 'Hecha', coste: 289, factura_numero: 'PE-DE-0001' }),
+      /Nada pendiente/
+    );
   });
 });

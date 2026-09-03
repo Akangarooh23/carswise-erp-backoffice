@@ -256,6 +256,17 @@ export default function PeritacionesPage() {
                         {VEREDICTOS.find(([k]) => k === p.veredicto)?.[1]}
                       </div>
                     )}
+                    {/*
+                      * Lo que falta, en la tarjeta.
+                      *
+                      * El número rojo del menú dice que hay algo pendiente,
+                      * y el tablero tiene que decir cuál sin abrir la ficha.
+                      */}
+                    {p.estado === 'Hecha' && !p.factura_numero && (
+                      <div className="text-[11px] font-semibold text-amber-700 mt-1">
+                        {p.factura_pedida_at ? 'Su factura, pedida y sin llegar' : 'Falta pedirle su factura'}
+                      </div>
+                    )}
                     {(p.danos?.length ?? 0) > 0 && (
                       <div className="text-[11px] text-brand-500 mt-1">
                         Daños: {comoSeCuenta(resumenDeDanos(p.danos ?? []))}
