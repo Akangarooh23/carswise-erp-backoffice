@@ -19,7 +19,8 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  */
 
 import {
-  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, queViajeEs, PISTAS,
+  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, queViajeEs,
+  comoSeLlamaElCampo, pistaDelCampo, PISTAS,
 } from '../lib/fases-transporte.js';
 import {
   faltaPorMirarAlLlegar, queHacerAlLlegar, type LlegoComoSalio,
@@ -635,14 +636,16 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * fase en la que ya se le ha preguntado.
           */}
         {toca('ruta') && (
-        <Plegable titulo="Dónde y cuándo se recoge" abiertaPorDefecto={!rutaPuesta}
+        <Plegable titulo={alVendedor ? 'Dónde y cuándo se recoge' : 'De dónde sale y cuándo'}
+                  abiertaPorDefecto={!rutaPuesta}
                   resumen={rutaPuesta ? `${datos.desde} · ${datos.recogida_prevista}` : 'falta la dirección o el día'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <label className="text-[11px] text-brand-400">
-            Recogida prevista
+            {comoSeLlamaElCampo('recogida_prevista', t.tramo)}
             <input type="date" value={datos.recogida_prevista}
                    onChange={(e) => setDatos((d) => ({ ...d, recogida_prevista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('recogida_prevista', t.tramo)}</span>
           </label>
           {/*
             * Cuándo estiman llegar.
@@ -652,22 +655,25 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             * única pregunta que él tiene, que es cuándo lo tiene.
             */}
           <label className="text-[11px] text-brand-400">
-            Llegada estimada
+            {comoSeLlamaElCampo('entrega_prevista', t.tramo)}
             <input type="date" value={datos.entrega_prevista}
                    onChange={(e) => setDatos((d) => ({ ...d, entrega_prevista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">La que te dé el transportista al aceptar.</span>
+            <span className="text-[10px] text-brand-300">
+              {pistaDelCampo('entrega_prevista', t.tramo) || 'La que te dé el transportista al aceptar.'}
+            </span>
           </label>
           <label className="col-span-2 text-[11px] text-brand-400">
-            Desde
+            {comoSeLlamaElCampo('desde', t.tramo)}
             <input value={datos.desde} onChange={(e) => setDatos((d) => ({ ...d, desde: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">{PISTAS.desde}</span>
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('desde', t.tramo)}</span>
           </label>
           <label className="col-span-2 text-[11px] text-brand-400">
-            Hasta
+            {comoSeLlamaElCampo('hasta', t.tramo)}
             <input value={datos.hasta} onChange={(e) => setDatos((d) => ({ ...d, hasta: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('hasta', t.tramo)}</span>
           </label>
 
           {/*

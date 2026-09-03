@@ -14,6 +14,7 @@ import {
   bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
   queTocaEnElTramo,
   queViajeEs,
+  comoSeLlamaElCampo, pistaDelCampo,
 } from './fases-transporte.js';
 
 describe('qué se ve en cada fase', () => {
@@ -321,5 +322,27 @@ describe('la ruta del segundo viaje', () => {
     // Es el que más hay, y equivocarse al revés enseña campos que todavía no
     // se pueden rellenar.
     assert.ok(!bloquesDelTramo('Por organizar').includes('ruta'));
+  });
+});
+
+describe('cada viaje llama a las cosas por su nombre', () => {
+  test('en el primero, el día lo pone el vendedor', () => {
+    assert.equal(comoSeLlamaElCampo('recogida_prevista', 1), 'Recogida prevista');
+    assert.match(pistaDelCampo('recogida_prevista', 1), /lo dice el vendedor|dice el vendedor/i);
+  });
+
+  test('en el segundo lo dice el transportista, y hasta entonces no se sabe', () => {
+    // El coche está en nuestra nave y disponible desde ya: preguntar «recogida
+    // prevista» ahí es pedir un día que nadie puede saber todavía, y quien lo
+    // lee acaba inventándose uno.
+    assert.equal(comoSeLlamaElCampo('recogida_prevista', 2), 'Cuándo lo recoge');
+    assert.match(pistaDelCampo('recogida_prevista', 2), /diga el transportista/);
+    assert.match(pistaDelCampo('entrega_prevista', 2), /Se apunta al contestar/);
+  });
+
+  test('y las dos puntas también cambian de nombre', () => {
+    assert.equal(comoSeLlamaElCampo('desde', 2), 'Dónde está ahora');
+    assert.equal(comoSeLlamaElCampo('hasta', 2), 'A dónde va');
+    assert.equal(comoSeLlamaElCampo('desde', 1), 'Desde');
   });
 });

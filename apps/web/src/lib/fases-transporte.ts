@@ -201,3 +201,39 @@ export const PISTAS: Record<string, string> = {
   hasta: 'A dónde lo lleva: nuestra campa, o la dirección del cliente en el último tramo.',
   recogida_prevista: 'El día que dice el vendedor que se lo pueden llevar.',
 };
+
+/**
+ * Y las mismas cosas quieren decir otra en el segundo viaje.
+ *
+ * En el primero, el día de recogida lo pone el vendedor —«está listo desde el
+ * 4»— y por eso se apunta antes de contratar a nadie. En el segundo el coche
+ * está en nuestra nave y disponible desde ya: **las dos fechas las dice el
+ * transportista al contestar el precio**, y hasta entonces no se saben.
+ *
+ * Con las etiquetas del primero, quien abre el segundo se encuentra pidiéndole
+ * un día que todavía no puede saber, y acaba inventándose uno.
+ */
+export const PISTAS_DEL_SEGUNDO: Record<string, string> = {
+  desde: 'Dónde está el coche ahora: nuestra nave, con su calle.',
+  hasta: 'La dirección del cliente, la que puso al pedirlo.',
+  recogida_prevista: 'El día que diga el transportista que puede ir. Se apunta al contestar.',
+  entrega_prevista: 'Cuándo estima llegar. Se apunta al contestar, y es lo que se le dice al cliente.',
+};
+
+/** Cómo se llama cada cosa en cada viaje. */
+export function comoSeLlamaElCampo(campo: string, tramo: number | string | null | undefined): string {
+  const segundo = !seLePreguntaAlVendedor(tramo);
+  if (!segundo) {
+    return campo === 'recogida_prevista' ? 'Recogida prevista'
+      : campo === 'entrega_prevista' ? 'Llegada estimada'
+      : campo === 'desde' ? 'Desde' : 'Hasta';
+  }
+  return campo === 'recogida_prevista' ? 'Cuándo lo recoge'
+    : campo === 'entrega_prevista' ? 'Cuándo llega'
+    : campo === 'desde' ? 'Dónde está ahora' : 'A dónde va';
+}
+
+/** Y la pista que le toca. */
+export function pistaDelCampo(campo: string, tramo: number | string | null | undefined): string {
+  return (!seLePreguntaAlVendedor(tramo) ? PISTAS_DEL_SEGUNDO[campo] : PISTAS[campo]) ?? '';
+}
