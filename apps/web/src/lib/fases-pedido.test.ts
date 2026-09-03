@@ -213,3 +213,43 @@ describe('lo que en una importación no se decide en el pedido', () => {
     assert.ok(campos.includes('fecha_estimada'));
   });
 });
+
+describe('la franja del pedido mira lo que hay puesto', () => {
+  test('sin factura ni pago, dice que faltan', () => {
+    assert.match(
+      queTocaEnElPedido('Pedido', 'importacion', 'x', {}),
+      /Falta apuntar su factura y el pago/
+    );
+  });
+
+  test('con los dos, deja de pedirlos y dice qué viene después', () => {
+    // Seguía diciendo «falta apuntar su factura» después de apuntarla. Un
+    // cartel que no cambia cuando cambia lo que tiene debajo se deja de leer.
+    assert.match(
+      queTocaEnElPedido('Pedido', 'importacion', 'x', {
+        factura_proveedor: 'ACD-2026-0903-001', factura_pagada_el: '2026-09-08',
+      }),
+      /pásalo a «Confirmado»/
+    );
+  });
+
+  test('y si falta uno, dice cuál', () => {
+    assert.match(
+      queTocaEnElPedido('Pedido', 'importacion', 'x', { factura_proveedor: 'ACD-1' }),
+      /Falta la fecha del pago/
+    );
+    assert.match(
+      queTocaEnElPedido('Pedido', 'importacion', 'x', { factura_pagada_el: '2026-09-08' }),
+      /Falta el número de su factura/
+    );
+  });
+
+  test('en otros orígenes no se mete: la frase es la de siempre', () => {
+    assert.equal(
+      queTocaEnElPedido('Pedido', 'concesionario', 'Esperando que lo acepten', {
+        factura_proveedor: 'RE-1', factura_pagada_el: '2026-09-08',
+      }),
+      'Esperando que lo acepten'
+    );
+  });
+});

@@ -664,6 +664,44 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   const [verTodo, setVerTodo] = useState(false);
   const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo, p.origen);
   const campos = camposDe(p.estado, verTodo, p.origen);
+
+  /**
+   * Subir la factura del vendedor sin salir de donde se pide su número.
+   *
+   * Va al cajón del pedido y con su papel puesto —«Factura del vendedor
+   * alemán»—, que es lo que hace que cuente para la lista de lo que falta
+   * por reunir en vez de quedarse como un adjunto suelto.
+   */
+  const [subiendo, setSubiendo] = useState(false);
+  const [falloAlSubir, setFalloAlSubir] = useState('');
+
+  async function subeLaFactura(fichero: File) {
+    setFalloAlSubir('');
+    setSubiendo(true);
+    try {
+      const base64 = await new Promise<string>((listo, falla) => {
+        const lector = new FileReader();
+        lector.onload = () => listo(String(lector.result).split(',')[1] ?? '');
+        lector.onerror = () => falla(new Error('no se ha podido leer'));
+        lector.readAsDataURL(fichero);
+      });
+      const r = await api.post(`/documentos/pedido/${p.id}`, {
+        nombre: fichero.name, tipo: fichero.type,
+        papel: 'Factura del vendedor alemán', contenido_base64: base64,
+      });
+      if (!r.ok) {
+        setFalloAlSubir(r.error === 'fichero_no_valido'
+          ? 'Ese fichero no vale: PDF o imagen, hasta 3 MB.'
+          : 'No se ha podido guardar.');
+        return;
+      }
+      onPapeles();
+    } catch {
+      setFalloAlSubir('No se ha podido leer el fichero.');
+    } finally {
+      setSubiendo(false);
+    }
+  }
   const sale = (c: Campo) => campos.some((x) => x.campo === c);
 
   /**
@@ -698,7 +736,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
         <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
           <div className="text-[10px] uppercase tracking-wide text-amber-700/80">Ahora toca</div>
           <div className="text-[13px] font-bold text-amber-800">
-            {queTocaEnElPedido(p.estado, p.origen, QUE_TOCA[p.estado as Estado] ?? p.estado)}
+            {queTocaEnElPedido(p.estado, p.origen, QUE_TOCA[p.estado as Estado] ?? p.estado, datos)}
           </div>
         </div>
 
@@ -790,13 +828,37 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
               <input value={datos.factura_proveedor} placeholder="RE-2026-4471"
                      onChange={(e) => setDatos((d) => ({ ...d, factura_proveedor: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-              {/* El número va aquí y el papel abajo: decirlo evita que el PDF
-                  se quede en el correo de quien lo recibió. */}
-              <span className="block text-[10px] text-brand-300 mt-0.5">
-                El PDF se adjunta abajo, en Documentos. Se ve también desde el expediente.
-              </span>
             </label>
           )}
+          {/*
+            * El papel, donde se pide el dato.
+            *
+            * Estaba abajo, en Documentos, y aquí solo una línea diciéndolo.
+            * Quien acaba de teclear el número de la factura tiene el PDF en la
+            * mano: hacerle bajar a otro bloque es donde el papel se queda en
+            * el correo de quien lo recibió.
+            *
+            * Se sube al cajón del pedido con su papel puesto, así que cuenta
+            * de una vez para la lista de lo que falta y se ve desde el
+            * expediente.
+            */}
+          {sale('factura_proveedor') && (
+            <div className="col-span-2 flex flex-wrap items-center gap-2 -mt-1">
+              <label className="inline-block px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg cursor-pointer hover:bg-brand-50">
+                {subiendo ? 'Subiendo…' : 'Adjuntar la factura del vendedor'}
+                <input type="file" className="hidden" disabled={subiendo}
+                       accept="application/pdf,image/*"
+                       onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void subeLaFactura(f); }} />
+              </label>
+              <span className="text-[10px] text-brand-300">
+                Se guarda abajo, en Documentos, y se ve desde el expediente.
+              </span>
+              {falloAlSubir && (
+                <span className="text-[11px] text-red-700 font-medium">{falloAlSubir}</span>
+              )}
+            </div>
+          )}
+
           {sale('factura_pagada_el') && (
             <label className="block">
               <Etiqueta campo="factura_pagada_el" campos={campos} />

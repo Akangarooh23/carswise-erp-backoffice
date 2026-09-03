@@ -37,8 +37,29 @@ export const QUE_TOCA_POR_ORIGEN: Record<string, Record<string, string>> = {
   },
 };
 
-/** La frase de este pedido, con la genérica de repuesto. */
-export function queTocaEnElPedido(estado: string, origen: string, generica: string): string {
+/**
+ * La frase de este pedido, con la genérica de repuesto.
+ *
+ * Mira **lo que hay puesto**, no solo el estado. «Falta apuntar su factura y
+ * el pago» seguía ahí después de apuntarlos: un cartel que no cambia cuando
+ * cambia lo que tiene debajo se deja de leer, y entonces no sirve de nada
+ * tenerlo.
+ */
+export function queTocaEnElPedido(
+  estado: string,
+  origen: string,
+  generica: string,
+  puesto: { factura_proveedor?: string | null; factura_pagada_el?: string | null } = {}
+): string {
+  if (origen === 'importacion' && estado === 'Pedido') {
+    const conFactura = Boolean(String(puesto.factura_proveedor ?? '').trim());
+    const conPago = Boolean(String(puesto.factura_pagada_el ?? '').trim());
+    if (conFactura && conPago) {
+      return 'Apuntado. Cuando el vendedor diga que está listo, pásalo a «Confirmado»';
+    }
+    if (conFactura) return 'Falta la fecha del pago';
+    if (conPago) return 'Falta el número de su factura';
+  }
   return QUE_TOCA_POR_ORIGEN[origen]?.[estado] ?? generica;
 }
 
