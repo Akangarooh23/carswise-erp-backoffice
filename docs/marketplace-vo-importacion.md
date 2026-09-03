@@ -497,7 +497,7 @@ escritos en pedidos, transportes y trámites y da de alta a quien falte— pero
 aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
 
 ---
-## Los ocho correos que salen a proveedores
+## Los nueve correos que salen a proveedores
 
 Uno por cada cosa que hay que pedirle a alguien de fuera, y cada uno en el
 momento en que esa cosa hace falta. **Cada pantalla manda los correos de su**
@@ -514,11 +514,12 @@ el tramo.
 | Con la cita cerrada | El vendedor alemán | Le confirma **el día y la hora**, quién va, y que tenga el coche y los papeles listos |
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
 | Con el coche pagado | El vendedor alemán | **Dónde y cuándo** se recoge, con quién, qué se lleva el conductor y **si entra un portacoches** |
-| En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
+| Con la respuesta del vendedor | El transportista | **Si puede y cuánto cobra**, con la calle exacta, el día, el horario, por quién preguntar y si entra un portacoches |
+| Ya contratado | El transportista | La orden de recogida, con las dos puntas y desde cuándo |
 | Cuando ha hecho la revisión | El perito | **Su factura**, a nombre de PopCar y no del cliente |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |
 
-Los ocho **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
+Los nueve **se enseñan antes de salir**. Ninguno se manda de un clic: se abre el
 correo entero, se revisa y se manda. Un correo no se desenvía, y estos van a
 gente de fuera con nuestro nombre.
 
@@ -534,7 +535,7 @@ Y ninguno se manda a ciegas: si falta el correo del proveedor, o el NIF del
 cliente, o el transportista, se dice qué falta y dónde se rellena en lugar de
 mandar algo que vuelve mal.
 
-**A los ocho se les pueden adjuntar papeles del coche**, elegidos uno a uno —no
+**A los nueve se les pueden adjuntar papeles del coche**, elegidos uno a uno —no
 va ninguno si no se marca— y sacados de los tres cajones: el expediente, el
 pedido y el tramo. Lo que se marca **se dice dentro del correo**: un adjunto
 que el cuerpo no menciona es un adjunto que no se abre, y el que lo recibe
@@ -809,7 +810,8 @@ camino entero:
 10. Pedirle su factura, que la mande, y **tenerla subida** *(aparte)*.
 11. Apuntar en el pedido su número y el pago *(aparte)*.
 12. Preguntarle dónde y cuándo se recoge *(desde el expediente)*.
-13. Organizar el transporte *(cuando conteste, en Transportes)*.
+13. Organizar el transporte *(cuando conteste, en Transportes)*: apuntar lo que
+    dijo, pedir precio a uno o a varios, contratar y mandar la orden.
 14. Que el coche llegue a España.
 15. Encargarle los trámites a la gestoría.
 16. Entregárselo al cliente.
