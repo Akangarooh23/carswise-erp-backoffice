@@ -14,7 +14,10 @@
  * justo donde los papeles de un coche dejan de existir el día que esa persona
  * no está.
  *
- * Con macros no: un `.xlsm` es un programa, y esto es un cajón de papeles.
+ * Y presentaciones, por si alguien manda un informe montado así.
+ *
+ * Con macros no: un `.xlsm` o un `.pptm` son programas —ejecutan código al
+ * abrirlos— y esto es un cajón de papeles que acaba en un almacén público.
  *
  * Se mira el tipo declarado y la extensión, y tienen que decir lo mismo: el
  * navegador manda los dos y mentir en uno solo es lo fácil.
@@ -27,17 +30,21 @@ const PERMITIDOS: Record<string, string[]> = {
   'image/webp':      ['webp'],
   'image/gif':       ['gif'],
   'application/pdf': ['pdf'],
-  // Las hojas de cálculo del perito y de la gestoría.
+  // Las hojas de cálculo del perito y de la gestoría, y las presentaciones.
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
 
   'application/vnd.ms-excel': ['xls'],
   'application/vnd.oasis.opendocument.spreadsheet': ['ods'],
   'text/csv': ['csv'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['pptx'],
+  'application/vnd.ms-powerpoint': ['ppt'],
+  'application/vnd.oasis.opendocument.presentation': ['odp'],
 };
 
 /** Lo que se le puede decir a quien sube. */
 export const TIPOS_ACEPTADOS =
-  'imágenes (PNG, JPG, WEBP, GIF), PDF u hojas de cálculo (XLSX, XLS, ODS, CSV)';
+  'imágenes (PNG, JPG, WEBP, GIF), PDF, hojas de cálculo (XLSX, XLS, ODS, CSV) ' +
+  'o presentaciones (PPTX, PPT, ODP)';
 
 /**
  * El tamaño máximo, en bytes.

@@ -162,3 +162,19 @@ describe('las hojas de cálculo', () => {
     assert.ok(revisaFichero('a.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 4 * MB));
   });
 });
+
+describe('las presentaciones', () => {
+  test('un pptx, un ppt y un odp entran', () => {
+    assert.equal(revisaFichero(
+      'informe.pptx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      50 * 1024
+    ), null);
+    assert.equal(revisaFichero('a.ppt', 'application/vnd.ms-powerpoint', 1000), null);
+    assert.equal(revisaFichero('a.odp', 'application/vnd.oasis.opendocument.presentation', 1000), null);
+  });
+
+  test('pero no un pptm, que también ejecuta código', () => {
+    assert.ok(revisaFichero('a.pptm', 'application/vnd.ms-powerpoint.presentation.macroEnabled.12', 1000));
+  });
+});
