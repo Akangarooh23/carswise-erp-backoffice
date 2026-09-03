@@ -15,13 +15,14 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
-import { enviar } from '../lib/correo.js';
+import { enviar, MARCA } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
 } from '../lib/aviso-de-recogida-al-vendedor.js';
+import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
 import {
   correoDePresupuestoAlTransportista, faltaParaPedirPresupuesto, type Idioma,
 } from '../lib/presupuesto-al-transportista.js';
@@ -842,14 +843,63 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
     if (estado && mueveElExpediente(previo, estado)) {
       const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
       const linea = `[${cuando} · Verificado y pagado → En transporte] El transporte ${req.params.id} pasó a «${estado}».`;
-      await query(
+      /*
+       * El `RETURNING` dice si de verdad se movió.
+       *
+       * Con él, el correo al cliente sale una vez y solo una: si el expediente
+       * ya estaba en camino, el `WHERE` no toca nada y aquí no vuelve ninguna
+       * fila. Sin eso, marcar «Recogido» y luego «En tránsito» le mandaría dos
+       * correos iguales al cliente en el mismo día.
+       */
+      const movido = await query<{
+        user_email: string | null; contact_name: string | null;
+        vehicle_title: string | null; delivery_estimate: string | null;
+      }>(
         `UPDATE moveadvisor_market_leads
             SET status = 'En transporte',
                 erp_notes = CASE WHEN COALESCE(erp_notes, '') = '' THEN $2
                                  ELSE erp_notes || E'\n' || $2 END
-          WHERE id = $1 AND status = 'Verificado y pagado'`,
+          WHERE id = $1 AND status = 'Verificado y pagado'
+        RETURNING user_email, contact_name, vehicle_title,
+                  TO_CHAR(delivery_estimate, 'YYYY-MM-DD') AS delivery_estimate`,
         [String(previo.lead_id), linea]
-      ).catch((e: Error) => console.error('[transportes] no se ha podido mover el expediente:', e.message));
+      ).catch((e: Error) => {
+        console.error('[transportes] no se ha podido mover el expediente:', e.message);
+        return { rows: [] as never[] };
+      });
+
+      /*
+       * Y se le dice al cliente, que es lo que evita la llamada de mañana.
+       *
+       * «Tu coche va de camino» se lee como «llega a mi puerta esta semana», y
+       * lo que pasa es que va a Zaragoza a matricularse. Entre lo que imagina y
+       * lo que ocurre hay varias semanas, y ese hueco se llena de llamadas.
+       *
+       * Va después de mover la etapa y no antes: si el correo falla, el coche
+       * sigue estando de camino y eso tiene que quedar apuntado igual. El fallo
+       * se escribe en las notas internas, porque un cliente sin avisar y nadie
+       * enterado es peor que un correo que no salió.
+       */
+      const lead = movido.rows[0];
+      if (lead && String(lead.user_email ?? '').trim()) {
+        const { subject, html } = correoDeCocheEnCamino({
+          nombre: lead.contact_name,
+          vehiculo: lead.vehicle_title,
+          entregaEstimada: lead.delivery_estimate,
+          destino: String(previo.hasta ?? '').trim() || 'Zaragoza',
+          panel: `${MARCA.sitioUrl}/panel/solicitudes`,
+        });
+        await enviar({
+          to: String(lead.user_email), subject, html, alClienteSiempre: true,
+        }).catch(async (e: Error) => {
+          console.error('[transportes] no se ha podido avisar al cliente:', e.message);
+          const fallo = `[${cuando}] No salió el correo de «tu coche viene de camino»: ${e.message}`;
+          await query(
+            `UPDATE moveadvisor_market_leads SET erp_notes = erp_notes || E'\n' || $2 WHERE id = $1`,
+            [String(previo.lead_id), fallo]
+          ).catch(() => {});
+        });
+      }
     }
 
     /*

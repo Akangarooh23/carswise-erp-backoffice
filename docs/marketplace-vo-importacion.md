@@ -837,8 +837,26 @@ coche cruzando Francia. Solo desde la etapa anterior —así no se salta ninguna
 ni se retrocede si alguien vuelve a tocar el tramo— y solo con el primer tramo,
 que es el que trae el coche a España. Queda escrito en las notas internas con
 su motivo, porque un cambio de etapa que nadie ha pulsado tiene que poder
-explicarse después. **No manda ningún correo**: cambia lo que el cliente ve en
-su panel, y el aviso por correo sigue siendo un botón que alguien pulsa.
+explicarse después.
+
+Y con ese cambio **sale un correo al cliente**, el único de todo el camino que
+no lleva botón. Existe por una frase: **«no va a tu domicilio todavía»**. «Tu
+coche va de camino» se lee como «esta semana lo tengo», y lo que ocurre es que
+el camión lo deja en Zaragoza, allí se matricula —impuesto, DGT e ITV de
+homologación— y solo después se queda para la entrega. Entre lo que imagina y
+lo que pasa hay varias semanas, y ese hueco se llena de llamadas y de
+desconfianza. El correo dice, en este orden: ha salido, va a Zaragoza y no a
+tu casa, lo que queda por delante, y que no tiene que hacer nada.
+
+Fechas, solo las que existen: si ya se le dio una se repite tal cual —es la que
+tiene en la cabeza— diciendo que es una estimación; si no hay, no se pone
+ninguna. Un plazo puesto para rellenar el hueco es la fecha que nos reclaman.
+
+Sale **una vez y solo una**: marcar «Recogido» y luego «En tránsito» no manda
+dos correos iguales, porque el aviso va colgado del cambio de etapa y la etapa
+solo cambia una vez. Y si el correo no sale, el coche sigue estando de camino y
+el fallo queda escrito en las notas internas: un cliente sin avisar y nadie
+enterado es peor que un correo que no salió.
 
 Los marcados **aparte** son trabajo nuestro que **no mueve el coche**: la
 factura del perito, la del vendedor y el apunte del pago. Se dicen debajo del
