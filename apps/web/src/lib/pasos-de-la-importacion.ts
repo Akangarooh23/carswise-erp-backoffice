@@ -49,6 +49,15 @@ export interface Paso {
   /** Días esperando, cuando se espera a alguien de fuera. */
   dias?: number;
   /**
+   * Dónde se apunta la respuesta, para las esperas que se cierran así.
+   *
+   * Un correo contestado llega a un buzón, no al ERP: aquí seguimos
+   * esperando hasta que alguien escribe lo que dijo. Sin este camino, la
+   * espera se queda quieta con la respuesta ya encima de la mesa —y como una
+   * espera no lleva número rojo, nada la reclama hasta que vence el plazo.
+   */
+  apuntarEn?: string;
+  /**
    * Si este paso **mueve el coche** o va por su cuenta.
    *
    * La factura del perito hay que pedirla, pero el coche no la espera: sigue
@@ -405,6 +414,10 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
               {
                 clave: 'transporte', titulo: 'Que diga cuándo se puede recoger',
                 estado: 'esperando', donde: '/importaciones',
+                // Su respuesta se apunta en el tramo: la calle en «Desde», el
+                // día en «Recogida prevista», el nombre y el teléfono de quien
+                // sale a abrir, y el horario.
+                apuntarEn: '/transportes',
               },
               m.recogida_preguntada_at, PLAZOS.vendedor,
               'Reclamarle al vendedor el día de la recogida', hoy

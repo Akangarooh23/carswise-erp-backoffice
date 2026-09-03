@@ -32,8 +32,28 @@ export const LO_DE_CADA_FASE: Record<string, BloqueDeTramo[]> = {
   'Con incidencia': ['quien', 'dondeRecoger', 'ruta', 'orden', 'fotos'],
 };
 
-export function bloquesDelTramo(estado: string): BloqueDeTramo[] {
-  return LO_DE_CADA_FASE[estado] ?? ['quien'];
+/**
+ * Y con la pregunta al vendedor ya hecha, la ruta se enseña antes.
+ *
+ * La tabla decía que la ruta viene después de contratar, y está al revés: su
+ * respuesta —la calle, el día, por quién preguntar, si entra un portacoches—
+ * es justo lo que hace falta para pedir precio. Sin enseñar esos campos, el
+ * correo llega al buzón y no hay dónde copiarlo; y lo que no se apunta no
+ * existe para nadie más que para quien lo leyó.
+ *
+ * Antes de preguntar siguen escondidos, que era el motivo original: un hueco
+ * vacío puesto delante parece una tarea pendiente y se rellena con lo primero
+ * que sirva, que aquí es la ciudad del anuncio.
+ */
+export function bloquesDelTramo(
+  estado: string,
+  t?: { recogida_preguntada_at?: string | null } | null
+): BloqueDeTramo[] {
+  const base = LO_DE_CADA_FASE[estado] ?? ['quien'];
+  if (String(t?.recogida_preguntada_at ?? '').trim() && !base.includes('ruta')) {
+    return [...base, 'ruta'];
+  }
+  return base;
 }
 
 /**

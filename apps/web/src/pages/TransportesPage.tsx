@@ -349,7 +349,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
    * toca parece una tarea pendiente, y se rellena con lo primero que sirva.
    */
   const [verTodo, setVerTodo] = useState(false);
-  const bloques = bloquesDelTramo(t.estado);
+  const bloques = bloquesDelTramo(t.estado, t);
   const toca = (b: string) => verTodo || bloques.includes(b as never);
   const alVendedor = seLePreguntaAlVendedor(t.tramo);
   const faltaOrden = faltaParaLaOrden({

@@ -57,6 +57,13 @@ function Linea({ p }: { p: Paso }) {
           ir →
         </a>
       )}
+      {/* Una espera que se cierra apuntando lo que contestaron: el correo
+          llega a un buzón, no aquí. */}
+      {p.apuntarEn && p.estado === 'esperando' && (
+        <a href={p.apuntarEn} className="text-[11px] text-brand-400 underline underline-offset-2 shrink-0">
+          ya contestó →
+        </a>
+      )}
     </div>
   );
 }
@@ -88,6 +95,19 @@ export default function CaminoDelCoche({ x }: { x: Expediente }) {
             ?? (aparte.length ? 'El coche puede seguir' : 'El expediente está cerrado')}
           {!toca && espera?.dias ? ` · ${espera.dias} ${espera.dias === 1 ? 'día' : 'días'}` : ''}
         </div>
+        {/*
+          * Y cómo se cierra esa espera, si se cierra apuntando algo.
+          *
+          * Va arriba y no solo dentro del camino desplegado: quien abre el
+          * expediente con la respuesta del vendedor en la mano tiene que ver
+          * dónde se escribe sin buscarlo.
+          */}
+        {!toca && espera?.apuntarEn && (
+          <a href={espera.apuntarEn}
+             className="inline-block text-[11px] text-brand-500 underline underline-offset-2 mt-0.5">
+            ¿Ya ha contestado? apuntar lo que dice →
+          </a>
+        )}
         {/*
           * Y lo que hay que hacer sin que el coche lo espere.
           *

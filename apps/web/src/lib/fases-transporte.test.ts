@@ -19,6 +19,22 @@ describe('qué se ve en cada fase', () => {
     assert.deepEqual(bloquesDelTramo('Por organizar'), ['quien', 'dondeRecoger']);
   });
 
+  test('pero con la pregunta hecha, la ruta se enseña ya', () => {
+    // Su respuesta es lo que hace falta para pedir precio: la calle, el día,
+    // por quién preguntar. Si los campos no están, el correo llega al buzón y
+    // no hay dónde copiarlo — y lo que no se apunta no existe para nadie más.
+    const b = bloquesDelTramo('Por organizar', { recogida_preguntada_at: '2026-09-02T10:00:00Z' });
+    assert.ok(b.includes('ruta'));
+    assert.ok(b.includes('quien'));
+  });
+
+  test('y sin preguntar sigue escondida', () => {
+    // Un hueco vacío delante parece una tarea pendiente y se rellena con lo
+    // primero que sirva, que aquí es la ciudad del anuncio.
+    assert.ok(!bloquesDelTramo('Por organizar', { recogida_preguntada_at: null }).includes('ruta'));
+    assert.ok(!bloquesDelTramo('Por organizar', { recogida_preguntada_at: '  ' }).includes('ruta'));
+  });
+
   test('la ruta y la orden aparecen cuando ya hay transportista contratado', () => {
     const b = bloquesDelTramo('Contratado');
     assert.ok(b.includes('ruta'));

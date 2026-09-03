@@ -211,6 +211,14 @@ describe('el final del camino', () => {
     assert.equal(pendientesPorPantalla([preguntado], HOY)['/transportes'], undefined);
   });
 
+  test('pero esa espera dice dónde se apunta lo que conteste', () => {
+    // Su correo llega a un buzón, no al ERP: sin este camino la espera se
+    // queda quieta con la respuesta ya encima de la mesa, y como una espera
+    // no lleva número rojo, nada la reclama hasta que vence el plazo.
+    const preguntado = kia({ ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z' });
+    assert.equal(paso(preguntado, 'transporte').apuntarEn, '/transportes');
+  });
+
   test('si tarda en contestar, hay que reclamárselo, y eso es de aquí', () => {
     const viejo = new Date(HOY.getTime() - (PLAZOS.vendedor + 1) * 86400000).toISOString();
     const x = kia({ ...TODO, recogida_preguntada_at: viejo });
