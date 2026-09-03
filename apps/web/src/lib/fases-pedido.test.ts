@@ -172,3 +172,44 @@ describe('un pedido de importación nace pagado', () => {
     assert.ok(campos.includes('factura_proveedor'));
   });
 });
+
+describe('los papeles, donde se piden', () => {
+  test('en importación, el pedido enseña Documentos desde «Pedido»', () => {
+    // Si ahí ya se apunta el número de la factura, ahí tiene que poder
+    // adjuntarse el PDF. Pedir un dato y no dar dónde ponerlo es lo que acaba
+    // con el papel en el correo de alguien.
+    assert.equal(toca('papeles', 'Pedido', false, 'importacion'), true);
+  });
+
+  test('en los demás, todavía no hay papeles que reunir', () => {
+    assert.equal(toca('papeles', 'Pedido', false, 'concesionario'), false);
+  });
+
+  test('y en «Confirmado» los enseña para todos, como siempre', () => {
+    assert.equal(toca('papeles', 'Confirmado', false, 'concesionario'), true);
+  });
+});
+
+describe('lo que en una importación no se decide en el pedido', () => {
+  test('«Lo esperamos para» no sale: lo dice el vendedor', () => {
+    // Es cuándo estará listo para recoger, y se le pregunta desde Transportes
+    // junto con la dirección, la hora y si entra un portacoches. Un campo de
+    // fecha suelto aquí invita a poner una a ojo, y de ahí sale una orden de
+    // recogida para un día en el que el coche no está listo.
+    for (const estado of ['Pedido', 'Confirmado', 'En camino']) {
+      const campos = camposDe(estado, false, 'importacion').map((c) => c.campo);
+      assert.ok(!campos.includes('fecha_estimada'), `sale en ${estado}`);
+    }
+  });
+
+  test('en los demás orígenes sigue estando', () => {
+    // Ahí sí es nuestra: se la pedimos al proveedor al encargar.
+    const campos = camposDe('Pedido', false, 'concesionario').map((c) => c.campo);
+    assert.ok(campos.includes('fecha_estimada'));
+  });
+
+  test('y con «Ver todo» se puede corregir igual', () => {
+    const campos = camposDe('Pedido', true, 'importacion').map((c) => c.campo);
+    assert.ok(campos.includes('fecha_estimada'));
+  });
+});

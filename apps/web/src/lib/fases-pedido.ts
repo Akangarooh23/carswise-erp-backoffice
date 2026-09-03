@@ -30,7 +30,7 @@ export type Bloque = 'titular' | 'comprobaciones' | 'papeles' | 'alLlegar' | 'ga
 export const QUE_TOCA_POR_ORIGEN: Record<string, Record<string, string>> = {
   importacion: {
     'Borrador':   'Prepararlo',
-    'Pedido':     'Comprado y pagado. Falta apuntar su factura y cuándo estará listo',
+    'Pedido':     'Comprado y pagado. Falta apuntar su factura y el pago',
     'Confirmado': 'Listo para recoger: organiza el transporte',
     'En camino':  'De camino a España',
     'Recibido':   'Ya está aquí: los trámites y lo que cueste dejarlo listo',
@@ -113,9 +113,25 @@ export const CAMPOS: CampoDePedido[] = [
   },
 ];
 
-/** Si ese bloque toca en esa fase. Con `verTodo`, todos. */
-export function toca(bloque: Bloque, estado: string, verTodo = false): boolean {
-  return verTodo || (LO_DE_CADA_FASE[estado] ?? []).includes(bloque);
+/**
+ * Y con la factura llegan sus papeles.
+ *
+ * Si en «Pedido» ya se apunta el número de la factura del vendedor, ahí mismo
+ * tiene que poder adjuntarse el PDF: pedir un dato y no dar dónde ponerlo es
+ * lo que acaba con el papel en el correo de alguien.
+ *
+ * Y no hace falta subirlo dos veces: los documentos del pedido son del coche,
+ * así que este mismo se ve desde el expediente y cuenta para su lista de «lo
+ * que falta por reunir».
+ */
+const PAPELES_AL_NACER: Record<string, Bloque[]> = {
+  importacion: ['papeles'],
+};
+
+export function toca(bloque: Bloque, estado: string, verTodo = false, origen = ''): boolean {
+  if (verTodo) return true;
+  if ((LO_DE_CADA_FASE[estado] ?? []).includes(bloque)) return true;
+  return estado === 'Pedido' && (PAPELES_AL_NACER[origen] ?? []).includes(bloque);
 }
 
 /** Si ese campo se enseña en esa fase. */
@@ -124,7 +140,6 @@ export function tocaCampo(campo: Campo, estado: string, verTodo = false): boolea
   return CAMPOS.find((c) => c.campo === campo)?.fases.includes(estado) ?? false;
 }
 
-/** Los campos de esta fase, en orden. Vacío si no hay ninguno que rellenar. */
 /**
  * En una importación, el pedido **nace comprado y pagado**.
  *
@@ -140,9 +155,27 @@ const YA_PAGADO_AL_NACER: Record<string, Campo[]> = {
   importacion: ['factura_proveedor', 'factura_pagada_el'],
 };
 
+/**
+ * Lo que en una importación **no se decide aquí**.
+ *
+ * «Lo esperamos para» es cuándo estará listo para recoger, y eso lo dice el
+ * vendedor: se le pregunta desde Transportes, en el mismo correo que la
+ * dirección exacta, la hora, por quién preguntar y si entra un portacoches.
+ *
+ * Puesto aquí como un campo suelto invita a poner una fecha a ojo, y una
+ * fecha a ojo en este sitio acaba en una orden de recogida para un día en el
+ * que el coche no está listo.
+ */
+const LO_DICE_OTRO: Record<string, Campo[]> = {
+  importacion: ['fecha_estimada'],
+};
+
 export function camposDe(estado: string, verTodo = false, origen = ''): CampoDePedido[] {
   const antesDeTiempo = estado === 'Pedido' ? (YA_PAGADO_AL_NACER[origen] ?? []) : [];
-  return CAMPOS.filter(
-    (c) => verTodo || c.fases.includes(estado) || antesDeTiempo.includes(c.campo)
-  );
+  const loDiceOtro = LO_DICE_OTRO[origen] ?? [];
+  return CAMPOS.filter((c) => {
+    if (verTodo) return true;
+    if (loDiceOtro.includes(c.campo)) return false;
+    return c.fases.includes(estado) || antesDeTiempo.includes(c.campo);
+  });
 }

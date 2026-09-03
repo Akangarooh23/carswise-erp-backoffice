@@ -662,7 +662,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   });
   const siguiente = siguienteEstado(p.estado);
   const [verTodo, setVerTodo] = useState(false);
-  const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo);
+  const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo, p.origen);
   const campos = camposDe(p.estado, verTodo, p.origen);
   const sale = (c: Campo) => campos.some((x) => x.campo === c);
 
@@ -790,6 +790,11 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
               <input value={datos.factura_proveedor} placeholder="RE-2026-4471"
                      onChange={(e) => setDatos((d) => ({ ...d, factura_proveedor: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+              {/* El número va aquí y el papel abajo: decirlo evita que el PDF
+                  se quede en el correo de quien lo recibió. */}
+              <span className="block text-[10px] text-brand-300 mt-0.5">
+                El PDF se adjunta abajo, en Documentos. Se ve también desde el expediente.
+              </span>
             </label>
           )}
           {sale('factura_pagada_el') && (
@@ -822,6 +827,23 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
         >
           Guardar los datos
         </button>
+
+        {/*
+          * Cuándo estará listo no se decide aquí: lo dice el vendedor.
+          *
+          * Se le pregunta desde Transportes, en el mismo correo que la
+          * dirección exacta, la hora, por quién preguntar y si entra un
+          * portacoches. Un campo de fecha suelto aquí invita a poner una a
+          * ojo, y de ahí sale una orden de recogida para un día en el que el
+          * coche no está listo.
+          */}
+        {p.origen === 'importacion' && (
+          <p className="mt-2 text-[11px] text-brand-300">
+            Cuándo estará listo para recoger lo dice el vendedor.{' '}
+            <a href="/transportes" className="underline underline-offset-2">Se le pregunta en Transportes</a>,
+            junto con la dirección exacta, la hora, por quién preguntar y si entra un portacoches.
+          </p>
+        )}
         </>)}
 
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm border-t border-brand-100 pt-4 mt-4">
