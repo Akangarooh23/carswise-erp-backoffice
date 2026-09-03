@@ -24,12 +24,30 @@ const ESTADOS = ['Borrador', 'Pedido', 'Confirmado', 'En camino', 'Recibido'] as
 type Estado = (typeof ESTADOS)[number];
 const CANCELADO = 'Cancelado';
 
+/**
+ * Qué significa cada columna, dicho como lo entiende quien mira el tablero.
+ *
+ * «Recibido» se leía como que lo había recibido **el cliente**, y no es eso:
+ * el pedido es la compra al proveedor, y termina cuando el coche es nuestro y
+ * está en Zaragoza. Al cliente le quedan por delante los trámites, el segundo
+ * transporte y la entrega, y eso vive en el expediente.
+ */
 const QUE_TOCA: Record<Estado, string> = {
   'Borrador':   'Prepararlo y encargarlo',
   'Pedido':     'Esperando que lo acepten',
   'Confirmado': 'Organizar la recogida',
   'En camino':  'Viene de camino',
-  'Recibido':   'Está en nuestras manos',
+  'Recibido':   'Ya es nuestro, en Zaragoza',
+};
+
+/** Y el título de la columna, que es lo primero que se lee. */
+const COMO_SE_LLAMA: Record<Estado, string> = {
+  'Borrador':   'Borrador',
+  'Pedido':     'Pedido',
+  'Confirmado': 'Confirmado',
+  'En camino':  'En camino',
+  // No «Recibido» a secas: la compra la recibimos nosotros, no el cliente.
+  'Recibido':   'Recibido por nosotros',
 };
 
 const COLOR: Record<Estado, string> = {
@@ -223,7 +241,7 @@ export default function PedidosPage() {
             return (
               <div key={estado} className="min-w-[240px] w-[240px] shrink-0">
                 <div className={`px-3 py-2 rounded-t-xl border text-xs font-bold ${COLOR[estado]}`}>
-                  {estado} <span className="opacity-70">· {lista.length}</span>
+                  {COMO_SE_LLAMA[estado]} <span className="opacity-70">· {lista.length}</span>
                   <div className="font-normal opacity-80 mt-0.5 text-[11px]">{QUE_TOCA[estado]}</div>
                 </div>
                 <div className="border border-t-0 border-brand-200 rounded-b-xl bg-brand-50/40 p-2 min-h-[80px] flex flex-col gap-2">
