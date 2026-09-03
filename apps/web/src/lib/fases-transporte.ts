@@ -62,12 +62,19 @@ export function bloquesDelTramo(
     recogida_preguntada_at?: string | null;
     transportista?: string | null;
     coste?: unknown;
+    tramo?: number | string | null;
   } | null
 ): BloqueDeTramo[] {
   const base = [...(LO_DE_CADA_FASE[estado] ?? ['quien'])];
-  if (String(t?.recogida_preguntada_at ?? '').trim() && !base.includes('ruta')) {
-    base.push('ruta');
-  }
+  /*
+   * En el primero, la ruta aparece con la respuesta del vendedor. En el
+   * segundo no hay a quién preguntar —el coche está en nuestra nave— así que
+   * está desde el principio: si no, no había dónde escribir la calle ni por
+   * quién pregunta el conductor, y el correo salía diciendo «Zaragoza».
+   */
+  const conRespuesta = String(t?.recogida_preguntada_at ?? '').trim()
+    || !seLePreguntaAlVendedor(t?.tramo ?? 1);
+  if (conRespuesta && !base.includes('ruta')) base.push('ruta');
   const hayTrato = Boolean(String(t?.transportista ?? '').trim()) && Number(t?.coste ?? 0) > 0;
   if (hayTrato && !base.includes('orden')) base.push('orden');
   return base;

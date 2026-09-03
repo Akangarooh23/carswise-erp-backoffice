@@ -301,3 +301,25 @@ describe('pedir precio en el segundo viaje', () => {
     );
   });
 });
+
+describe('la ruta del segundo viaje', () => {
+  test('se puede escribir desde el principio', () => {
+    // No hay vendedor a quien preguntar: el coche está en nuestra nave. Sin
+    // esto no había dónde escribir la calle ni por quién pregunta el conductor,
+    // y el correo al transportista salía diciendo «Zaragoza» a secas.
+    assert.ok(bloquesDelTramo('Por organizar', { tramo: 2 }).includes('ruta'));
+  });
+
+  test('y en el primero sigue esperando a que conteste el vendedor', () => {
+    assert.ok(!bloquesDelTramo('Por organizar', { tramo: 1 }).includes('ruta'));
+    assert.ok(bloquesDelTramo('Por organizar', {
+      tramo: 1, recogida_preguntada_at: '2026-09-03T10:00:00Z',
+    }).includes('ruta'));
+  });
+
+  test('sin decir de qué tramo se trata, se supone el primero', () => {
+    // Es el que más hay, y equivocarse al revés enseña campos que todavía no
+    // se pueden rellenar.
+    assert.ok(!bloquesDelTramo('Por organizar').includes('ruta'));
+  });
+});

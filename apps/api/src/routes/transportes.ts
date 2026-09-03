@@ -582,7 +582,16 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
       hasta: String(t.hasta ?? ''),
       // Lo que contestó el vendedor manda sobre el nombre de la empresa: por
       // quien pregunta el conductor no es a quién le compramos el coche.
-      contacto: String(t.contacto_origen ?? '').trim() || (t.vendedor as string | null),
+      /*
+       * Por quién pregunta el conductor al llegar.
+       *
+       * En el primer viaje, el del vendedor: su empresa vale de repuesto si no
+       * nos dieron un nombre. En el segundo sale de **nuestra** nave, y poner
+       * ahí al vendedor alemán es mandar al conductor a preguntar por alguien
+       * que está a mil quinientos kilómetros.
+       */
+      contacto: String(t.contacto_origen ?? '').trim()
+        || (Number(t.tramo ?? 1) <= 1 ? (t.vendedor as string | null) : null),
       telefono: String(t.telefono_origen ?? '').trim() || null,
       disponibleDesde: t.recogida_prevista as string | null,
       horario: String(t.horario_origen ?? '').trim() || null,
@@ -1118,9 +1127,14 @@ export async function ponAlDiaLasEtapas(): Promise<number> {
 export async function abreElTramoAlCliente(): Promise<number> {
   await prepara();
   const faltan = await query<{
-    id: string; vehiculo_titulo: string; matricula: string; hasta: string;
+    id: string; vehiculo_titulo: string; matricula: string; desde: string; hasta: string;
   }>(
     `SELECT pe.id, pe.vehiculo_titulo, pe.matricula,
+            -- De donde lo dejó el primero: la nave, con su calle. Un camión no
+            -- va a «Zaragoza», y esa dirección ya la tenemos escrita.
+            (SELECT t1.hasta FROM erp_transportes t1
+              WHERE t1.pedido_id = pe.id AND t1.tramo = 1
+              ORDER BY t1.created_at LIMIT 1) AS desde,
             CONCAT_WS(', ', NULLIF(l.entrega_direccion, ''), NULLIF(l.entrega_cp, ''),
                             NULLIF(l.entrega_ciudad, ''), NULLIF(l.entrega_provincia, '')) AS hasta
        FROM erp_pedidos pe
@@ -1142,7 +1156,9 @@ export async function abreElTramoAlCliente(): Promise<number> {
                          WHERE (tr.lead_id = l.id OR tr.pedido_id = pe.id)
                            AND tr.estado <> 'Resuelto')
       LIMIT 50`
-  ).catch(() => ({ rows: [] as { id: string; vehiculo_titulo: string; matricula: string; hasta: string }[] }));
+  ).catch(() => ({ rows: [] as {
+    id: string; vehiculo_titulo: string; matricula: string; desde: string; hasta: string;
+  }[] }));
 
   let abiertos = 0;
   for (const p of faltan.rows) {
@@ -1150,7 +1166,7 @@ export async function abreElTramoAlCliente(): Promise<number> {
       pedidoId: p.id,
       vehiculoTitulo: p.vehiculo_titulo ?? '',
       matricula: p.matricula ?? '',
-      desde: 'Zaragoza',
+      desde: String(p.desde ?? '').trim() || 'Zaragoza',
       hasta: p.hasta ?? '',
       creadoPor: 'con los papeleos resueltos',
       tramo: 2,
