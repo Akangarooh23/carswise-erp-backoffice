@@ -534,6 +534,20 @@ Y ninguno se manda a ciegas: si falta el correo del proveedor, o el NIF del
 cliente, o el transportista, se dice qué falta y dónde se rellena en lugar de
 mandar algo que vuelve mal.
 
+**A los ocho se les pueden adjuntar papeles del coche**, elegidos uno a uno —no
+va ninguno si no se marca— y sacados de los tres cajones: el expediente, el
+pedido y el tramo. Lo que se marca **se dice dentro del correo**: un adjunto
+que el cuerpo no menciona es un adjunto que no se abre, y el que lo recibe
+contesta pidiendo lo que ya le habías mandado. La frase aparece en la vista
+previa en cuanto se marca la casilla, así que también funciona al revés: si
+dice que va la factura de compra y no va, se ve antes de mandarlo.
+
+Se nombran **por lo que son, no por el fichero** —«rechnung_final_v2.pdf» no le
+dice nada a nadie, «Kaufrechnung» sí—, y en el idioma del correo: al vendedor
+alemán en alemán con su inglés debajo, al transportista y a la gestoría en
+español. El nombre del fichero va detrás entre paréntesis, que es como lo verá
+en su buzón.
+
 > **Todavía no son automáticos, y es una decisión.** Con cuatro coches al mes,
 > un correo revisado vale lo mismo que uno que sale solo y no se arriesga a lo
 > que el automático sí: salir con un dato mal puesto. Cuando alguno haya salido
