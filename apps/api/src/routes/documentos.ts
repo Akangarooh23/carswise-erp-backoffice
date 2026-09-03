@@ -16,6 +16,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64, TIPOS_ACEPTADOS } from '../lib/ficheros.js';
 import { esAmbito, papelesEsperados, papelesQueFaltan } from '../lib/documentos.js';
@@ -107,10 +108,32 @@ documentosRouter.get(
     if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
     try {
       await prepara();
+
+      /**
+       * Los papeles son del coche, no de la pantalla.
+       *
+       * La factura del vendedor alemán se sube desde el pedido o desde el
+       * expediente, y hasta ahora cada uno miraba solo su cajón: subida en
+       * uno, el otro seguía diciendo que faltaba, y acababa subida dos veces.
+       *
+       * Con `coche` se leen los cajones de ese expediente —el suyo, el de su
+       * pedido y el de su peritación— y **lo que falta se cuenta sobre todos**.
+       * Se sigue subiendo a un cajón concreto: lo que cambia es desde dónde
+       * se ve.
+       */
+      const coche = nt(req.query.coche);
+      const cajones = coche
+        ? await cajonesDelCoche(coche)
+        : [{ ambito: req.params.ambito, id: req.params.id }];
+      const ambitos = cajones.map((c) => c.ambito);
+      const ids = cajones.map((c) => c.id ?? '');
+
       const r = await query(
-        `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at
-           FROM erp_documentos WHERE ambito = $1 AND ambito_id = $2 ORDER BY created_at DESC`,
-        [req.params.ambito, req.params.id]
+        `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at, ambito
+           FROM erp_documentos
+          WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
+          ORDER BY created_at DESC`,
+        [ambitos, ids]
       );
       // Lo que falta, si se dice de qué origen es. Sin origen, solo la lista.
       const origen = nt(req.query.origen);

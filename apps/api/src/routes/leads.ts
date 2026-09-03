@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
+import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
@@ -996,25 +997,6 @@ async function processSaleOutcome(lead: Record<string, string>): Promise<void> {
  * que el anuncio esté vivo no dice nada, y el cliente ya ha transferido
  * veintiún mil euros.
  */
-/**
- * Los cajones donde pueden estar los papeles de un coche.
- *
- * Son dos y no uno. La ficha del vehículo, el COC y la factura del vendedor se
- * suben en el **pedido**, que es donde la pantalla los pide; el DNI del cliente
- * y lo suyo, en el **expediente**. Mirando solo el expediente, la lista de
- * adjuntos sale vacía justo cuando los papeles existen, y quien la ve piensa que
- * no ha subido nada.
- */
-async function cajonesDelCoche(leadId: string): Promise<{ ambito: string; id: string | null }[]> {
-  const r = await query<{ id: string }>(
-    `SELECT id FROM erp_pedidos WHERE lead_id = $1 ORDER BY created_at LIMIT 1`,
-    [leadId]
-  ).catch(() => ({ rows: [] as { id: string }[] }));
-  return [
-    { ambito: 'lead', id: leadId },
-    { ambito: 'pedido', id: r.rows[0]?.id ?? null },
-  ];
-}
 leadsRouter.post('/leads/:id/reserva-vendedor', requireRole(['admin', 'operations']), async (req, res) => {
   try {
     const r = await query<Record<string, unknown>>(

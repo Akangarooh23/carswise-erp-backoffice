@@ -38,11 +38,22 @@ function pesa(bytes: number): string {
   return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export default function Documentos({ ambito, id, origen, onCambio }: {
+export default function Documentos({ ambito, id, origen, coche, onCambio }: {
   ambito: 'lead' | 'pedido' | 'tramite' | 'transporte' | 'peritacion';
   id: string;
   /** Si se dice, sale la lista de lo que falta según a quién se le compró. */
   origen?: string;
+  /**
+   * El expediente al que pertenece el coche, si se sabe.
+   *
+   * Con él se ven **todos los papeles del coche** —los del expediente, los
+   * del pedido y los de la peritación— y lo que falta se cuenta sobre todos.
+   * Se sigue subiendo al cajón de esta pantalla: lo que cambia es desde
+   * dónde se ven. Sin esto, la factura del vendedor subida en el pedido
+   * seguía figurando como pendiente en el expediente, y acababa subida dos
+   * veces.
+   */
+  coche?: string | null;
   /**
    * Que subir o quitar un papel se note fuera de aquí.
    *
@@ -60,11 +71,15 @@ export default function Documentos({ ambito, id, origen, onCambio }: {
   const [fallo, setFallo] = useState('');
 
   const carga = useCallback(async () => {
-    const qs = origen ? `?origen=${encodeURIComponent(origen)}` : '';
+    const partes = [
+      origen ? `origen=${encodeURIComponent(origen)}` : null,
+      coche ? `coche=${encodeURIComponent(coche)}` : null,
+    ].filter(Boolean).join('&');
+    const qs = partes ? `?${partes}` : '';
     const r = await api.get<Documento[]>(`/documentos/${ambito}/${id}${qs}`);
     setLista(r.ok && Array.isArray(r.data) ? r.data : []);
     setFaltan(((r as unknown as { faltan?: PapelEsperado[] }).faltan) ?? []);
-  }, [ambito, id, origen]);
+  }, [ambito, id, origen, coche]);
 
   useEffect(() => { void carga(); }, [carga]);
 

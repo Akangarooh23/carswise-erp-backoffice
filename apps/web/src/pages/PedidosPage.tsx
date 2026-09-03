@@ -829,7 +829,8 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
         {toca('gastos') && <><Reacondicionado id={p.id} /><LoQueCuesta id={p.id} /></>}
 
         {toca('papeles') && (
-          <Documentos ambito="pedido" id={p.id} origen={p.origen} onCambio={onPapeles} />
+          <Documentos ambito="pedido" id={p.id} origen={p.origen} coche={p.lead_id}
+                      onCambio={onPapeles} />
         )}
 
         <button

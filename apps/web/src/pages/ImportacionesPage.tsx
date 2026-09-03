@@ -1320,7 +1320,9 @@ onEncargarALaGestoria, aviso }: PanelProps) {
 
         {/* Los papeles empiezan a llegar cuando el coche ya se ha comprado:
             antes, la lista de «faltan por reunir» es la lista entera. */}
-        {toca('papeles') && <Documentos ambito="lead" id={x.id} origen="importacion" />}
+        {toca('papeles') && (
+          <Documentos ambito="lead" id={x.id} origen="importacion" coche={x.id} />
+        )}
 
         <button onClick={() => setVerTodo((v) => !v)}
                 className="mt-4 w-full px-3 py-2 text-[11px] font-semibold text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
