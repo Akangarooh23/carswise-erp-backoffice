@@ -369,7 +369,10 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
       query(
         // Las que esperamos no son facturas: van en su propia lista. Aquí
         // se cuenta y se paga lo que alguien ha emitido de verdad.
-        `SELECT id, provider_name, vehicle_title, contract_id,
+        // `invoice_number` es el número que puso el proveedor; `id` es el
+        // nuestro. Sin pedirlo, la columna de su número salía siempre vacía
+        // aunque el dato estuviera guardado.
+        `SELECT id, provider_name, vehicle_title, contract_id, invoice_number,
                 invoice_amount, invoice_date, status, pdf_url, notes,
                 issued_at, paid_at, updated_at
          FROM moveadvisor_provider_invoices

@@ -561,7 +561,17 @@ export default function ProviderBillingPage() {
               <div className="overflow-x-auto"><table className="erp-table">
                 <thead>
                   <tr>
-                    <th>Nº factura</th>
+                    {/*
+                      * Dos números, dos columnas.
+                      *
+                      * `PROV-2026-001` es nuestro identificador de fila y
+                      * `ACD-2026-0907-001` el número que puso el proveedor.
+                      * Juntos en una columna llamada «Nº factura», no se sabía
+                      * cuál era cuál — y es el segundo el que sirve para
+                      * reclamarle.
+                      */}
+                    <th>Id PopCar</th>
+                    <th>Nº factura proveedor</th>
                     <th>Fecha</th>
                     <th>Proveedor</th>
                     <th>Vehículo</th>
@@ -582,9 +592,9 @@ export default function ProviderBillingPage() {
                         * lee como el número del documento, y entonces nadie
                         * sabe con qué referencia reclamarle ni qué papel es.
                         */}
-                      <td className="font-mono text-xs">
-                        <span className="text-brand-600">{r.invoice_number || '—'}</span>
-                        <span className="block text-[10px] text-brand-300">{r.id}</span>
+                      <td className="font-mono text-xs text-brand-400">{r.id}</td>
+                      <td className="font-mono text-xs text-brand-600">
+                        {r.invoice_number || <span className="text-brand-300">sin número</span>}
                       </td>
                       <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(r.invoice_date ?? r.issued_at)}</td>
                       <td className="text-sm font-medium text-brand-500">{r.provider_name}</td>
