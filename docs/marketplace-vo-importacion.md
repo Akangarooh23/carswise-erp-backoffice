@@ -376,7 +376,9 @@ Del perito vuelven tres cosas y cada una tiene su sitio en la pantalla:
 - **Su informe y las fotos.** Al bloque de Documentos de la peritación, igual
   que los papeles del coche van a los del expediente.
 - **Los daños, partida por partida**, con lo que estima que cuesta cada uno.
-- **Su factura.** Número, fecha e importe.
+- **Su factura.** Número, fecha, importe y el PDF. El documento va con la
+  factura, en Facturación proveedores: es contra lo que se paga. Su informe y
+  sus fotos van con el coche, que es otra cosa.
 
 Esos 289 € van a **dos sitios**, porque son dos preguntas distintas:
 

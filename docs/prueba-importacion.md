@@ -358,7 +358,10 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
       PopCar y no del cliente**: es lo contrario que la del coche, y es el
       error que se comete si no se dice.
 - [ ] Queda escrito **«✓ Pedida el … a …»**.
-- [ ] Apunta **su factura** cuando llegue: número, fecha e importe.
+- [ ] Apunta **su factura** cuando llegue: número, fecha, importe y **el PDF**.
+      El documento va con la factura y no con los papeles del coche: es contra
+      lo que se paga, y quien lo busca lo busca en Facturación proveedores.
+      Ahí sale como **Descargar PDF**.
 - [ ] Ve a **Facturación proveedores → Recibidas de proveedores**: ahí está,
       pendiente de pagar. Es la pregunta de «a quién le debemos dinero».
 - [ ] El **gasto del coche** es otra pregunta distinta y va al pedido. Como el

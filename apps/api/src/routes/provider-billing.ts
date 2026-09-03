@@ -195,6 +195,9 @@ export async function apuntaFacturaRecibida(datos: {
   fecha?: string | null;
   vehiculo?: string | null;
   notas?: string | null;
+  /** Su factura en PDF, si la han mandado. */
+  pdfBase64?: string | null;
+  pdfNombre?: string | null;
 }): Promise<string | null> {
   const proveedor = String(datos.proveedor ?? '').trim();
   const numero = String(datos.numero ?? '').trim();
@@ -219,18 +222,34 @@ export async function apuntaFacturaRecibida(datos: {
   ).catch(() => ({ rows: [] as { id: string }[] }));
 
   const notas = [`Factura ${numero}`, datos.notas].filter(Boolean).join(' · ');
+
+  /*
+   * El PDF va con la factura, no con los papeles del coche.
+   *
+   * Es el documento contra el que se paga: quien lo busca lo busca en
+   * Facturación proveedores, no en el expediente. Si no se puede subir se
+   * apunta igual —una factura sin PDF sigue siendo una factura que hay que
+   * pagar— y se dice después.
+   */
+  async function subeElPdf(id: string): Promise<string | null> {
+    if (!datos.pdfBase64 || !datos.pdfNombre) return null;
+    return uploadPdfToSupabase(datos.pdfBase64, datos.pdfNombre, id).catch(() => null);
+  }
   if (ya.rows[0]) {
+    const pdf = await subeElPdf(ya.rows[0].id);
     await query(
       `UPDATE moveadvisor_provider_invoices
           SET invoice_amount = $2, invoice_date = $3, vehicle_title = $4, notes = $5,
               -- El número es el suyo, no nuestro identificador de fila.
               invoice_number = $6,
+              -- Un PDF nuevo sustituye al que hubiera; sin PDF, se deja el que hay.
+              pdf_url = COALESCE($7, pdf_url),
               -- Si era una espera, deja de serlo: ya hay factura que pagar.
               status = CASE WHEN status = 'esperada' THEN 'pending' ELSE status END,
               updated_at = NOW()
         WHERE id = $1`,
       [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null,
-       notas, numero]
+       notas, numero, pdf]
     ).catch(() => {});
     return ya.rows[0].id;
   }
@@ -239,10 +258,10 @@ export async function apuntaFacturaRecibida(datos: {
     await query(
       `INSERT INTO moveadvisor_provider_invoices
          (id, type, direction, provider_name, vehicle_title,
-          invoice_amount, invoice_date, notes, invoice_number, status)
-       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, 'pending')`,
+          invoice_amount, invoice_date, notes, invoice_number, pdf_url, status)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
       [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), datos.fecha || null,
-       notas, numero]
+       notas, numero, await subeElPdf(nuevoId)]
     );
   });
   return id;

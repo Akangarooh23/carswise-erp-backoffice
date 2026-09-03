@@ -787,6 +787,9 @@ peritacionesRouter.post('/peritaciones/:id/factura', requireRole(['admin', 'oper
           `SELECT vehiculo_titulo AS t FROM erp_peritaciones WHERE id = $1`, [req.params.id]
         ).catch(() => ({ rows: [] as { t: string }[] }))).rows[0]?.t),
         notas: 'Peritación en Alemania',
+        // El PDF de su factura, si se ha adjuntado al apuntarla.
+        pdfBase64: typeof req.body?.pdf_base64 === 'string' ? req.body.pdf_base64 : null,
+        pdfNombre: typeof req.body?.pdf_filename === 'string' ? req.body.pdf_filename : null,
       }).catch(() => null);
     }
 

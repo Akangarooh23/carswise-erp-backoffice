@@ -70,6 +70,22 @@ interface Peritacion {
 const eur = (n: unknown) =>
   (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
+/**
+ * Un fichero, listo para viajar dentro del JSON.
+ *
+ * Es como suben los papeles el resto de pantallas del ERP: en base64 y en la
+ * misma llamada, para que no quede una factura apuntada sin su documento
+ * porque la segunda petición falló.
+ */
+function leeEnBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve((lector.result as string).split(',')[1]);
+    lector.onerror = reject;
+    lector.readAsDataURL(file);
+  });
+}
+
 const dia = (v: unknown) => (v ? new Date(String(v)).toLocaleDateString('es-ES') : '');
 
 export default function PeritacionesPage() {
@@ -148,10 +164,21 @@ export default function PeritacionesPage() {
   }
 
   /** Su factura, que además se apunta como coste del coche. */
-  async function anotaLaFactura(id: string, datos: Record<string, string>) {
+  async function anotaLaFactura(id: string, datos: Record<string, string>, pdf?: File | null) {
     setGuardando(true);
     try {
-      const r = await api.post(`/peritaciones/${id}/factura`, datos);
+      /*
+       * El PDF viaja con ella, en base64.
+       *
+       * Es como se suben los demás papeles del ERP, y evita una segunda
+       * llamada que podría fallar dejando la factura apuntada sin documento.
+       */
+      const cuerpo: Record<string, unknown> = { ...datos };
+      if (pdf) {
+        cuerpo.pdf_base64 = await leeEnBase64(pdf);
+        cuerpo.pdf_filename = pdf.name;
+      }
+      const r = await api.post(`/peritaciones/${id}/factura`, cuerpo);
       if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido apuntar.'); return; }
       const datosNuevos = await carga();
       setAbierta((previo) => (previo && previo.id === id ? (datosNuevos.find((x) => x.id === id) ?? previo) : previo));
@@ -291,7 +318,7 @@ export default function PeritacionesPage() {
           onAvisarCita={() => void preparaElCorreo(abierta.id, 'cita')}
           onPedirFactura={() => void preparaElCorreo(abierta.id, 'pedir-factura')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
-          onFactura={(d) => void anotaLaFactura(abierta.id, d)}
+          onFactura={(d, pdf) => void anotaLaFactura(abierta.id, d, pdf)}
           onApuntarDano={(d) => void conLosDanos(abierta.id, () =>
             api.post(`/peritaciones/${abierta.id}/danos`, d))}
           onCorregirDano={(danoId, d) => void conLosDanos(abierta.id, () =>
@@ -328,7 +355,7 @@ function PeritacionAbierta({
   onGuardar: (c: Record<string, unknown>) => void;
   onEncargar: () => void;
   onResultado: (veredicto: string, notas: string) => void;
-  onFactura: (datos: Record<string, string>) => void;
+  onFactura: (datos: Record<string, string>, pdf?: File | null) => void;
   onAvisarCita: () => void;
   onPedirFactura: () => void;
   onApuntarDano: (d: { pieza: string; coste: string; notas: string }) => void;
@@ -348,6 +375,14 @@ function PeritacionAbierta({
   const [factura, setFactura] = useState({
     numero: p.factura_numero ?? '', fecha: p.factura_fecha ?? '', importe: String(p.coste ?? ''),
   });
+  /**
+   * Su factura en PDF.
+   *
+   * Va con la factura y no con los papeles del coche: es el documento contra
+   * el que se paga, y quien lo busca lo busca en Facturación proveedores. En
+   * el bloque de abajo van su informe y sus fotos, que son otra cosa.
+   */
+  const [suPdf, setSuPdf] = useState<File | null>(null);
   const [notas, setNotas] = useState(p.notas ?? '');
 
   /**
@@ -677,7 +712,13 @@ function PeritacionAbierta({
           <input value={factura.importe} inputMode="decimal" placeholder="Importe"
                  onChange={(e) => setFactura((d) => ({ ...d, importe: e.target.value }))}
                  className="w-full mb-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          <button onClick={() => onFactura(factura)} disabled={guardando || !factura.numero.trim()}
+          <label className="block mb-2 text-[11px] text-brand-400">
+            Su factura en PDF
+            <input type="file" accept="application/pdf,image/*"
+                   onChange={(e) => setSuPdf(e.target.files?.[0] ?? null)}
+                   className="w-full mt-0.5 text-[12px] text-brand-500" />
+          </label>
+          <button onClick={() => onFactura({ ...factura }, suPdf)} disabled={guardando || !factura.numero.trim()}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
             Apuntar su factura
           </button>
