@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
+import { papeleosPorCoche } from '../lib/papeleos-por-coche.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
@@ -289,38 +290,67 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
     <div className="mb-5">
       {titulo && <h2 className="text-sm font-bold text-brand-600">{titulo}</h2>}
       {pie && <p className="text-[11px] text-brand-400 mb-2">{pie}</p>}
+      {/*
+        * Una tarjeta por coche, con sus papeleos dentro.
+        *
+        * Una importación abre tres, y como tarjetas sueltas del mismo tamaño no
+        * se sabe cuáles son del mismo coche sin leerlas enteras. Fundirlos en
+        * uno tampoco vale: cada uno tiene su estado y su reloj, y hace falta
+        * saber cuál es el que lleva tres semanas parado en la DGT.
+        */}
       <div className="grid gap-2 md:grid-cols-2">
-        {lista.map((t) => {
-          const dias = conDias ? diasDesde(t.fecha_enviado) : null;
-          return (
-            <button
-              key={t.id}
-              onClick={() => onAbrir(t)}
-              className="text-left px-3 py-2.5 rounded-lg bg-white border border-brand-200 hover:border-brand-400 transition"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-brand-600 leading-tight">{t.tipo}</div>
-                  <div className="text-[11px] text-brand-400 truncate">
-                    {t.matricula || t.vehiculo_titulo || t.bastidor || '—'}
-                  </div>
+        {papeleosPorCoche(lista).map((coche) => (
+          <div key={coche.clave}
+               className="px-3 py-2.5 rounded-lg bg-white border border-brand-200">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-brand-600 leading-tight truncate">
+                  {coche.titulo}
                 </div>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${COLOR[t.estado] ?? ''}`}>
-                  {t.estado}
+                <div className="text-[11px] text-brand-400 truncate">
+                  {[coche.identifica, coche.gestoria].filter(Boolean).join(' · ') || 'sin matrícula todavía'}
+                </div>
+              </div>
+              {conDias && coche.diasFuera !== null && (
+                <span className={`text-[10px] font-bold shrink-0 ${coche.diasFuera > 14 ? 'text-red-600' : 'text-brand-400'}`}>
+                  {coche.diasFuera} días fuera
                 </span>
+              )}
+            </div>
+
+            {/* Cada papeleo con lo suyo: su estado, su reloj y su coste. */}
+            <div className="mt-1.5 divide-y divide-brand-100 border-t border-brand-100">
+              {coche.papeleos.map((p) => {
+                const dias = conDias ? diasDesde(p.fecha_enviado) : null;
+                return (
+                  <button key={p.id} onClick={() => onAbrir(p)}
+                          className="w-full text-left flex items-center gap-2 py-1.5 hover:bg-brand-50">
+                    <span className="text-[12px] text-brand-600 flex-1 truncate">{p.tipo}</span>
+                    {dias !== null && (
+                      <span className={`text-[10px] ${dias > 14 ? 'text-red-600 font-bold' : 'text-brand-300'}`}>
+                        {dias} d
+                      </span>
+                    )}
+                    {Number(p.coste) > 0 && (
+                      <span className="text-[10px] text-brand-400 tabular-nums">
+                        {Number(p.coste).toLocaleString('es-ES')} €
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${COLOR[p.estado] ?? ''}`}>
+                      {p.estado}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {coche.coste > 0 && (
+              <div className="text-[10px] text-brand-400 mt-1.5 text-right tabular-nums">
+                {coche.coste.toLocaleString('es-ES')} € en papeleos
               </div>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                {t.gestoria && <span className="text-[10px] text-brand-500">{t.gestoria}</span>}
-                {dias !== null && (
-                  <span className={`text-[10px] font-bold ${dias > 14 ? 'text-red-600' : 'text-brand-400'}`}>
-                    {dias} días fuera
-                  </span>
-                )}
-                <span className="text-[10px] text-brand-300">{t.id}</span>
-              </div>
-            </button>
-          );
-        })}
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
