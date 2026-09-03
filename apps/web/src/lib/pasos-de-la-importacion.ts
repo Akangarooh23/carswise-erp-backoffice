@@ -358,29 +358,59 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
   const enCamino = YA_ENVIADO.includes(x.status);
   const enTramites = x.status === 'En trámites' || x.status === 'Entregado';
   const preguntadaLaRecogida = Boolean(m.recogida_preguntada_at);
+  // Que haya contestado se sabe porque hay día de recogida apuntado.
+  const contestoLaRecogida = Boolean(String(m.tramo?.recogida_prevista ?? '').trim());
 
+  /*
+   * Preguntar es de aquí; organizar, de Transportes.
+   *
+   * El correo se manda desde el expediente —los tres al vendedor viven
+   * juntos—, así que el número rojo de esta tarea tiene que llevar ahí. Lo
+   * que se hace en Transportes es lo de después: apuntar lo que conteste y
+   * mandarle la orden al transportista.
+   */
   if (!enCamino) {
     pasos.push(
       preguntadaLaRecogida
         ? {
             clave: 'recogida', titulo: 'Preguntado dónde y cuándo se recoge',
             estado: 'hecho', cuando: m.recogida_preguntada_at ?? null,
-            donde: '/transportes',
+            donde: '/importaciones',
           }
         : {
             clave: 'recogida',
             titulo: 'Preguntarle al vendedor dónde y cuándo se recoge',
-            estado: liberado ? 'toca' : 'porVenir', donde: '/transportes',
+            estado: liberado ? 'toca' : 'porVenir', donde: '/importaciones',
           }
     );
   }
 
-  pasos.push({
-    clave: 'transporte',
-    titulo: enCamino ? 'El transporte, organizado' : 'Organizar el transporte',
-    estado: enCamino ? 'hecho' : preguntadaLaRecogida ? 'toca' : 'porVenir',
-    donde: '/transportes',
-  });
+  /*
+   * Y organizarlo no es lo mismo que esperar a que conteste.
+   *
+   * Mientras no diga el día, no hay nada que organizar: contratar a ciegas es
+   * lo que acaba con un camión en la puerta de una nave cerrada. Con su
+   * respuesta apuntada, sí — y entonces el trabajo está en Transportes.
+   */
+  pasos.push(
+    enCamino
+      ? { clave: 'transporte', titulo: 'El transporte, organizado', estado: 'hecho', donde: '/transportes' }
+      : contestoLaRecogida
+        ? {
+            clave: 'transporte', titulo: 'Organizar el transporte',
+            estado: 'toca', donde: '/transportes',
+          }
+        : preguntadaLaRecogida
+          ? esperando(
+              {
+                clave: 'transporte', titulo: 'Que diga cuándo se puede recoger',
+                estado: 'esperando', donde: '/importaciones',
+              },
+              m.recogida_preguntada_at, PLAZOS.vendedor,
+              'Reclamarle al vendedor el día de la recogida', hoy
+            )
+          : { clave: 'transporte', titulo: 'Organizar el transporte', estado: 'porVenir' }
+  );
 
   /*
    * 12 · Que llegue.

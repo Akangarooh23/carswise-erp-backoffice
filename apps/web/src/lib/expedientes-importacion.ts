@@ -163,6 +163,12 @@ export interface MetaImportacion {
    * —dirección exacta, día y hora— se guarda en el tramo, que es quien la usa.
    */
   tramo_del_vendedor?: string | null;
+  /** Lo que ese tramo ya sabe, para no confundir esperar con poder hacer. */
+  tramo?: {
+    recogida_prevista?: string | null;
+    transportista?: string | null;
+    orden_enviada_at?: string | null;
+  } | null;
   /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
   recogida_preguntada_at?: string | null;
   // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.

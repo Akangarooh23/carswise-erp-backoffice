@@ -195,9 +195,37 @@ describe('el final del camino', () => {
     assert.equal(loQueToca(pasosDeLaImportacion(kia(TODO), HOY))?.clave, 'recogida');
   });
 
-  test('y con su respuesta, ya toca organizar el transporte', () => {
-    const conRespuesta = kia({ ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z' });
+  test('preguntar es de aquí; organizar, de Transportes', () => {
+    // El correo se manda desde el expediente, así que el número rojo de esa
+    // tarea tiene que llevar a Importaciones. Lo de Transportes viene después.
+    assert.equal(paso(kia(TODO), 'recogida').donde, '/importaciones');
+    assert.equal(pendientesPorPantalla([kia(TODO)], HOY)['/importaciones'], 1);
+    assert.equal(pendientesPorPantalla([kia(TODO)], HOY)['/transportes'], undefined);
+  });
+
+  test('preguntado y sin contestar, no hay nada que organizar', () => {
+    // Contratar un camión sin saber el día es contratarlo a ciegas. Mientras
+    // no conteste, esto es espera, y la espera no lleva número rojo.
+    const preguntado = kia({ ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z' });
+    assert.equal(paso(preguntado, 'transporte').estado, 'esperando');
+    assert.equal(pendientesPorPantalla([preguntado], HOY)['/transportes'], undefined);
+  });
+
+  test('si tarda en contestar, hay que reclamárselo, y eso es de aquí', () => {
+    const viejo = new Date(HOY.getTime() - (PLAZOS.vendedor + 1) * 86400000).toISOString();
+    const x = kia({ ...TODO, recogida_preguntada_at: viejo });
+    assert.equal(paso(x, 'transporte').estado, 'toca');
+    assert.match(paso(x, 'transporte').titulo, /Reclamarle al vendedor el día/);
+    assert.equal(paso(x, 'transporte').donde, '/importaciones');
+  });
+
+  test('y con su respuesta apuntada, ya toca organizarlo en Transportes', () => {
+    const conRespuesta = kia({
+      ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: { recogida_prevista: '2026-09-15' },
+    });
     assert.equal(loQueToca(pasosDeLaImportacion(conRespuesta, HOY))?.clave, 'transporte');
+    assert.equal(pendientesPorPantalla([conRespuesta], HOY)['/transportes'], 1);
   });
 
   test('en trámites, toca la gestoría', () => {
@@ -407,6 +435,7 @@ describe('la factura del vendedor: pedirla, esperarla y tenerla', () => {
       ...PAGADO,
       factura_vendedor_pedida_at: '2026-09-09T10:00:00Z',
       recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: { recogida_prevista: '2026-09-15' },
     });
     assert.equal(loQueToca(pasosDeLaImportacion(x, HOY))?.clave, 'transporte');
   });
@@ -428,6 +457,7 @@ describe('lo que vive en Pedidos', () => {
     factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
     factura_vendedor_subida: true,
     recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    tramo: { recogida_prevista: '2026-09-15' },
     peritacion: {
       id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
       perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',

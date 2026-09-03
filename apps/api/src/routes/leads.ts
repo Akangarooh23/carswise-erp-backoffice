@@ -363,6 +363,17 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                      WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 1
                      ORDER BY t.created_at LIMIT 1
                   ),
+                  -- Lo que el tramo ya sabe: con eso se distingue «esperando
+                  -- que conteste» de «ya contestó, hay que organizarlo».
+                  'tramo', (
+                    SELECT json_build_object(
+                      'recogida_prevista', TO_CHAR(t.recogida_prevista, 'YYYY-MM-DD'),
+                      'transportista', t.transportista,
+                      'orden_enviada_at', t.orden_enviada_at)
+                      FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 1
+                     ORDER BY t.created_at LIMIT 1
+                  ),
                   'recogida_preguntada_at', (
                     SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id
