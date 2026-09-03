@@ -49,11 +49,22 @@ function pesa(bytes: number): string {
   return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export default function Documentos({ ambito, id, origen, coche, onCambio }: {
+export default function Documentos({ ambito, id, origen, papeles, coche, onCambio }: {
   ambito: 'lead' | 'pedido' | 'tramite' | 'transporte' | 'peritacion';
   id: string;
   /** Si se dice, sale la lista de lo que falta según a quién se le compró. */
   origen?: string;
+  /**
+   * Los papeles que se esperan aquí, cuando no salen de un origen.
+   *
+   * Un trámite de gestoría no tiene «origen» —eso es de dónde se compró el
+   * coche— pero sí tiene papeles que volver: el permiso de circulación, la
+   * ficha técnica, el justificante del impuesto. Sin decirlos, el desplegable
+   * de «qué papel es» no aparecía y todo se subía sin nombre; y un papel sin
+   * nombre no tapa ningún hueco, así que la lista de lo que falta no bajaba
+   * nunca.
+   */
+  papeles?: string[];
   /**
    * El expediente al que pertenece el coche, si se sabe.
    *
@@ -110,11 +121,16 @@ export default function Documentos({ ambito, id, origen, coche, onCambio }: {
   useEffect(() => { void carga(); }, [carga]);
 
   useEffect(() => {
+    // Los dichos a mano mandan: quien los pasa sabe de qué caja se trata.
+    if (papeles?.length) {
+      setEsperados(papeles.map((p) => ({ papel: p, porQue: '', imprescindible: true })));
+      return;
+    }
     if (!origen) { setEsperados([]); return; }
     void api.get<PapelEsperado[]>(`/documentos/esperados/${origen}`).then((r) => {
       if (r.ok && Array.isArray(r.data)) setEsperados(r.data);
     });
-  }, [origen]);
+  }, [origen, papeles?.join('|')]);
 
   async function sube(fichero: File) {
     setFallo('');

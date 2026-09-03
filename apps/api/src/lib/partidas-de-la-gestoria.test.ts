@@ -147,3 +147,28 @@ describe('pegar la factura de la gestoría', () => {
     assert.equal(leeLoPegado('Tasa DGT   99,77').partidas.length, 1);
   });
 });
+
+describe('las columnas de en medio de una factura', () => {
+  test('no se quedan pegadas al nombre', () => {
+    // La factura de una gestoría trae base, IVA y cantidad entre el concepto y
+    // el total. Arrastradas, dejaban partidas llamadas «Placas 16,5 0,21»: el
+    // nombre es lo que se lee en el tablero y lo que se reconoce para saber si
+    // es suplido, y con la basura detrás no se reconoce ninguna.
+    const { partidas } = leeLoPegado('Placas	16,5	0,21	19,96');
+    assert.equal(partidas[0].concepto, 'Placas');
+    assert.equal(partidas[0].importe, 19.96);
+  });
+
+  test('y una partida conocida se sigue reconociendo', () => {
+    const { partidas } = leeLoPegado('Honorarios de la gestoría	74,38	0,21	90,00');
+    assert.equal(partidas[0].concepto, 'Honorarios de la gestoría');
+    assert.equal(partidas[0].que, 'nuestro');
+  });
+
+  test('un nombre con número dentro no se rompe', () => {
+    // «Envío kit 14h» es el nombre, no una columna.
+    const { partidas } = leeLoPegado('Envío kit concesionario 14h	12,10');
+    assert.match(partidas[0].concepto, /Env[íi]o kit concesionario/);
+    assert.equal(partidas[0].importe, 12.1);
+  });
+});

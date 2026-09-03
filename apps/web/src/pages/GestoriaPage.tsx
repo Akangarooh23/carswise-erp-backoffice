@@ -5,7 +5,7 @@ import {
   PARTIDAS_HABITUALES, resumenDeLaGestoria, comoSeCuenta, leeLoPegado,
   queEsPorDefecto, type Partida,
 } from '../lib/partidas-de-la-gestoria.js';
-import { loQueCubre, faltaParaResolver } from '../lib/expediente-de-gestoria.js';
+import { loQueCubre, faltaParaResolver, papelesQueVuelven } from '../lib/expediente-de-gestoria.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
@@ -714,7 +714,7 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
           * poder cerrarlo: un documento subido como «otro» no tapa ningún hueco,
           * porque si tapara bastaría con subir cualquier cosa.
           */}
-        <Documentos ambito="tramite" id={t.id} />
+        <Documentos ambito="tramite" id={t.id} papeles={papelesQueVuelven(t.tipo)} />
 
         {/*
           * Y lo que falta para darlo por resuelto.

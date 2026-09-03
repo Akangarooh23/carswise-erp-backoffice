@@ -154,7 +154,19 @@ export function leeLoPegado(texto: string): { partidas: Partida[]; malas: string
     }
     if (iImporte < 0) { malas.push(linea); continue; }
 
-    const concepto = trozos.slice(0, iImporte).join(' ').trim();
+    /*
+     * El concepto es lo de delante, sin los números de en medio.
+     *
+     * Una factura trae columnas entre el nombre y el total —base, IVA,
+     * cantidad— y arrastrarlas dejaba partidas llamadas «Placas 16,5 0,21».
+     * El nombre es lo que se lee en el tablero y lo que se reconoce para
+     * saber si es suplido: con la basura detrás no se reconoce ninguna.
+     */
+    const concepto = trozos.slice(0, iImporte)
+      .filter((x, i) => i === 0 || !esDinero(x))
+      .join(' ')
+      .replace(/[d.,]+$/, '')
+      .trim();
     if (!concepto) { malas.push(linea); continue; }
 
     partidas.push({

@@ -271,7 +271,19 @@ tramitesRouter.patch('/tramites/:id', requireRole(['admin', 'operations', 'sales
     for (const campo of ['tipo', 'gestoria', 'vehiculo_titulo', 'matricula', 'bastidor', 'cliente_email'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
-    if (req.body?.coste !== undefined) pon('coste', req.body.coste === '' || req.body.coste === null ? null : Number(req.body.coste));
+    /*
+     * El coste, solo si no vienen partidas.
+     *
+     * La pantalla manda las dos cosas —el formulario sigue llevando `coste`
+     * dentro— y asignar la misma columna dos veces en un `UPDATE` es un error
+     * de Postgres, no un aviso: la petición entera se caía con
+     * «tramites_failed» y no se guardaba nada.
+     *
+     * Con partidas mandan ellas: son el detalle y el coste es su suma.
+     */
+    if (req.body?.coste !== undefined && req.body?.partidas === undefined) {
+      pon('coste', req.body.coste === '' || req.body.coste === null ? null : Number(req.body.coste));
+    }
 
     /*
      * Las partidas, y el coste que sale de ellas.
