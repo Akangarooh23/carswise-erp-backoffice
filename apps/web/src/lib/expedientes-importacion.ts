@@ -166,6 +166,13 @@ export interface MetaImportacion {
   /** Cuándo se le dijo al vendedor quién va a por el coche y qué día. */
   aviso_recogida_at?: string | null;
   /**
+   * Los tres papeleos de la gestoría, con su estado.
+   *
+   * Encargarlos no es tenerlos: entre el correo y la matrícula pasan semanas,
+   * y sin esto el camino los daba por hechos el día que salió el correo.
+   */
+  tramites?: { tipo?: string | null; estado?: string | null }[] | null;
+  /**
    * El segundo viaje: de Zaragoza a casa del cliente.
    *
    * Una importación hace dos, con los trámites en medio. Este no existe hasta

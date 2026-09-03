@@ -12,7 +12,7 @@ import {
   ESTADOS_TRANSPORTE, QUE_TOCA_TRANSPORTE, INCIDENCIA, FOTOS_RECOGIDA, FOTOS_ENTREGA,
   esEstadoTransporteValido, siguienteEstadoTransporte, puedeContratarse, estaEnCamino,
   fotosQueFaltan, diasEnCamino, costeDelViaje, notaDelCambio,
-  mueveElExpediente,
+  mueveElExpediente, aQueEtapaLoLleva, deQueEtapaSale,
 } from './transportes.js';
 
 describe('el camino de un transporte', () => {
@@ -88,10 +88,30 @@ describe('el expediente se mueve con el coche', () => {
     assert.equal(mueveElExpediente(TRAMO, 'Por organizar'), false);
   });
 
-  test('entregado tampoco lo mueve: ese salto es otro', () => {
-    // De «En transporte» a «En trámites» se pasa a mano, porque lo que hay
-    // detrás es encargarle los papeles a la gestoría.
-    assert.equal(mueveElExpediente(TRAMO, 'Entregado'), false);
+  test('entregado en Zaragoza lo lleva a trámites', () => {
+    // Colgaba de que alguien moviera la etapa a mano, y de esa etapa cuelgan
+    // los tres papeleos de la gestoría y el segundo tramo: un coche podía
+    // pasarse una semana aquí sin que nadie hubiera empezado a matricularlo.
+    assert.equal(mueveElExpediente(TRAMO, 'Entregado'), true);
+    assert.equal(aQueEtapaLoLleva(TRAMO, 'Entregado'), 'En trámites');
+  });
+
+  test('y recogido lo lleva a «En transporte», que es otra etapa', () => {
+    assert.equal(aQueEtapaLoLleva(TRAMO, 'Recogido'), 'En transporte');
+    assert.equal(aQueEtapaLoLleva(TRAMO, 'En tránsito'), 'En transporte');
+  });
+
+  test('cada salto sale de la etapa anterior, y de ninguna otra', () => {
+    // Es lo que impide saltarse una etapa o retroceder si alguien vuelve a
+    // tocar el tramo de un coche que ya está entregado.
+    assert.equal(deQueEtapaSale('En transporte'), 'Verificado y pagado');
+    assert.equal(deQueEtapaSale('En trámites'), 'En transporte');
+  });
+
+  test('el segundo tramo no mueve nada, tampoco al entregarlo', () => {
+    // Su entrega es al cliente, y eso es un acto con firma y garantía que no
+    // se automatiza.
+    assert.equal(aQueEtapaLoLleva({ ...TRAMO, tramo: 2 }, 'Entregado'), null);
   });
 
   test('solo el primer tramo, que es el que trae el coche a España', () => {

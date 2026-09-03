@@ -482,17 +482,41 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
             : { clave: 'llegada', titulo: 'Que el coche llegue a España', estado: 'porVenir' }
   );
 
-  // 13 · Ponerlo legal aquí.
+  /*
+   * 13 · Ponerlo legal aquí.
+   *
+   * Encargarlos **no es tenerlos**. Entre el correo a la gestoría y la
+   * matrícula pasan semanas, y el camino los daba por hechos el día que salió
+   * el correo: un coche podía llevar un mes parado en la DGT con el camino
+   * diciendo «encargados» y un ✓ verde al lado.
+   */
   const conGestoria = Boolean(m.encargo_gestoria_enviado_at);
-  pasos.push({
-    clave: 'tramites',
-    titulo: conGestoria ? 'Encargados los trámites a la gestoría' : 'Encargarle los trámites a la gestoría',
-    // Con el coche ya descargado en Zaragoza toca, aunque la etapa no se haya
-    // movido todavía: mover la etapa es parte de esto, no un requisito previo.
-    estado: conGestoria ? 'hecho' : (enTramites || yaEnZaragoza) ? 'toca' : 'porVenir',
-    cuando: m.encargo_gestoria_enviado_at ?? null,
-    donde: '/gestoria',
-  });
+  const losTramites = Array.isArray(m.tramites) ? m.tramites : [];
+  const sinResolver = losTramites.filter((t) => String(t?.estado ?? '') !== 'Resuelto');
+  const todoResuelto = losTramites.length > 0 && sinResolver.length === 0;
+  pasos.push(
+    todoResuelto
+      ? {
+          clave: 'tramites', titulo: 'El coche ya está matriculado aquí', estado: 'hecho',
+          donde: '/gestoria',
+        }
+      : conGestoria
+        ? {
+            clave: 'tramites', titulo: 'Que la gestoría termine los trámites',
+            estado: 'esperando', donde: '/gestoria',
+            cuando: m.encargo_gestoria_enviado_at ?? null,
+            detalle: sinResolver.length
+              ? `falta ${sinResolver.map((t) => String(t?.tipo ?? '').toLowerCase()).join(', ')}`
+              : undefined,
+          }
+        : {
+            clave: 'tramites', titulo: 'Encargarle los trámites a la gestoría',
+            // Con el coche ya descargado toca, aunque la etapa no se haya
+            // movido: mover la etapa es parte de esto, no un requisito previo.
+            estado: (enTramites || yaEnZaragoza) ? 'toca' : 'porVenir',
+            donde: '/gestoria',
+          }
+  );
 
   /*
    * 13b · El segundo viaje.
@@ -530,12 +554,20 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     );
   }
 
-  // 14 · Dárselo.
+  /*
+   * 14 · Dárselo.
+   *
+   * No antes de tenerlo matriculado: un coche con matrícula alemana no se le
+   * entrega a nadie, y el camino lo pedía desde el día en que llegaba a
+   * Zaragoza. Y si hay segundo viaje, tampoco antes de que llegue a su casa.
+   */
   const entregado = x.status === 'Entregado';
+  const puedeEntregarse = todoResuelto
+    && (!alCliente?.id || Boolean(String(alCliente.fecha_entrega ?? '').trim()));
   pasos.push({
     clave: 'entrega',
     titulo: entregado ? 'Entregado al cliente' : 'Entregárselo al cliente',
-    estado: entregado ? 'hecho' : enTramites ? 'toca' : 'porVenir',
+    estado: entregado ? 'hecho' : puedeEntregarse ? 'toca' : 'porVenir',
     donde: '/importaciones',
   });
 

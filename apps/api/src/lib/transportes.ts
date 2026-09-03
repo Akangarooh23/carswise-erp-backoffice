@@ -83,9 +83,41 @@ export function mueveElExpediente(t: {
   tramo?: number | string | null;
   lead_id?: string | null;
 }, estadoNuevo: string): boolean {
-  if (!String(t.lead_id ?? '').trim()) return false;
-  if (Number(t.tramo ?? 1) > 1) return false;
-  return estaEnCamino(estadoNuevo);
+  return aQueEtapaLoLleva(t, estadoNuevo) !== null;
+}
+
+/**
+ * Y a cuál lo lleva, que son dos y no una.
+ *
+ * El coche sale de la nave del vendedor: **En transporte**. El coche se
+ * descarga en Zaragoza: **En trámites**, porque a partir de ahí lo que ocurre
+ * es ponerlo legal aquí. Las dos son el mismo hecho dicho una vez.
+ *
+ * La segunda era la que faltaba, y colgaba de ella media máquina: los tres
+ * papeleos de la gestoría y el segundo tramo se abren al entrar en trámites,
+ * así que hasta que alguien se acordaba de mover la etapa a mano no existía
+ * ninguno. Un coche podía pasarse una semana en Zaragoza sin que nadie
+ * hubiera empezado a matricularlo y sin que apareciera en ningún tablero.
+ *
+ * Devuelve `null` cuando no hay que mover nada. Quien llama comprueba además
+ * la etapa de la que sale, para no saltarse ninguna ni retroceder.
+ */
+export function aQueEtapaLoLleva(t: {
+  tramo?: number | string | null;
+  lead_id?: string | null;
+}, estadoNuevo: string): string | null {
+  if (!String(t.lead_id ?? '').trim()) return null;
+  // Solo el primer tramo: el segundo sale de nuestra campa con el expediente
+  // ya en trámites, y su entrega es un acto con firma que no se automatiza.
+  if (Number(t.tramo ?? 1) > 1) return null;
+  if (estaEnCamino(estadoNuevo)) return 'En transporte';
+  if (estadoNuevo === 'Entregado') return 'En trámites';
+  return null;
+}
+
+/** De qué etapa tiene que venir para que ese salto no se salte ninguna. */
+export function deQueEtapaSale(etapaNueva: string): string {
+  return etapaNueva === 'En trámites' ? 'En transporte' : 'Verificado y pagado';
 }
 
 /**

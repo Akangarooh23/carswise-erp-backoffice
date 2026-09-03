@@ -8,7 +8,7 @@ import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import { abreLosTramosQueFalten, abreElTramoAlCliente } from './transportes.js';
 import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
-import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
+import { abreLosTramitesQueFalten, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
   garantiaHasta, garantiaDeUnaImportacion, type Entrega,
@@ -233,6 +233,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // por la recogida, que es lo que el propio expediente pide.
   await abreLosTramosQueFalten().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
+  await abreLosTramitesQueFalten().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
@@ -401,6 +402,15 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   ),
                   'aviso_recogida_at', (
                     SELECT MIN(t.aviso_recogida_at) FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id
+                  ),
+                  -- Cómo van los tres papeleos. Encargarlos no es tenerlos:
+                  -- entre el correo a la gestoría y la matrícula pasan semanas,
+                  -- y el camino los daba por hechos al mandar el correo.
+                  'tramites', (
+                    SELECT COALESCE(json_agg(json_build_object(
+                             'tipo', t.tipo, 'estado', t.estado)), '[]'::json)
+                      FROM erp_tramites t
                      WHERE t.lead_id = moveadvisor_market_leads.id
                   ),
                   'impuesto_real', (
@@ -818,19 +828,16 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
       }).catch((e: Error) => console.error('[leads] pedido de importación:', e.message));
     }
 
-    // Al entrar en trámites, se abren los que un coche de fuera necesita siempre.
+    // Al entrar en trámites se abren impuesto, ITV de homologación y matrícula
+    // española. Son tres papeleos distintos, con su gestoría y sus fechas cada
+    // uno: en una sola casilla no se puede saber cuál lleva tres semanas parado.
     //
-    // Impuesto, ITV de homologación y matrícula española. Son tres papeleos
-    // distintos, con su gestoría y sus fechas cada uno: en una sola casilla no se
-    // puede saber cuál es el que lleva tres semanas parado.
+    // Los abre `abreLosTramitesQueFalten`, que mira lo que hay: ahora la etapa
+    // también la mueve la llegada del camión, y con dos sitios abriéndolos el
+    // mismo coche acababa con seis.
     if (status === 'En trámites' && prev.status !== 'En trámites'
         && updatedLead.lead_type === 'import') {
-      abreTramitesDeImportacion({
-        leadId: req.params.id,
-        vehiculoTitulo: updatedLead.vehicle_title ?? '',
-        clienteEmail: updatedLead.user_email ?? '',
-        creadoPor: operator,
-      }).catch((e: Error) => console.error('[leads] trámites de importación:', e.message));
+      abreLosTramitesQueFalten().catch((e: Error) => console.error('[leads] trámites de importación:', e.message));
     }
 
     // Entregado: el final del recorrido de una importación.

@@ -342,7 +342,42 @@ describe('el número rojo del menú', () => {
     }, 'En trámites');
     const cuenta = pendientesPorPantalla([conDosFrentes], HOY);
     assert.equal(cuenta['/gestoria'], 1);
-    assert.equal(cuenta['/importaciones'], 1); // entregárselo al cliente
+    // Y no se pide la entrega: el coche todavía tiene matrícula alemana, y
+    // así no se le entrega a nadie. Antes salía desde el día en que llegaba.
+    assert.equal(cuenta['/importaciones'], undefined);
+  });
+
+  test('con los trámites resueltos, entonces sí toca entregarlo', () => {
+    const listo = kia({
+      deposit_paid_at: '2026-09-01T10:00:00Z',
+      escrow_liberado_at: '2026-09-08T10:00:00Z',
+      encargo_gestoria_enviado_at: '2026-09-20T10:00:00Z',
+      tramites: [
+        { tipo: 'Impuesto de matriculación', estado: 'Resuelto' },
+        { tipo: 'Matriculación', estado: 'Resuelto' },
+        { tipo: 'ITV de homologación', estado: 'Resuelto' },
+      ],
+    }, 'En trámites');
+    assert.equal(paso(listo, 'tramites').estado, 'hecho');
+    assert.match(paso(listo, 'tramites').titulo, /ya está matriculado aquí/);
+    assert.equal(paso(listo, 'entrega').estado, 'toca');
+  });
+
+  test('encargados no es hechos: eso es una espera, y dice cuál falta', () => {
+    // Entre el correo a la gestoría y la matrícula pasan semanas. El camino
+    // los daba por hechos el día que salía el correo, con su ✓ verde.
+    const aMedias = kia({
+      deposit_paid_at: '2026-09-01T10:00:00Z',
+      escrow_liberado_at: '2026-09-08T10:00:00Z',
+      encargo_gestoria_enviado_at: '2026-09-20T10:00:00Z',
+      tramites: [
+        { tipo: 'Impuesto de matriculación', estado: 'Resuelto' },
+        { tipo: 'Matriculación', estado: 'En trámite' },
+      ],
+    }, 'En trámites');
+    assert.equal(paso(aMedias, 'tramites').estado, 'esperando');
+    assert.match(String(paso(aMedias, 'tramites').detalle), /matriculación/);
+    assert.equal(paso(aMedias, 'entrega').estado, 'porVenir');
   });
 
   test('lo que se espera de fuera no suma', () => {

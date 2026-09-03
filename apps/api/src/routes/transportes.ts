@@ -23,6 +23,7 @@ import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
 } from '../lib/aviso-de-recogida-al-vendedor.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
+import { abreLosTramitesQueFalten } from './tramites.js';
 import {
   anotaLaLlegada, puedeDarsePorEntregado, faltaPorMirarAlLlegar, type LlegoComoSalio,
 } from '../lib/llego-como-salio.js';
@@ -48,7 +49,7 @@ import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de
 import { papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 import {
   INCIDENCIA, esEstadoTransporteValido, puedeContratarse, notaDelCambio, fotosQueFaltan,
-  mueveElExpediente,
+  aQueEtapaLoLleva, deQueEtapaSale,
 } from '../lib/transportes.js';
 
 export const transportesRouter = Router();
@@ -155,6 +156,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   // trabajo que no aparece en ninguna pantalla.
   await abreLosTramosQueFalten().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
+  await abreLosTramitesQueFalten().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -881,9 +883,11 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
      * Y queda escrito en las notas internas, porque un cambio de etapa que
      * nadie ha pulsado tiene que poder explicarse después.
      */
-    if (estado && mueveElExpediente(previo, estado)) {
+    const etapaNueva = estado ? aQueEtapaLoLleva(previo, estado) : null;
+    if (etapaNueva) {
+      const etapaVieja = deQueEtapaSale(etapaNueva);
       const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-      const linea = `[${cuando} · Verificado y pagado → En transporte] El transporte ${req.params.id} pasó a «${estado}».`;
+      const linea = `[${cuando} · ${etapaVieja} → ${etapaNueva}] El transporte ${req.params.id} pasó a «${estado}».`;
       /*
        * El `RETURNING` dice si de verdad se movió.
        *
@@ -895,15 +899,16 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       const movido = await query<{
         user_email: string | null; contact_name: string | null;
         vehicle_title: string | null; delivery_estimate: string | null;
+        lead_type: string | null;
       }>(
         `UPDATE moveadvisor_market_leads
-            SET status = 'En transporte',
+            SET status = $3::text,
                 erp_notes = CASE WHEN COALESCE(erp_notes, '') = '' THEN $2
                                  ELSE erp_notes || E'\n' || $2 END
-          WHERE id = $1 AND status = 'Verificado y pagado'
-        RETURNING user_email, contact_name, vehicle_title,
+          WHERE id = $1 AND status = $4::text
+        RETURNING user_email, contact_name, vehicle_title, lead_type,
                   TO_CHAR(delivery_estimate, 'YYYY-MM-DD') AS delivery_estimate`,
-        [String(previo.lead_id), linea]
+        [String(previo.lead_id), linea, etapaNueva, etapaVieja]
       ).catch((e: Error) => {
         console.error('[transportes] no se ha podido mover el expediente:', e.message);
         return { rows: [] as never[] };
@@ -922,7 +927,12 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
        * enterado es peor que un correo que no salió.
        */
       const lead = movido.rows[0];
-      if (lead && String(lead.user_email ?? '').trim()) {
+
+      // Los tres papeleos de la gestoría no se abren aquí: los abre
+      // `abreLosTramitesQueFalten`, que mira lo que hay. Con dos sitios
+      // abriéndolos, el mismo coche acababa con seis.
+
+      if (lead && etapaNueva === 'En transporte' && String(lead.user_email ?? '').trim()) {
         const { subject, html } = correoDeCocheEnCamino({
           nombre: lead.contact_name,
           vehiculo: lead.vehicle_title,

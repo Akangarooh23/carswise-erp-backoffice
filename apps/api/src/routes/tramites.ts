@@ -374,6 +374,42 @@ async function abreTramites(tipos: string[], datos: {
  *
  * Si ya existen, no se duplican.
  */
+/**
+ * Los papeleos que le falten a un coche de fuera que ya está aquí.
+ *
+ * Se abrían desde dos sitios —al mover la etapa a mano y al llegar el camión— y
+ * el mismo coche acababa con seis trámites en vez de tres: entre que uno mira
+ * si ya existen y el otro los inserta caben unos milisegundos.
+ *
+ * Así que los abre **uno solo**, y mirando lo que hay en vez de confiar en que
+ * alguien lo hizo en su momento. Es idempotente por construcción y da igual qué
+ * camino haya movido la etapa: el resultado es el mismo. Es el mismo patrón que
+ * los tramos que faltan y los pedidos que se ponen al día.
+ */
+export async function abreLosTramitesQueFalten(): Promise<number> {
+  await prepara();
+  const coches = await query<{ id: string; vehicle_title: string; user_email: string }>(
+    `SELECT l.id, l.vehicle_title, l.user_email
+       FROM moveadvisor_market_leads l
+      WHERE l.lead_type = 'import'
+        AND l.status IN ('En trámites', 'Entregado')
+      ORDER BY l.created_at DESC
+      LIMIT 50`
+  ).catch(() => ({ rows: [] as { id: string; vehicle_title: string; user_email: string }[] }));
+
+  let abiertos = 0;
+  for (const c of coches.rows) {
+    const creados = await abreTramitesDeImportacion({
+      leadId: c.id,
+      vehiculoTitulo: c.vehicle_title ?? '',
+      clienteEmail: c.user_email ?? '',
+      creadoPor: 'al llegar el coche',
+    }).catch(() => [] as string[]);
+    abiertos += creados.length;
+  }
+  return abiertos;
+}
+
 export async function abreTramitesDeImportacion(datos: {
   leadId: string;
   vehiculoTitulo: string;
