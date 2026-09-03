@@ -23,7 +23,7 @@ import { enviar, respuestaA } from '../lib/correo.js';
 import { correoDeFacturaAlPerito, faltaParaPedirleLaFactura } from '../lib/factura-al-perito.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
-import { apuntaFacturaRecibida } from './provider-billing.js';
+import { apuntaFacturaRecibida, apuntaFacturaEsperada } from './provider-billing.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import {
   papelesQueSePuedenAdjuntar, traeLosAdjuntos, NoSePuedenAdjuntar,
@@ -351,12 +351,14 @@ peritacionesRouter.post(
       return;
     }
     try {
-      const r = await query<{ lead_id: string | null }>(
+      const r = await query<{
+        lead_id: string | null; perito: string; coste: string | null; vehiculo_titulo: string;
+      }>(
         `UPDATE erp_peritaciones
             SET estado = 'Hecha', fecha_hecha = NOW(), veredicto = $2,
                 notas = COALESCE(NULLIF($3, ''), notas), updated_at = NOW()
           WHERE id = $1
-          RETURNING lead_id`,
+          RETURNING lead_id, perito, coste::numeric AS coste, vehiculo_titulo`,
         [req.params.id, veredicto, nt(req.body?.notas).slice(0, 4000)]
       );
       if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
@@ -370,6 +372,22 @@ peritacionesRouter.post(
           [leadId, abreLaPuertaAlPago(veredicto)]
         );
       }
+      /*
+       * Con la revisión hecha, ya se le puede facturar: se apunta que
+       * esperamos su factura.
+       *
+       * Antes de este momento no faltaba ninguna —nadie factura lo que no ha
+       * hecho—, y después falta desde el primer día. Sin esta línea, esos
+       * 289 € no existen en ninguna cuenta hasta que él se acuerde de
+       * mandarla.
+       */
+      await apuntaFacturaEsperada({
+        proveedor: r.rows[0].perito,
+        concepto: 'Peritación en Alemania',
+        importe: r.rows[0].coste,
+        vehiculo: r.rows[0].vehiculo_titulo,
+      }).catch(() => null);
+
       res.json({ ok: true });
     } catch (err) {
       console.error('[peritaciones] resultado:', (err as Error).message);

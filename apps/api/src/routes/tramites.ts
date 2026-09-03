@@ -13,6 +13,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { apuntaFacturaEsperada } from './provider-billing.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   RECHAZADO, esEstadoTramiteValido, puedeEnviarse, notaDelCambio, TRAMITES_HABITUALES,
@@ -223,6 +224,23 @@ tramitesRouter.patch('/tramites/:id', requireRole(['admin', 'operations', 'sales
       `UPDATE erp_tramites SET ${sets.join(', ')} WHERE id = $${valores.length} RETURNING ${CAMPOS}`,
       valores
     );
+
+    /*
+     * Resuelto: la gestoría ya puede facturar este trámite.
+     *
+     * Igual que con el perito y el transportista: un trámite hecho y sin
+     * facturar es dinero que debemos y que no aparece en ninguna cuenta
+     * hasta que llega el papel.
+     */
+    if (estado === 'Resuelto') {
+      const t = r.rows[0] as Record<string, unknown>;
+      await apuntaFacturaEsperada({
+        proveedor: String(t.gestoria ?? ''),
+        concepto: String(t.tipo ?? 'Trámite'),
+        importe: t.coste as string | null,
+        vehiculo: String(t.vehiculo_titulo ?? ''),
+      }).catch(() => null);
+    }
 
     if (estado && estado !== previo.estado) {
       await query(

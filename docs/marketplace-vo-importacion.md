@@ -382,8 +382,46 @@ Esos 289 € van a **dos sitios**, porque son dos preguntas distintas:
 
 | La pregunta | Dónde se contesta |
 |---|---|
+| ¿Qué facturas me faltan? | **Facturación proveedores → Esperando factura** |
 | ¿A quién le debemos dinero? | **Facturación proveedores → Recibidas**, pendiente de pagar |
 | ¿Cuánto cuesta este coche? | **Lo que cuesta**, en el pedido, de donde sale el margen |
+
+### Las facturas que sabemos que van a llegar
+
+Facturación proveedores solo conocía las facturas ya recibidas, así que
+«cuánto debemos» dependía de lo rápido que facturasen los demás: con un coche
+recién peritado había 289 € comprometidos y 0 € a la vista.
+
+Ahora, **cuando un servicio queda hecho**, se apunta que esperamos su factura:
+
+| Nace cuando… | De quién | Por cuánto |
+|---|---|---|
+| Se anota el veredicto de la peritación | El perito | Lo que confirmó al aceptar la cita |
+| Un tramo pasa a **Entregado** | El transportista | El coste del tramo |
+| Un trámite pasa a **Resuelto** | La gestoría | El coste del trámite |
+
+Con proveedor **y** con importe: sin proveedor no hay a quién reclamarle, y sin
+importe la línea engorda la lista sin decir cuánto.
+
+Y nace cuando el servicio **está hecho**, no cuando se contrata: antes de que
+el perito vaya no falta ninguna factura, porque nadie puede facturar lo que
+todavía no ha hecho.
+
+**Una factura esperada no es una factura.** No tiene número, ni fecha, ni PDF,
+porque nadie la ha emitido. Por eso va en su propio bloque y **no suma en lo
+pendiente de pagar**: mezcladas, un día alguien paga contra una línea que no
+existe, y la cifra de lo que debemos incluye lo que nadie nos ha reclamado.
+
+Cuando llega, **la misma línea se convierte**: se le pone número, fecha e
+importe y pasa a pendiente de pagar. No se crea otra, así que no quedan dos
+filas —una esperando para siempre y otra por pagar—.
+
+Y **vencen**: a los diez días sin llegar se pintan en rojo pidiendo que se
+reclamen. Sin eso, en tres meses la lista serían cuarenta líneas de coches ya
+entregados y dejaría de mirarse.
+
+Esto **no es contabilidad**: es una previsión. No entra en ningún total fiscal
+ni genera asiento — lo que se declara es lo que está facturado.
 
 Lo segundo llega más tarde y es a propósito: el perito cobra **antes** de que
 exista el pedido —el pedido nace al liberar el pago—, así que es el pedido el

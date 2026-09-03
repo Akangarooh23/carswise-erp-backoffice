@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
+import { seEsperaFactura, ESPERADA } from '../lib/facturas-esperadas.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
@@ -98,6 +99,72 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
 });
 
 /**
+ * Apuntar que **esperamos** una factura de alguien.
+ *
+ * Nace cuando el servicio está hecho —la revisión hecha, el tramo entregado,
+ * el trámite resuelto— y no cuando se contrata: antes de eso no falta ninguna
+ * factura, porque nadie puede facturar lo que no ha hecho.
+ *
+ * Va con estado propio y **no suma en lo pendiente de pagar**. Mezclarla con
+ * las recibidas acabaría con alguien pagando contra una línea que nadie ha
+ * emitido, y con una cifra de deuda que incluye lo que nadie ha reclamado.
+ *
+ * Una por proveedor, concepto y coche: la peritación de este Kia es una, y
+ * volver a guardarla la corrige en vez de duplicarla.
+ */
+export async function apuntaFacturaEsperada(datos: {
+  proveedor: string;
+  concepto: string;
+  importe: number | string | null;
+  vehiculo?: string | null;
+  /** Desde cuándo se espera: el día que el servicio quedó hecho. */
+  desde?: string | null;
+}): Promise<string | null> {
+  const proveedor = String(datos.proveedor ?? '').trim();
+  const concepto = String(datos.concepto ?? '').trim();
+  if (!seEsperaFactura({ proveedor, importe: datos.importe, hecho: true })) return null;
+  if (!concepto) return null;
+
+  const ya = await query<{ id: string; status: string }>(
+    `SELECT id, status FROM moveadvisor_provider_invoices
+      WHERE direction = 'received' AND provider_name = $1 AND notes = $2
+        AND COALESCE(vehicle_title, '') = COALESCE($3, '') LIMIT 1`,
+    [proveedor, concepto, datos.vehiculo || null]
+  ).catch(() => ({ rows: [] as { id: string; status: string }[] }));
+
+  /*
+   * Si ya hay algo para este servicio, no se toca el estado.
+   *
+   * Puede ser la propia espera —se corrige el importe— o la factura ya
+   * recibida, y en ese caso devolverla a «esperada» sería borrar el hecho de
+   * que llegó.
+   */
+  if (ya.rows[0]) {
+    if (ya.rows[0].status === ESPERADA) {
+      await query(
+        `UPDATE moveadvisor_provider_invoices
+            SET invoice_amount = $2, updated_at = NOW()
+          WHERE id = $1`,
+        [ya.rows[0].id, Number(datos.importe)]
+      ).catch(() => {});
+    }
+    return ya.rows[0].id;
+  }
+
+  const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevoId) => {
+    await query(
+      `INSERT INTO moveadvisor_provider_invoices
+         (id, type, direction, provider_name, vehicle_title,
+          invoice_amount, notes, status, issued_at)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW()))`,
+      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), concepto,
+       ESPERADA, datos.desde || null]
+    );
+  });
+  return id;
+}
+
+/**
  * Apuntar una factura que nos han mandado.
  *
  * Está aparte de la ruta para poder llamarla desde donde la factura aparece de
@@ -120,10 +187,22 @@ export async function apuntaFacturaRecibida(datos: {
   const numero = String(datos.numero ?? '').trim();
   if (!proveedor || !numero || !(Number(datos.importe) > 0)) return null;
 
+  /*
+   * ¿Hay ya algo de este proveedor para esto?
+   *
+   * Puede ser la misma factura apuntada dos veces —se busca por su número—
+   * o **la línea que la estaba esperando**, que no tiene número todavía. Si
+   * no se buscara la segunda, al llegar la factura quedarían dos filas: una
+   * esperando para siempre y otra por pagar.
+   */
   const ya = await query<{ id: string }>(
     `SELECT id FROM moveadvisor_provider_invoices
-      WHERE direction = 'received' AND provider_name = $1 AND notes LIKE $2 LIMIT 1`,
-    [proveedor, `%${numero}%`]
+      WHERE direction = 'received' AND provider_name = $1
+        AND (notes LIKE $2
+             OR (status = $3 AND notes = $4
+                 AND COALESCE(vehicle_title, '') = COALESCE($5, '')))
+      ORDER BY (notes LIKE $2) DESC LIMIT 1`,
+    [proveedor, `%${numero}%`, ESPERADA, datos.notas || null, datos.vehiculo || null]
   ).catch(() => ({ rows: [] as { id: string }[] }));
 
   const notas = [`Factura ${numero}`, datos.notas].filter(Boolean).join(' · ');
@@ -131,6 +210,8 @@ export async function apuntaFacturaRecibida(datos: {
     await query(
       `UPDATE moveadvisor_provider_invoices
           SET invoice_amount = $2, invoice_date = $3, vehicle_title = $4, notes = $5,
+              -- Si era una espera, deja de serlo: ya hay factura que pagar.
+              status = CASE WHEN status = 'esperada' THEN 'pending' ELSE status END,
               updated_at = NOW()
         WHERE id = $1`,
       [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null, notas]
@@ -220,16 +301,22 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
     // Return stored received invoices (manually created with optional PDF)
     const [rows, total] = await Promise.all([
       query(
+        // Las que esperamos no son facturas: van en su propia lista. Aquí
+        // se cuenta y se paga lo que alguien ha emitido de verdad.
         `SELECT id, provider_name, vehicle_title, contract_id,
                 invoice_amount, invoice_date, status, pdf_url, notes,
                 issued_at, paid_at, updated_at
          FROM moveadvisor_provider_invoices
-         WHERE direction = 'received'
+         WHERE direction = 'received' AND status <> $3
          ORDER BY COALESCE(invoice_date::timestamptz, issued_at) DESC
          LIMIT $1 OFFSET $2`,
-        [limit, offset]
+        [limit, offset, ESPERADA]
       ),
-      query(`SELECT COUNT(*)::int AS total FROM moveadvisor_provider_invoices WHERE direction = 'received'`),
+      query(
+        `SELECT COUNT(*)::int AS total FROM moveadvisor_provider_invoices
+          WHERE direction = 'received' AND status <> $1`,
+        [ESPERADA]
+      ),
     ]);
     res.json({
       ok: true,
@@ -238,6 +325,30 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
     });
   } catch (err) {
     falloInterno(res, 'received_failed', err);
+  }
+});
+
+// ── Las que esperamos ─────────────────────────────────────────────────────────
+/**
+ * Lo que sabemos que nos van a facturar y todavía no ha llegado.
+ *
+ * En su propia lista, no mezcladas con las recibidas: son dos preguntas
+ * distintas —qué facturas me faltan y cuánto me falta por pagar— y cada una
+ * necesita su número. Y no suman en lo pendiente de pagar: nadie ha emitido
+ * todavía nada contra lo que pagar.
+ */
+providerBillingRouter.get('/provider-billing/esperadas', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    const r = await query(
+      `SELECT id, provider_name, vehicle_title, invoice_amount, notes, issued_at
+         FROM moveadvisor_provider_invoices
+        WHERE direction = 'received' AND status = $1
+        ORDER BY issued_at ASC`,
+      [ESPERADA]
+    );
+    res.json({ ok: true, data: r.rows });
+  } catch (err) {
+    falloInterno(res, 'esperadas_failed', err);
   }
 });
 

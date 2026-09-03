@@ -43,6 +43,23 @@ interface PendingCommission {
   date: string;
 }
 
+/**
+ * Una factura que sabemos que va a llegar y todavía no ha llegado.
+ *
+ * No tiene número, ni fecha, ni PDF: nadie la ha emitido. Va en su propia
+ * lista y no suma en lo pendiente de pagar — mezclarlas acabaría con alguien
+ * pagando contra una línea que no existe.
+ */
+interface FacturaEsperada {
+  id: string;
+  provider_name: string | null;
+  vehicle_title: string | null;
+  invoice_amount: number | string | null;
+  notes: string | null;
+  /** Desde cuándo se espera: el día que el servicio quedó hecho. */
+  issued_at: string | null;
+}
+
 interface ReceivedInvoice {
   id: string;
   provider_name: string;
@@ -103,6 +120,7 @@ export default function ProviderBillingPage() {
   const [summary, setSummary]       = useState<Summary | null>(null);
   const [invoices, setInvoices]     = useState<ProviderInvoice[]>([]);
   const [received, setReceived]     = useState<ReceivedInvoice[]>([]);
+  const [esperadas, setEsperadas]   = useState<FacturaEsperada[]>([]);
   const [total, setTotal]           = useState(0);
   const [page, setPage]             = useState(1);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -168,6 +186,10 @@ export default function ProviderBillingPage() {
       const r = await api.get<ProviderInvoice[]>(`/provider-billing/invoices?${params}`);
       if (r.ok) { setInvoices(r.data); setTotal((r.meta as { total: number })?.total ?? r.data.length); }
     } else {
+      // Las que esperamos van en la misma pestaña pero en su propio bloque.
+      void api.get<FacturaEsperada[]>('/provider-billing/esperadas').then((e) => {
+        if (e.ok && Array.isArray(e.data)) setEsperadas(e.data);
+      });
       const r = await api.get<ReceivedInvoice[]>(`/provider-billing/received?page=${p}&limit=50`);
       if (r.ok) { setReceived(r.data); setTotal((r.meta as { total: number })?.total ?? r.data.length); }
     }
@@ -490,7 +512,9 @@ export default function ProviderBillingPage() {
           )
         ) : (
           /* ── Recibidas de proveedores ── */
-          received.length === 0 ? (
+          <>
+          <FacturasEsperadas lista={esperadas} />
+          {received.length === 0 ? (
             <div className="py-16 flex flex-col items-center gap-3 text-brand-300">
               <p className="text-sm">No hay facturas recibidas registradas</p>
               <button onClick={() => setRecvModal(true)}
@@ -562,7 +586,8 @@ export default function ProviderBillingPage() {
               </table></div>
               <Pagination page={page} total={total} limit={50} onChange={setPage} />
             </>
-          )
+          )}
+          </>
         )}
       </div>
 
@@ -811,6 +836,69 @@ export default function ProviderBillingPage() {
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/**
+ * Lo que sabemos que nos van a facturar y todavía no ha llegado.
+ *
+ * Va delante de las recibidas y en su propio bloque: son dos preguntas
+ * distintas —**qué facturas me faltan** y **cuánto me falta por pagar**— y
+ * mezclarlas acabaría con alguien pagando contra una línea que nadie ha
+ * emitido.
+ *
+ * Nacen solas cuando el servicio queda hecho: la revisión del perito, el tramo
+ * entregado, el trámite resuelto. Y a los diez días sin llegar dejan de ser una
+ * espera y piden que se reclamen — si no vencieran, en tres meses esto sería
+ * una lista de cuarenta líneas de coches ya entregados.
+ */
+function FacturasEsperadas({ lista }: { lista: FacturaEsperada[] }) {
+  if (lista.length === 0) return null;
+
+  const dias = (desde: string | null) => {
+    if (!desde) return 0;
+    const d = new Date(desde);
+    if (Number.isNaN(d.getTime())) return 0;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+  };
+  const total = lista.reduce((s, x) => s + (Number(x.invoice_amount) || 0), 0);
+
+  return (
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+      <div className="px-4 py-3 border-b border-amber-200">
+        <div className="text-sm font-bold text-amber-900">
+          Esperando factura · {fmtEur(total)}
+        </div>
+        <div className="text-[11px] text-amber-800/80">
+          Servicios ya hechos que todavía no nos han facturado. No cuentan como pendiente
+          de pagar: nadie ha emitido nada todavía.
+        </div>
+      </div>
+      <div className="divide-y divide-amber-200/70">
+        {lista.map((x) => {
+          const d = dias(x.issued_at);
+          const tarde = d > 10;
+          return (
+            <div key={x.id} className="flex items-center gap-3 px-4 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-brand-600 truncate">
+                  {x.provider_name || '—'}
+                </div>
+                <div className="text-[11px] text-brand-400 truncate">
+                  {[x.notes, x.vehicle_title].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+              <div className={`text-[11px] whitespace-nowrap ${tarde ? 'font-bold text-red-700' : 'text-amber-800/80'}`}>
+                {tarde ? `sin llegar desde hace ${d} días` : d === 0 ? 'desde hoy' : `hace ${d} ${d === 1 ? 'día' : 'días'}`}
+              </div>
+              <div className="text-[13px] font-bold text-brand-600 whitespace-nowrap tabular-nums">
+                {fmtEur(Number(x.invoice_amount))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

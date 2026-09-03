@@ -13,6 +13,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { apuntaFacturaEsperada } from './provider-billing.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import { enviar } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
@@ -471,6 +472,23 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       `UPDATE erp_transportes SET ${sets.join(', ')} WHERE id = $${valores.length} RETURNING ${CAMPOS}`,
       valores
     );
+
+    /*
+     * Entregado: el transportista ya puede facturar este tramo.
+     *
+     * Se apunta que esperamos su factura, con lo que se acordó. Un tramo
+     * entregado y sin facturar es dinero que debemos y no aparece en ningún
+     * sitio hasta que a alguien le llega el papel.
+     */
+    if (estado === 'Entregado') {
+      const t = r.rows[0] as Record<string, unknown>;
+      await apuntaFacturaEsperada({
+        proveedor: String(t.transportista ?? ''),
+        concepto: `Transporte · tramo ${t.tramo ?? ''}`,
+        importe: t.coste as string | null,
+        vehiculo: String(t.vehiculo_titulo ?? ''),
+      }).catch(() => null);
+    }
 
     if (estado && estado !== previo.estado) {
       await query(
