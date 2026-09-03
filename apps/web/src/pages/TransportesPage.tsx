@@ -20,6 +20,9 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
 import {
   bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
 } from '../lib/fases-transporte.js';
+import {
+  faltaPorMirarAlLlegar, queHacerAlLlegar, type LlegoComoSalio,
+} from '../lib/llego-como-salio.js';
 
 const ESTADOS = ['Por organizar', 'Contratado', 'Recogido', 'En tránsito', 'Entregado'] as const;
 type Estado = (typeof ESTADOS)[number];
@@ -66,6 +69,8 @@ interface Transporte {
   contacto_transportista?: string | null;
   telefono_transportista?: string | null;
   aviso_recogida_at?: string | null;
+  /** Lo que se vio al bajarlo del camión. */
+  llegada?: LlegoComoSalio | null;
   entrega_prevista: string | null;
   fecha_recogida: string | null;
   fecha_entrega: string | null;
@@ -385,6 +390,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
    * toca parece una tarea pendiente, y se rellena con lo primero que sirva.
    */
   const [verTodo, setVerTodo] = useState(false);
+  const [llegada, setLlegada] = useState<LlegoComoSalio>(t.llegada ?? {});
   // Con lo que se está editando, no con lo último grabado: quien acaba de
   // escribir el precio espera ver el botón, no tener que guardar para saber
   // si va a aparecer.
@@ -453,10 +459,16 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                 placeholder="Recogido en Múnich, sale el lunes…"
                 className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white"
               />
+              {aEstado === 'Entregado' && faltaPorMirarAlLlegar(llegada).length > 0 && (
+                <div className="text-[11px] text-red-700 font-medium mt-1.5">
+                  Antes: {faltaPorMirarAlLlegar(llegada).join(', ').toLowerCase()}. Con el camión
+                  delante es el único momento en que se puede mirar.
+                </div>
+              )}
               <div className="flex gap-2 mt-2">
                 <button
-                  onClick={() => { onCambiar({ estado: aEstado, nota: porQue, transportista: datos.transportista, coste: datos.coste }); setAEstado(null); setPorQue(''); }}
-                  disabled={guardando || !porQue.trim()}
+                  onClick={() => { onCambiar({ estado: aEstado, nota: porQue, transportista: datos.transportista, coste: datos.coste, llegada }); setAEstado(null); setPorQue(''); }}
+                  disabled={guardando || !porQue.trim() || (aEstado === 'Entregado' && faltaPorMirarAlLlegar(llegada).length > 0)}
                   className="flex-1 px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40"
                 >
                   Guardar y pasar
@@ -772,7 +784,79 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         </div>
         )}
 
-        <button onClick={() => onCambiar(datos)} disabled={guardando}
+        {/*
+          * ¿Llegó como salió?
+          *
+          * Es otra revisión distinta de la del pedido, y las dos se
+          * confundían en el mismo sitio. Aquella pregunta si es el coche que
+          * compramos —kilómetros, llaves, papeles— y se le reclama al
+          * vendedor. Esta, si llegó entero, y se le reclama al transportista.
+          *
+          * Sale con el coche ya en camino porque es cuando sirve: en un CMR
+          * los daños visibles se reservan en el acto, por escrito en la carta
+          * de porte, y los que no se ven dentro de siete días. Si el conductor
+          * se va con el albarán firmado y sin reservas, se presume que llegó
+          * bien y el golpe lo pagamos nosotros.
+          */}
+        {toca('fotos') && (
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-600 mb-1.5">¿Llegó como salió?</div>
+          <div className="flex gap-1.5 mb-2">
+            {([[true, 'Sí, entero'], [false, 'No, hay algo']] as [boolean, string][]).map(([v, texto]) => (
+              <button key={texto}
+                      onClick={() => setLlegada((l) => ({ ...l, conforme: v }))}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
+                        llegada.conforme === v
+                          ? (v ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-red-700 text-white border-red-700')
+                          : 'bg-white text-brand-500 border-brand-200 hover:bg-brand-50'}`}>
+                {texto}
+              </button>
+            ))}
+          </div>
+
+          {llegada.conforme === false && (
+            <div className="space-y-2">
+              <label className="block text-[11px] text-brand-400">
+                Qué ha aparecido
+                <textarea value={llegada.danos ?? ''} rows={2}
+                          placeholder="Golpe en la aleta trasera izquierda que no está en las fotos de la recogida"
+                          onChange={(e) => setLlegada((l) => ({ ...l, danos: e.target.value }))}
+                          className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+              </label>
+              <label className="flex items-start gap-2 text-[11px] text-brand-500 cursor-pointer">
+                <input type="checkbox" checked={Boolean(llegada.reservaEnAlbaran)} className="mt-0.5"
+                       onChange={(e) => setLlegada((l) => ({ ...l, reservaEnAlbaran: e.target.checked }))} />
+                <span>
+                  <strong>Reserva puesta en la carta de porte</strong>, por escrito y delante
+                  del conductor. Sin ella se presume que el coche llegó bien.
+                </span>
+              </label>
+              <label className="block text-[11px] text-brand-400">
+                Qué se le reclama
+                <textarea value={llegada.reclamacion ?? ''} rows={2}
+                          placeholder="El arreglo del golpe, con el presupuesto del taller"
+                          onChange={(e) => setLlegada((l) => ({ ...l, reclamacion: e.target.value }))}
+                          className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+              </label>
+            </div>
+          )}
+
+          {/* Lo que toca hacer, que cambia con la respuesta y con el plazo. */}
+          <div className={`text-[11px] mt-1.5 ${
+            llegada.conforme === false ? 'text-red-700 font-medium' : 'text-brand-300'}`}>
+            {queHacerAlLlegar(llegada, t.fecha_entrega)}
+          </div>
+
+          {llegada.mirado_por && (
+            <div className="text-[10px] text-brand-300 mt-1">
+              Lo miró {llegada.mirado_por}
+              {llegada.mirado_el ? ` el ${new Date(llegada.mirado_el).toLocaleDateString('es-ES')}` : ''}
+            </div>
+          )}
+        </div>
+        )}
+
+        <button onClick={() => onCambiar({ ...datos, llegada })} disabled={guardando}
                 className="w-full px-3 py-2 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-40">
           Guardar los datos
         </button>

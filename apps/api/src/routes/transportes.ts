@@ -24,6 +24,9 @@ import {
 } from '../lib/aviso-de-recogida-al-vendedor.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
 import {
+  anotaLaLlegada, puedeDarsePorEntregado, faltaPorMirarAlLlegar, type LlegoComoSalio,
+} from '../lib/llego-como-salio.js';
+import {
   correoDePresupuestoAlTransportista, faltaParaPedirPresupuesto, type Idioma,
 } from '../lib/presupuesto-al-transportista.js';
 
@@ -110,7 +113,11 @@ const ENSURE_ORDEN = `
     -- en su ficha: la ficha tiene la centralita, y el que contesta el
     -- presupuesto es el de tráfico, que cambia de un coche a otro.
     ADD COLUMN IF NOT EXISTS contacto_transportista TEXT NOT NULL DEFAULT '',
-    ADD COLUMN IF NOT EXISTS telefono_transportista TEXT NOT NULL DEFAULT ''`;
+    ADD COLUMN IF NOT EXISTS telefono_transportista TEXT NOT NULL DEFAULT '',
+    -- Si el coche llegó como salió. Es otra revisión distinta de la del
+    -- pedido: aquella pregunta si es el coche que compramos y se le reclama al
+    -- vendedor; esta, si llegó entero, y se le reclama al transportista.
+    ADD COLUMN IF NOT EXISTS llegada JSONB NOT NULL DEFAULT '{}'::jsonb`;
 
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_transportes_estado
@@ -140,7 +147,7 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 contacto_origen, telefono_origen, horario_origen,
                 portacoches, presupuesto_pedido_at, presupuesto_pedido_a,
                 aviso_recogida_at, aviso_recogida_a,
-                contacto_transportista, telefono_transportista`;
+                contacto_transportista, telefono_transportista, llegada`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -797,6 +804,36 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.coste !== undefined) pon('coste', req.body.coste === '' || req.body.coste === null ? null : Number(req.body.coste));
+
+    /*
+     * Lo que se ha visto al bajarlo del camión.
+     *
+     * Se anota con quién lo miró y cuándo, como la recepción del pedido: una
+     * reserva sin nombre no la sostiene nadie tres semanas después.
+     */
+    const llegadaPrevia = (previo.llegada ?? {}) as LlegoComoSalio;
+    const llegadaNueva = req.body?.llegada
+      ? anotaLaLlegada(llegadaPrevia, req.body.llegada as LlegoComoSalio, req.actor?.name ?? req.actor?.sub ?? 'desconocido')
+      : llegadaPrevia;
+    if (req.body?.llegada) pon('llegada', JSON.stringify(llegadaNueva));
+
+    /*
+     * Y un tramo no se da por entregado sin haber mirado el coche.
+     *
+     * Es el único momento en que se puede: con el camión todavía delante. En
+     * un CMR los daños visibles se reservan **en el acto**, por escrito en la
+     * carta de porte, y los que no se ven, dentro de siete días. Si el
+     * conductor se va con el albarán firmado y sin reservas, se presume que el
+     * coche llegó bien y el golpe lo pagamos nosotros.
+     */
+    if (estado === 'Entregado' && !puedeDarsePorEntregado(llegadaNueva)) {
+      res.status(409).json({
+        ok: false, error: 'sin_mirar_la_llegada',
+        detail: 'Antes de darlo por entregado hay que decir si el coche ha llegado como salió. Con el camión delante es el único momento en que se puede.',
+        faltan: faltaPorMirarAlLlegar(llegadaNueva),
+      });
+      return;
+    }
     // Tres valores, no dos: sí, no y todavía no se sabe. Un booleano a secas
     // convierte «no lo he preguntado» en «no entra».
     if (req.body?.portacoches !== undefined) {

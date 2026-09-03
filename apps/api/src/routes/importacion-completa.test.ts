@@ -286,7 +286,17 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     });
     assert.equal(contratado.codigo, 200);
     await api(`/transportes/${transporte.id}`, 'PATCH', { estado: 'Recogido', nota: 'Recogido en Múnich' });
-    const entregado = await api(`/transportes/${transporte.id}`, 'PATCH', { estado: 'Entregado', nota: 'Ha llegado' });
+
+    // Sin mirar el coche no se cierra el tramo. Con el camión delante es el
+    // único momento en que se puede: en un CMR los daños visibles se reservan
+    // en el acto, y después se presume que llegó bien.
+    const sinMirarElTramo = await api(`/transportes/${transporte.id}`, 'PATCH', { estado: 'Entregado', nota: 'Ha llegado' });
+    assert.equal(sinMirarElTramo.codigo, 409,
+      'un tramo entregado sin mirar el coche es un golpe que acabamos pagando nosotros');
+
+    const entregado = await api(`/transportes/${transporte.id}`, 'PATCH', {
+      estado: 'Entregado', nota: 'Ha llegado', llegada: { conforme: true },
+    });
     assert.equal(entregado.codigo, 200);
     assert.ok(
       (entregado.cuerpo.faltanFotos as string[]).length > 0,

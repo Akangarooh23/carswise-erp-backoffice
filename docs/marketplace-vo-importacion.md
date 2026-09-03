@@ -858,6 +858,33 @@ solo cambia una vez. Y si el correo no sale, el coche sigue estando de camino y
 el fallo queda escrito en las notas internas: un cliente sin avisar y nadie
 enterado es peor que un correo que no salió.
 
+### Dos revisiones al llegar, y no una
+
+Se confundían en el mismo sitio, y de ahí salen reclamaciones mandadas a quien
+no fue.
+
+La **recepción del pedido** pregunta *¿es el coche que compramos?*: los
+kilómetros de verdad y no los del anuncio, cuántas llaves vienen, qué papeles
+traía dentro. Lo que salga de ahí se le reclama **al vendedor alemán**. Sin
+kilómetros y sin llaves no se da por recibido, porque son los dos datos que
+pierden valor con el tiempo: los kilómetros hay que leerlos antes de moverlo y
+las llaves hay que contarlas delante de quien lo trae.
+
+El **«¿llegó como salió?» del tramo** pregunta otra cosa: *¿ha llegado entero?*
+Un golpe nuevo, una llanta rayada. Eso se le reclama **al transportista**, y
+tiene un reloj que la otra no tiene. Un Múnich → Zaragoza va bajo **CMR**: los
+daños visibles se reservan **en el acto**, por escrito en la carta de porte, y
+los que no se ven, dentro de **siete días**. Si el conductor se va con el
+albarán firmado y sin reservas, se presume que el coche llegó bien y el arreglo
+lo pagamos nosotros. Por eso el tramo **no se da por entregado** sin contestar
+a esa pregunta: con el camión delante es el único momento en que se puede.
+
+Basta un sí. No es un formulario largo a propósito: lo único que no se consigue
+después es que alguien haya mirado. Un no obliga a decir qué apareció, porque
+quien lo lea dentro de un mes tiene que saberlo, y la pantalla va diciendo lo
+que toca —ponerlo en la carta de porte, reclamar, y cuántos días quedan— hasta
+que se pasa el plazo, que entonces lo dice también.
+
 Los marcados **aparte** son trabajo nuestro que **no mueve el coche**: la
 factura del perito, la del vendedor y el apunte del pago. Se dicen debajo del
 titular y en pequeño, porque puestos arriba parecía que había algo parado —y
@@ -960,6 +987,8 @@ nunca, y un número que no baja se deja de mirar.
 | Quién vio el coche, qué día y qué encontró | **Peritaciones**, repartidas por estado |
 | El informe del perito y sus fotos | **Documentos**, en la peritación |
 | Qué está roto y qué costaría arreglarlo | **Los daños que vio**, en la peritación, y el total en el expediente |
+| Si el coche llegó como salió del camión | **¿Llegó como salió?**, en el tramo, al darlo por entregado |
+| Los kilómetros, las llaves y si es el coche que se compró | **La recepción**, en el pedido |
 | Lo que nos cobró el perito, y pagárselo | **Facturación proveedores → Recibidas** |
 | El número con el que reclamarle a un proveedor | **Nº factura proveedor**, en esa lista. El de al lado, «Id PopCar», es el nuestro |
 | Lo que cuesta este coche, con la peritación dentro | **Lo que cuesta**, en su pedido |
