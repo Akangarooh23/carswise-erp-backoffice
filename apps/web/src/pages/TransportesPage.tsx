@@ -416,13 +416,20 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const toca = (b: string) => verTodo || bloques.includes(b as never);
   const alVendedor = seLePreguntaAlVendedor(t.tramo);
   /**
-   * Pedir precio se puede en cuanto el vendedor ha contestado.
+   * Pedir precio se puede en cuanto se sabe de dónde sale de verdad.
    *
    * No hace falta haber contratado a nadie —esa es justo la gracia—, pero sí
-   * saber de dónde sale de verdad. Con la ciudad del anuncio por dirección,
-   * lo que vuelve es un número que luego no se sostiene.
+   * la dirección: con la ciudad del anuncio, lo que vuelve es un número que
+   * luego no se sostiene.
+   *
+   * En el primer viaje esa dirección la da el vendedor, así que hay que
+   * habérsela preguntado. En el segundo sale de nuestra campa y no hay a quién
+   * preguntar: exigirlo dejaba el botón escondido para siempre, con el panel
+   * diciendo «elige quién lo trae y pídele precio» y ningún sitio donde
+   * hacerlo.
    */
-  const puedePedirPrecio = Boolean(t.recogida_preguntada_at) && Boolean(datos.desde.trim());
+  const puedePedirPrecio = Boolean(datos.desde.trim())
+    && (!seLePreguntaAlVendedor(t.tramo) || Boolean(t.recogida_preguntada_at));
 
   const faltaOrden = faltaParaLaOrden({
     transportista: datos.transportista, desde: datos.desde, hasta: datos.hasta,

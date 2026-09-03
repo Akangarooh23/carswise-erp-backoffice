@@ -276,3 +276,28 @@ describe('de qué viaje es un tramo', () => {
     assert.match(queViajeEs(null, 'importacion'), /1 de 2/);
   });
 });
+
+describe('pedir precio en el segundo viaje', () => {
+  // La regla vive en la pantalla, pero lo que la sostiene es esto: en el
+  // segundo tramo no hay vendedor a quien preguntar, así que exigir su
+  // respuesta dejaba el botón escondido para siempre.
+  test('al segundo no se le pregunta a nadie', () => {
+    assert.equal(seLePreguntaAlVendedor(2), false);
+  });
+
+  test('y el primero sí depende de lo que conteste', () => {
+    assert.equal(seLePreguntaAlVendedor(1), true);
+  });
+
+  test('lo que toca en el segundo, sin pasar por el vendedor', () => {
+    assert.match(
+      queTocaEnElTramo({ estado: 'Por organizar', tramo: 2, desde: 'Zaragoza' }),
+      /Elige quién lo trae/
+    );
+    assert.match(
+      queTocaEnElTramo({ estado: 'Por organizar', tramo: 2, transportista: 'Becker', coste: 450,
+        desde: 'Zaragoza', recogida_prevista: '2026-10-05' }),
+      /Confírmaselo al transportista/
+    );
+  });
+});
