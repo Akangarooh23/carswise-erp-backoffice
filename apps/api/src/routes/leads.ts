@@ -7,6 +7,7 @@ import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import { abreLosTramosQueFalten } from './transportes.js';
+import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
 import { abreTramitesDeImportacion, abreTramitesDeVenta } from './tramites.js';
 import {
   queSeEntrega, faltaPorEntregar, puedeCerrarseLaEntrega, faltaParaCerrar,
@@ -231,6 +232,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // Y los primeros tramos: sin tramo no hay dónde preguntarle al vendedor
   // por la recogida, que es lo que el propio expediente pide.
   await abreLosTramosQueFalten().catch(() => 0);
+  await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();
   const q       = String(req.query.q      || '').trim();
   const type    = String(req.query.type   || '').trim();

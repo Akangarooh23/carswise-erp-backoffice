@@ -210,6 +210,32 @@ export function faltaParaLlegarA(
   return falta;
 }
 
+
+/**
+ * Qué estado le corresponde a un pedido por lo que ya se sabe de él.
+ *
+ * Un pedido de importación se quedaba en «Pedido · esperando que lo acepten»
+ * con el coche pagado, su factura apuntada y el camión contratado. El estado se
+ * movía a mano y los hechos se apuntaban en otras cuatro pantallas, así que el
+ * tablero de Pedidos contaba una historia de hace tres semanas.
+ *
+ * Nadie paga 16.890 € por un coche que el vendedor no ha confirmado, y un coche
+ * que ya está en un camión va de camino. Los dos son hechos, no opiniones.
+ *
+ * Devuelve `null` cuando no hay nada que mover, y **nunca retrocede**: desde
+ * «Borrador» tampoco avanza —ahí es donde se prepara mientras se comprueba lo
+ * que no se arregla después— ni desde «Recibido» o «Cancelado».
+ */
+export function estadoQueLeToca(
+  estado: string,
+  hechos: { compraPagada?: boolean; yaRecogido?: boolean }
+): string | null {
+  if (estado !== 'Pedido' && estado !== 'Confirmado') return null;
+  if (hechos.yaRecogido) return 'En camino';
+  if (hechos.compraPagada && estado === 'Pedido') return 'Confirmado';
+  return null;
+}
+
 /** Lo que falta para cada estado del camino, para poder enseñarlo antes de intentarlo. */
 export function faltaPorEstado(
   pedido: DatosDelPedido,

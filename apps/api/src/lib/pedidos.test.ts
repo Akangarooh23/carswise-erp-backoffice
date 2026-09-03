@@ -12,6 +12,7 @@ import {
   ESTADOS_PEDIDO, QUE_TOCA_PEDIDO, ORIGENES_PEDIDO, ETIQUETA_ORIGEN, CANCELADO,
   esEstadoValido, esOrigenPedido, siguienteEstado, puedeEncargarse, notaDelCambio,
   faltaParaLlegarA, faltaPorEstado, alMenos, importeAcordado,
+  estadoQueLeToca,
 } from './pedidos.js';
 
 describe('el camino de un pedido', () => {
@@ -231,5 +232,40 @@ describe('el punto del camino', () => {
     assert.equal(importeAcordado(0), false);
     assert.equal(importeAcordado(null), false);
     assert.equal(importeAcordado('no sé'), false);
+  });
+});
+
+describe('el estado que le toca a un pedido por lo que ya se sabe', () => {
+  test('pagado al vendedor: nadie paga un coche sin confirmar', () => {
+    // Se quedaba en «Pedido · esperando que lo acepten» con la compra pagada,
+    // su factura apuntada y el camión contratado. El tablero contaba una
+    // historia de hace tres semanas.
+    assert.equal(estadoQueLeToca('Pedido', { compraPagada: true }), 'Confirmado');
+  });
+
+  test('recogido: un coche en un camión va de camino', () => {
+    assert.equal(estadoQueLeToca('Pedido', { yaRecogido: true }), 'En camino');
+    assert.equal(estadoQueLeToca('Confirmado', { yaRecogido: true }), 'En camino');
+  });
+
+  test('recogido manda sobre pagado: es el hecho más avanzado', () => {
+    assert.equal(estadoQueLeToca('Pedido', { compraPagada: true, yaRecogido: true }), 'En camino');
+  });
+
+  test('sin hechos nuevos no se mueve', () => {
+    assert.equal(estadoQueLeToca('Pedido', {}), null);
+    assert.equal(estadoQueLeToca('Confirmado', { compraPagada: true }), null);
+  });
+
+  test('un borrador no avanza solo', () => {
+    // Ahí es donde se prepara mientras se comprueba lo que no se arregla
+    // después: un embargo no se soluciona una vez pagado.
+    assert.equal(estadoQueLeToca('Borrador', { compraPagada: true, yaRecogido: true }), null);
+  });
+
+  test('y nunca retrocede', () => {
+    assert.equal(estadoQueLeToca('En camino', { compraPagada: true }), null);
+    assert.equal(estadoQueLeToca('Recibido', { yaRecogido: true }), null);
+    assert.equal(estadoQueLeToca('Cancelado', { compraPagada: true, yaRecogido: true }), null);
   });
 });

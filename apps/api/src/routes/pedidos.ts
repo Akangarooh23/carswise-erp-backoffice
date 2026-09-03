@@ -283,12 +283,70 @@ function conLoQueFalta(
 }
 
 // ── Qué hay que comprobar antes de encargar, según el origen ───────────────
+/**
+ * Los pedidos de importación que se han quedado atrás, al día.
+ *
+ * El estado se movía a mano mientras los hechos se apuntaban en otras cuatro
+ * pantallas: un pedido pagado, facturado y con el camión contratado seguía
+ * diciendo «esperando que lo acepten». El tablero contaba una historia de hace
+ * tres semanas, que es peor que no contar ninguna.
+ *
+ * Se mira lo que hay en vez de confiar en que alguien lo movió en su día, y se
+ * ejecuta al abrir las pantallas que los enseñan. Es idempotente: el `WHERE`
+ * sobre el estado anterior hace que la segunda vez no toque nada, así que la
+ * nota tampoco se repite.
+ *
+ * Y queda escrito con su motivo. Un estado que nadie ha pulsado tiene que poder
+ * explicarse tres semanas después.
+ */
+export async function ponAlDiaLosPedidosDeImportacion(): Promise<number> {
+  await prepara();
+  const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  const conNota = (nota: string) =>
+    `notas = CASE WHEN COALESCE(notas, '') = '' THEN '${nota.replace(/'/g, "''")}'
+                  ELSE notas || E'\n' || '${nota.replace(/'/g, "''")}' END`;
+
+  let movidos = 0;
+
+  // Pagado al vendedor: nadie paga un coche que no le han confirmado.
+  const confirmados = await query(
+    `UPDATE erp_pedidos
+        SET estado = 'Confirmado', ${conNota(`[${hoy} · Pedido → Confirmado] La compra está pagada.`)},
+            updated_at = NOW()
+      WHERE origen = 'importacion' AND estado = 'Pedido'
+        AND factura_pagada_el IS NOT NULL`
+  ).catch((e: Error) => {
+    console.error('[pedidos] no se han podido confirmar:', e.message);
+    return { rowCount: 0 };
+  });
+  movidos += confirmados.rowCount ?? 0;
+
+  // Y con el coche ya en el camión, va de camino.
+  const enCamino = await query(
+    `UPDATE erp_pedidos pe
+        SET estado = 'En camino', ${conNota(`[${hoy} · → En camino] El transportista ya lo ha recogido.`)},
+            updated_at = NOW()
+      WHERE pe.origen = 'importacion' AND pe.estado IN ('Pedido', 'Confirmado')
+        AND EXISTS (SELECT 1 FROM erp_transportes t
+                     WHERE t.pedido_id = pe.id AND t.tramo = 1
+                       AND t.fecha_recogida IS NOT NULL)`
+  ).catch((e: Error) => {
+    console.error('[pedidos] no se han podido poner en camino:', e.message);
+    return { rowCount: 0 };
+  });
+  movidos += enCamino.rowCount ?? 0;
+
+  return movidos;
+}
+
 pedidosRouter.get('/pedidos/comprobaciones/:origen', requireRole(['admin', 'support', 'operations', 'sales']), (req, res) => {
   res.json({ ok: true, data: comprobacionesQueTocan(req.params.origen) });
 });
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  // Antes de contar nada, que lo que se cuenta sea de hoy.
+  await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const estado = nt(req.query.estado);
   const origen = nt(req.query.origen);
   const q = nt(req.query.q);
