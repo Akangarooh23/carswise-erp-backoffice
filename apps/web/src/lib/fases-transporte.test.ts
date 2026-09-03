@@ -41,6 +41,30 @@ describe('qué se ve en cada fase', () => {
     assert.ok(b.includes('orden'));
   });
 
+  test('y la orden sale ya sin organizar, en cuanto hay con quién y por cuánto', () => {
+    // Mandarla es contratar: se acuerda por correo y la orden lo confirma.
+    // Pedir que se marque «Contratado» antes obliga a declarar cerrado algo
+    // que se cierra con el correo que todavía no ha salido.
+    const b = bloquesDelTramo('Por organizar', { transportista: 'TransLog GmbH', coste: 890 });
+    assert.ok(b.includes('orden'));
+  });
+
+  test('con nombre pero sin precio, todavía no', () => {
+    // Una orden sin precio acordado es un encargo abierto, y la factura será
+    // la que quieran.
+    const b = bloquesDelTramo('Por organizar', { transportista: 'TransLog GmbH', coste: 0 });
+    assert.ok(!b.includes('orden'));
+  });
+
+  test('ni con precio y sin nombre', () => {
+    assert.ok(!bloquesDelTramo('Por organizar', { transportista: '', coste: 890 }).includes('orden'));
+  });
+
+  test('y no se duplica si la fase ya la traía', () => {
+    const b = bloquesDelTramo('Contratado', { transportista: 'TransLog GmbH', coste: 890 });
+    assert.equal(b.filter((x) => x === 'orden').length, 1);
+  });
+
   test('las fotos, cuando ya lo tiene: son del viaje, no del coche', () => {
     // Son lo único que distingue un golpe que ya venía de uno que se hizo por
     // el camino. Antes de que lo recojan no hay viaje del que hacer fotos.

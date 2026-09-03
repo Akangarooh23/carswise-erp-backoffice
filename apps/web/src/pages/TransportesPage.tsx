@@ -385,7 +385,10 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
    * toca parece una tarea pendiente, y se rellena con lo primero que sirva.
    */
   const [verTodo, setVerTodo] = useState(false);
-  const bloques = bloquesDelTramo(t.estado, t);
+  // Con lo que se está editando, no con lo último grabado: quien acaba de
+  // escribir el precio espera ver el botón, no tener que guardar para saber
+  // si va a aparecer.
+  const bloques = bloquesDelTramo(t.estado, { ...t, ...datos });
   const toca = (b: string) => verTodo || bloques.includes(b as never);
   const alVendedor = seLePreguntaAlVendedor(t.tramo);
   /**
@@ -750,12 +753,18 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                 */}
               <button onClick={onMandarOrden} disabled={guardando || faltaOrden.length > 0}
                       className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
-                Mandársela al transportista
+                {t.estado === 'Por organizar'
+                  ? 'Confirmárselo y mandarle la orden'
+                  : 'Mandársela al transportista'}
               </button>
               <div className="text-[11px] text-brand-300 mt-1.5">
                 {faltaOrden.length > 0
                   ? `Antes hay que ${faltaOrden.join(', ')}.`
-                  : 'Guarda antes los cambios: la orden sale con lo que hay grabado.'}
+                  : t.estado === 'Por organizar'
+                    // Mandarla es contratar: el correo confirma el encargo, y con
+                    // él fuera el tramo deja de estar sin organizar.
+                    ? 'Con esto queda contratado. Guarda antes los cambios: la orden sale con lo que hay grabado.'
+                    : 'Guarda antes los cambios: la orden sale con lo que hay grabado.'}
               </div>
             </>
           )}

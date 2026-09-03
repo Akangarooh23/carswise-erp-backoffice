@@ -45,14 +45,31 @@ export const LO_DE_CADA_FASE: Record<string, BloqueDeTramo[]> = {
  * vacío puesto delante parece una tarea pendiente y se rellena con lo primero
  * que sirva, que aquí es la ciudad del anuncio.
  */
+/**
+ * Y con quién lo trae y por cuánto ya elegidos, la orden se enseña también.
+ *
+ * La tabla pedía pasar a «Contratado» y luego mandar la orden, y eso está al
+ * revés de como ocurre: se acuerda por correo, se manda la orden confirmando
+ * el encargo, y **eso es contratar**. Pedir que se marque antes obliga a
+ * declarar cerrado algo que se cierra con el correo que todavía no ha salido.
+ *
+ * Hace falta el precio, no solo el nombre: una orden sin precio acordado es
+ * un encargo abierto, y la factura será la que quieran.
+ */
 export function bloquesDelTramo(
   estado: string,
-  t?: { recogida_preguntada_at?: string | null } | null
+  t?: {
+    recogida_preguntada_at?: string | null;
+    transportista?: string | null;
+    coste?: unknown;
+  } | null
 ): BloqueDeTramo[] {
-  const base = LO_DE_CADA_FASE[estado] ?? ['quien'];
+  const base = [...(LO_DE_CADA_FASE[estado] ?? ['quien'])];
   if (String(t?.recogida_preguntada_at ?? '').trim() && !base.includes('ruta')) {
-    return [...base, 'ruta'];
+    base.push('ruta');
   }
+  const hayTrato = Boolean(String(t?.transportista ?? '').trim()) && Number(t?.coste ?? 0) > 0;
+  if (hayTrato && !base.includes('orden')) base.push('orden');
   return base;
 }
 

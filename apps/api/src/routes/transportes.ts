@@ -478,14 +478,34 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     // Salta el desvío de pruebas: si no sale, nadie recoge el coche.
     await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
 
+    /*
+     * Y con la orden fuera, el tramo queda contratado.
+     *
+     * Mandarla **es** contratar: se acordó por correo y esto lo confirma. Que
+     * hubiera que marcarlo antes a mano obligaba a declarar cerrado algo que se
+     * cierra con el correo que todavía no había salido, y dejaba tramos con la
+     * orden mandada y el estado sin mover: en la pantalla, coches que nadie ha
+     * quedado en recoger cuando sí.
+     *
+     * Solo desde «Por organizar», y solo si hay con quién y por cuánto —que es
+     * lo mismo que exige el cambio a mano—. Un tramo que ya está más adelante
+     * no retrocede porque se vuelva a mandar la orden.
+     */
+    const contrata = String(t.estado ?? '') === 'Por organizar' && puedeContratarse({
+      transportista: String(t.transportista ?? ''),
+      coste: t.coste,
+    });
+
     await query(
       `UPDATE erp_transportes
-          SET orden_enviada_at = NOW(), orden_enviada_a = $2, updated_at = NOW()
+          SET orden_enviada_at = NOW(), orden_enviada_a = $2,
+              estado = CASE WHEN $3::boolean THEN 'Contratado' ELSE estado END,
+              updated_at = NOW()
         WHERE id = $1`,
-      [req.params.id, aQuien]
+      [req.params.id, aQuien, contrata]
     ).catch((e: Error) => console.error('[transportes] no se ha podido anotar la orden:', e.message));
 
-    res.json({ ok: true, para: aQuien });
+    res.json({ ok: true, para: aQuien, contratado: contrata });
   } catch (err) {
     console.error('[transportes] orden:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'orden_failed' });
