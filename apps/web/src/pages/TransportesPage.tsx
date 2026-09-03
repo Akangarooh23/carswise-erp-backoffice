@@ -58,6 +58,10 @@ interface Transporte {
   contacto_origen?: string | null;
   telefono_origen?: string | null;
   horario_origen?: string | null;
+  /** Si cabe un portacoches hasta el coche. Nulo mientras no se sepa. */
+  portacoches?: boolean | null;
+  presupuesto_pedido_at?: string | null;
+  presupuesto_pedido_a?: string | null;
   entrega_prevista: string | null;
   fecha_recogida: string | null;
   fecha_entrega: string | null;
@@ -146,6 +150,13 @@ export default function TransportesPage() {
     abreParaRevisar(`/transportes/${id}/datos-recogida`, id);
 
   const mandaLaOrden = (id: string) => abreParaRevisar(`/transportes/${id}/orden`, id);
+  /**
+   * Pedirle precio, que va antes de la orden y es otra cosa.
+   *
+   * La orden se manda a quien ya ha dicho que sí y por cuánto. Esto es la
+   * pregunta que lleva a ese precio, y se le hace a más de uno.
+   */
+  const pideElPresupuesto = (id: string) => abreParaRevisar(`/transportes/${id}/presupuesto`, id);
 
   /**
    * Pide un correo sin mandarlo y lo abre para revisarlo.
@@ -261,6 +272,7 @@ export default function TransportesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(c) => void cambia(abierto.id, c)}
           onMandarOrden={() => void mandaLaOrden(abierto.id)}
+          onPedirPresupuesto={() => void pideElPresupuesto(abierto.id)}
           onPreguntarRecogida={() => void preguntaLaRecogida(abierto.id)}
           aviso={errorDelPanel}
         />
@@ -325,8 +337,9 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
   );
 }
 
-function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPreguntarRecogida, aviso }: {
+function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onPreguntarRecogida, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
+  onPedirPresupuesto: () => void;
   onMandarOrden: () => void; onPreguntarRecogida: () => void; aviso: string;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
@@ -337,6 +350,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
     recogida_prevista: t.recogida_prevista ?? '', entrega_prevista: t.entrega_prevista ?? '',
     contacto_origen: t.contacto_origen ?? '', telefono_origen: t.telefono_origen ?? '',
     horario_origen: t.horario_origen ?? '',
+    portacoches: t.portacoches === true ? 'si' : t.portacoches === false ? 'no' : '',
   });
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_recogida);
@@ -352,6 +366,15 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const bloques = bloquesDelTramo(t.estado, t);
   const toca = (b: string) => verTodo || bloques.includes(b as never);
   const alVendedor = seLePreguntaAlVendedor(t.tramo);
+  /**
+   * Pedir precio se puede en cuanto el vendedor ha contestado.
+   *
+   * No hace falta haber contratado a nadie —esa es justo la gracia—, pero sí
+   * saber de dónde sale de verdad. Con la ciudad del anuncio por dirección,
+   * lo que vuelve es un número que luego no se sostiene.
+   */
+  const puedePedirPrecio = Boolean(t.recogida_preguntada_at) && Boolean(datos.desde.trim());
+
   const faltaOrden = faltaParaLaOrden({
     transportista: datos.transportista, desde: datos.desde, hasta: datos.hasta,
     tramo: t.tramo, recogida_preguntada_at: t.recogida_preguntada_at,
@@ -441,6 +464,46 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             <LoQueTieneAcordado nombre={datos.transportista} />
           </div>
           <div className="col-span-2 text-[10px] text-brand-300 -mt-1">{PISTAS.transportista}</div>
+
+          {/*
+            * Pedirle precio, que es lo que va antes de contratarlo.
+            *
+            * Aparece con la respuesta del vendedor ya apuntada: sin la calle,
+            * el día y las horas, lo que vuelve no es un precio sino una
+            * estimación que se discute con el camión ya cargado.
+            *
+            * Y se le pide a más de uno: se elige un transportista, se le
+            * pregunta, se apunta lo que diga y se cambia de nombre. Entre el
+            * primero y el tercero hay varios cientos de euros.
+            */}
+          {puedePedirPrecio && (
+          <div className="col-span-2 pt-2 border-t border-brand-100">
+            {t.presupuesto_pedido_at ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[12px] font-bold text-emerald-700">
+                  ✓ Precio pedido el {new Date(t.presupuesto_pedido_at).toLocaleDateString('es-ES')}
+                  {t.presupuesto_pedido_a ? ` a ${t.presupuesto_pedido_a}` : ''}
+                </span>
+                <button onClick={onPedirPresupuesto} disabled={guardando}
+                        className="text-[11px] text-brand-400 underline underline-offset-2">
+                  pedírselo a otro
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={onPedirPresupuesto} disabled={guardando || !datos.transportista.trim()}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
+                  Preguntarle si puede y cuánto cobra
+                </button>
+                <div className="text-[11px] text-brand-300 mt-1.5">
+                  {datos.transportista.trim()
+                    ? 'Le va la dirección exacta, el día, el horario, por quién preguntar y si entra un portacoches. Guarda antes los cambios: el correo sale con lo que hay grabado.'
+                    : 'Elige arriba a quién se lo pides. Para comparar, se lo pides a uno, apuntas lo que diga y cambias de nombre.'}
+                </div>
+              </>
+            )}
+          </div>
+          )}
         </div>
         )}
 
@@ -504,6 +567,29 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             <span className="text-[10px] text-brand-300">
               Va en la orden, debajo de la fecha. «A partir del» sin horas manda al
               conductor a una puerta cerrada.
+            </span>
+          </label>
+
+          {/*
+            * Y el dato que decide el precio del viaje.
+            *
+            * Un portacoches lleva ocho coches y sale a un tercio por coche;
+            * una grúa individual cuesta lo que cuesta. Tres valores y no dos:
+            * «todavía no lo sé» no es «no entra», y pedir precio con un «no»
+            * inventado es pagar de más sin motivo.
+            */}
+          <label className="col-span-2 text-[11px] text-brand-400">
+            ¿Entra un portacoches hasta el coche?
+            <select value={datos.portacoches}
+                    onChange={(e) => setDatos((d) => ({ ...d, portacoches: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+              <option value="">Todavía no lo sabemos</option>
+              <option value="si">Sí, llega hasta el coche</option>
+              <option value="no">No: sótano, calle estrecha o patio</option>
+            </select>
+            <span className="text-[10px] text-brand-300">
+              Cambia el precio: un portacoches lleva ocho coches y sale a un tercio
+              por coche.
             </span>
           </label>
         </div>
