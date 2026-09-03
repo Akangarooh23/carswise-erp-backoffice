@@ -712,12 +712,30 @@ function PeritacionAbierta({
           <input value={factura.importe} inputMode="decimal" placeholder="Importe"
                  onChange={(e) => setFactura((d) => ({ ...d, importe: e.target.value }))}
                  className="w-full mb-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          <label className="block mb-2 text-[11px] text-brand-400">
-            Su factura en PDF
-            <input type="file" accept="application/pdf,image/*"
-                   onChange={(e) => setSuPdf(e.target.files?.[0] ?? null)}
-                   className="w-full mt-0.5 text-[12px] text-brand-500" />
-          </label>
+          {/*
+            * El mismo botón que en Documentos.
+            *
+            * El campo de fichero del navegador sale en letra de sistema, en
+            * gris y minúsculo: no se ve que es lo mismo que «Añadir
+            * documento» dos bloques más abajo, y quien lo busca no lo
+            * encuentra. Un botón que se ve, y al lado el nombre de lo elegido.
+            */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <label className="inline-block px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg cursor-pointer hover:bg-brand-50">
+              {suPdf ? 'Cambiar el PDF' : 'Adjuntar su factura'}
+              <input type="file" accept="application/pdf,image/*" className="hidden"
+                     onChange={(e) => setSuPdf(e.target.files?.[0] ?? null)} />
+            </label>
+            {suPdf ? (
+              <span className="text-[11px] text-brand-500 truncate max-w-[55%]">
+                {suPdf.name}
+                <button onClick={() => setSuPdf(null)}
+                        className="ml-2 text-brand-300 hover:text-red-600">quitar</button>
+              </span>
+            ) : (
+              <span className="text-[11px] text-brand-300">PDF o imagen · opcional</span>
+            )}
+          </div>
           <button onClick={() => onFactura({ ...factura }, suPdf)} disabled={guardando || !factura.numero.trim()}
                   className="w-full px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
             Apuntar su factura
