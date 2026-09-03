@@ -90,7 +90,7 @@ export default function Documentos({ ambito, id, origen, onCambio }: {
       });
       if (!r.ok) {
         setFallo(r.error === 'fichero_no_valido'
-          ? 'Ese fichero no vale: solo imágenes o PDF, hasta 3 MB.'
+          ? 'Ese fichero no vale: imágenes, PDF u hojas de cálculo, hasta 3 MB.'
           : 'No se ha podido guardar.');
       } else {
         setPapel('');

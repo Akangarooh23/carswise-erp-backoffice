@@ -115,3 +115,50 @@ describe('cuánto ocupa lo que llega', () => {
     assert.equal(tamanoDeBase64(foto), 261303);
   });
 });
+
+describe('las hojas de cálculo', () => {
+  /**
+   * Entraron con el primer informe de un perito: el informe va en PDF y la
+   * lista de puntos revisados en un Excel, y esa lista es la que se pega en los
+   * daños. Rechazarla obligaba a dejarla en el correo, que es donde los papeles
+   * de un coche dejan de existir el día que esa persona no está.
+   */
+  const MB = 1024 * 1024;
+
+  test('un xlsx entra', () => {
+    assert.equal(
+      revisaFichero(
+        'checklist_peritacion.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        20 * 1024
+      ),
+      null
+    );
+  });
+
+  test('y un xls, un ods y un csv también', () => {
+    assert.equal(revisaFichero('a.xls', 'application/vnd.ms-excel', 1000), null);
+    assert.equal(revisaFichero('a.ods', 'application/vnd.oasis.opendocument.spreadsheet', 1000), null);
+    assert.equal(revisaFichero('a.csv', 'text/csv', 1000), null);
+  });
+
+  test('pero no un xlsm: eso es un programa, no un papel', () => {
+    // Un Excel con macros ejecuta código al abrirlo. Esto es un cajón de
+    // papeles de un coche, y acaba en un almacén público.
+    assert.ok(revisaFichero('a.xlsm', 'application/vnd.ms-excel.sheet.macroEnabled.12', 1000));
+  });
+
+  test('el nombre y el tipo tienen que decir lo mismo', () => {
+    // Un ejecutable renombrado a .xlsx no entra por decir que es una hoja.
+    const r = revisaFichero(
+      'virus.exe',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      1000
+    );
+    assert.ok(r && /acaba en/.test(r.motivo));
+  });
+
+  test('y el tope de tamaño sigue siendo el mismo', () => {
+    assert.ok(revisaFichero('a.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 4 * MB));
+  });
+});

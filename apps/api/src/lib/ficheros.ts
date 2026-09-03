@@ -7,8 +7,14 @@
  * lo que alguien quiera. Y un ejecutable en el garaje de un cliente no es un
  * documento del coche.
  *
- * Lo que hay guardado hoy son fotos —png, jpeg, webp— y PDF, y nada más. La
- * lista no quita nada que se esté usando.
+ * Lo que hay guardado son fotos —png, jpeg, webp—, PDF y **hojas de cálculo**.
+ * Las hojas entraron con el primer informe de un perito: manda el informe en
+ * PDF y la lista de puntos revisados en un Excel, y esa lista es la que se
+ * pega en los daños. Rechazarla obligaba a guardarla en el correo, que es
+ * justo donde los papeles de un coche dejan de existir el día que esa persona
+ * no está.
+ *
+ * Con macros no: un `.xlsm` es un programa, y esto es un cajón de papeles.
  *
  * Se mira el tipo declarado y la extensión, y tienen que decir lo mismo: el
  * navegador manda los dos y mentir en uno solo es lo fácil.
@@ -21,10 +27,17 @@ const PERMITIDOS: Record<string, string[]> = {
   'image/webp':      ['webp'],
   'image/gif':       ['gif'],
   'application/pdf': ['pdf'],
+  // Las hojas de cálculo del perito y de la gestoría.
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
+
+  'application/vnd.ms-excel': ['xls'],
+  'application/vnd.oasis.opendocument.spreadsheet': ['ods'],
+  'text/csv': ['csv'],
 };
 
 /** Lo que se le puede decir a quien sube. */
-export const TIPOS_ACEPTADOS = 'imágenes (PNG, JPG, WEBP, GIF) o PDF';
+export const TIPOS_ACEPTADOS =
+  'imágenes (PNG, JPG, WEBP, GIF), PDF u hojas de cálculo (XLSX, XLS, ODS, CSV)';
 
 /**
  * El tamaño máximo, en bytes.

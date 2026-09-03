@@ -817,8 +817,11 @@ circulación.
 Antes eso vivía en el correo de quien lo recibiera, y el día que esa persona no
 está, el expediente no tiene nada.
 
-Se aceptan **imágenes y PDF, hasta 3 MB**. Un ejecutable o una página web no son
-documentos de un coche y se rechazan.
+Se aceptan **imágenes, PDF y hojas de cálculo —XLSX, XLS, ODS, CSV—, hasta**
+**3 MB**. Las hojas entraron con el primer informe de un perito: manda el
+informe en PDF y la lista de puntos revisados en un Excel, y esa lista es la
+que se pega en los daños. Un ejecutable, una página web o un Excel con macros
+no son documentos de un coche y se rechazan.
 
 **Son internos: el cliente no los ve en su panel.** Lo que tenga que llegarle se
 le manda. Y no se abren por una dirección suelta: hace falta estar dentro del
