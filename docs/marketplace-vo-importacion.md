@@ -794,8 +794,8 @@ camino entero:
 9. Liberar el pago al vendedor.
 10. Pedirle su factura, que la mande, y **tenerla subida** *(aparte)*.
 11. Apuntar en el pedido su número y el pago *(aparte)*.
-12. Preguntarle dónde y cuándo se recoge.
-13. Organizar el transporte.
+12. Preguntarle dónde y cuándo se recoge *(desde el expediente)*.
+13. Organizar el transporte *(cuando conteste, en Transportes)*.
 14. Que el coche llegue a España.
 15. Encargarle los trámites a la gestoría.
 16. Entregárselo al cliente.
@@ -874,6 +874,14 @@ el mes. No mueve el coche, así que va aparte — pero cuenta en el número rojo
 Sale de la misma cuenta, y **va donde está el botón**: encargar una peritación
 suma en Peritaciones, no en Importaciones. Cuenta acciones, no coches — un
 expediente parado en dos sitios son dos cosas que hacer.
+
+Donde está el botón, no donde acabará el trabajo. Preguntarle al vendedor
+cuándo se puede recoger el coche es un correo que sale del expediente, así que
+suma en **Importaciones** aunque su respuesta se apunte en el tramo. Cuando
+contesta y el día está apuntado, el trabajo pasa a **Transportes** y el número
+se mueve con él. Entre una cosa y otra no hay ninguno: **preguntado y sin
+contestar es espera**, y contratar un camión sin saber el día es contratarlo a
+ciegas.
 
 Lo que se espera de fuera **no suma**. Un contador que incluye esperas no baja
 nunca, y un número que no baja se deja de mirar.
