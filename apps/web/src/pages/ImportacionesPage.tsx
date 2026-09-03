@@ -1193,6 +1193,17 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                       en cada trámite, dentro de{' '}
                       <a href="/gestoria" className="underline underline-offset-2">Gestoría</a>.
                     </div>
+                    {/*
+                      * Y el motivo, aquí y no arriba del todo.
+                      *
+                      * El aviso del panel vive a media pantalla de distancia:
+                      * quien pulsa este botón ve que no pasa nada y da el botón
+                      * por roto, cuando lo que hay es una respuesta que no está
+                      * mirando. Un error que no se ve es un error que no existe.
+                      */}
+                    {aviso && (
+                      <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>
+                    )}
                   </>
                 )}
               </div>
