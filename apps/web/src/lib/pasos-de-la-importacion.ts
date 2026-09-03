@@ -483,6 +483,30 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
   );
 
   /*
+   * 12b · Mirarlo al bajarlo del camión.
+   *
+   * Los kilómetros hay que leerlos antes de moverlo y las llaves contarlas
+   * delante de quien lo trae: son los dos datos que **pierden valor con el
+   * tiempo**, y dentro de una semana ya no hay forma de sostener que faltaba
+   * una llave. Por eso el pedido no pasa a «Recibido» solo, y por eso esto es
+   * una tarea nuestra con su número rojo en Pedidos.
+   *
+   * Va **aparte**: no mueve el coche —los trámites siguen sin ella— pero es
+   * trabajo, y de los que no se pueden hacer más tarde.
+   */
+  const elPedido = m.pedido;
+  if (elPedido?.id && yaEnZaragoza) {
+    const mirado = String(elPedido.km ?? '').trim() !== '' && String(elPedido.llaves ?? '').trim() !== '';
+    pasos.push({
+      clave: 'recepcion',
+      titulo: mirado ? 'Mirado al llegar: kilómetros y llaves' : 'Apuntar los kilómetros y las llaves',
+      estado: mirado ? 'hecho' : 'toca',
+      donde: '/pedidos',
+      via: 'aparte',
+    });
+  }
+
+  /*
    * 13 · Ponerlo legal aquí.
    *
    * Encargarlos **no es tenerlos**. Entre el correo a la gestoría y la

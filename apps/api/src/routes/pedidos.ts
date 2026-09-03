@@ -161,9 +161,23 @@ const CAMPOS = `id, origen, estado, proveedor, vehiculo_titulo, vehiculo_id, mat
  * `CAMPOS` porque este trozo lleva su propio `WHERE`, y en un `RETURNING` eso
  * confunde a cualquiera que lea el SQL.
  */
+/**
+ * Los papeles de este coche, estén en el cajón que estén.
+ *
+ * Un coche tiene tres —el expediente, el pedido y cada tramo— y la lista de
+ * lo que falta miraba solo el del pedido. La Teil II subida desde
+ * Importaciones no contaba: el botón seguía apagado pidiendo un papel que ya
+ * estaba, dos pantallas más allá. Y no hay forma de adivinarlo desde aquí.
+ *
+ * Los papeles no son de una pantalla: son del coche.
+ */
 const PAPELES_DEL_PEDIDO = `,
   COALESCE((SELECT array_agg(d.papel) FROM erp_documentos d
-             WHERE d.ambito = 'pedido' AND d.ambito_id = erp_pedidos.id), '{}') AS papeles`;
+             WHERE (d.ambito = 'pedido' AND d.ambito_id = erp_pedidos.id)
+                OR (d.ambito = 'lead' AND d.ambito_id = erp_pedidos.lead_id)
+                OR (d.ambito = 'transporte' AND d.ambito_id IN (
+                     SELECT t.id FROM erp_transportes t WHERE t.pedido_id = erp_pedidos.id))
+           ), '{}') AS papeles`;
 
 /**
  * Los pedidos cuyo coche ya ha salido, de una vez.

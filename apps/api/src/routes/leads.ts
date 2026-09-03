@@ -353,7 +353,12 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                     SELECT json_build_object(
                       'id', pe2.id, 'estado', pe2.estado,
                       'factura_proveedor', pe2.factura_proveedor,
-                      'factura_pagada_el', pe2.factura_pagada_el)
+                      'factura_pagada_el', pe2.factura_pagada_el,
+                      -- Si alguien ha leído los kilómetros y contado las
+                      -- llaves. Los dos pierden valor con el tiempo, así que
+                      -- es una tarea con reloj y tiene que contarse.
+                      'km', pe2.recepcion->>'km',
+                      'llaves', pe2.recepcion->>'llaves')
                       FROM erp_pedidos pe2
                      WHERE pe2.lead_id = moveadvisor_market_leads.id
                      ORDER BY pe2.created_at LIMIT 1

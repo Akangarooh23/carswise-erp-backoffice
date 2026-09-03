@@ -681,3 +681,65 @@ describe('llegar es que lo descarguen, no que cambie la etapa', () => {
     assert.equal(paso(x, 'tramites').estado, 'porVenir');
   });
 });
+
+describe('mirarlo al bajarlo del camión', () => {
+  const AQUI = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    tramo: {
+      recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
+      fecha_recogida: '2026-09-15T08:30:00Z', fecha_entrega: '2026-09-18T11:00:00Z',
+    },
+    // Con su factura ya apuntada: lo que se cuenta aquí es la recepción, y sin
+    // esto Pedidos sumaría también el apunte del pago.
+    pedido: {
+      id: 'PED-2026-001', estado: 'En camino',
+      factura_proveedor: 'ACD-2026-0903-001', factura_pagada_el: '2026-09-08',
+    },
+  };
+
+  test('con el coche aquí y sin mirar, es trabajo en Pedidos', () => {
+    // Los kilómetros hay que leerlos antes de moverlo y las llaves contarlas
+    // delante de quien lo trae: dentro de una semana ya no hay forma de
+    // sostener que faltaba una llave.
+    const x = kia(AQUI, 'En transporte');
+    assert.equal(paso(x, 'recepcion').estado, 'toca');
+    assert.equal(pendientesPorPantalla([x], HOY)['/pedidos'], 1);
+  });
+
+  test('mirado, deja de pedirlo', () => {
+    const x = kia({ ...AQUI, pedido: { ...AQUI.pedido, km: '84210', llaves: '2' } }, 'En transporte');
+    assert.equal(paso(x, 'recepcion').estado, 'hecho');
+    assert.equal(pendientesPorPantalla([x], HOY)['/pedidos'], undefined);
+  });
+
+  test('con los kilómetros pero sin las llaves, sigue faltando', () => {
+    // Una segunda llave cuesta cientos de euros. Descubrir que no está el día
+    // que se entrega al cliente es descubrirlo tarde.
+    const x = kia({ ...AQUI, pedido: { ...AQUI.pedido, km: '84210' } }, 'En transporte');
+    assert.equal(paso(x, 'recepcion').estado, 'toca');
+  });
+
+  test('cero llaves es un dato, no un hueco', () => {
+    const x = kia({ ...AQUI, pedido: { ...AQUI.pedido, km: '84210', llaves: '0' } }, 'En transporte');
+    assert.equal(paso(x, 'recepcion').estado, 'hecho');
+  });
+
+  test('antes de que llegue, ni se menciona', () => {
+    // No hay nada que mirar: el coche está cruzando Francia.
+    const x = kia({
+      ...AQUI, tramo: { ...AQUI.tramo, fecha_entrega: null },
+    }, 'En transporte');
+    assert.ok(!pasosDeLaImportacion(x, HOY).some((p) => p.clave === 'recepcion'));
+  });
+
+  test('y no le roba el titular a lo que mueve el coche', () => {
+    // Los trámites siguen sin ella: es trabajo, pero va aparte, y por eso no
+    // puede ser lo que conteste a «y ahora qué».
+    const x = kia(AQUI, 'En transporte');
+    const pasos = pasosDeLaImportacion(x, HOY);
+    assert.notEqual(loQueToca(pasos)?.clave, 'recepcion');
+    assert.ok(loQueFaltaAparte(pasos).some((p) => p.clave === 'recepcion'));
+  });
+});

@@ -622,6 +622,15 @@ function AlLlegar({ p, guardando, onCambiar }: {
  */
 function LoQueFalta({ estado, falta }: { estado: string | null; falta: string[] }) {
   if (!estado || !falta.length) return null;
+  /*
+   * Si lo que falta son papeles, se dice dónde se suben.
+   *
+   * Una lista de tres papeles sin decir dónde ponerlos deja a quien la lee
+   * buscando por cuatro pantallas. Cuentan estén en el cajón que estén —los
+   * papeles son del coche—, así que da igual desde dónde se suban; el
+   * expediente es el sitio donde se ven los tres juntos.
+   */
+  const faltanPapeles = falta.some((x) => /ficha|COC|factura|permiso|contrato|justificante|informe|DNI|recibo/i.test(x));
   return (
     <div className="mt-2 p-3 rounded-lg border border-amber-300 bg-amber-50">
       <div className="text-xs font-bold text-amber-900 mb-1">
@@ -630,6 +639,14 @@ function LoQueFalta({ estado, falta }: { estado: string | null; falta: string[] 
       <ul className="text-[11px] text-amber-800 list-disc pl-4 space-y-0.5">
         {falta.map((x) => <li key={x}>{x}</li>)}
       </ul>
+      {faltanPapeles && (
+        <p className="text-[11px] mt-1.5">
+          <a href="/importaciones" className="text-amber-900 font-semibold underline underline-offset-2">
+            Subir los papeles en el expediente →
+          </a>
+          <span className="text-amber-700/80"> · o aquí abajo, en «Documentos». Cuentan igual: son del coche, no de la pantalla.</span>
+        </p>
+      )}
       <p className="text-[11px] text-amber-700/80 mt-1.5">
         {POR_QUE_SE_PIDE[estado] ?? ''}
       </p>

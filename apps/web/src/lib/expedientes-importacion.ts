@@ -156,6 +156,9 @@ export interface MetaImportacion {
     estado: string;
     factura_proveedor?: string | null;
     factura_pagada_el?: string | null;
+    /** Los kilómetros que marca de verdad y cuántas llaves vinieron. */
+    km?: string | null;
+    llaves?: string | null;
   } | null;
   /**
    * El tramo que sale de la nave del vendedor, para poder escribirle desde
