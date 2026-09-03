@@ -116,3 +116,58 @@ describe('el texto que lee un transportista', () => {
     assert.match(html, /Si podéis antes del viernes/);
   });
 });
+
+describe('y el idioma lo elige quien lo manda', () => {
+  test('en alemán, para el que sale de Múnich', () => {
+    const { subject, html } = correoDePresupuestoAlTransportista(KIA, 'de');
+    assert.match(subject, /Transportangebot/);
+    assert.match(html, /Guten Tag,/);
+    assert.match(html, /Können Sie diesen Transport übernehmen\?/);
+    assert.match(html, /Was würde der Transport kosten\?/);
+    assert.match(html, /Ein Autotransporter kommt bis zum Fahrzeug/);
+  });
+
+  test('en inglés, que es en lo que trabajan los del este', () => {
+    // Media de los que hacen esta ruta son polacos o checos: ahí el alemán no
+    // ayuda y el español menos.
+    const { subject, html } = correoDePresupuestoAlTransportista(KIA, 'en');
+    assert.match(subject, /Transport quote/);
+    assert.match(html, /Hello,/);
+    assert.match(html, /Can you take this job\?/);
+    assert.match(html, /How much would it cost\?/);
+  });
+
+  test('y la fecha, en el formato de quien la lee', () => {
+    // Un alemán lee «09/04» como el 9 de abril, y esa confusión mueve un camión
+    // un mes entero.
+    assert.match(correoDePresupuestoAlTransportista(KIA, 'de').html, /04\.09\.2026/);
+    assert.match(correoDePresupuestoAlTransportista(KIA, 'en').html, /4 September 2026/);
+    assert.match(correoDePresupuestoAlTransportista(KIA, 'es').html, /4 de septiembre de 2026/);
+  });
+
+  test('el «no entra un portacoches» también se traduce', () => {
+    // Es el que hace daño callado, y en un idioma que no se lee está callado.
+    const sin = { ...KIA, entraPortacoches: false };
+    assert.match(correoDePresupuestoAlTransportista(sin, 'de').html, /KEIN Autotransporter/);
+    assert.match(correoDePresupuestoAlTransportista(sin, 'en').html, /can NOT reach it/);
+  });
+
+  test('sin decir cuál, sale en castellano', () => {
+    // Los de la lista de Proveedores son de aquí. El resto es una elección.
+    assert.equal(
+      correoDePresupuestoAlTransportista(KIA).html,
+      correoDePresupuestoAlTransportista(KIA, 'es').html
+    );
+  });
+
+  test('y los datos del coche no se traducen: son los que son', () => {
+    // La calle alemana y el nombre del contacto salen igual en los tres. Una
+    // dirección traducida es una dirección equivocada.
+    for (const i of ['es', 'de', 'en'] as const) {
+      const { html } = correoDePresupuestoAlTransportista(KIA, i);
+      assert.match(html, /Musterstraße 18, 80331 München/);
+      assert.match(html, /Daniel Weber/);
+      assert.match(html, /TRP-2026-001/);
+    }
+  });
+});

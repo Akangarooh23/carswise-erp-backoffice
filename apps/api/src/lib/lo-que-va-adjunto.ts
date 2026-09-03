@@ -20,8 +20,15 @@
  * salta.
  */
 
-/** En qué idioma está el correo al que se le pega la línea. */
-export type IdiomaDelCorreo = 'de' | 'es';
+/**
+ * En qué idioma está el correo al que se le pega la línea.
+ *
+ * `de` sale en alemán con su inglés debajo, que es como van los correos al
+ * vendedor. `en` es inglés a secas: el transportista puede ser polaco o
+ * checo —la mitad de los que hacen esta ruta lo son— y ahí el alemán no
+ * ayuda y el español menos.
+ */
+export type IdiomaDelCorreo = 'de' | 'es' | 'en';
 
 /** Un papel que se ha marcado para que vaya. */
 export interface PapelAdjunto {
@@ -84,7 +91,9 @@ export function comoSeLlama(p: PapelAdjunto, idioma: IdiomaDelCorreo): string {
   const nombre = String(p?.nombre ?? '').trim();
   if (!papel) return nombre;
   const traducido =
-    idioma === 'de' ? (EN_ALEMAN[papel] ?? papel) : papel;
+    idioma === 'de' ? (EN_ALEMAN[papel] ?? papel)
+    : idioma === 'en' ? (EN_INGLES[papel] ?? papel)
+    : papel;
   return nombre ? `${traducido} (${nombre})` : traducido;
 }
 
@@ -116,6 +125,11 @@ export function lineaDeAdjuntos(papeles: PapelAdjunto[], idioma: IdiomaDelCorreo
       `<p style="${estilo}"><strong>Anhang:</strong> ${de}</p>` +
       `<p style="${estilo};color:#5E5E59"><em>Attached: ${en}</em></p>`
     );
+  }
+
+  if (idioma === 'en') {
+    const en = utiles.map((p) => esc(comoSeLlamaEnIngles(p))).join(', ');
+    return `<p style="${estilo}"><strong>Attached:</strong> ${en}</p>`;
   }
 
   const es = utiles.map((p) => esc(comoSeLlama(p, 'es'))).join(', ');

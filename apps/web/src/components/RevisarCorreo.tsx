@@ -16,7 +16,7 @@
  * Lo que de verdad hace falta al revisar es lo de este coche en concreto: «el
  * jueves está cerrado», «llamad antes a Miguel». Para eso está la línea.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './ui/Modal.js';
 import { lineaDeAdjuntos, type IdiomaDelCorreo } from '../lib/lo-que-va-adjunto.js';
 
@@ -44,7 +44,27 @@ export interface VistaDelCorreo {
   papeles?: PapelDisponible[];
   /** En qué idioma está, para anunciar los adjuntos en el suyo. */
   idioma?: IdiomaDelCorreo;
+  /**
+   * Entre cuáles se puede elegir, si se puede elegir.
+   *
+   * Solo los del transportista lo traen: al vendedor alemán se le escribe en
+   * alemán y no hay nada que decidir. Sin esta lista no se enseña el selector,
+   * que es como no ofrecer una opción que no existe.
+   */
+  idiomas?: IdiomaDelCorreo[];
+  /**
+   * Qué correo es, para saber cuándo es otro y cuándo es el mismo.
+   *
+   * Cambiar de idioma trae un correo nuevo del servidor, pero sigue siendo el
+   * mismo encargo: lo que se haya escrito a mano y los papeles marcados tienen
+   * que seguir ahí. Sin esta clave, elegir «Alemán» borraba las dos cosas sin
+   * decirlo, y eso se descubre cuando el correo ya ha salido.
+   */
+  clave?: string;
 }
+
+/** Cómo se llama cada idioma en la pantalla, que es española. */
+const SE_LLAMA: Record<string, string> = { es: 'Español', de: 'Alemán', en: 'Inglés' };
 
 /** «230 kB», «1,4 MB». Se enseña porque es como se distingue un adjunto de otro. */
 function pesa(bytes: number): string {
@@ -53,11 +73,19 @@ function pesa(bytes: number): string {
   return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} MB`;
 }
 
-export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerrar }: {
+export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCambiarIdioma, onCerrar }: {
   vista: VistaDelCorreo | null;
   enviando: boolean;
   error: string;
-  onEnviar: (cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) => void;
+  onEnviar: (cambios: { para: string; asunto: string; nota: string; adjuntos: string[]; idioma?: string }) => void;
+  /**
+   * Volver a pedir el correo en otro idioma.
+   *
+   * Se pide entero al servidor en vez de traducir aquí: el cuerpo lo escribe
+   * quien lo manda, y una traducción hecha en la pantalla sería otro texto
+   * distinto del que sale, que es justo lo que este cuadro existe para evitar.
+   */
+  onCambiarIdioma?: (idioma: string) => void;
   onCerrar: () => void;
 }) {
   const [para, setPara] = useState('');
@@ -72,13 +100,25 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
    */
   const [marcados, setMarcados] = useState<string[]>([]);
 
-  // Al abrir uno nuevo, sus datos. Sin esto, el segundo correo que se revisa
-  // sale con el asunto del primero.
+  /**
+   * Al abrir uno nuevo, sus datos.
+   *
+   * Sin esto, el segundo correo que se revisa sale con el asunto del primero.
+   * Pero **cambiar de idioma no es abrir otro**: trae el cuerpo y el asunto
+   * nuevos y conserva lo escrito a mano y los papeles marcados, que es lo que
+   * ha puesto quien está delante.
+   */
+  const claveAnterior = useRef<string | null>(null);
   useEffect(() => {
+    const clave = vista?.clave ?? null;
+    const esOtro = clave === null || clave !== claveAnterior.current;
+    claveAnterior.current = clave;
     setPara(vista?.para ?? '');
     setAsunto(vista?.subject ?? '');
-    setNota('');
-    setMarcados([]);
+    if (esOtro) {
+      setNota('');
+      setMarcados([]);
+    }
   }, [vista]);
 
   /**
@@ -106,6 +146,30 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
             <input value={para} onChange={(e) => setPara(e.target.value)}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+          {/*
+            * En qué idioma sale.
+            *
+            * Al cambiarlo se pide el correo entero otra vez, con el asunto y
+            * todo: media traducción se nota más que ninguna. Lo que se haya
+            * escrito en «algo que añadir» se conserva, porque eso lo escribe
+            * quien está aquí y no se traduce solo.
+            */}
+          {vista.idiomas && vista.idiomas.length > 1 && onCambiarIdioma && (
+            <div className="text-[11px] text-brand-400">
+              En qué idioma sale
+              <div className="flex gap-1.5 mt-0.5">
+                {vista.idiomas.map((i) => (
+                  <button key={i} onClick={() => onCambiarIdioma(i)} disabled={enviando}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border disabled:opacity-50 ${
+                            (vista.idioma ?? 'es') === i
+                              ? 'bg-brand-600 text-white border-brand-600'
+                              : 'bg-white text-brand-500 border-brand-200 hover:bg-brand-50'}`}>
+                    {SE_LLAMA[i] ?? i}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="text-[11px] text-brand-400">
             Asunto
             <input value={asunto} onChange={(e) => setAsunto(e.target.value)}
@@ -179,7 +243,7 @@ export default function RevisarCorreo({ vista, enviando, error, onEnviar, onCerr
         )}
 
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={() => onEnviar({ para: para.trim(), asunto: asunto.trim(), nota, adjuntos: marcados })}
+          <button onClick={() => onEnviar({ para: para.trim(), asunto: asunto.trim(), nota, adjuntos: marcados, idioma: vista.idioma })}
                   disabled={enviando || !para.trim()}
                   className="px-4 py-2 text-sm font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
             {enviando ? 'Mandando…' : marcados.length

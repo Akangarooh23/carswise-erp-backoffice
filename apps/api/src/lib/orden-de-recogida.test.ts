@@ -95,6 +95,34 @@ describe('lo que lleva la orden', () => {
   });
 });
 
+describe('y la orden también sale en tres idiomas', () => {
+  test('en alemán', () => {
+    const { subject, html } = correoDeOrdenDeRecogida(TRAMO, 'de');
+    assert.match(subject, /Abholung/);
+    assert.match(html, /Guten Tag,/);
+    assert.match(html, /Abholort/);
+    assert.match(html, /11\.09\.2026/);
+  });
+
+  test('en inglés', () => {
+    const { subject, html } = correoDeOrdenDeRecogida(TRAMO, 'en');
+    assert.match(subject, /Pick-up/);
+    assert.match(html, /Collect at/);
+    assert.match(html, /11 September 2026/);
+  });
+
+  test('y el «preguntar por» se traduce con el punto', () => {
+    // Es la frase que lee el conductor en la puerta: en castellano dentro de
+    // una orden alemana es la que se salta.
+    assert.match(correoDeOrdenDeRecogida(TRAMO, 'de').html, /fragen nach Autowelt/);
+    assert.match(correoDeOrdenDeRecogida(TRAMO, 'en').html, /ask for Autowelt/);
+  });
+
+  test('sin decir cuál, en castellano', () => {
+    assert.equal(correoDeOrdenDeRecogida(TRAMO).html, correoDeOrdenDeRecogida(TRAMO, 'es').html);
+  });
+});
+
 describe('lo que hace falta para mandarla', () => {
   test('con coche, origen y destino, se puede', () => {
     assert.deepEqual(faltaParaLaOrden(TRAMO), []);

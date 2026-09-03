@@ -35,8 +35,14 @@ describe('los correos a proveedores dicen lo que llevan', () => {
         !/=\s*await traeLosAdjuntos\(/.test(fuente),
         `en ${donde} alguien trae los adjuntos sin pasar por loQueSeAdjunta`
       );
-      const traidas = fuente.match(/loQueSeAdjunta\(cajones, req\.body\?\.adjuntos, '(de|es)'\)/g) ?? [];
+      // El idioma es una constante o la variable que sale de `elIdioma`, que
+      // es la que elige quien revisa. Lo que no vale es no pasar ninguno.
+      const traidas = fuente.match(
+        /loQueSeAdjunta\(cajones, req\.body\?\.adjuntos, (?:'(?:de|es|en)'|idioma)\)/g
+      ) ?? [];
       assert.ok(traidas.length > 0, `en ${donde} no se adjunta nada`);
+      const sueltas = fuente.match(/loQueSeAdjunta\(cajones, req\.body\?\.adjuntos\)/g) ?? [];
+      assert.equal(sueltas.length, 0, `en ${donde} se adjunta sin decir en qué idioma`);
     }
   });
 
@@ -46,8 +52,9 @@ describe('los correos a proveedores dicen lo que llevan', () => {
       assert.ok(vistas.length > 0, `en ${donde} no hay vista previa de ningún correo`);
       for (const v of vistas) {
         // Sin él, la pantalla anunciaría en español un adjunto de un correo
-        // alemán, y lo que se revisa dejaría de ser lo que sale.
-        assert.match(v, /idioma: '(de|es)'/, `en ${donde} una vista previa no dice su idioma`);
+        // alemán, y lo que se revisa dejaría de ser lo que sale. Puede ser fijo
+        // —al vendedor se le escribe en alemán y punto— o el que se ha elegido.
+        assert.match(v, /idioma: '(de|es|en)'|idioma,/, `en ${donde} una vista previa no dice su idioma`);
       }
     }
   });

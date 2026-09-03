@@ -20,8 +20,22 @@ import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import {
-  correoDePresupuestoAlTransportista, faltaParaPedirPresupuesto,
+  correoDePresupuestoAlTransportista, faltaParaPedirPresupuesto, type Idioma,
 } from '../lib/presupuesto-al-transportista.js';
+
+/**
+ * En qué idioma sale un correo al transportista.
+ *
+ * Lo elige quien revisa, y por defecto castellano: los de la lista de
+ * Proveedores son de aquí. Lo que llegue y no sea uno de los tres se trata
+ * como castellano en vez de reventar — un correo no sale peor por eso, y
+ * fallar aquí dejaría un coche sin recoger.
+ */
+const IDIOMAS: Idioma[] = ['es', 'de', 'en'];
+function elIdioma(v: unknown): Idioma {
+  const s = String(v ?? '').trim().toLowerCase();
+  return (IDIOMAS as string[]).includes(s) ? (s as Idioma) : 'es';
+}
 import { correoDeDatosDeRecogida, faltaParaPedirLaRecogida } from '../lib/datos-de-recogida.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import { papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
@@ -406,7 +420,8 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     const soloVista = req.body?.soloVista === true;
     const nota = notaEnParrafos(req.body?.nota);
 
-    const { subject, html } = correoDeOrdenDeRecogida({ ...datos, nota });
+    const idioma = elIdioma(req.body?.idioma);
+    const { subject, html } = correoDeOrdenDeRecogida({ ...datos, nota }, idioma);
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
@@ -421,7 +436,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'es' });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma, idiomas: IDIOMAS });
       return;
     }
 
@@ -430,7 +445,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
     // menciona es un adjunto que no se abre.
     let dicho = '';
     try {
-      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'es');
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, idioma);
       adjuntos = va.attachments;
       dicho = va.linea;
     } catch (e) {
@@ -532,7 +547,8 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
     const soloVista = req.body?.soloVista === true;
     const nota = notaEnParrafos(req.body?.nota);
 
-    const { subject, html } = correoDePresupuestoAlTransportista({ ...datos, nota });
+    const idioma = elIdioma(req.body?.idioma);
+    const { subject, html } = correoDePresupuestoAlTransportista({ ...datos, nota }, idioma);
     const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
     const elAsunto = asuntoLimpio(req.body?.asunto, subject);
 
@@ -544,7 +560,7 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'es' });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma, idiomas: IDIOMAS });
       return;
     }
 
@@ -553,7 +569,7 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
     // menciona es un adjunto que no se abre.
     let dicho = '';
     try {
-      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'es');
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, idioma);
       adjuntos = va.attachments;
       dicho = va.linea;
     } catch (e) {

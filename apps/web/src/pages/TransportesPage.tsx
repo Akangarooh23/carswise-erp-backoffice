@@ -167,10 +167,10 @@ export default function TransportesPage() {
    * Con `finally`: sin él, una llamada que revienta deja el panel entero en
    * «guardando» y todos los botones apagados sin decir por qué.
    */
-  async function abreParaRevisar(ruta: string, id: string) {
+  async function abreParaRevisar(ruta: string, id: string, idioma?: string) {
     setGuardando(true);
     try {
-      const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true });
+      const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true, idioma });
       if (!r.ok) {
         const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
         setError(dice);
@@ -179,7 +179,14 @@ export default function TransportesPage() {
       }
       setErrorDelPanel('');
       const d = r.data as unknown as VistaDelCorreo;
-      setRevisando({ vista: { para: d.para, subject: d.subject, html: d.html, papeles: d.papeles, idioma: d.idioma }, id, ruta });
+      setRevisando({
+        vista: {
+          para: d.para, subject: d.subject, html: d.html, papeles: d.papeles,
+          // La clave es la ruta: al cambiar de idioma sigue siendo el mismo
+          // encargo, y lo escrito a mano y los papeles marcados se conservan.
+          idioma: d.idioma, idiomas: d.idiomas, clave: ruta,
+        }, id, ruta,
+      });
     } catch (e) {
       const dice = (e as Error)?.message || 'No se ha podido preparar.';
       setError(dice);
@@ -190,7 +197,9 @@ export default function TransportesPage() {
   }
 
   /** Y ya revisada, se manda con lo que haya cambiado. */
-  async function mandaLaRevisada(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
+  async function mandaLaRevisada(cambios: {
+    para: string; asunto: string; nota: string; adjuntos: string[]; idioma?: string;
+  }) {
     if (!revisando) return;
     const { id, ruta } = revisando;
     setGuardando(true);
@@ -284,6 +293,9 @@ export default function TransportesPage() {
         enviando={guardando}
         error={errorDelPanel}
         onEnviar={(cambios) => void mandaLaRevisada(cambios)}
+        onCambiarIdioma={(i) => {
+          if (revisando) void abreParaRevisar(revisando.ruta, revisando.id, i);
+        }}
         onCerrar={() => setRevisando(null)}
       />
 
