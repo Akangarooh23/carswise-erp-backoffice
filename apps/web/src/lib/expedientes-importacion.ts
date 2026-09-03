@@ -157,6 +157,12 @@ export interface MetaImportacion {
     factura_proveedor?: string | null;
     factura_pagada_el?: string | null;
   } | null;
+  /**
+   * El tramo que sale de la nave del vendedor, para poder escribirle desde
+   * aquí: los tres correos al vendedor viven en el expediente, y la respuesta
+   * —dirección exacta, día y hora— se guarda en el tramo, que es quien la usa.
+   */
+  tramo_del_vendedor?: string | null;
   /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
   recogida_preguntada_at?: string | null;
   // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.

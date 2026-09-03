@@ -193,6 +193,14 @@ export default function ImportacionesPage() {
   const encargaALaGestoria = (id: string) => preparaCorreo(`/leads/${id}/encargo-gestoria`);
   const pideLaFactura = (id: string) => preparaCorreo(`/leads/${id}/factura-vendedor`);
   const preguntaAlVendedor = (id: string) => preparaCorreo(`/leads/${id}/reserva-vendedor`);
+  /**
+   * El correo vive en el tramo, pero se manda desde aquí.
+   *
+   * Es el mismo de siempre —no hay una segunda copia—: se le pide al tramo
+   * que sale de la nave del vendedor, que es el que guarda la respuesta.
+   */
+  const preguntaLaRecogida = (x: Expediente) =>
+    preparaCorreo(`/transportes/${x.meta?.tramo_del_vendedor}/datos-recogida`);
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -400,6 +408,7 @@ export default function ImportacionesPage() {
           onCerrar={() => setAbierto(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onPreguntarAlVendedor={() => void preguntaAlVendedor(abierto.id)}
+          onPreguntarRecogida={() => void preguntaLaRecogida(abierto)}
           onGuardarRespuesta={(datos) => void guardaLaRespuesta(abierto.id, datos)}
           onPedirFactura={() => void pideLaFactura(abierto.id)}
           onEncargarALaGestoria={() => void encargaALaGestoria(abierto.id)}
@@ -581,6 +590,7 @@ interface PanelProps {
   onCerrar: () => void;
   onCambiar: (cambios: Record<string, unknown>) => void;
   onPreguntarAlVendedor: () => void;
+  onPreguntarRecogida: () => void;
   onGuardarRespuesta: (datos: Record<string, string>) => void;
   onPedirFactura: () => void;
   onEncargarALaGestoria: () => void;
@@ -596,7 +606,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onGuardarRespuesta, onPedirFactura,
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onPreguntarRecogida, onGuardarRespuesta, onPedirFactura,
 onEncargarALaGestoria, aviso }: PanelProps) {
   /**
    * Lo que trae su respuesta al primer correo, en el mismo orden en que lo
@@ -1046,6 +1056,50 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                     <div className="text-[11px] text-emerald-800/80 mt-1.5">
                       Le dice que la transferencia ha salido y con qué datos emitirla.
                       Sin esa factura, el precio del coche deja de ser un suplido y lleva IVA.
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/*
+              * Y el tercer correo al vendedor: dónde y cuándo se recoge.
+              *
+              * Estaba en Transportes, dentro del tramo, y es el único de los
+              * tres que le escribimos desde otra pantalla. Cada pantalla manda
+              * los correos de su interlocutor —el perito en Peritaciones, el
+              * transportista en Transportes— y el vendedor es de aquí.
+              *
+              * La respuesta se sigue guardando en el tramo, que es quien la
+              * usa: la dirección exacta va a «Desde» y el día a «Recogida
+              * prevista». Preguntar y guardar no tienen por qué pasar en la
+              * misma pantalla.
+              */}
+            {depositoLiberado(x) && x.meta?.tramo_del_vendedor && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/70">
+                <div className="text-xs font-semibold text-emerald-800 mb-1.5">
+                  Dónde y cuándo se recoge
+                </div>
+                {x.meta?.recogida_preguntada_at ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-bold text-emerald-700">
+                      ✓ Preguntado el {dia(x.meta.recogida_preguntada_at)}
+                    </span>
+                    <button onClick={() => onPreguntarRecogida()} disabled={guardando}
+                            className="text-[11px] text-brand-400 underline underline-offset-2">
+                      preguntar otra vez
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onPreguntarRecogida()} disabled={guardando}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                      Preguntarle dónde y cuándo se recoge
+                    </button>
+                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                      La dirección exacta, el día y la hora, por quién preguntar, qué se
+                      lleva el conductor y si entra un camión portacoches. Su respuesta
+                      se apunta en el tramo, en Transportes.
                     </div>
                   </>
                 )}

@@ -639,8 +639,9 @@ anuncio. Un transportista no va a una ciudad.
       hayas preguntado al vendedor y haya transportista elegido. Dice qué falta.
       Sin su respuesta, «Desde» es la ciudad del anuncio, y un camión no va a una
       ciudad: va a una calle, un día, a una hora y preguntando por alguien.
-- [ ] Y en el **segundo tramo** ese bloque no sale: no hay vendedor a quien
-      preguntar, el coche sale de nuestra campa.
+- [ ] El botón de preguntárselo **no está aquí**: los tres correos al vendedor
+      viven en el expediente. Aquí se ve si ya se le preguntó y, cuando
+      conteste, es donde se apunta lo que diga.
 - [ ] Pregunta **cinco** cosas: la **dirección exacta**; **qué día y a qué hora**
       se puede recoger —o, si es flexible, desde cuándo está listo y con qué
       horario—; **por quién pregunta el conductor** y su teléfono; **qué se**

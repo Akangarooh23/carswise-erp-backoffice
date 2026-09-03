@@ -486,30 +486,28 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * hora y preguntando por alguien. La respuesta a este correo es lo que
           * se escribe arriba.
           */}
+        {/*
+          * Este correo se manda desde el expediente.
+          *
+          * Es al vendedor, y los tres que le escribimos viven juntos allí:
+          * cada pantalla manda los correos de su interlocutor. Aquí se queda
+          * la orden de recogida, que es al transportista, y **su respuesta**,
+          * que es lo que se escribe en «Desde» y en «Recogida prevista».
+          */}
         {toca('dondeRecoger') && alVendedor && (
         <div className="mt-4 pt-3 border-t border-brand-200">
           <div className="text-xs font-semibold text-brand-600 mb-1.5">Dónde y cuándo se recoge</div>
           {t.recogida_preguntada_at ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] font-bold text-emerald-700">
-                ✓ Preguntado al vendedor el {new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}
-              </span>
-              <button onClick={onPreguntarRecogida} disabled={guardando}
-                      className="text-[11px] text-brand-400 underline underline-offset-2">
-                preguntar otra vez
-              </button>
-            </div>
+            <span className="text-[13px] font-bold text-emerald-700">
+              ✓ Preguntado al vendedor el {new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}
+            </span>
           ) : (
-            <>
-              <button onClick={onPreguntarRecogida} disabled={guardando}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
-                Preguntárselo al vendedor
-              </button>
-              <div className="text-[11px] text-brand-300 mt-1.5">
-                La dirección exacta, desde cuándo, el horario y por quién preguntar.
-                Va antes que la orden: sin su respuesta, «Desde» es la ciudad del anuncio.
-              </div>
-            </>
+            <div className="text-[11px] text-brand-300">
+              Todavía sin preguntar. Se le pregunta desde el{' '}
+              <a href="/importaciones" className="underline underline-offset-2">expediente</a>,
+              con los otros dos correos al vendedor. Sin su respuesta, «Desde» es la
+              ciudad del anuncio, y un camión no va a una ciudad.
+            </div>
           )}
         </div>
         )}

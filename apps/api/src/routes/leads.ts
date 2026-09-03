@@ -350,7 +350,15 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                      WHERE pe2.lead_id = moveadvisor_market_leads.id
                      ORDER BY pe2.created_at LIMIT 1
                   ),
-                  -- Y si ya se le ha preguntado dónde y cuándo se recoge.
+                  -- El tramo que sale de la nave del vendedor, y si ya se le
+                  -- ha preguntado dónde y cuándo se recoge. El correo se manda
+                  -- desde aquí —los tres al vendedor viven juntos— y la
+                  -- respuesta se guarda en el tramo, que es quien la usa.
+                  'tramo_del_vendedor', (
+                    SELECT t.id FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 1
+                     ORDER BY t.created_at LIMIT 1
+                  ),
                   'recogida_preguntada_at', (
                     SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id

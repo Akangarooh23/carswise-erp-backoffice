@@ -500,7 +500,12 @@ aparecen **con el nombre y nada más**. Rellenarlos es trabajo de una persona.
 ## Los ocho correos que salen a proveedores
 
 Uno por cada cosa que hay que pedirle a alguien de fuera, y cada uno en el
-momento en que esa cosa hace falta:
+momento en que esa cosa hace falta. **Cada pantalla manda los correos de su**
+**interlocutor**: al vendedor se le escribe desde el expediente, al perito
+desde Peritaciones, al transportista desde Transportes y a la gestoría desde
+la suya. Sus respuestas se guardan donde hagan falta, que no tiene por qué ser
+la misma pantalla: lo que contesta el vendedor sobre la recogida se apunta en
+el tramo.
 
 | Cuándo | A quién | Qué pide |
 |---|---|---|
@@ -508,7 +513,7 @@ momento en que esa cosa hace falta:
 | Con la respuesta del vendedor | El perito | Que vaya a ver el coche, qué mirar, **la cita ya puesta** con su dirección y su teléfono, y **cuánto cuesta** |
 | Con la cita cerrada | El vendedor alemán | Le confirma **el día y la hora**, quién va, y que tenga el coche y los papeles listos |
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
-| Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, con quién, qué se lleva el conductor y **si entra un portacoches** |
+| Con el coche pagado | El vendedor alemán | **Dónde y cuándo** se recoge, con quién, qué se lleva el conductor y **si entra un portacoches** |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
 | Cuando ha hecho la revisión | El perito | **Su factura**, a nombre de PopCar y no del cliente |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |
