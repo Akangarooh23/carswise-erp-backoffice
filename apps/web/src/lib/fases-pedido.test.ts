@@ -148,3 +148,27 @@ describe('qué toca en un pedido, según de dónde viene el coche', () => {
     assert.equal(queTocaEnElPedido('Cancelado', 'importacion', 'Cancelado'), 'Cancelado');
   });
 });
+
+describe('un pedido de importación nace pagado', () => {
+  test('en «Pedido» ya se puede apuntar su factura y el pago', () => {
+    // El pedido se crea al liberar el dinero: en cuanto existe hay una factura
+    // que apuntar. Sin esto, el panel decía arriba «falta apuntar su factura» y
+    // abajo no había dónde.
+    const campos = camposDe('Pedido', false, 'importacion').map((c) => c.campo);
+    assert.ok(campos.includes('factura_proveedor'));
+    assert.ok(campos.includes('factura_pagada_el'));
+  });
+
+  test('en los demás orígenes, en «Pedido» todavía no', () => {
+    // Ahí «Pedido» es un encargo que aún no han aceptado: preguntar por el pago
+    // sería preguntar por algo que no ha pasado.
+    const campos = camposDe('Pedido', false, 'concesionario').map((c) => c.campo);
+    assert.ok(!campos.includes('factura_proveedor'));
+    assert.ok(!campos.includes('factura_pagada_el'));
+  });
+
+  test('y «Ver todo» los enseña igual, venga de donde venga', () => {
+    const campos = camposDe('Pedido', true, 'concesionario').map((c) => c.campo);
+    assert.ok(campos.includes('factura_proveedor'));
+  });
+});

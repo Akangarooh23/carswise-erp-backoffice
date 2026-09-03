@@ -663,7 +663,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
   const siguiente = siguienteEstado(p.estado);
   const [verTodo, setVerTodo] = useState(false);
   const toca = (b: Bloque) => tocaEnFase(b, p.estado, verTodo);
-  const campos = camposDe(p.estado, verTodo);
+  const campos = camposDe(p.estado, verTodo, p.origen);
   const sale = (c: Campo) => campos.some((x) => x.campo === c);
 
   /**

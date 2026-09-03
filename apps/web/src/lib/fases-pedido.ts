@@ -125,6 +125,24 @@ export function tocaCampo(campo: Campo, estado: string, verTodo = false): boolea
 }
 
 /** Los campos de esta fase, en orden. Vacío si no hay ninguno que rellenar. */
-export function camposDe(estado: string, verTodo = false): CampoDePedido[] {
-  return CAMPOS.filter((c) => verTodo || c.fases.includes(estado));
+/**
+ * En una importación, el pedido **nace comprado y pagado**.
+ *
+ * Se crea al liberar el dinero, así que en cuanto existe ya hay una factura
+ * del vendedor que apuntar y un pago que fechar. En los demás orígenes no:
+ * ahí «Pedido» es un encargo que aún no han aceptado, y preguntar por el pago
+ * sería preguntar por algo que no ha pasado.
+ *
+ * Es la contradicción que se veía en pantalla: arriba ponía «falta apuntar su
+ * factura» y abajo no había dónde.
+ */
+const YA_PAGADO_AL_NACER: Record<string, Campo[]> = {
+  importacion: ['factura_proveedor', 'factura_pagada_el'],
+};
+
+export function camposDe(estado: string, verTodo = false, origen = ''): CampoDePedido[] {
+  const antesDeTiempo = estado === 'Pedido' ? (YA_PAGADO_AL_NACER[origen] ?? []) : [];
+  return CAMPOS.filter(
+    (c) => verTodo || c.fases.includes(estado) || antesDeTiempo.includes(c.campo)
+  );
 }
