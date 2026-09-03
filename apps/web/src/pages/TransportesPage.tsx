@@ -459,6 +459,20 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                 placeholder="Recogido en Múnich, sale el lunes…"
                 className="w-full px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white"
               />
+
+              {/*
+                * Y aquí la pregunta, no al final del panel.
+                *
+                * Se contesta con el camión delante, que es el mismo momento en
+                * que se pulsa este botón. Pedirla desde aquí y tenerla dos
+                * pantallas más abajo es tener el botón apagado sin saber por
+                * qué, que es como no tenerlo.
+                */}
+              {aEstado === 'Entregado' && (
+                <div className="mt-2.5 pt-2.5 border-t border-brand-200">
+                  <LlegoComoSalioBloque llegada={llegada} setLlegada={setLlegada} entregadoEl={t.fecha_entrega} />
+                </div>
+              )}
               {aEstado === 'Entregado' && faltaPorMirarAlLlegar(llegada).length > 0 && (
                 <div className="text-[11px] text-red-700 font-medium mt-1.5">
                   Antes: {faltaPorMirarAlLlegar(llegada).join(', ').toLowerCase()}. Con el camión
@@ -785,74 +799,16 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         )}
 
         {/*
-          * ¿Llegó como salió?
+          * ¿Llegó como salió?, para volver sobre ella después.
           *
-          * Es otra revisión distinta de la del pedido, y las dos se
-          * confundían en el mismo sitio. Aquella pregunta si es el coche que
-          * compramos —kilómetros, llaves, papeles— y se le reclama al
-          * vendedor. Esta, si llegó entero, y se le reclama al transportista.
-          *
-          * Sale con el coche ya en camino porque es cuando sirve: en un CMR
-          * los daños visibles se reservan en el acto, por escrito en la carta
-          * de porte, y los que no se ven dentro de siete días. Si el conductor
-          * se va con el albarán firmado y sin reservas, se presume que llegó
-          * bien y el golpe lo pagamos nosotros.
+          * La pregunta se hace en el cuadro de pasar a «Entregado», que es el
+          * momento en que se mira el coche. Aquí queda para lo que viene
+          * luego: apuntar la reclamación dentro de los siete días, o corregir
+          * lo que se escribió con el conductor esperando.
           */}
         {toca('fotos') && (
         <div className="mt-4 pt-3 border-t border-brand-200">
-          <div className="text-xs font-semibold text-brand-600 mb-1.5">¿Llegó como salió?</div>
-          <div className="flex gap-1.5 mb-2">
-            {([[true, 'Sí, entero'], [false, 'No, hay algo']] as [boolean, string][]).map(([v, texto]) => (
-              <button key={texto}
-                      onClick={() => setLlegada((l) => ({ ...l, conforme: v }))}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
-                        llegada.conforme === v
-                          ? (v ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-red-700 text-white border-red-700')
-                          : 'bg-white text-brand-500 border-brand-200 hover:bg-brand-50'}`}>
-                {texto}
-              </button>
-            ))}
-          </div>
-
-          {llegada.conforme === false && (
-            <div className="space-y-2">
-              <label className="block text-[11px] text-brand-400">
-                Qué ha aparecido
-                <textarea value={llegada.danos ?? ''} rows={2}
-                          placeholder="Golpe en la aleta trasera izquierda que no está en las fotos de la recogida"
-                          onChange={(e) => setLlegada((l) => ({ ...l, danos: e.target.value }))}
-                          className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-              </label>
-              <label className="flex items-start gap-2 text-[11px] text-brand-500 cursor-pointer">
-                <input type="checkbox" checked={Boolean(llegada.reservaEnAlbaran)} className="mt-0.5"
-                       onChange={(e) => setLlegada((l) => ({ ...l, reservaEnAlbaran: e.target.checked }))} />
-                <span>
-                  <strong>Reserva puesta en la carta de porte</strong>, por escrito y delante
-                  del conductor. Sin ella se presume que el coche llegó bien.
-                </span>
-              </label>
-              <label className="block text-[11px] text-brand-400">
-                Qué se le reclama
-                <textarea value={llegada.reclamacion ?? ''} rows={2}
-                          placeholder="El arreglo del golpe, con el presupuesto del taller"
-                          onChange={(e) => setLlegada((l) => ({ ...l, reclamacion: e.target.value }))}
-                          className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-              </label>
-            </div>
-          )}
-
-          {/* Lo que toca hacer, que cambia con la respuesta y con el plazo. */}
-          <div className={`text-[11px] mt-1.5 ${
-            llegada.conforme === false ? 'text-red-700 font-medium' : 'text-brand-300'}`}>
-            {queHacerAlLlegar(llegada, t.fecha_entrega)}
-          </div>
-
-          {llegada.mirado_por && (
-            <div className="text-[10px] text-brand-300 mt-1">
-              Lo miró {llegada.mirado_por}
-              {llegada.mirado_el ? ` el ${new Date(llegada.mirado_el).toLocaleDateString('es-ES')}` : ''}
-            </div>
-          )}
+          <LlegoComoSalioBloque llegada={llegada} setLlegada={setLlegada} entregadoEl={t.fecha_entrega} />
         </div>
         )}
 
@@ -1015,4 +971,83 @@ function corredorCorto(t: TarifaFila): string {
   const de = t.origen_zona || PAISES[t.origen_pais] || t.origen_pais;
   const a = t.destino_zona || PAISES[t.destino_pais] || t.destino_pais;
   return `${de} → ${a}`;
+}
+
+/**
+ * ¿Llegó como salió?
+ *
+ * Es otra revisión distinta de la del pedido, y las dos se confundían en el
+ * mismo sitio. Aquella pregunta si es el coche que compramos —kilómetros,
+ * llaves, papeles— y se le reclama al vendedor. Esta, si llegó entero, y se le
+ * reclama al transportista.
+ *
+ * Vive en dos sitios porque se usa en dos momentos: **en el cuadro de pasar a
+ * «Entregado»**, que es cuando se mira el coche con el camión delante, y en el
+ * panel, para volver sobre ella dentro de los siete días. En un CMR los daños
+ * visibles se reservan en el acto, por escrito en la carta de porte, y los que
+ * no se ven dentro de siete días; si el conductor se va con el albarán firmado
+ * y sin reservas, se presume que llegó bien y el golpe lo pagamos nosotros.
+ */
+function LlegoComoSalioBloque({ llegada, setLlegada, entregadoEl }: {
+  llegada: LlegoComoSalio;
+  setLlegada: (f: (l: LlegoComoSalio) => LlegoComoSalio) => void;
+  entregadoEl?: string | null;
+}) {
+  return (
+    <div>
+      <div className="text-xs font-semibold text-brand-600 mb-1.5">¿Llegó como salió?</div>
+      <div className="flex gap-1.5 mb-2">
+        {([[true, 'Sí, entero'], [false, 'No, hay algo']] as [boolean, string][]).map(([v, texto]) => (
+          <button key={texto}
+                  onClick={() => setLlegada((l) => ({ ...l, conforme: v }))}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
+                    llegada.conforme === v
+                      ? (v ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-red-700 text-white border-red-700')
+                      : 'bg-white text-brand-500 border-brand-200 hover:bg-brand-50'}`}>
+            {texto}
+          </button>
+        ))}
+      </div>
+
+      {llegada.conforme === false && (
+        <div className="space-y-2">
+          <label className="block text-[11px] text-brand-400">
+            Qué ha aparecido
+            <textarea value={llegada.danos ?? ''} rows={2}
+                      placeholder="Golpe en la aleta trasera izquierda que no está en las fotos de la recogida"
+                      onChange={(e) => setLlegada((l) => ({ ...l, danos: e.target.value }))}
+                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+          </label>
+          <label className="flex items-start gap-2 text-[11px] text-brand-500 cursor-pointer">
+            <input type="checkbox" checked={Boolean(llegada.reservaEnAlbaran)} className="mt-0.5"
+                   onChange={(e) => setLlegada((l) => ({ ...l, reservaEnAlbaran: e.target.checked }))} />
+            <span>
+              <strong>Reserva puesta en la carta de porte</strong>, por escrito y delante
+              del conductor. Sin ella se presume que el coche llegó bien.
+            </span>
+          </label>
+          <label className="block text-[11px] text-brand-400">
+            Qué se le reclama
+            <textarea value={llegada.reclamacion ?? ''} rows={2}
+                      placeholder="El arreglo del golpe, con el presupuesto del taller"
+                      onChange={(e) => setLlegada((l) => ({ ...l, reclamacion: e.target.value }))}
+                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white" />
+          </label>
+        </div>
+      )}
+
+      {/* Lo que toca hacer, que cambia con la respuesta y con el plazo. */}
+      <div className={`text-[11px] mt-1.5 ${
+        llegada.conforme === false ? 'text-red-700 font-medium' : 'text-brand-400'}`}>
+        {queHacerAlLlegar(llegada, entregadoEl)}
+      </div>
+
+      {llegada.mirado_por && (
+        <div className="text-[10px] text-brand-300 mt-1">
+          Lo miró {llegada.mirado_por}
+          {llegada.mirado_el ? ` el ${new Date(llegada.mirado_el).toLocaleDateString('es-ES')}` : ''}
+        </div>
+      )}
+    </div>
+  );
 }
