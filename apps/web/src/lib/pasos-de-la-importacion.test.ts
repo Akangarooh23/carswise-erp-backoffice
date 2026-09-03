@@ -188,8 +188,16 @@ describe('el final del camino', () => {
     },
   };
 
-  test('con el pago fuera y la factura pedida, toca el transporte', () => {
-    assert.equal(loQueToca(pasosDeLaImportacion(kia(TODO), HOY))?.clave, 'transporte');
+  test('con el pago fuera, lo primero es preguntar dónde se recoge', () => {
+    // Un transportista no va a una ciudad: va a una calle, un día, a una hora
+    // y preguntando por alguien. Contratar antes de saberlo es contratar a
+    // ciegas, y si además no entra un portacoches, cambia hasta el precio.
+    assert.equal(loQueToca(pasosDeLaImportacion(kia(TODO), HOY))?.clave, 'recogida');
+  });
+
+  test('y con su respuesta, ya toca organizar el transporte', () => {
+    const conRespuesta = kia({ ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z' });
+    assert.equal(loQueToca(pasosDeLaImportacion(conRespuesta, HOY))?.clave, 'transporte');
   });
 
   test('en trámites, toca la gestoría', () => {
@@ -358,5 +366,55 @@ describe('lo que mueve el coche y lo que va por su cuenta', () => {
       peritacion: { ...EN_MARCHA.meta!.peritacion!, factura_numero: 'PE-DE-0001' },
     } as never, 'Entregado');
     assert.equal(pideAlgoNuestro(cerrado, HOY), false);
+  });
+});
+
+describe('la factura del vendedor: pedirla, esperarla y tenerla', () => {
+  const PAGADO = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    verificado_alemania_at: '2026-09-07T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    peritacion: {
+      id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
+      perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
+      donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
+      encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+      factura_numero: 'PE-DE-0001',
+    },
+  };
+
+  test('pedida no es tenida', () => {
+    // Se daba por hecha al pedirla, así que el camino saltaba adelante con el
+    // papel sin llegar — y es el que convierte 16.890 € en un suplido.
+    const x = kia({ ...PAGADO, factura_vendedor_pedida_at: '2026-09-09T10:00:00Z' });
+    assert.equal(paso(x, 'factura').estado, 'esperando');
+  });
+
+  test('subida sí', () => {
+    const x = kia({
+      ...PAGADO,
+      factura_vendedor_pedida_at: '2026-09-09T10:00:00Z',
+      factura_vendedor_subida: true,
+    });
+    assert.equal(paso(x, 'factura').estado, 'hecho');
+  });
+
+  test('y no bloquea el transporte: el camión puede salir sin ella', () => {
+    // Lo dijo Ana y es verdad: lo que no se puede hacer sin la factura es
+    // matricular, no mover el coche.
+    const x = kia({
+      ...PAGADO,
+      factura_vendedor_pedida_at: '2026-09-09T10:00:00Z',
+      recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    });
+    assert.equal(loQueToca(pasosDeLaImportacion(x, HOY))?.clave, 'transporte');
+  });
+
+  test('si tarda, deja de ser espera y hay que subirla', () => {
+    const viejo = new Date(HOY.getTime() - (PLAZOS.vendedor + 1) * 86400000).toISOString();
+    const x = kia({ ...PAGADO, factura_vendedor_pedida_at: viejo });
+    assert.equal(paso(x, 'factura').estado, 'toca');
+    assert.match(paso(x, 'factura').titulo, /Subir la factura del vendedor/);
   });
 });

@@ -282,23 +282,76 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/importaciones',
   });
 
-  // 10 · Y el papel que hace que ese dinero sea un suplido.
+  /*
+   * 10 · El papel que hace que ese dinero sea un suplido.
+   *
+   * Tiene tres momentos y antes tenía uno: **pedirla**, **que la mande** y
+   * **tenerla guardada**. Se daba por hecha al pedirla, así que el camino
+   * saltaba al transporte con el papel sin llegar — y ese papel es el que
+   * convierte 16.890 € en un suplido y el que pide la gestoría para
+   * matricular.
+   *
+   * No bloquea el transporte: el camión puede salir sin ella. Por eso va por
+   * su cuenta y no le quita el titular a lo que sí mueve el coche.
+   */
   const pedida = Boolean(m.factura_vendedor_pedida_at);
-  pasos.push({
-    clave: 'factura',
-    titulo: pedida ? 'Pedida su factura a nombre del cliente' : 'Avisarle del pago y pedirle la factura',
-    estado: pedida ? 'hecho' : liberado ? 'toca' : 'porVenir',
-    cuando: m.factura_vendedor_pedida_at ?? null,
-    donde: '/importaciones',
-  });
+  const subida = Boolean(m.factura_vendedor_subida);
+  pasos.push(
+    subida
+      ? {
+          clave: 'factura', titulo: 'Su factura, a nombre del cliente, guardada',
+          estado: 'hecho', donde: '/importaciones', via: 'aparte',
+        }
+      : pedida
+        ? esperando(
+            {
+              clave: 'factura', titulo: 'Que mande su factura, y subirla',
+              estado: 'esperando', donde: '/importaciones', via: 'aparte',
+            },
+            m.factura_vendedor_pedida_at, PLAZOS.vendedor,
+            'Subir la factura del vendedor, que ya debería estar', hoy
+          )
+        : {
+            clave: 'factura', titulo: 'Avisarle del pago y pedirle la factura',
+            estado: liberado ? 'toca' : 'porVenir', donde: '/importaciones',
+          }
+  );
 
-  // 11 · Traerlo.
+  /*
+   * 11 · Traerlo.
+   *
+   * Antes de contratar a nadie hay que preguntarle al vendedor **dónde y
+   * cuándo** se recoge: un transportista no va a una ciudad, va a una calle,
+   * un día, a una hora y preguntando por alguien. Y si un portacoches no
+   * llega hasta el coche, cambia a quién se contrata y cuánto cuesta.
+   *
+   * La factura del vendedor no hace falta para esto: el camión puede salir
+   * sin ella.
+   */
   const enCamino = YA_ENVIADO.includes(x.status);
   const enTramites = x.status === 'En trámites' || x.status === 'Entregado';
+  const preguntadaLaRecogida = Boolean(m.recogida_preguntada_at);
+
+  if (!enCamino) {
+    pasos.push(
+      preguntadaLaRecogida
+        ? {
+            clave: 'recogida', titulo: 'Preguntado dónde y cuándo se recoge',
+            estado: 'hecho', cuando: m.recogida_preguntada_at ?? null,
+            donde: '/transportes',
+          }
+        : {
+            clave: 'recogida',
+            titulo: 'Preguntarle al vendedor dónde y cuándo se recoge',
+            estado: liberado ? 'toca' : 'porVenir', donde: '/transportes',
+          }
+    );
+  }
+
   pasos.push({
     clave: 'transporte',
     titulo: enCamino ? 'El transporte, organizado' : 'Organizar el transporte',
-    estado: enCamino ? 'hecho' : liberado ? 'toca' : 'porVenir',
+    estado: enCamino ? 'hecho' : preguntadaLaRecogida ? 'toca' : 'porVenir',
     donde: '/transportes',
   });
 
@@ -356,7 +409,10 @@ export function loQueFaltaAparte(pasos: readonly Paso[]): Paso[] {
 
 /** Lo que se está esperando de fuera, para poder decirlo sin alarmar. */
 export function loQueSeEspera(pasos: readonly Paso[]): Paso | null {
-  return pasos.find((x) => x.estado === 'esperando') ?? null;
+  // También aquí manda la vía principal: lo que se espera por su cuenta —la
+  // factura del vendedor— no es lo que tiene parado al coche, y de titular
+  // haría pensar que sí.
+  return pasos.find((x) => x.estado === 'esperando' && x.via !== 'aparte') ?? null;
 }
 
 /**

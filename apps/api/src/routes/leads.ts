@@ -329,12 +329,22 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'reserva_preguntada_at',       reserva_preguntada_at,
                   'reserva_preguntada_a',        reserva_preguntada_a,
                   'factura_vendedor_pedida_at',  factura_vendedor_pedida_at,
-                  'factura_vendedor_pedida_a',   factura_vendedor_pedida_a,
-                  'encargo_gestoria_enviado_at', encargo_gestoria_enviado_at,
-                  'encargo_gestoria_enviado_a',  encargo_gestoria_enviado_a,
-                  'liquidacion_at',        liquidacion_at,
-                  -- Lo que costó de verdad: sale del trámite, no de un campo
-                  -- aparte. Un dato en dos sitios acaba diciendo dos cosas.
+                  -- Si el papel ya está subido, en cualquiera de los cajones
+                  -- del coche. Pedirla y tenerla no son lo mismo, y es esta
+                  -- la que hace falta para matricular.
+                  'factura_vendedor_subida', EXISTS (
+                    SELECT 1 FROM erp_documentos d
+                     WHERE d.papel = 'Factura del vendedor alemán'
+                       AND ((d.ambito = 'lead' AND d.ambito_id = moveadvisor_market_leads.id)
+                            OR (d.ambito = 'pedido' AND d.ambito_id IN (
+                                 SELECT pe2.id FROM erp_pedidos pe2
+                                  WHERE pe2.lead_id = moveadvisor_market_leads.id)))
+                  ),
+                  -- Y si ya se le ha preguntado dónde y cuándo se recoge.
+                  'recogida_preguntada_at', (
+                    SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id
+                  ),
                   'impuesto_real', (
                     SELECT t.coste FROM erp_tramites t
                      WHERE t.lead_id = moveadvisor_market_leads.id

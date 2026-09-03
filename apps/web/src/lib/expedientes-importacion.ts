@@ -142,6 +142,10 @@ export interface MetaImportacion {
   reserva_preguntada_a?: string | null;
   factura_vendedor_pedida_at?: string | null;
   factura_vendedor_pedida_a?: string | null;
+  /** Si su factura ya está subida, en cualquiera de los cajones del coche. */
+  factura_vendedor_subida?: boolean | null;
+  /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
+  recogida_preguntada_at?: string | null;
   // Cuándo se le mandó a la gestoría el encargo de matricular, y a qué correo.
   encargo_gestoria_enviado_at?: string | null;
   encargo_gestoria_enviado_a?: string | null;
