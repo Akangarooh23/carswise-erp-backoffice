@@ -12,6 +12,7 @@
  */
 import { Router } from 'express';
 import { query } from '../db/pool.js';
+import { ponAlDiaLasEtapas } from './transportes.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
@@ -99,6 +100,17 @@ tramitesRouter.get('/tramites/habituales', requireRole(['admin', 'support', 'ope
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 tramitesRouter.get('/tramites', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  /*
+   * Antes de listar, que la lista sea de hoy.
+   *
+   * Los papeleos de una importación se abren al entrar el expediente en
+   * trámites, y la etapa la mueve la llegada del camión. Si esa cadena se
+   * queda a medias —el despliegue llegó tarde, la escritura falló— esta
+   * pantalla enseña «todavía no hay ningún trámite» con el coche ya en
+   * Zaragoza. Y es la pantalla donde se viene a mirar precisamente eso.
+   */
+  await ponAlDiaLasEtapas().catch(() => 0);
+  await abreLosTramitesQueFalten().catch(() => 0);
   const estado = nt(req.query.estado);
   const gestoria = nt(req.query.gestoria);
   const q = nt(req.query.q);
