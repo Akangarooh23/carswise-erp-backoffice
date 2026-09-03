@@ -12,6 +12,7 @@ import {
   ESTADOS_TRANSPORTE, QUE_TOCA_TRANSPORTE, INCIDENCIA, FOTOS_RECOGIDA, FOTOS_ENTREGA,
   esEstadoTransporteValido, siguienteEstadoTransporte, puedeContratarse, estaEnCamino,
   fotosQueFaltan, diasEnCamino, costeDelViaje, notaDelCambio,
+  mueveElExpediente,
 } from './transportes.js';
 
 describe('el camino de un transporte', () => {
@@ -68,6 +69,39 @@ describe('dónde está el coche', () => {
   test('se sabe cuántos días lleva de viaje', () => {
     assert.equal(diasEnCamino('2026-08-20T10:00:00Z', new Date('2026-08-30T10:00:00Z')), 10);
     assert.equal(diasEnCamino(null), null);
+  });
+});
+
+describe('el expediente se mueve con el coche', () => {
+  const TRAMO = { tramo: 1, lead_id: 'imp-1' };
+
+  test('recogido o en tránsito: el coche va de camino', () => {
+    // Es el mismo hecho dicho una vez. Tenerlo que repetir en Importaciones es
+    // como se llega a un cliente que ve «verificado y pagado» en su panel con
+    // el coche cruzando Francia.
+    assert.equal(mueveElExpediente(TRAMO, 'Recogido'), true);
+    assert.equal(mueveElExpediente(TRAMO, 'En tránsito'), true);
+  });
+
+  test('contratado todavía no: nadie se lo ha llevado', () => {
+    assert.equal(mueveElExpediente(TRAMO, 'Contratado'), false);
+    assert.equal(mueveElExpediente(TRAMO, 'Por organizar'), false);
+  });
+
+  test('entregado tampoco lo mueve: ese salto es otro', () => {
+    // De «En transporte» a «En trámites» se pasa a mano, porque lo que hay
+    // detrás es encargarle los papeles a la gestoría.
+    assert.equal(mueveElExpediente(TRAMO, 'Entregado'), false);
+  });
+
+  test('solo el primer tramo, que es el que trae el coche a España', () => {
+    // El segundo sale de nuestra campa con el expediente ya en trámites.
+    assert.equal(mueveElExpediente({ ...TRAMO, tramo: 2 }, 'Recogido'), false);
+  });
+
+  test('y un tramo sin expediente no mueve nada', () => {
+    assert.equal(mueveElExpediente({ tramo: 1, lead_id: null }, 'Recogido'), false);
+    assert.equal(mueveElExpediente({ tramo: 1, lead_id: '  ' }, 'Recogido'), false);
   });
 });
 

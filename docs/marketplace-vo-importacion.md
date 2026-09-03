@@ -824,10 +824,21 @@ camino entero:
 12. Preguntarle dónde y cuándo se recoge *(desde el expediente)*.
 13. Organizar el transporte *(cuando conteste, en Transportes)*: apuntar lo que
     dijo, pedir precio a uno o a varios, contratar, **avisar al vendedor de
-    quién va y qué día** —eso desde el expediente— y mandar la orden.
+    quién va y qué día** —eso desde el expediente— y mandar la orden. Mandarla
+    **es** contratar: el tramo pasa a «Contratado» con ella.
 14. Que el coche llegue a España.
 15. Encargarle los trámites a la gestoría.
 16. Entregárselo al cliente.
+
+Marcar el tramo **«Recogido»** o **«En tránsito»** pasa el expediente a **«En
+transporte»** solo. Es el mismo hecho dicho una vez: repetirlo en Importaciones
+es como se llega a un cliente que ve «verificado y pagado» en su panel con el
+coche cruzando Francia. Solo desde la etapa anterior —así no se salta ninguna
+ni se retrocede si alguien vuelve a tocar el tramo— y solo con el primer tramo,
+que es el que trae el coche a España. Queda escrito en las notas internas con
+su motivo, porque un cambio de etapa que nadie ha pulsado tiene que poder
+explicarse después. **No manda ningún correo**: cambia lo que el cliente ve en
+su panel, y el aviso por correo sigue siendo un botón que alguien pulsa.
 
 Los marcados **aparte** son trabajo nuestro que **no mueve el coche**: la
 factura del perito, la del vendedor y el apunte del pago. Se dicen debajo del

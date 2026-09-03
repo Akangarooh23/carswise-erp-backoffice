@@ -64,6 +64,31 @@ export function estaEnCamino(estado: string): boolean {
 }
 
 /**
+ * Si el coche ya ha salido, el expediente lo dice sin que nadie lo repita.
+ *
+ * Marcar el tramo «Recogido» o «En tránsito» **es** decir que el coche va de
+ * camino: es el mismo hecho, y tenerlo que decir otra vez en Importaciones es
+ * como se llega a un cliente que ve «verificado y pagado» en su panel con el
+ * coche cruzando Francia.
+ *
+ * Solo desde «Verificado y pagado», que es la etapa anterior: así no se salta
+ * ninguna ni se retrocede desde trámites o entregado si alguien vuelve a tocar
+ * el tramo. Y solo el **primer** tramo, que es el que trae el coche a España;
+ * el segundo sale de nuestra campa con el expediente ya en trámites.
+ *
+ * No manda ningún correo: cambia lo que el cliente ve en su panel, y el aviso
+ * por correo sigue siendo un botón que alguien pulsa.
+ */
+export function mueveElExpediente(t: {
+  tramo?: number | string | null;
+  lead_id?: string | null;
+}, estadoNuevo: string): boolean {
+  if (!String(t.lead_id ?? '').trim()) return false;
+  if (Number(t.tramo ?? 1) > 1) return false;
+  return estaEnCamino(estadoNuevo);
+}
+
+/**
  * El coche ya no está donde estaba.
  *
  * No es lo mismo que `estaEnCamino`: uno entregado también salió, y un pedido

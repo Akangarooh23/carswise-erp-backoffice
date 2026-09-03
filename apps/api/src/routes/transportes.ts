@@ -44,6 +44,7 @@ import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de
 import { papelesQueSePuedenAdjuntar, loQueSeAdjunta, NoSePuedenAdjuntar } from '../lib/adjuntos-del-correo.js';
 import {
   INCIDENCIA, esEstadoTransporteValido, puedeContratarse, notaDelCambio, fotosQueFaltan,
+  mueveElExpediente,
 } from '../lib/transportes.js';
 
 export const transportesRouter = Router();
@@ -825,6 +826,31 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       `UPDATE erp_transportes SET ${sets.join(', ')} WHERE id = $${valores.length} RETURNING ${CAMPOS}`,
       valores
     );
+
+    /*
+     * Y si el coche ya ha salido, el expediente pasa a «En transporte».
+     *
+     * Marcar el tramo recogido es el mismo hecho: tenerlo que repetir en
+     * Importaciones es como se llega a un cliente que ve «verificado y pagado»
+     * en su panel con el coche cruzando Francia.
+     *
+     * El `WHERE` sobre la etapa anterior lo hace idempotente y a prueba de
+     * retrocesos: si el expediente ya está en trámites o entregado, no lo toca.
+     * Y queda escrito en las notas internas, porque un cambio de etapa que
+     * nadie ha pulsado tiene que poder explicarse después.
+     */
+    if (estado && mueveElExpediente(previo, estado)) {
+      const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      const linea = `[${cuando} · Verificado y pagado → En transporte] El transporte ${req.params.id} pasó a «${estado}».`;
+      await query(
+        `UPDATE moveadvisor_market_leads
+            SET status = 'En transporte',
+                erp_notes = CASE WHEN COALESCE(erp_notes, '') = '' THEN $2
+                                 ELSE erp_notes || E'\n' || $2 END
+          WHERE id = $1 AND status = 'Verificado y pagado'`,
+        [String(previo.lead_id), linea]
+      ).catch((e: Error) => console.error('[transportes] no se ha podido mover el expediente:', e.message));
+    }
 
     /*
      * Entregado: el transportista ya puede facturar este tramo.
