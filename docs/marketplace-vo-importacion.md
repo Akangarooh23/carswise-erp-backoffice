@@ -508,7 +508,7 @@ momento en que esa cosa hace falta:
 | Con la respuesta del vendedor | El perito | Que vaya a ver el coche, qué mirar, **la cita ya puesta** con su dirección y su teléfono, y **cuánto cuesta** |
 | Con la cita cerrada | El vendedor alemán | Le confirma **el día y la hora**, quién va, y que tenga el coche y los papeles listos |
 | Al liberar el pago | El vendedor alemán | Le avisa de que **la transferencia ha salido** y le pide la factura **a nombre del cliente** |
-| Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, y qué se lleva el conductor |
+| Al organizar el tramo | El vendedor alemán | **Dónde y cuándo** se recoge, con quién, qué se lleva el conductor y **si entra un portacoches** |
 | En el tramo de transporte | El transportista | La recogida, con las dos puntas y desde cuándo |
 | Cuando ha hecho la revisión | El perito | **Su factura**, a nombre de PopCar y no del cliente |
 | Al entrar en trámites | La gestoría | Los tres papeleos y **el importe real del impuesto** |

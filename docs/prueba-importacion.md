@@ -635,12 +635,17 @@ anuncio. Un transportista no va a una ciudad.
       ciudad: va a una calle, un día, a una hora y preguntando por alguien.
 - [ ] Y en el **segundo tramo** ese bloque no sale: no hay vendedor a quien
       preguntar, el coche sale de nuestra campa.
-- [ ] Pregunta cuatro cosas: la **dirección exacta**, **desde cuándo** está listo
-      y con qué horario, **por quién pregunta el conductor** y su teléfono, y
-      **qué se lleva con el coche** —llaves, Zulassungsbescheinigung I y II, COC—.
-- [ ] Ese último punto no es de adorno: un coche que sale de Alemania sin la
+- [ ] Pregunta **cinco** cosas: la **dirección exacta**; **qué día y a qué hora**
+      se puede recoger —o, si es flexible, desde cuándo está listo y con qué
+      horario—; **por quién pregunta el conductor** y su teléfono; **qué se**
+      **lleva con el coche** —llaves, Zulassungsbescheinigung I y II, COC—; y
+      **si puede llegar hasta el coche un camión portacoches**.
+- [ ] Los dos últimos no son de adorno. Un coche que sale de Alemania sin la
       parte II no se puede matricular aquí, y se descubre con el coche ya en
-      Zaragoza.
+      Zaragoza. Y un portacoches lleva ocho coches y sale a un tercio por
+      coche: si no cabe —sótano, calle estrecha, patio con altura— hay que
+      contratar otra cosa, y eso se sabe ahora o con el conductor en la
+      puerta, que es cuando ya se paga igual.
 - [ ] Con su respuesta, **escribe la dirección en «Desde» y la fecha en**
       **«Recogida prevista»**, y guarda.
 

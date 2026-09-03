@@ -17,7 +17,7 @@ const CASO = {
   ciudad: 'München',
 };
 
-describe('las cuatro cosas que se preguntan', () => {
+describe('las cinco cosas que se preguntan', () => {
   test('la dirección exacta, no la ciudad', () => {
     const { html } = correoDeDatosDeRecogida(CASO);
     assert.match(html, /Genaue Abholadresse/);
@@ -25,10 +25,24 @@ describe('las cuatro cosas que se preguntan', () => {
     assert.match(html, /exact pick-up address/);
   });
 
-  test('desde cuándo y con qué horario', () => {
+  test('qué día y a qué hora se puede recoger', () => {
+    // «Cuando quieran» no sirve para contratar a nadie: un transportista
+    // necesita un día. Y si de verdad es flexible, el horario de la nave.
     const { html } = correoDeDatosDeRecogida(CASO);
-    assert.match(html, /Ab wann steht das Fahrzeug bereit/);
+    assert.match(html, /An welchem Tag und zu welcher Uhrzeit/);
     assert.match(html, /Öffnungszeiten/);
+    assert.match(html, /which day and time/);
+  });
+
+  test('y si puede entrar un camión portacoches', () => {
+    // Un portacoches lleva ocho y sale a un tercio por coche; una grúa
+    // individual cuesta lo que cuesta. Si el coche está en un sótano o en una
+    // calle estrecha, el camión no entra — y eso se descubre con el conductor
+    // en la puerta, que es cuando ya se paga igual.
+    const { html } = correoDeDatosDeRecogida(CASO);
+    assert.match(html, /Autotransporter/);
+    assert.match(html, /Tiefgarage/);
+    assert.match(html, /car-carrier truck can reach the vehicle/);
   });
 
   test('por quién pregunta el conductor, con teléfono', () => {

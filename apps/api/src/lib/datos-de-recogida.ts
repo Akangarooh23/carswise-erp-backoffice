@@ -13,6 +13,13 @@
  * Pregunta también **qué se lleva el conductor**. Un coche que sale de Alemania
  * sin la Zulassungsbescheinigung II no se puede matricular aquí, y eso se
  * descubre semanas después, con el coche ya en Zaragoza.
+ *
+ * Y una que parece de detalle y decide el precio del viaje: **si puede entrar
+ * un camión portacoches**. Un portacoches lleva ocho y sale a un tercio por
+ * coche; una grúa individual cuesta lo que cuesta. Si el coche está en un
+ * sótano, en una calle estrecha o en un patio con altura limitada, el camión
+ * no entra — y eso se descubre con el conductor en la puerta, que es cuando ya
+ * se paga igual. Preguntarlo antes cambia a quién se contrata.
  */
 
 export interface DatosDeLaRecogida {
@@ -65,23 +72,24 @@ export function correoDeDatosDeRecogida(d: DatosDeLaRecogida): { subject: string
   const preguntas =
     '<ol style="margin:8px 0 16px 0;padding-left:20px;font-size:15px;line-height:1.55;color:#2A2A28">' +
     li('<strong>Genaue Abholadresse</strong> — Straße, Hausnummer und PLZ.') +
-    li('<strong>Ab wann steht das Fahrzeug bereit</strong>, und zu welchen Öffnungszeiten?') +
+    li('<strong>An welchem Tag und zu welcher Uhrzeit</strong> können wir es abholen? Falls es flexibel ist: ab wann steht es bereit und zu welchen Öffnungszeiten?') +
     li('<strong>Ansprechpartner und Telefonnummer</strong> vor Ort. Der Fahrer fragt nach ihm.') +
     li('<strong>Was bekommt der Fahrer mit?</strong> Schlüssel, Zulassungsbescheinigung Teil I und II, COC.') +
+    li('<strong>Kommt ein Autotransporter bis zum Fahrzeug?</strong> Ein LKW mit mehreren Fahrzeugen braucht Platz und Höhe. Wenn nicht — Tiefgarage, enge Straße, Innenhof —, sagen Sie uns bitte, wo wir es stattdessen übernehmen können.') +
     '</ol>';
 
   const html =
     p('Guten Tag,') +
     p('wir organisieren jetzt die Abholung dieses Fahrzeugs:') +
     delCoche +
-    p('Dafür brauchen wir vier Angaben:') +
+    p('Dafür brauchen wir fünf Angaben:') +
     preguntas +
     String(d.nota ?? '') +
     p('Sobald wir das haben, melden wir uns mit dem Abholtermin.') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
-    p('<em>we are arranging the pick-up. We need four things: the <strong>exact pick-up address</strong>, <strong>from when the car is ready</strong> and your opening hours, a <strong>contact person and phone number</strong> on site —the driver will ask for them— and <strong>what the driver takes with the car</strong>: keys, registration parts I and II, and the COC. We will come back to you with the pick-up date.</em>');
+    p('<em>we are arranging the pick-up. We need five things: the <strong>exact pick-up address</strong>; <strong>which day and time</strong> we can collect it —or from when it is ready and your opening hours—; a <strong>contact person and phone number</strong> on site, the driver will ask for them; <strong>what the driver takes with the car</strong>: keys, registration parts I and II, and the COC; and whether a <strong>car-carrier truck can reach the vehicle</strong>. If it cannot —underground parking, narrow street, inner courtyard—, tell us where we can collect it instead.</em>');
 
   return { subject, html };
 }
