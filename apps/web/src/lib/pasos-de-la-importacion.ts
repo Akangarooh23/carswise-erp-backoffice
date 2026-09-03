@@ -400,10 +400,21 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
    * Mientras no diga el día, no hay nada que organizar: contratar a ciegas es
    * lo que acaba con un camión en la puerta de una nave cerrada. Con su
    * respuesta apuntada, sí — y entonces el trabajo está en Transportes.
+   *
+   * Y **termina cuando la orden ha salido**, no cuando el coche se mueve. Son
+   * cosas distintas y entre una y otra pueden pasar días: con el camión
+   * contratado y la orden mandada no queda nada nuestro que hacer, y seguir
+   * diciendo «organizar el transporte» manda a mirar un tramo que ya está.
    */
+  const ordenMandada = Boolean(String(m.tramo?.orden_enviada_at ?? '').trim());
   pasos.push(
-    enCamino
-      ? { clave: 'transporte', titulo: 'El transporte, organizado', estado: 'hecho', donde: '/transportes' }
+    enCamino || ordenMandada
+      ? {
+          clave: 'transporte', titulo: 'El transporte, organizado', estado: 'hecho',
+          cuando: m.tramo?.orden_enviada_at ?? null,
+          detalle: String(m.tramo?.transportista ?? '').trim() || undefined,
+          donde: '/transportes',
+        }
       : contestoLaRecogida
         ? {
             clave: 'transporte', titulo: 'Organizar el transporte',
@@ -435,8 +446,17 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
    */
   pasos.push({
     clave: 'llegada',
-    titulo: enTramites ? 'El coche ha llegado a España' : 'Que el coche llegue a España',
-    estado: enTramites ? 'hecho' : enCamino ? 'esperando' : 'porVenir',
+    titulo: enTramites
+      ? 'El coche ha llegado a España'
+      // Antes de salir se espera al transportista, que es distinto de
+      // esperar a que cruce Europa. Decir «que llegue» con el coche aún en la
+      // nave del vendedor hace pensar que ya va de camino.
+      : enCamino
+        ? 'Que el coche llegue a España'
+        : ordenMandada ? 'Que el transportista lo recoja' : 'Que el coche llegue a España',
+    estado: enTramites ? 'hecho' : (enCamino || ordenMandada) ? 'esperando' : 'porVenir',
+    donde: ordenMandada && !enCamino ? '/transportes' : undefined,
+    apuntarEn: ordenMandada && !enCamino ? '/transportes' : undefined,
   });
 
   // 13 · Ponerlo legal aquí.

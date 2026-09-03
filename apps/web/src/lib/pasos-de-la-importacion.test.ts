@@ -236,6 +236,39 @@ describe('el final del camino', () => {
     assert.equal(pendientesPorPantalla([conRespuesta], HOY)['/transportes'], 1);
   });
 
+  test('con la orden mandada, organizarlo está hecho', () => {
+    // Termina cuando sale la orden, no cuando se mueve el coche: entre una y
+    // otra pueden pasar días, y seguir diciendo «organizar el transporte»
+    // manda a mirar un tramo que ya está.
+    const organizado = kia({
+      ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: {
+        recogida_prevista: '2026-09-15', transportista: 'TransLog GmbH',
+        orden_enviada_at: '2026-09-10T09:00:00Z',
+      },
+    });
+    assert.equal(paso(organizado, 'transporte').estado, 'hecho');
+    assert.equal(paso(organizado, 'transporte').detalle, 'TransLog GmbH');
+    assert.equal(pendientesPorPantalla([organizado], HOY)['/transportes'], undefined);
+  });
+
+  test('y entonces lo que se espera es que lo recojan, no que llegue', () => {
+    // Decir «que llegue a España» con el coche todavía en la nave del vendedor
+    // hace pensar que ya va de camino.
+    const organizado = kia({
+      ...TODO, recogida_preguntada_at: '2026-09-09T10:00:00Z',
+      tramo: { recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z' },
+    });
+    assert.equal(paso(organizado, 'llegada').estado, 'esperando');
+    assert.match(paso(organizado, 'llegada').titulo, /lo recoja/);
+  });
+
+  test('ya en camino, se espera que llegue', () => {
+    const enCamino = kia({ ...TODO }, 'En transporte');
+    assert.equal(paso(enCamino, 'transporte').estado, 'hecho');
+    assert.match(paso(enCamino, 'llegada').titulo, /llegue a España/);
+  });
+
   test('en trámites, toca la gestoría', () => {
     assert.equal(loQueToca(pasosDeLaImportacion(kia(TODO, 'En trámites'), HOY))?.clave, 'tramites');
   });
