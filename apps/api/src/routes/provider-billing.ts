@@ -244,8 +244,12 @@ export async function apuntaFacturaRecibida(datos: {
               invoice_number = $6,
               -- Un PDF nuevo sustituye al que hubiera; sin PDF, se deja el que hay.
               pdf_url = COALESCE($7, pdf_url),
-              -- Si era una espera, deja de serlo: ya hay factura que pagar.
-              status = CASE WHEN status = 'esperada' THEN 'pending' ELSE status END,
+              -- Si era una espera, deja de serlo: ya hay factura que pagar. Y
+              -- si llega con su documento, queda lista para pagar sin más.
+              status = CASE
+                WHEN status IN ('esperada', 'pending') AND $7 IS NOT NULL THEN 'pending_payment'
+                WHEN status = 'esperada' THEN 'pending'
+                ELSE status END,
               updated_at = NOW()
         WHERE id = $1`,
       [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null,
@@ -259,7 +263,8 @@ export async function apuntaFacturaRecibida(datos: {
       `INSERT INTO moveadvisor_provider_invoices
          (id, type, direction, provider_name, vehicle_title,
           invoice_amount, invoice_date, notes, invoice_number, pdf_url, status)
-       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8,
+               CASE WHEN $8 IS NULL THEN 'pending' ELSE 'pending_payment' END)`,
       [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), datos.fecha || null,
        notas, numero, await subeElPdf(nuevoId)]
     );

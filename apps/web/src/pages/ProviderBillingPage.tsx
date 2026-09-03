@@ -99,9 +99,14 @@ const STATUS_LABEL: Record<string, string> = {
   paid:            'Cobrada',
   cancelled:       'Cancelada',
 };
+/**
+ * Los dos estados de una factura sin pagar dicen cosas distintas:
+ * `pending` es que aún no tiene documento, `pending_payment` que ya lo tiene.
+ * Las dos se pueden pagar; la primera conviene completarla antes.
+ */
 const STATUS_LABEL_RECV: Record<string, string> = {
-  pending:         'Pendiente',
-  pending_payment: 'Pendiente de pago',
+  pending:         'Por pagar',
+  pending_payment: 'Por pagar',
   paid:            'Pagada',
   cancelled:       'Cancelada',
 };
@@ -588,11 +593,31 @@ export default function ProviderBillingPage() {
                         )}
                       </td>
                       <td>
-                        {r.status === 'pending_payment' && (
-                          <button onClick={() => { setRecvMarkModal(r); setRecvMarkNotes(''); }}
-                            className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-50 whitespace-nowrap">
-                            Marcar pagada
-                          </button>
+                        {/*
+                          * El botón salía solo con `pending_payment`, que es el
+                          * estado que pone el ERP al adjuntarle el PDF desde
+                          * esta misma pantalla. Una factura que llega con su
+                          * documento desde otro sitio —la del perito— se
+                          * quedaba en `pending` y no había forma de marcarla
+                          * pagada: había que reemplazarle el PDF para
+                          * desbloquear un botón, que no es una regla, es un
+                          * accidente.
+                          *
+                          * Se paga lo que está sin pagar. Si le falta el
+                          * documento se dice al lado, que es otra cosa.
+                          */}
+                        {(r.status === 'pending' || r.status === 'pending_payment') && (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => { setRecvMarkModal(r); setRecvMarkNotes(''); }}
+                              className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-50 whitespace-nowrap">
+                              Marcar pagada
+                            </button>
+                            {!r.pdf_url && (
+                              <span className="text-[10px] text-amber-700" title="Conviene tener el documento antes de pagar">
+                                sin PDF
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
