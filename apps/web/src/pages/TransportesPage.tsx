@@ -54,6 +54,10 @@ interface Transporte {
   matricula: string;
   coste: string | number | null;
   recogida_prevista: string | null;
+  /** Lo que contestó el vendedor: por quién pregunta el conductor y cuándo. */
+  contacto_origen?: string | null;
+  telefono_origen?: string | null;
+  horario_origen?: string | null;
   entrega_prevista: string | null;
   fecha_recogida: string | null;
   fecha_entrega: string | null;
@@ -331,6 +335,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
     transportista: t.transportista ?? '', coste: String(t.coste ?? ''),
     desde: t.desde ?? '', hasta: t.hasta ?? '',
     recogida_prevista: t.recogida_prevista ?? '', entrega_prevista: t.entrega_prevista ?? '',
+    contacto_origen: t.contacto_origen ?? '', telefono_origen: t.telefono_origen ?? '',
+    horario_origen: t.horario_origen ?? '',
   });
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_recogida);
@@ -464,6 +470,41 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             Hasta
             <input value={datos.hasta} onChange={(e) => setDatos((d) => ({ ...d, hasta: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+
+          {/*
+            * Por quién pregunta el conductor al llegar, y en qué horas.
+            *
+            * Sin esto, la orden decía «preguntar por AutoCheck Deutschland»,
+            * que es a quién le compramos y no quien sale a abrir. El
+            * conductor llega a una nave con ochenta coches y llama aquí.
+            *
+            * El horario es texto libre: lo que contestan es «de lunes a
+            * viernes de 9 a 17, avisando antes», y eso no cabe en dos horas
+            * sueltas sin perder la mitad.
+            */}
+          <label className="text-[11px] text-brand-400">
+            Preguntar por
+            <input value={datos.contacto_origen} placeholder="Daniel Weber"
+                   onChange={(e) => setDatos((d) => ({ ...d, contacto_origen: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="text-[11px] text-brand-400">
+            Su teléfono
+            <input value={datos.telefono_origen} placeholder="+49 89 000000"
+                   onChange={(e) => setDatos((d) => ({ ...d, telefono_origen: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            Horario de recogida
+            <input value={datos.horario_origen}
+                   placeholder="De lunes a viernes, de 9:00 a 17:00, avisando antes"
+                   onChange={(e) => setDatos((d) => ({ ...d, horario_origen: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">
+              Va en la orden, debajo de la fecha. «A partir del» sin horas manda al
+              conductor a una puerta cerrada.
+            </span>
           </label>
         </div>
         )}

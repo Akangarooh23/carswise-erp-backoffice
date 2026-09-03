@@ -33,6 +33,14 @@ export interface DatosDeLaOrden {
   destino: Punto;
   /** A partir de cuándo se puede recoger. */
   recogidaPrevista?: string | null;
+  /**
+   * En qué horas se puede ir, tal cual lo dijo el vendedor.
+   *
+   * Texto libre y no dos horas: lo que contestan es «de lunes a viernes de
+   * 9 a 17, avisando antes», y eso no cabe en un desplegable sin perder la
+   * mitad. Lo que hace falta es que el conductor lo lea.
+   */
+  horarioOrigen?: string | null;
   /** Lo acordado, si ya está cerrado. */
   coste?: number | null;
   /** Lo que añada quien revisa antes de mandarla, ya en HTML. */
@@ -95,6 +103,9 @@ export function correoDeOrdenDeRecogida(d: DatosDeLaOrden): { subject: string; h
     fila('Recoger en', puntoEscrito(d.origen)) +
     fila('Entregar en', puntoEscrito(d.destino)) +
     (cuando ? fila('A partir del', cuando) : '') +
+    // El horario va pegado a la fecha: son la misma pregunta del conductor,
+    // que es «cuándo voy». Suelto al final se lee después de haber salido.
+    (String(d.horarioOrigen ?? '').trim() ? fila('Horario de recogida', String(d.horarioOrigen).trim()) : '') +
     (d.coste ? fila('Precio acordado', eur(Number(d.coste))) : '') +
     fila('Nuestra referencia', d.referencia) +
     '</table>';

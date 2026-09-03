@@ -38,6 +38,30 @@ describe('lo que lleva la orden', () => {
     assert.match(html, /preguntar por Autowelt Kaufmann GmbH/);
   });
 
+  test('con su teléfono, si el vendedor lo dio', () => {
+    // Un nombre sin teléfono sirve si sale a abrir. Si no sale, no sirve.
+    const { html } = correoDeOrdenDeRecogida({
+      ...TRAMO,
+      origen: { donde: 'Musterstraße 18, 80331 München', quien: 'Daniel Weber', telefono: '+49 89 00000000' },
+    });
+    assert.match(html, /preguntar por Daniel Weber · \+49 89 00000000/);
+  });
+
+  test('y en qué horas se puede ir', () => {
+    // «A partir del 4» sin horas manda al conductor a una puerta cerrada: el
+    // vendedor abre de nueve a cinco y avisando antes, no cuando se llegue.
+    const { html } = correoDeOrdenDeRecogida({
+      ...TRAMO, horarioOrigen: 'De lunes a viernes, de 9:00 a 17:00, avisando antes',
+    });
+    assert.match(html, /Horario de recogida/);
+    assert.match(html, /de 9:00 a 17:00/);
+  });
+
+  test('y sin horario no se inventa uno', () => {
+    // Poner «horario: —» hace pensar que se preguntó y no lo dijeron.
+    assert.ok(!correoDeOrdenDeRecogida(TRAMO).html.includes('Horario de recogida'));
+  });
+
   test('un coche sin matricular se dice, no se deja en blanco', () => {
     // Un hueco vacío en la matrícula se lee como un dato que falta por copiar.
     const { html } = correoDeOrdenDeRecogida(TRAMO);

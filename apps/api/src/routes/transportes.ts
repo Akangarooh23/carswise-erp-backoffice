@@ -68,7 +68,13 @@ const ENSURE_ORDEN = `
     ADD COLUMN IF NOT EXISTS orden_enviada_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS orden_enviada_a  TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS recogida_preguntada_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS recogida_preguntada_a  TEXT NOT NULL DEFAULT ''`;
+    ADD COLUMN IF NOT EXISTS recogida_preguntada_a  TEXT NOT NULL DEFAULT '',
+    -- Lo que contesta el vendedor y no cabía en ningún sitio. Sin nombre y
+    -- teléfono en la punta de salida, el conductor llega a una nave con
+    -- ochenta coches y llama aquí; y sin el horario, llega a las ocho.
+    ADD COLUMN IF NOT EXISTS contacto_origen  TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS telefono_origen  TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS horario_origen   TEXT NOT NULL DEFAULT ''`;
 
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_transportes_estado
@@ -94,7 +100,8 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 TO_CHAR(entrega_prevista, 'YYYY-MM-DD')  AS entrega_prevista,
                 fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at,
                 orden_enviada_at, orden_enviada_a,
-                recogida_preguntada_at, recogida_preguntada_a`;
+                recogida_preguntada_at, recogida_preguntada_a,
+                contacto_origen, telefono_origen, horario_origen`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -343,8 +350,19 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       quien: t.contact_name as string | null,
       telefono: t.contact_phone as string | null,
     };
+    /*
+     * En el primero, lo que contestó el vendedor manda sobre lo que tenemos.
+     *
+     * «AutoCheck Deutschland» es a quién le compramos; «Daniel Weber» es por
+     * quien pregunta el conductor al llegar. No son lo mismo, y el que sirve
+     * en la puerta es el segundo.
+     */
     const origen = esElPrimero
-      ? { donde: String(t.desde ?? ''), quien: t.vendedor as string | null }
+      ? {
+          donde: String(t.desde ?? ''),
+          quien: String(t.contacto_origen ?? '').trim() || (t.vendedor as string | null),
+          telefono: String(t.telefono_origen ?? '').trim() || null,
+        }
       : { donde: String(t.desde ?? '') };
     const destino = esElPrimero
       ? { donde: String(t.hasta ?? '') }
@@ -356,6 +374,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       matricula: t.matricula as string | null,
       origen, destino,
       recogidaPrevista: t.recogida_prevista as string | null,
+      horarioOrigen: String(t.horario_origen ?? '').trim() || null,
       coste: t.coste != null ? Number(t.coste) : null,
     };
     const falta = faltaParaLaOrden(datos);
@@ -457,7 +476,10 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
     const valores: unknown[] = [];
     const pon = (columna: string, valor: unknown) => { valores.push(valor); sets.push(`${columna} = $${valores.length}`); };
 
-    for (const campo of ['transportista', 'desde', 'hasta', 'vehiculo_titulo', 'matricula'] as const) {
+    for (const campo of [
+      'transportista', 'desde', 'hasta', 'vehiculo_titulo', 'matricula',
+      'contacto_origen', 'telefono_origen', 'horario_origen',
+    ] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     if (req.body?.coste !== undefined) pon('coste', req.body.coste === '' || req.body.coste === null ? null : Number(req.body.coste));
