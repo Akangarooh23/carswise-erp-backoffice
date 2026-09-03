@@ -539,13 +539,15 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
             // movido: mover la etapa es parte de esto, no un requisito previo.
             estado: (enTramites || yaEnZaragoza) ? 'toca' : 'porVenir',
             /*
-             * Y el número va al expediente, que es donde está el botón.
+             * Y el número va a Gestoría, que es donde se mira esto.
              *
-             * Mandaba a Gestoría, y allí no hay nada que hacer todavía: los
-             * tres papeleos no existen hasta que se encarga. Un número rojo
-             * que lleva a una pantalla vacía se deja de mirar.
+             * Estuvo un rato en el expediente porque Gestoría salía vacía: los
+             * papeleos no existían hasta encargarlos. Ahora se abren al llegar
+             * el coche, así que allí están los tres esperando, y allí es donde
+             * se viene a ver cómo van. El correo se sigue mandando desde el
+             * expediente, y Gestoría lo dice.
              */
-            donde: '/importaciones',
+            donde: '/gestoria',
           }
   );
 

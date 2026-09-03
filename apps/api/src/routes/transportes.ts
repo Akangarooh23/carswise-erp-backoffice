@@ -1054,11 +1054,11 @@ export async function abreLosTramosQueFalten(): Promise<number> {
  * vendedor y el destino sale del expediente— pero no lo abría nadie: había que
  * acordarse y crearlo a mano, con el coche ya en Zaragoza.
  *
- * Se abre **al entrar en trámites**, no al terminarlos: así se puede ir pidiendo
- * precio y comparando mientras la DGT hace lo suyo, que son dos semanas ganadas.
- * Comprometerse es otra cosa —la orden no sale hasta que el coche tiene
- * matrícula—, y esa es la misma regla que ya usamos con el vendedor: preguntar
- * pronto, comprometerse tarde.
+ * Se abre **al terminar los trámites**, no al empezarlos. Lo decidió Ana, y
+ * tiene razón: abierto antes es un tramo «Por organizar» durante seis semanas,
+ * pidiendo un trabajo que todavía no se puede hacer. Un coche sin matricular no
+ * se lleva a casa de nadie, y una tarea que se queda semanas en el tablero
+ * enseña a no mirar el tablero.
  *
  * Solo si hay dirección de entrega. Si el cliente lo recoge en Zaragoza no hay
  * segundo viaje, y un tramo vacío es una tarea que nadie tiene que hacer.
@@ -1131,6 +1131,10 @@ export async function abreElTramoAlCliente(): Promise<number> {
         AND l.status IN ('En trámites', 'Entregado')
         AND COALESCE(l.entrega_direccion, '') <> ''
         AND t.id IS NULL
+        -- Y con los papeleos terminados: antes no hay viaje que organizar.
+        AND EXISTS (SELECT 1 FROM erp_tramites tr WHERE tr.lead_id = l.id)
+        AND NOT EXISTS (SELECT 1 FROM erp_tramites tr
+                         WHERE tr.lead_id = l.id AND tr.estado <> 'Resuelto')
       LIMIT 50`
   ).catch(() => ({ rows: [] as { id: string; vehiculo_titulo: string; matricula: string; hasta: string }[] }));
 

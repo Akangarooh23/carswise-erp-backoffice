@@ -131,7 +131,16 @@ tramitesRouter.get('/tramites', requireRole(['admin', 'support', 'operations', '
 
   try {
     await prepara();
-    const r = await query(`SELECT ${CAMPOS} FROM erp_tramites ${where} ORDER BY created_at DESC LIMIT 200`, valores);
+    // Y si al expediente de ese coche ya se le mandó el encargo. El correo es
+    // uno por coche y sale del expediente, así que desde aquí no había forma
+    // de saber si estaba pedido o no.
+    const r = await query(
+      `SELECT ${CAMPOS},
+              (SELECT l.encargo_gestoria_enviado_at FROM moveadvisor_market_leads l
+                WHERE l.id = erp_tramites.lead_id) AS encargo_enviado_at
+         FROM erp_tramites ${where} ORDER BY created_at DESC LIMIT 200`,
+      valores
+    );
     res.json({ ok: true, data: r.rows });
   } catch (err) {
     console.error('[tramites] listar:', (err as Error).message);

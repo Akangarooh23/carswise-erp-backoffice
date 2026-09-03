@@ -341,8 +341,8 @@ describe('el número rojo del menú', () => {
       },
     }, 'En trámites');
     const cuenta = pendientesPorPantalla([conDosFrentes], HOY);
-    // Encargar los trámites se hace desde el expediente, así que cuenta ahí.
-    assert.equal(cuenta['/importaciones'], 1);
+    // Los papeleos se miran en Gestoría, que es donde están abiertos.
+    assert.equal(cuenta['/gestoria'], 1);
     // Y no se pide la entrega: el coche todavía tiene matrícula alemana, y
     // así no se le entrega a nadie. Antes salía desde el día en que llegaba.
     assert.ok(!pasosDeLaImportacion(conDosFrentes, HOY)
@@ -670,14 +670,13 @@ describe('llegar es que lo descarguen, no que cambie la etapa', () => {
   });
 
   test('y entonces lo que toca es encargarle los trámites a la gestoría', () => {
-    // El número va al expediente, que es donde está el botón: en Gestoría no
-    // hay nada que hacer todavía, porque los tres papeleos no existen hasta
-    // que se encargan. Un número que lleva a una pantalla vacía se deja de
-    // mirar.
+    // El número va a Gestoría, que es donde se mira esto: los tres papeleos se
+    // abren al llegar el coche, así que allí están esperando. El correo se
+    // manda desde el expediente, y Gestoría lo dice con un aviso.
     const x = kia(DESCARGADO, 'En transporte');
     assert.equal(paso(x, 'tramites').estado, 'toca');
-    assert.equal(paso(x, 'tramites').donde, '/importaciones');
-    assert.equal(pendientesPorPantalla([x], HOY)['/gestoria'], undefined);
+    assert.equal(paso(x, 'tramites').donde, '/gestoria');
+    assert.equal(pendientesPorPantalla([x], HOY)['/gestoria'], 1);
   });
 
   test('sin descargar sigue siendo una espera', () => {

@@ -55,6 +55,8 @@ interface Tramite {
   cliente_email: string;
   pedido_id: string | null;
   lead_id: string | null;
+  /** Si al expediente de este coche ya se le ha mandado el encargo. */
+  encargo_enviado_at?: string | null;
   coste: string | number | null;
   fecha_enviado: string | null;
   fecha_resuelto: string | null;
@@ -123,6 +125,22 @@ export default function GestoriaPage() {
   );
   const resueltos = useMemo(() => tramites.filter((t) => t.estado === 'Resuelto'), [tramites]);
 
+  /**
+   * Los coches con papeleos abiertos y todavía sin encargar.
+   *
+   * Uno por coche y no por papeleo: el correo a la gestoría lleva los tres
+   * juntos, así que tres avisos del mismo coche serían el mismo aviso repetido.
+   */
+  const sinEncargar = useMemo(() => {
+    const vistos = new Set<string>();
+    return tramites.filter((t) => {
+      if (t.encargo_enviado_at || !t.lead_id || t.estado === 'Resuelto') return false;
+      if (vistos.has(t.lead_id)) return false;
+      vistos.add(t.lead_id);
+      return true;
+    });
+  }, [tramites]);
+
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
     const r = await api.patch<Tramite>(`/tramites/${id}`, cambios);
@@ -177,6 +195,36 @@ export default function GestoriaPage() {
         </div>
       ) : (
         <>
+          {/*
+            * Los que están abiertos pero todavía sin encargar.
+            *
+            * Los papeleos de una importación se abren solos en cuanto el coche
+            * llega a Zaragoza, y aquí aparecen los tres esperando. Pero el
+            * correo que se los encarga a la gestoría sale del expediente —es un
+            * correo por coche, no por papeleo— y desde aquí no había forma de
+            * saberlo: tres trámites «Pendiente» y ningún sitio donde empezar.
+            */}
+          {sinEncargar.length > 0 && (
+            <div className="mb-3 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50">
+              <div className="text-xs font-bold text-amber-900">
+                {sinEncargar.length === 1
+                  ? 'Un coche con los papeleos abiertos y todavía sin encargar'
+                  : `${sinEncargar.length} coches con los papeleos abiertos y todavía sin encargar`}
+              </div>
+              <div className="text-[11px] text-amber-800 mt-0.5">
+                {sinEncargar.map((t) => t.vehiculo_titulo).filter(Boolean).join(' · ')}
+              </div>
+              <a href="/importaciones"
+                 className="inline-block text-[11px] font-semibold text-amber-900 underline underline-offset-2 mt-1">
+                Encargárselo desde el expediente →
+              </a>
+              <div className="text-[11px] text-amber-700/80 mt-1">
+                Es un correo por coche y no por papeleo: los tres van en el mismo,
+                con el importe real del impuesto.
+              </div>
+            </div>
+          )}
+
           {/* Lo que está fuera va primero, y ordenado por lo que lleva esperando:
               es lo único que no se resuelve trabajando más. */}
           <Bloque
