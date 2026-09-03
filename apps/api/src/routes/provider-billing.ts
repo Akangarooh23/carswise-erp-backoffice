@@ -57,6 +57,10 @@ providerBillingRouter.get('/provider-billing/summary', requireRole(['admin', 'op
         COUNT(*) FILTER (WHERE type = 'renting_fee')::int              AS renting_count,
         COUNT(*) FILTER (WHERE type = 'portal_commission')::int        AS commission_count
       FROM moveadvisor_provider_invoices
+      -- «Pendientes de cobro» es lo que nos deben a nosotros. Contando las
+      -- dos direcciones, lo que le debemos al perito salía como dinero por
+      -- cobrar.
+      WHERE direction = 'emitted'
     `);
     res.json({ ok: true, data: r.rows[0] });
   } catch (err) {
@@ -72,11 +76,20 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
   const limit  = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
-  const conditions: string[] = [];
+  /*
+   * Solo las emitidas.
+   *
+   * No filtraba por dirección, así que esta lista enseñaba también las
+   * facturas de proveedor —y, en cuanto existieron, las que solo estamos
+   * esperando—. Una factura que nadie ha emitido, con nuestro identificador
+   * interno en la columna «Nº factura», parece una factura que hemos emitido
+   * nosotros; y ahí no hay ninguna.
+   */
+  const conditions: string[] = ["direction = 'emitted'"];
   const values: unknown[] = [];
   if (type !== 'all') { values.push(type);   conditions.push(`type = $${values.length}`); }
   if (status)         { values.push(status); conditions.push(`status = $${values.length}`); }
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const where = `WHERE ${conditions.join(' AND ')}`;
 
   try {
     const [rows, total] = await Promise.all([
@@ -210,11 +223,14 @@ export async function apuntaFacturaRecibida(datos: {
     await query(
       `UPDATE moveadvisor_provider_invoices
           SET invoice_amount = $2, invoice_date = $3, vehicle_title = $4, notes = $5,
+              -- El número es el suyo, no nuestro identificador de fila.
+              invoice_number = $6,
               -- Si era una espera, deja de serlo: ya hay factura que pagar.
               status = CASE WHEN status = 'esperada' THEN 'pending' ELSE status END,
               updated_at = NOW()
         WHERE id = $1`,
-      [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null, notas]
+      [ya.rows[0].id, Number(datos.importe), datos.fecha || null, datos.vehiculo || null,
+       notas, numero]
     ).catch(() => {});
     return ya.rows[0].id;
   }
@@ -223,9 +239,10 @@ export async function apuntaFacturaRecibida(datos: {
     await query(
       `INSERT INTO moveadvisor_provider_invoices
          (id, type, direction, provider_name, vehicle_title,
-          invoice_amount, invoice_date, notes, status)
-       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, 'pending')`,
-      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), datos.fecha || null, notas]
+          invoice_amount, invoice_date, notes, invoice_number, status)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, 'pending')`,
+      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), datos.fecha || null,
+       notas, numero]
     );
   });
   return id;

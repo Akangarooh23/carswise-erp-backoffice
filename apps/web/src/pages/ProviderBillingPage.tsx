@@ -62,6 +62,8 @@ interface FacturaEsperada {
 
 interface ReceivedInvoice {
   id: string;
+  /** El número que le puso el proveedor. El nuestro es `id`. */
+  invoice_number?: string | null;
   provider_name: string;
   vehicle_title: string | null;
   contract_id: string | null;
@@ -540,7 +542,18 @@ export default function ProviderBillingPage() {
                 <tbody>
                   {received.map(r => (
                     <tr key={r.id}>
-                      <td className="font-mono text-xs text-brand-400">{r.id}</td>
+                      {/*
+                        * El número de la factura es el suyo, no el nuestro.
+                        *
+                        * Aquí salía `PROV-2026-001`, que es nuestro
+                        * identificador de fila. Puesto bajo «Nº factura» se
+                        * lee como el número del documento, y entonces nadie
+                        * sabe con qué referencia reclamarle ni qué papel es.
+                        */}
+                      <td className="font-mono text-xs">
+                        <span className="text-brand-600">{r.invoice_number || '—'}</span>
+                        <span className="block text-[10px] text-brand-300">{r.id}</span>
+                      </td>
                       <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(r.invoice_date ?? r.issued_at)}</td>
                       <td className="text-sm font-medium text-brand-500">{r.provider_name}</td>
                       <td className="text-sm text-brand-400 max-w-[160px] truncate">{r.vehicle_title || '–'}</td>
