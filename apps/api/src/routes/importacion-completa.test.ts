@@ -610,9 +610,27 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
 
     for (const tr of tablas.tramites) {
       await api(`/tramites/${tr.id}`, 'PATCH', {
-        estado: 'Enviado a gestoría', nota: 'Mandado con la ficha', gestoria: 'Gestoría Ruiz', coste: 400,
+        estado: 'Enviado a gestoría', nota: 'Mandado con la ficha', gestoria: 'Gestoría Ruiz',
+        partidas: [{ concepto: 'Honorarios de la gestoría', importe: 400, que: 'nuestro' }],
       });
-      await api(`/tramites/${tr.id}`, 'PATCH', { estado: 'Resuelto', nota: 'Devuelto' });
+
+      /*
+       * Y no se cierra sin lo que tiene que volver.
+       *
+       * Sin el permiso de circulación y la ficha técnica el coche no se
+       * entrega, y eso se descubre el día de la entrega, con el cliente
+       * delante.
+       */
+      const sinPapeles = await api(`/tramites/${tr.id}`, 'PATCH', { estado: 'Resuelto', nota: 'Devuelto' });
+      assert.equal(sinPapeles.codigo, 409, 'no se cierra un papeleo sin los papeles de vuelta');
+
+      for (const papel of [
+        'Permiso de circulación', 'Ficha técnica', 'Justificante del impuesto de matriculación',
+      ]) {
+        tablas.documentos.push({ papel, ambito: 'tramite', ambito_id: tr.id } as Fila);
+      }
+      const cerrado = await api(`/tramites/${tr.id}`, 'PATCH', { estado: 'Resuelto', nota: 'Devuelto' });
+      assert.equal(cerrado.codigo, 200);
     }
     assert.ok(tablas.tramites.every((x) => x.estado === 'Resuelto'));
 

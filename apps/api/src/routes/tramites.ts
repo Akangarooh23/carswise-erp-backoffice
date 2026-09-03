@@ -13,6 +13,8 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { resumenDeLaGestoria, type Partida } from '../lib/partidas-de-la-gestoria.js';
+import { faltaParaResolver } from '../lib/expediente-de-gestoria.js';
+import { escritoEnLista } from '../lib/escrow.js';
 import { ponAlDiaLasEtapas } from './transportes.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
@@ -147,6 +149,8 @@ tramitesRouter.get('/tramites', requireRole(['admin', 'support', 'operations', '
               COALESCE(erp_tramites.lead_id,
                        (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = erp_tramites.pedido_id),
                        erp_tramites.pedido_id) AS coche,
+              COALESCE((SELECT array_agg(d.papel) FROM erp_documentos d
+                         WHERE d.ambito = 'tramite' AND d.ambito_id = erp_tramites.id), '{}') AS papeles,
               (SELECT l.encargo_gestoria_enviado_at FROM moveadvisor_market_leads l
                 WHERE l.id = COALESCE(erp_tramites.lead_id,
                        (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = erp_tramites.pedido_id))
@@ -227,6 +231,37 @@ tramitesRouter.patch('/tramites/:id', requireRole(['admin', 'operations', 'sales
         detail: 'Dile a qué gestoría se manda: si no, es un papel que no está en ningún sitio.',
       });
       return;
+    }
+
+    /*
+     * Y no se da por resuelto sin lo que tiene que volver.
+     *
+     * Los papeles y el coste. Sin el permiso de circulación y la ficha técnica
+     * el coche no se entrega, y eso se descubre el día de la entrega; sin el
+     * coste queda un gasto que aparece semanas después, cuando el margen ya se
+     * ha calculado.
+     */
+    if (estado === 'Resuelto') {
+      const suyos = await query<{ papel: string }>(
+        `SELECT papel FROM erp_documentos WHERE ambito = 'tramite' AND ambito_id = $1`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] as { papel: string }[] }));
+      const conPartidas = req.body?.partidas !== undefined
+        ? resumenDeLaGestoria(req.body.partidas as Partida[]).total
+        : previo.coste;
+      const falta = faltaParaResolver({
+        tipo: String(previo.tipo ?? ''),
+        papeles: suyos.rows.map((d) => d.papel),
+        coste: conPartidas,
+      });
+      if (falta.length) {
+        res.status(409).json({
+          ok: false, error: 'sin_lo_que_vuelve',
+          detail: `Antes de darlo por resuelto falta ${escritoEnLista(falta)}.`,
+          faltan: falta,
+        });
+        return;
+      }
     }
 
     const sets: string[] = [];
@@ -569,6 +604,35 @@ export async function abreLosTramitesQueFalten(): Promise<number> {
   });
   if (gemelos.rowCount) {
     console.log('[tramites] recogidos %d papeleos repetidos', gemelos.rowCount);
+  }
+
+  /*
+   * Y el que ya se encargó, fuera.
+   *
+   * Con el correo mandado la pelota es de la gestoría, pero eso se apuntaba en
+   * el momento de mandarlo, y un momento se pierde: los que se encargaron
+   * antes de que existiera esa regla se quedaron diciendo «Pendiente» en el
+   * bloque de lo que depende de nosotros, con el reloj parado.
+   *
+   * La fecha de salida se cuenta desde el correo, no desde ahora: si no, un
+   * expediente que lleva tres semanas fuera aparecería recién salido.
+   */
+  const fuera = await query(
+    `UPDATE erp_tramites t
+        SET estado = 'Enviado a gestoría',
+            fecha_enviado = COALESCE(t.fecha_enviado, l.encargo_gestoria_enviado_at),
+            updated_at = NOW()
+       FROM moveadvisor_market_leads l
+      WHERE l.encargo_gestoria_enviado_at IS NOT NULL
+        AND (t.lead_id = l.id
+          OR t.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = l.id))
+        AND t.estado IN ('Pendiente', 'Documentación incompleta')`
+  ).catch((e: Error) => {
+    console.error('[tramites] no se han podido poner fuera los ya encargados:', e.message);
+    return { rowCount: 0 };
+  });
+  if (fuera.rowCount) {
+    console.log('[tramites] puestos fuera %d ya encargados', fuera.rowCount);
   }
 
   return abiertos;

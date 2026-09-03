@@ -5,6 +5,7 @@ import {
   PARTIDAS_HABITUALES, resumenDeLaGestoria, comoSeCuenta, leeLoPegado,
   queEsPorDefecto, type Partida,
 } from '../lib/partidas-de-la-gestoria.js';
+import { loQueCubre, faltaParaResolver } from '../lib/expediente-de-gestoria.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
@@ -66,6 +67,8 @@ interface Tramite {
   coste: string | number | null;
   /** Lo que factura la gestoría, partida a partida. */
   partidas?: Partida[] | null;
+  /** Los papeles que ya han vuelto, por su nombre. */
+  papeles?: string[] | null;
   fecha_enviado: string | null;
   fecha_resuelto: string | null;
   notas: string;
@@ -361,7 +364,8 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
               {coche.papeleos.map((p) => {
                 const dias = conDias ? diasDesde(p.fecha_enviado) : null;
                 return (
-                  <div key={p.id} className="flex items-center gap-2 py-1.5">
+                  <div key={p.id} className="py-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-[12px] text-brand-600 flex-1 truncate">{p.tipo}</span>
                     {dias !== null && (
                       <span className={`text-[10px] ${dias > 14 ? 'text-red-600 font-bold' : 'text-brand-300'}`}>
@@ -376,6 +380,15 @@ function Bloque({ titulo, pie, lista, onAbrir, onEncargar, conDias = false }: {
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${COLOR[p.estado] ?? ''}`}>
                       {p.estado}
                     </span>
+                  </div>
+                  {/* Qué va dentro. Con el título a secas, quien lo mira no
+                      sabe si el impuesto y la ITV están o se olvidaron, y
+                      acaba abriendo un trámite suelto por si acaso. */}
+                  {loQueCubre(p.tipo).length > 0 && (
+                    <div className="text-[10px] text-brand-300 mt-0.5">
+                      {loQueCubre(p.tipo).join(' · ')}
+                    </div>
+                  )}
                   </div>
                 );
               })}
@@ -462,6 +475,19 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
     if (nuevas.length) setPartidas((ps) => [...ps, ...nuevas]);
     setPegado('');
   };
+
+  /**
+   * Lo que falta para poder cerrarlo, con lo que se está editando.
+   *
+   * Los papeles salen de los que ya están subidos —el componente los lista
+   * aparte— y el coste, de las partidas de arriba: quien acaba de pegarlas
+   * espera ver que ya no falta, sin tener que guardar para averiguarlo.
+   */
+  const faltaDeCerrar = faltaParaResolver({
+    tipo: t.tipo,
+    papeles: t.papeles ?? [],
+    coste: resumenDeLaGestoria(partidas).total,
+  });
 
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_enviado);
@@ -672,7 +698,38 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
 
         {/* Lo que se le manda a la gestoría y lo que devuelve. Sin origen: un
             trámite no compra nada, así que no hay lista que esperar. */}
+        {/*
+          * Los papeles que vuelven de la gestoría.
+          *
+          * Aquí se suben diciendo cuál es cuál, y de ahí sale lo que falta para
+          * poder cerrarlo: un documento subido como «otro» no tapa ningún hueco,
+          * porque si tapara bastaría con subir cualquier cosa.
+          */}
         <Documentos ambito="tramite" id={t.id} />
+
+        {/*
+          * Y lo que falta para darlo por resuelto.
+          *
+          * Dicho antes de intentarlo: el servidor lo bloquea igual, pero
+          * enterarse después de escribir la nota, y con un error, es enterarse
+          * tarde y mal.
+          */}
+        {t.estado !== 'Resuelto' && (
+          <div className="mt-3 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50">
+            <div className="text-[11px] font-bold text-amber-900 mb-0.5">
+              Para darlo por resuelto
+            </div>
+            {faltaDeCerrar.length ? (
+              <ul className="text-[11px] text-amber-800 list-disc pl-4 space-y-0.5">
+                {faltaDeCerrar.map((x) => <li key={x}>{x}</li>)}
+              </ul>
+            ) : (
+              <div className="text-[11px] text-amber-800">
+                Ya está todo: los papeles de vuelta y lo que ha costado.
+              </div>
+            )}
+          </div>
+        )}
 
         {t.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">

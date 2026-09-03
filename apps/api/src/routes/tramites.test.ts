@@ -172,10 +172,23 @@ describe('gestoría', { concurrency: 1 }, () => {
       assert.equal(historial.filter((h) => h.tramite_id === id).length, 1);
     });
 
-    test('resolverlo deja su fecha', async () => {
+    test('no se da por resuelto sin saber lo que ha costado', async () => {
+      // Cerrarlo sin el coste deja un gasto que aparece semanas después,
+      // cuando el margen del coche ya se ha calculado.
       const alta = await api('/tramites', 'POST', { tipo: 'ITV periódica', matricula: '1234ABC', gestoria: 'Gestoría Ruiz' });
       const id = (alta.cuerpo.data as Fila).id;
-      await api(`/tramites/${id}`, 'PATCH', { estado: 'Resuelto', nota: 'devuelto con la tarjeta' });
+      const sinCoste = await api(`/tramites/${id}`, 'PATCH', { estado: 'Resuelto', nota: 'devuelto' });
+      assert.equal(sinCoste.codigo, 409);
+      assert.match(String(sinCoste.cuerpo.detail), /ha costado/);
+    });
+
+    test('y con él, resolverlo deja su fecha', async () => {
+      const alta = await api('/tramites', 'POST', { tipo: 'ITV periódica', matricula: '1234ABC', gestoria: 'Gestoría Ruiz' });
+      const id = (alta.cuerpo.data as Fila).id;
+      await api(`/tramites/${id}`, 'PATCH', {
+        estado: 'Resuelto', nota: 'devuelto con la tarjeta',
+        partidas: [{ concepto: 'ITV', importe: 45, que: 'suplido' }],
+      });
       assert.ok(tramites.find((x) => x.id === id)!.fecha_resuelto);
     });
 
