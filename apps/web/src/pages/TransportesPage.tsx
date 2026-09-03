@@ -62,6 +62,10 @@ interface Transporte {
   portacoches?: boolean | null;
   presupuesto_pedido_at?: string | null;
   presupuesto_pedido_a?: string | null;
+  /** Quién lleva este viaje por parte del transportista, y en qué teléfono. */
+  contacto_transportista?: string | null;
+  telefono_transportista?: string | null;
+  aviso_recogida_at?: string | null;
   entrega_prevista: string | null;
   fecha_recogida: string | null;
   fecha_entrega: string | null;
@@ -363,6 +367,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
     contacto_origen: t.contacto_origen ?? '', telefono_origen: t.telefono_origen ?? '',
     horario_origen: t.horario_origen ?? '',
     portacoches: t.portacoches === true ? 'si' : t.portacoches === false ? 'no' : '',
+    contacto_transportista: t.contacto_transportista ?? '',
+    telefono_transportista: t.telefono_transportista ?? '',
   });
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_recogida);
@@ -476,6 +482,29 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             <LoQueTieneAcordado nombre={datos.transportista} />
           </div>
           <div className="col-span-2 text-[10px] text-brand-300 -mt-1">{PISTAS.transportista}</div>
+
+          {/*
+            * Quién lleva este viaje por su parte.
+            *
+            * En el tramo y no en su ficha: la ficha tiene la centralita, y el
+            * que contesta el presupuesto es el de tráfico, que cambia de un
+            * coche a otro. Su nombre va en el saludo de la orden —una orden
+            * que no nombra a nadie se queda en el buzón general como una
+            * más— y su teléfono se lo damos al vendedor, para que sepa quién
+            * le va a llamar.
+            */}
+          <label className="text-[11px] text-brand-400">
+            Quién lo lleva por su parte
+            <input value={datos.contacto_transportista} placeholder="Michael Schneider"
+                   onChange={(e) => setDatos((d) => ({ ...d, contacto_transportista: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="text-[11px] text-brand-400">
+            Su teléfono
+            <input value={datos.telefono_transportista} placeholder="+49 711 000000"
+                   onChange={(e) => setDatos((d) => ({ ...d, telefono_transportista: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
 
           {/*
             * Pedirle precio, que es lo que va antes de contratarlo.

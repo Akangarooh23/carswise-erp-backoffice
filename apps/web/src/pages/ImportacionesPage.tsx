@@ -201,6 +201,9 @@ export default function ImportacionesPage() {
    */
   const preguntaLaRecogida = (x: Expediente) =>
     preparaCorreo(`/transportes/${x.meta?.tramo_del_vendedor}/datos-recogida`);
+  /** Y decirle quién va y qué día, con lo que ya hay apuntado en el tramo. */
+  const avisaDeLaRecogida = (x: Expediente) =>
+    preparaCorreo(`/transportes/${x.meta?.tramo_del_vendedor}/aviso-recogida`);
 
   async function cambia(id: string, cambios: Record<string, unknown>) {
     setGuardando(true);
@@ -409,6 +412,7 @@ export default function ImportacionesPage() {
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onPreguntarAlVendedor={() => void preguntaAlVendedor(abierto.id)}
           onPreguntarRecogida={() => void preguntaLaRecogida(abierto)}
+          onAvisarDeLaRecogida={() => void avisaDeLaRecogida(abierto)}
           onGuardarRespuesta={(datos) => void guardaLaRespuesta(abierto.id, datos)}
           onPedirFactura={() => void pideLaFactura(abierto.id)}
           onEncargarALaGestoria={() => void encargaALaGestoria(abierto.id)}
@@ -591,6 +595,7 @@ interface PanelProps {
   onCambiar: (cambios: Record<string, unknown>) => void;
   onPreguntarAlVendedor: () => void;
   onPreguntarRecogida: () => void;
+  onAvisarDeLaRecogida: () => void;
   onGuardarRespuesta: (datos: Record<string, string>) => void;
   onPedirFactura: () => void;
   onEncargarALaGestoria: () => void;
@@ -606,7 +611,7 @@ interface PanelProps {
  * El orden no es casual: primero el dinero —es lo que bloquea todo lo demás—,
  * después la etapa, y al final la fecha, que no existe hasta que hay pedido.
  */
-function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onPreguntarRecogida, onGuardarRespuesta, onPedirFactura,
+function ExpedienteAbierto({ x, guardando, fecha, setFecha, siguiente, onCerrar, onCambiar, onDevolver, onNotificar, onGuardarNotas, onPreguntarAlVendedor, onPreguntarRecogida, onAvisarDeLaRecogida, onGuardarRespuesta, onPedirFactura,
 onEncargarALaGestoria, aviso }: PanelProps) {
   /**
    * Lo que trae su respuesta al primer correo, en el mismo orden en que lo
@@ -1100,6 +1105,49 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                       La dirección exacta, el día y la hora, por quién preguntar, qué se
                       lleva el conductor y si entra un camión portacoches. Su respuesta
                       se apunta en el tramo, en Transportes.
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/*
+              * Y el cuarto correo al vendedor: quién va a por el coche y qué día.
+              *
+              * Va antes de confirmarle nada al transportista, y no es un
+              * detalle de orden: quien tiene que preparar el coche y sacar los
+              * papeles del cajón es el vendedor. Un conductor que llega a una
+              * nave donde nadie le espera se va vacío, y ese viaje se paga
+              * igual.
+              *
+              * Los datos salen del tramo —el transportista y el día están
+              * allí— pero el correo es al vendedor, y los suyos viven aquí.
+              */}
+            {x.meta?.tramo_del_vendedor && x.meta?.recogida_preguntada_at && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/70">
+                <div className="text-xs font-semibold text-emerald-800 mb-1.5">
+                  Avisarle de quién va y qué día
+                </div>
+                {x.meta?.aviso_recogida_at ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-bold text-emerald-700">
+                      ✓ Avisado el {dia(x.meta.aviso_recogida_at)}
+                    </span>
+                    <button onClick={() => onAvisarDeLaRecogida()} disabled={guardando}
+                            className="text-[11px] text-brand-400 underline underline-offset-2">
+                      volver a avisarle
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onAvisarDeLaRecogida()} disabled={guardando}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                      Decirle quién va a por el coche y qué día
+                    </button>
+                    <div className="text-[11px] text-emerald-800/80 mt-1.5">
+                      El día, la empresa, quién le va a llamar y qué tiene que darle al
+                      conductor. Sale del tramo: si todavía no hay transportista o día,
+                      lo dirá al abrirlo.
                     </div>
                   </>
                 )}

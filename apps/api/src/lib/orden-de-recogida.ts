@@ -47,6 +47,13 @@ export interface DatosDeLaOrden {
    * mitad. Lo que hace falta es que el conductor lo lea.
    */
   horarioOrigen?: string | null;
+  /**
+   * Quién lleva este viaje por su parte, si nos han dado un nombre.
+   *
+   * Va en el saludo. Una orden que entra por una dirección general y no
+   * nombra a nadie se queda en el buzón de tráfico como una más.
+   */
+  contactoSuyo?: string | null;
   /** Lo acordado, si ya está cerrado. */
   coste?: number | null;
   /** Lo que añada quien revisa antes de mandarla, ya en HTML. */
@@ -164,8 +171,9 @@ export function correoDeOrdenDeRecogida(d: DatosDeLaOrden, idioma: Idioma = 'es'
   const p = (html: string) =>
     `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#2A2A28">${html}</p>`;
 
+  const quienSuyo = String(d.contactoSuyo ?? '').trim();
   const html =
-    p(t.saludo) +
+    p(quienSuyo ? `${t.saludo.replace(/,$/, '')} ${esc(quienSuyo)},` : t.saludo) +
     p(t.entradilla) +
     tabla +
     p(cuando ? t.conFecha : t.sinFecha) +

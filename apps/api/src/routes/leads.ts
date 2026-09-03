@@ -378,6 +378,10 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                     SELECT MIN(t.recogida_preguntada_at) FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id
                   ),
+                  'aviso_recogida_at', (
+                    SELECT MIN(t.aviso_recogida_at) FROM erp_transportes t
+                     WHERE t.lead_id = moveadvisor_market_leads.id
+                  ),
                   'impuesto_real', (
                     SELECT t.coste FROM erp_tramites t
                      WHERE t.lead_id = moveadvisor_market_leads.id

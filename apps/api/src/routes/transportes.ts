@@ -20,6 +20,9 @@ import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import {
+  correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
+} from '../lib/aviso-de-recogida-al-vendedor.js';
+import {
   correoDePresupuestoAlTransportista, faltaParaPedirPresupuesto, type Idioma,
 } from '../lib/presupuesto-al-transportista.js';
 
@@ -97,7 +100,15 @@ const ENSURE_ORDEN = `
     -- cambia el precio del viaje.
     ADD COLUMN IF NOT EXISTS portacoches BOOLEAN,
     ADD COLUMN IF NOT EXISTS presupuesto_pedido_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS presupuesto_pedido_a  TEXT NOT NULL DEFAULT ''`;
+    ADD COLUMN IF NOT EXISTS presupuesto_pedido_a  TEXT NOT NULL DEFAULT '',
+    -- Y cuándo se le dijo al vendedor quién va a por el coche y qué día.
+    ADD COLUMN IF NOT EXISTS aviso_recogida_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS aviso_recogida_a  TEXT NOT NULL DEFAULT '',
+    -- Quién lleva este viaje por parte del transportista. Va en el tramo y no
+    -- en su ficha: la ficha tiene la centralita, y el que contesta el
+    -- presupuesto es el de tráfico, que cambia de un coche a otro.
+    ADD COLUMN IF NOT EXISTS contacto_transportista TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS telefono_transportista TEXT NOT NULL DEFAULT ''`;
 
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_transportes_estado
@@ -125,7 +136,9 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 orden_enviada_at, orden_enviada_a,
                 recogida_preguntada_at, recogida_preguntada_a,
                 contacto_origen, telefono_origen, horario_origen,
-                portacoches, presupuesto_pedido_at, presupuesto_pedido_a`;
+                portacoches, presupuesto_pedido_at, presupuesto_pedido_a,
+                aviso_recogida_at, aviso_recogida_a,
+                contacto_transportista, telefono_transportista`;
 
 // ── Listar ──────────────────────────────────────────────────────────────────
 transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
@@ -398,6 +411,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       matricula: t.matricula as string | null,
       origen, destino,
       recogidaPrevista: t.recogida_prevista as string | null,
+      contactoSuyo: String(t.contacto_transportista ?? '').trim() || null,
       horarioOrigen: String(t.horario_origen ?? '').trim() || null,
       coste: t.coste != null ? Number(t.coste) : null,
     };
@@ -595,6 +609,130 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
     res.status(500).json({ ok: false, error: 'presupuesto_failed' });
   }
 });
+/**
+ * Decirle al vendedor quién va a por el coche y qué día.
+ *
+ * Va **antes** de confirmarle nada al transportista, y no es un detalle de
+ * orden: quien tiene que preparar el coche y sacar los papeles del cajón es el
+ * vendedor. Un conductor que llega a una nave donde nadie le espera se va
+ * vacío, y ese viaje se paga igual.
+ *
+ * El correo es al vendedor, así que el botón vive en el expediente —cada
+ * pantalla manda los correos de su interlocutor— pero los datos salen del
+ * tramo, que es donde están el transportista y el día. Preguntar y guardar no
+ * tienen por qué pasar en la misma pantalla.
+ */
+transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT t.*, pe.proveedor, pe.id AS pedido
+         FROM erp_transportes t
+         LEFT JOIN erp_pedidos pe ON pe.id = t.pedido_id
+        WHERE t.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const t = r.rows[0];
+    if (!t) { res.status(404).json({ ok: false, error: 'transporte_no_encontrado' }); return; }
+
+    const nombre = String(t.proveedor ?? '').trim();
+    if (!nombre) {
+      res.status(409).json({
+        ok: false, error: 'sin_vendedor',
+        detail: 'Este tramo no viene de un pedido, así que no se sabe a quién avisar.',
+      });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_vendedor',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    /*
+     * Quién llama, y por quién pregunta.
+     *
+     * Son dos personas distintas y las dos van en el correo: el de la empresa
+     * de transporte que llama antes de ir, y el del vendedor por el que
+     * pregunta el conductor al llegar. Mezclarlas es como el vendedor acaba
+     * esperando la llamada de su propio empleado.
+     */
+    const datos = {
+      vehiculo: String(t.vehiculo_titulo ?? ''),
+      referencia: String(t.id),
+      pedido: t.pedido as string | null,
+      cuando: String(t.recogida_prevista ?? ''),
+      transportista: String(t.transportista ?? ''),
+      contacto: String(t.contacto_transportista ?? '').trim() || null,
+      telefono: String(t.telefono_transportista ?? '').trim() || null,
+      preguntarPor: String(t.contacto_origen ?? '').trim() || null,
+    };
+    const falta = faltaParaAvisarDeLaRecogida(datos);
+    if (falta.length) {
+      res.status(409).json({
+        ok: false, error: 'faltan_datos_del_tramo',
+        detail: `Falta ${escritoEnLista(falta)}. Se apunta en el tramo, en Transportes.`,
+      });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const nota = notaEnParrafos(req.body?.nota);
+
+    const { subject, html } = correoDeAvisoDeRecogida({ ...datos, nota });
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+
+    const cajones = [
+      { ambito: 'lead', id: t.lead_id as string | null },
+      { ambito: 'pedido', id: t.pedido_id as string | null },
+      { ambito: 'transporte', id: req.params.id },
+    ];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    // Lo que va, y la frase que lo dice: un adjunto que el cuerpo no
+    // menciona es un adjunto que no se abre.
+    let dicho = '';
+    try {
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      adjuntos = va.attachments;
+      dicho = va.linea;
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
+
+    await query(
+      `UPDATE erp_transportes
+          SET aviso_recogida_at = NOW(), aviso_recogida_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    ).catch((e: Error) => console.error('[transportes] no se ha podido anotar el aviso:', e.message));
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    console.error('[transportes] aviso de recogida:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'aviso_recogida_failed' });
+  }
+});
 transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations']), async (req, res) => {
   const estado = nt(req.body?.estado);
   if (estado && !esEstadoTransporteValido(estado)) {
@@ -627,6 +765,7 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
     for (const campo of [
       'transportista', 'desde', 'hasta', 'vehiculo_titulo', 'matricula',
       'contacto_origen', 'telefono_origen', 'horario_origen',
+      'contacto_transportista', 'telefono_transportista',
     ] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }

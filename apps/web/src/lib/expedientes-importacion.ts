@@ -163,6 +163,8 @@ export interface MetaImportacion {
    * —dirección exacta, día y hora— se guarda en el tramo, que es quien la usa.
    */
   tramo_del_vendedor?: string | null;
+  /** Cuándo se le dijo al vendedor quién va a por el coche y qué día. */
+  aviso_recogida_at?: string | null;
   /** Lo que ese tramo ya sabe, para no confundir esperar con poder hacer. */
   tramo?: {
     recogida_prevista?: string | null;
