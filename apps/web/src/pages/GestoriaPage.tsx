@@ -644,12 +644,21 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
             </select>
           </div>
 
-          {/* O pegada de su factura: volver a teclear ocho líneas es donde se
-              cuela un cero. */}
-          <textarea value={pegado} rows={2}
-                    placeholder="…o pega aquí las líneas de su factura"
+          {/*
+            * O pegada de su factura.
+            *
+            * Volver a teclear ocho líneas es donde se cuela un cero, y una
+            * factura de gestoría llega en Excel o en PDF. Se dice que se puede
+            * pegar de Excel con todas las letras: Ana tuvo que preguntar si el
+            * recuadro servía para eso, y lo que hay que preguntar no se usa.
+            */}
+          <div className="text-[10px] text-brand-400 mt-2 mb-0.5">
+            O pega las líneas <strong>desde Excel</strong>: concepto y precio, una por fila.
+          </div>
+          <textarea value={pegado} rows={3}
+                    placeholder="Impuesto de matriculación    1.420,00"
                     onChange={(e) => setPegado(e.target.value)}
-                    className="w-full mt-1.5 px-2 py-1.5 text-[12px] border border-brand-200 rounded-lg" />
+                    className="w-full px-2 py-1.5 text-[12px] border border-brand-200 rounded-lg" />
           {pegado.trim() && (
             <div className="flex items-center gap-2 mt-1">
               <button onClick={pegaLasPartidas}
