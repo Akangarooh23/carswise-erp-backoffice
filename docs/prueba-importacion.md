@@ -364,6 +364,12 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
       Ahí sale como **Descargar PDF**.
 - [ ] Ve a **Facturación proveedores → Recibidas de proveedores**: ahí está,
       pendiente de pagar. Es la pregunta de «a quién le debemos dinero».
+- [ ] Mira las dos columnas de la izquierda: **Id PopCar** es el nuestro
+      —`PROV-2026-001`— y **Nº factura proveedor** el suyo. Con el segundo se
+      le reclama; el primero no es un número de factura, es una fila nuestra.
+- [ ] Pulsa **«Marcar pagada»** y escribe cuándo pagaste. La nota se **añade**
+      a lo que había: si sustituyera, se llevaría por delante el concepto y el
+      coche a los que está atada esa factura.
 - [ ] El **gasto del coche** es otra pregunta distinta y va al pedido. Como el
       perito cobra **antes** de que el pedido exista, ese apunte se hace solo
       cuando el pedido nace, al liberar el pago. Compruébalo entonces en «Lo que
@@ -646,6 +652,8 @@ anuncio. Un transportista no va a una ciudad.
       coche: si no cabe —sótano, calle estrecha, patio con altura— hay que
       contratar otra cosa, y eso se sabe ahora o con el conductor en la
       puerta, que es cuando ya se paga igual.
+- [ ] Vuelve al **expediente**: el camino ya no dice «organizar el transporte»
+      hasta que has preguntado esto. Un transportista no va a una ciudad.
 - [ ] Con su respuesta, **escribe la dirección en «Desde» y la fecha en**
       **«Recogida prevista»**, y guarda.
 

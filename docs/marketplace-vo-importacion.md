@@ -776,7 +776,34 @@ lo que pasa es que uno se queda parado tres semanas porque nadie se acordó de
 que el perito no había contestado.
 
 Al abrir el expediente, lo primero es **qué toca ahora**. Debajo, plegado, el
-camino entero con sus doce pasos.
+camino entero:
+
+1. El cliente paga el depósito.
+2. Preguntarle al vendedor si el coche sigue disponible.
+3. Apuntar lo que conteste: día, hora, dirección, contacto y teléfono.
+4. Encargarle la revisión al perito.
+5. Que confirme que va y diga lo que cobra.
+6. Confirmarle al vendedor el día y la hora.
+7. Que vaya y diga lo que vio.
+8. Que mande su factura *(del perito — aparte, no bloquea)*.
+9. Liberar el pago al vendedor.
+10. Pedirle su factura, que la mande, y **tenerla subida** *(aparte)*.
+11. Apuntar en el pedido su número y el pago *(aparte)*.
+12. Preguntarle dónde y cuándo se recoge.
+13. Organizar el transporte.
+14. Que el coche llegue a España.
+15. Encargarle los trámites a la gestoría.
+16. Entregárselo al cliente.
+
+Los marcados **aparte** son trabajo nuestro que **no mueve el coche**: la
+factura del perito, la del vendedor y el apunte del pago. Se dicen debajo del
+titular y en pequeño, porque puestos arriba parecía que había algo parado —y
+el coche puede seguir a transporte y a trámites sin ellos—. En el número rojo
+cuentan igual: son trabajo.
+
+Y **pedir no es tener**: la factura del vendedor se daba por hecha al pedirla,
+así que el camino saltaba adelante con el papel sin llegar. Ahora está hecha
+cuando el documento está subido.
 
 | | Qué significa |
 |---|---|
@@ -863,6 +890,7 @@ nunca, y un número que no baja se deja de mirar.
 | El informe del perito y sus fotos | **Documentos**, en la peritación |
 | Qué está roto y qué costaría arreglarlo | **Los daños que vio**, en la peritación, y el total en el expediente |
 | Lo que nos cobró el perito, y pagárselo | **Facturación proveedores → Recibidas** |
+| El número con el que reclamarle a un proveedor | **Nº factura proveedor**, en esa lista. El de al lado, «Id PopCar», es el nuestro |
 | Lo que cuesta este coche, con la peritación dentro | **Lo que cuesta**, en su pedido |
 | El día que has quedado para entregarlo | **Día de la entrega**, en el expediente |
 | Quién tocó qué y cuándo | El **historial**, lo último del expediente |
@@ -889,6 +917,13 @@ Un ejecutable, una página web o un fichero con macros —`.xlsm`, `.pptm`— no
 son documentos de un coche y se rechazan: ejecutan código al abrirlos, y esto
 acaba en un almacén público. Y el nombre y el tipo tienen que decir lo mismo,
 así que un ejecutable renombrado tampoco pasa.
+
+**Son del coche, no de la pantalla.** El expediente, el pedido y la peritación
+tienen cada uno su cajón —cada pantalla sube a lo suyo—, pero **las tres leen
+los tres**, y la lista de «faltan por reunir» se cuenta sobre todos. La factura
+del vendedor subida en el pedido deja de figurar como pendiente en el
+expediente: antes cada uno miraba solo el suyo, y el final de esa historia era
+subirla dos veces.
 
 **Son internos: el cliente no los ve en su panel.** Lo que tenga que llegarle se
 le manda. Y no se abren por una dirección suelta: hace falta estar dentro del
