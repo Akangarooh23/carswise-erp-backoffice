@@ -135,24 +135,28 @@ export const CAMPOS: CampoDePedido[] = [
 ];
 
 /**
- * Y con la factura llegan sus papeles.
+ * Los papeles de un coche importado viven **en su expediente**.
  *
- * Si en «Pedido» ya se apunta el número de la factura del vendedor, ahí mismo
- * tiene que poder adjuntarse el PDF: pedir un dato y no dar dónde ponerlo es
- * lo que acaba con el papel en el correo de alguien.
+ * Se veían en los dos sitios —la misma lista, los mismos papeles, dos veces—
+ * y eso obliga a mirar en dos pantallas para saber qué falta, que es lo
+ * contrario de lo que se buscaba. En una importación el expediente es la
+ * carpeta del coche: ahí está el cliente, la gestoría y todo el camino.
  *
- * Y no hace falta subirlo dos veces: los documentos del pedido son del coche,
- * así que este mismo se ve desde el expediente y cuenta para su lista de «lo
- * que falta por reunir».
+ * El pedido conserva lo único que sí se pide ahí: **adjuntar la factura del**
+ * **vendedor** justo al lado de donde se teclea su número. Ese botón sube al
+ * cajón del pedido, y como los papeles son del coche, aparece en la lista del
+ * expediente igual.
+ *
+ * En los demás orígenes no hay expediente detrás: el pedido es la carpeta, y
+ * ahí la lista se queda donde estaba.
  */
-const PAPELES_AL_NACER: Record<string, Bloque[]> = {
-  importacion: ['papeles'],
-};
+const SIN_LISTA_DE_PAPELES = ['importacion'];
 
 export function toca(bloque: Bloque, estado: string, verTodo = false, origen = ''): boolean {
+  if (bloque === 'papeles' && SIN_LISTA_DE_PAPELES.includes(origen)) return false;
+
   if (verTodo) return true;
-  if ((LO_DE_CADA_FASE[estado] ?? []).includes(bloque)) return true;
-  return estado === 'Pedido' && (PAPELES_AL_NACER[origen] ?? []).includes(bloque);
+  return (LO_DE_CADA_FASE[estado] ?? []).includes(bloque);
 }
 
 /** Si ese campo se enseña en esa fase. */

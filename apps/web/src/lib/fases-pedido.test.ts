@@ -174,11 +174,14 @@ describe('un pedido de importación nace pagado', () => {
 });
 
 describe('los papeles, donde se piden', () => {
-  test('en importación, el pedido enseña Documentos desde «Pedido»', () => {
-    // Si ahí ya se apunta el número de la factura, ahí tiene que poder
-    // adjuntarse el PDF. Pedir un dato y no dar dónde ponerlo es lo que acaba
-    // con el papel en el correo de alguien.
-    assert.equal(toca('papeles', 'Pedido', false, 'importacion'), true);
+  test('en importación, la lista de papeles no sale en el pedido', () => {
+    // Los papeles de un coche importado viven en su expediente: enseñar la
+    // misma lista en los dos sitios obliga a mirar dos pantallas para saber
+    // qué falta, que es lo contrario de lo que se buscaba. En el pedido queda
+    // el botón de adjuntar la factura, al lado de donde se pide su número.
+    assert.equal(toca('papeles', 'Pedido', false, 'importacion'), false);
+    assert.equal(toca('papeles', 'Confirmado', false, 'importacion'), false);
+    assert.equal(toca('papeles', 'Recibido', true, 'importacion'), false);
   });
 
   test('en los demás, todavía no hay papeles que reunir', () => {

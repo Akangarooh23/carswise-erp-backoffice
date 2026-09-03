@@ -851,7 +851,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
                        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void subeLaFactura(f); }} />
               </label>
               <span className="text-[10px] text-brand-300">
-                Se guarda abajo, en Documentos, y se ve desde el expediente.
+                Se guarda con los papeles del coche, en el expediente.
               </span>
               {falloAlSubir && (
                 <span className="text-[11px] text-red-700 font-medium">{falloAlSubir}</span>

@@ -15,6 +15,12 @@ import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { papelesEsperados } from '../lib/documentos.js';
+import { readFileSync } from 'node:fs';
+
+/** El fichero, para comprobar reglas que solo viven en su SQL. */
+function leeFuente(ruta: string): string {
+  return readFileSync(ruta, 'utf8');
+}
 
 interface Fila { [k: string]: unknown }
 
@@ -529,5 +535,28 @@ describe('no se pasa de fase sin lo que hace falta', { concurrency: 1 }, () => {
     assert.deepEqual(falta['Confirmado'], ['Por cuánto se ha cerrado']);
     assert.ok(falta['En camino'].includes('Factura'));
     assert.ok(falta['Recibido'].includes('Los kilómetros que marca'));
+  });
+});
+
+describe('el primer tramo nace con el pedido de importación', () => {
+  /**
+   * Se abría al pasar el pedido a «Confirmado», y eso dejaba un círculo: para
+   * confirmarlo hay que saber cuándo está listo el coche, eso se pregunta con
+   * el correo de la recogida, y ese correo vive dentro del tramo. Sin tramo no
+   * había dónde pulsar, así que la tarea que el expediente pedía no existía en
+   * ninguna pantalla.
+   */
+  const fuente = leeFuente('apps/api/src/routes/pedidos.ts');
+
+  test('se abre al crear el pedido, no solo al confirmarlo', () => {
+    const crear = fuente.slice(fuente.indexOf('export async function creaPedidoDeImportacion'));
+    assert.match(crear, /abreTransporteDePedido\(/);
+  });
+
+  test('con un punto de salida, aunque el anuncio no diga la ciudad', () => {
+    // Un tramo sin punto de salida no se puede casar con ninguna tarifa por
+    // corredor ni pedir presupuesto de nada.
+    const crear = fuente.slice(fuente.indexOf('export async function creaPedidoDeImportacion'));
+    assert.match(crear, /ciudadDeLaOferta\(datos\.vehiculoId\)\) \|\| proveedor \|\| 'El vendedor'/);
   });
 });

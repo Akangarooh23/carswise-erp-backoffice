@@ -784,6 +784,29 @@ export async function creaPedidoDeImportacion(datos: {
     [id, datos.leadId]
   ).catch((e: Error) => console.error('[pedidos] gasto de peritación:', e.message));
 
+  /**
+   * Y el primer tramo, por organizar.
+   *
+   * Se abría al pasar el pedido a «Confirmado», y eso dejaba un círculo: para
+   * confirmarlo hay que saber cuándo está listo el coche, eso se pregunta con
+   * el correo de la recogida, y ese correo vive dentro del tramo. Sin tramo no
+   * había dónde pulsar, así que la tarea que el expediente pedía no existía en
+   * ninguna pantalla.
+   *
+   * En una importación el pedido nace comprado y pagado: el coche hay que
+   * traerlo desde el primer día, y el tramo vacío es justamente el sitio donde
+   * se apunta ese trabajo.
+   */
+  await abreTransporteDePedido({
+    pedidoId: id,
+    vehiculoTitulo: datos.vehiculoTitulo,
+    // La ciudad del anuncio si la hay; si no, el nombre del vendedor. Un tramo
+    // sin punto de salida no se puede casar con ninguna tarifa por corredor.
+    desde: (await ciudadDeLaOferta(datos.vehiculoId)) || proveedor || 'El vendedor',
+    hasta: PARADA_DE_HOMOLOGACION,
+    creadoPor: datos.creadoPor || 'sistema',
+  }).catch((e: Error) => console.error('[pedidos] tramo del pedido:', e.message));
+
   return id;
 }
 export { ESTADOS_PEDIDO };
