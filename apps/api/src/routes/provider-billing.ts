@@ -271,7 +271,10 @@ export async function apuntaFacturaRecibida(datos: {
 // Body: { provider_name, vehicle_title, amount, invoice_date, notes?, contract_id?,
 //         pdf_base64?, pdf_filename? }
 providerBillingRouter.post('/provider-billing/received', requireRole(['admin', 'operations']), async (req, res) => {
-  const { provider_name, vehicle_title, amount, invoice_date, notes, contract_id, pdf_base64, pdf_filename } = req.body ?? {};
+  const {
+    provider_name, vehicle_title, amount, invoice_date, notes, contract_id,
+    invoice_number, pdf_base64, pdf_filename,
+  } = req.body ?? {};
   if (!provider_name || !amount) {
     res.status(400).json({ ok: false, error: 'missing_fields', detail: 'provider_name and amount are required' });
     return;
@@ -290,10 +293,11 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
       await query(
         `INSERT INTO moveadvisor_provider_invoices
            (id, type, direction, provider_name, contract_id, vehicle_title,
-            invoice_amount, invoice_date, pdf_url, notes, status)
-         VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+            invoice_amount, invoice_date, pdf_url, notes, invoice_number, status)
+         VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
         [id, provider_name, contract_id || null, vehicle_title || null,
-         Number(amount), invoice_date || null, pdf_url, notes || null]
+         Number(amount), invoice_date || null, pdf_url, notes || null,
+         String(invoice_number ?? '').trim() || null]
       );
     });
     res.status(201).json({ ok: true, data: { id, pdf_url } });

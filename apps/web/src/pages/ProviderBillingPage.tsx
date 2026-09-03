@@ -142,6 +142,7 @@ export default function ProviderBillingPage() {
   const [recvModal, setRecvModal]   = useState(false);
   const [recvProvider, setRecvProvider] = useState('');
   const [recvVehicle, setRecvVehicle]   = useState('');
+  const [recvNumero, setRecvNumero]  = useState('');
   const [recvAmount, setRecvAmount]     = useState('');
   const [recvDate, setRecvDate]         = useState('');
   const [recvNotes, setRecvNotes]       = useState('');
@@ -230,6 +231,7 @@ export default function ProviderBillingPage() {
     let pdf_base64: string | undefined;
     if (recvPdfFile) pdf_base64 = await readFileAsBase64(recvPdfFile);
     const body = {
+      invoice_number: recvNumero.trim() || undefined,
       provider_name: recvProvider,
       vehicle_title: recvVehicle || undefined,
       amount: Number(recvAmount),
@@ -683,6 +685,13 @@ export default function ProviderBillingPage() {
             <input type="text" value={recvProvider} onChange={e => setRecvProvider(e.target.value)}
               className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Ej: Flexicar, AutoHero…" autoFocus />
+          </div>
+          <div>
+            {/* El número que puso el proveedor: es con lo que se le reclama. */}
+            <label className="block text-xs font-semibold text-brand-400 mb-1">Nº de su factura</label>
+            <input type="text" value={recvNumero} onChange={e => setRecvNumero(e.target.value)}
+              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              placeholder="Ej: ACD-2026-0907-001" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-brand-400 mb-1">Vehículo</label>
