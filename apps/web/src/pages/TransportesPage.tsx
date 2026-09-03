@@ -161,6 +161,8 @@ export default function TransportesPage() {
    * pregunta que lleva a ese precio, y se le hace a más de uno.
    */
   const pideElPresupuesto = (id: string) => abreParaRevisar(`/transportes/${id}/presupuesto`, id);
+  /** Y decirle al vendedor quién va a por el coche y qué día. */
+  const avisaAlVendedor = (id: string) => abreParaRevisar(`/transportes/${id}/aviso-recogida`, id);
 
   /**
    * Pide un correo sin mandarlo y lo abre para revisarlo.
@@ -286,6 +288,7 @@ export default function TransportesPage() {
           onCambiar={(c) => void cambia(abierto.id, c)}
           onMandarOrden={() => void mandaLaOrden(abierto.id)}
           onPedirPresupuesto={() => void pideElPresupuesto(abierto.id)}
+          onAvisarAlVendedor={() => void avisaAlVendedor(abierto.id)}
           onPreguntarRecogida={() => void preguntaLaRecogida(abierto.id)}
           aviso={errorDelPanel}
         />
@@ -353,9 +356,10 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
   );
 }
 
-function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onPreguntarRecogida, aviso }: {
+function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onAvisarAlVendedor, onPreguntarRecogida, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
   onPedirPresupuesto: () => void;
+  onAvisarAlVendedor: () => void;
   onMandarOrden: () => void; onPreguntarRecogida: () => void; aviso: string;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
@@ -675,6 +679,47 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
               <a href="/importaciones" className="underline underline-offset-2">expediente</a>,
               con los otros dos correos al vendedor. Sin su respuesta, «Desde» es la
               ciudad del anuncio, y un camión no va a una ciudad.
+            </div>
+          )}
+
+          {/*
+            * Y avisarle de quién va y qué día.
+            *
+            * El correo es al vendedor y también está en el expediente, con
+            * los otros suyos. Pero se pulsa aquí porque aquí es donde están
+            * el transportista y el día, y donde se está justo después de
+            * cerrarlo: mandar desde el expediente un correo cuyos datos no se
+            * ven en el expediente es pulsar a ciegas.
+            *
+            * Va antes de la orden a propósito. Quien tiene que preparar el
+            * coche y sacar los papeles del cajón es el vendedor, y un
+            * conductor que llega a una nave donde nadie le espera se va
+            * vacío. Ese viaje se paga igual.
+            */}
+          {t.recogida_preguntada_at && (
+            <div className="mt-2.5">
+              {t.aviso_recogida_at ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] font-bold text-emerald-700">
+                    ✓ Avisado de quién va el {new Date(t.aviso_recogida_at).toLocaleDateString('es-ES')}
+                  </span>
+                  <button onClick={onAvisarAlVendedor} disabled={guardando}
+                          className="text-[11px] text-brand-400 underline underline-offset-2">
+                    volver a avisarle
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button onClick={onAvisarAlVendedor} disabled={guardando}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
+                    Decirle al vendedor quién va y qué día
+                  </button>
+                  <div className="text-[11px] text-brand-300 mt-1.5">
+                    El día, la empresa, quién le va a llamar y qué tiene que darle al
+                    conductor. Sale de lo que hay arriba: guarda antes los cambios.
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
