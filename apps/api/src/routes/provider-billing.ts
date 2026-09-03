@@ -62,7 +62,28 @@ providerBillingRouter.get('/provider-billing/summary', requireRole(['admin', 'op
       -- cobrar.
       WHERE direction = 'emitted'
     `);
-    res.json({ ok: true, data: r.rows[0] });
+
+    /*
+     * Y lo recibido, que es la pregunta contraria.
+     *
+     * En una factura emitida lo pendiente es dinero que nos deben; en una
+     * recibida, dinero que debemos. Con los mismos números arriba en las dos
+     * pestañas, «pendientes de cobro» acababa contando lo que le debemos al
+     * perito.
+     */
+    const rec = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status IN ('pending', 'pending_payment'))::int AS por_pagar_n,
+        COALESCE(SUM(invoice_amount) FILTER (WHERE status IN ('pending', 'pending_payment')), 0)::numeric AS por_pagar,
+        COUNT(*) FILTER (WHERE status = 'paid')::int                          AS pagadas_n,
+        COALESCE(SUM(invoice_amount) FILTER (WHERE status = 'paid'), 0)::numeric AS pagado,
+        COUNT(*) FILTER (WHERE status = 'esperada')::int                      AS esperando_n,
+        COALESCE(SUM(invoice_amount) FILTER (WHERE status = 'esperada'), 0)::numeric AS esperando
+      FROM moveadvisor_provider_invoices
+      WHERE direction = 'received'
+    `);
+
+    res.json({ ok: true, data: { ...r.rows[0], recibidas: rec.rows[0] } });
   } catch (err) {
     falloInterno(res, 'summary_failed', err);
   }

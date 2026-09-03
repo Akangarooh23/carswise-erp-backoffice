@@ -12,6 +12,21 @@ interface Summary {
   paid_amount: number;
   renting_count: number;
   commission_count: number;
+  /**
+   * Lo recibido, que contesta la pregunta contraria.
+   *
+   * En una factura emitida lo pendiente es dinero que nos deben; en una
+   * recibida, dinero que debemos. Los mismos números en las dos pestañas
+   * hacían que «pendientes de cobro» contase lo que le debemos al perito.
+   */
+  recibidas?: {
+    por_pagar_n: number;
+    por_pagar: number | string;
+    pagadas_n: number;
+    pagado: number | string;
+    esperando_n: number;
+    esperando: number | string;
+  } | null;
 }
 
 type EmittedStatus  = 'pending' | 'sent' | 'paid' | 'cancelled';
@@ -316,14 +331,24 @@ export default function ProviderBillingPage() {
       {/* Summary */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          {[
-            { label: 'Pendientes cobro',  value: fmtEur(summary.pending_amount),  color: 'text-yellow-600' },
-            { label: 'Cobradas',          value: fmtEur(summary.paid_amount),     color: 'text-emerald-700' },
-            { label: 'Nº pendientes',     value: summary.pending_count,           color: 'text-yellow-600' },
-            { label: 'Nº cobradas',       value: summary.paid_count,              color: 'text-emerald-700' },
-            { label: 'Fees renting',      value: summary.renting_count,           color: 'text-acento-texto' },
-            { label: 'Comisiones portal', value: summary.commission_count,        color: 'text-orange-600' },
-          ].map(({ label, value, color }) => (
+          {(tab === 'recibidas'
+            ? [
+                { label: 'Pendiente de pago', value: fmtEur(Number(summary.recibidas?.por_pagar ?? 0)), color: 'text-yellow-600' },
+                { label: 'Pagado',            value: fmtEur(Number(summary.recibidas?.pagado ?? 0)),    color: 'text-emerald-700' },
+                { label: 'Nº por pagar',      value: summary.recibidas?.por_pagar_n ?? 0,               color: 'text-yellow-600' },
+                { label: 'Nº pagadas',        value: summary.recibidas?.pagadas_n ?? 0,                 color: 'text-emerald-700' },
+                { label: 'Esperando factura', value: fmtEur(Number(summary.recibidas?.esperando ?? 0)), color: 'text-amber-700' },
+                { label: 'Nº esperando',      value: summary.recibidas?.esperando_n ?? 0,               color: 'text-amber-700' },
+              ]
+            : [
+                { label: 'Pendientes cobro',  value: fmtEur(summary.pending_amount),  color: 'text-yellow-600' },
+                { label: 'Cobradas',          value: fmtEur(summary.paid_amount),     color: 'text-emerald-700' },
+                { label: 'Nº pendientes',     value: summary.pending_count,           color: 'text-yellow-600' },
+                { label: 'Nº cobradas',       value: summary.paid_count,              color: 'text-emerald-700' },
+                { label: 'Fees renting',      value: summary.renting_count,           color: 'text-acento-texto' },
+                { label: 'Comisiones portal', value: summary.commission_count,        color: 'text-orange-600' },
+              ]
+          ).map(({ label, value, color }) => (
             <div key={label} className="bg-white border border-brand-200 rounded-xl p-4 shadow-sm">
               <p className="text-xs text-brand-400 mb-1">{label}</p>
               <p className={`text-xl font-bold ${color}`}>{typeof value === 'number' ? value.toLocaleString('es-ES') : value}</p>
