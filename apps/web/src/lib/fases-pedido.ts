@@ -49,8 +49,23 @@ export function queTocaEnElPedido(
   estado: string,
   origen: string,
   generica: string,
-  puesto: { factura_proveedor?: string | null; factura_pagada_el?: string | null } = {}
+  puesto: {
+    factura_proveedor?: string | null;
+    factura_pagada_el?: string | null;
+    /** Cuándo lo descargó el camión en Zaragoza, si ya lo hizo. */
+    llegada_at?: string | null;
+  } = {}
 ): string {
+  /*
+   * «De camino a España» con el coche ya descargado.
+   *
+   * El pedido pasa a «Recibido» cuando alguien lee los kilómetros y cuenta las
+   * llaves, y eso no lo hace el sistema. Pero mientras tanto no está de camino:
+   * está en la puerta esperando a que alguien lo mire, que es justo la tarea.
+   */
+  if (estado === 'En camino' && String(puesto.llegada_at ?? '').trim()) {
+    return 'Ya está aquí: míralo y apunta los kilómetros y las llaves';
+  }
   if (origen === 'importacion' && estado === 'Pedido') {
     const conFactura = Boolean(String(puesto.factura_proveedor ?? '').trim());
     const conPago = Boolean(String(puesto.factura_pagada_el ?? '').trim());

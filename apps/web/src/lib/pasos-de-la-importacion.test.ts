@@ -612,3 +612,37 @@ describe('el segundo viaje: de Zaragoza a casa del cliente', () => {
     assert.equal(paso(x, 'transporteAlCliente').estado, 'porVenir');
   });
 });
+
+describe('llegar es que lo descarguen, no que cambie la etapa', () => {
+  const DESCARGADO = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    recogida_preguntada_at: '2026-09-09T10:00:00Z',
+    tramo: {
+      recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
+      fecha_recogida: '2026-09-15T08:30:00Z', fecha_entrega: '2026-09-18T11:00:00Z',
+    },
+  };
+
+  test('descargado en Zaragoza, la llegada está hecha aunque la etapa no se haya movido', () => {
+    // La etapa la mueve una persona y detrás está el encargo a la gestoría. El
+    // camino decía «que el coche llegue a España» con el coche ya en Zaragoza.
+    const x = kia(DESCARGADO, 'En transporte');
+    assert.equal(paso(x, 'llegada').estado, 'hecho');
+    assert.equal(paso(x, 'llegada').cuando, '2026-09-18T11:00:00Z');
+  });
+
+  test('y entonces lo que toca es la gestoría', () => {
+    const x = kia(DESCARGADO, 'En transporte');
+    assert.equal(paso(x, 'tramites').estado, 'toca');
+    assert.equal(pendientesPorPantalla([x], HOY)['/gestoria'], 1);
+  });
+
+  test('sin descargar sigue siendo una espera', () => {
+    const x = kia({
+      ...DESCARGADO, tramo: { ...DESCARGADO.tramo, fecha_entrega: null },
+    }, 'En transporte');
+    assert.equal(paso(x, 'llegada').estado, 'esperando');
+    assert.equal(paso(x, 'tramites').estado, 'porVenir');
+  });
+});

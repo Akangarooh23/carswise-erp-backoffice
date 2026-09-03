@@ -368,7 +368,13 @@ pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sa
   try {
     await prepara();
     const r = await query(
-      `SELECT ${CAMPOS}${PAPELES_DEL_PEDIDO} FROM erp_pedidos ${where} ORDER BY created_at DESC LIMIT 200`,
+      // Y cuándo lo descargó el camión, que no es lo mismo que la etapa del
+      // pedido: entre una cosa y otra alguien tiene que leer los kilómetros.
+      `SELECT ${CAMPOS}${PAPELES_DEL_PEDIDO},
+              (SELECT t.fecha_entrega FROM erp_transportes t
+                WHERE t.pedido_id = erp_pedidos.id AND t.tramo = 1
+                ORDER BY t.created_at LIMIT 1) AS llegada_at
+         FROM erp_pedidos ${where} ORDER BY created_at DESC LIMIT 200`,
       valores
     );
     const salidos = await pedidosConTransporteSalido(r.rows.map((f) => String(f.id)));

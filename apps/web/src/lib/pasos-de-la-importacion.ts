@@ -453,9 +453,19 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
    * transportista lo recoja» con el coche ya cruzando Francia.
    */
   const yaRecogido = Boolean(String(m.tramo?.fecha_recogida ?? '').trim());
+  /*
+   * Y llegar es que el camión lo haya descargado, no que el expediente cambie
+   * de etapa. La etapa la mueve una persona y detrás está el encargo a la
+   * gestoría; entre una cosa y otra, el camino decía «que el coche llegue a
+   * España» con el coche ya en Zaragoza.
+   */
+  const yaEnZaragoza = Boolean(String(m.tramo?.fecha_entrega ?? '').trim());
   pasos.push(
-    enTramites
-      ? { clave: 'llegada', titulo: 'El coche ha llegado a España', estado: 'hecho' }
+    enTramites || yaEnZaragoza
+      ? {
+          clave: 'llegada', titulo: 'El coche ha llegado a España', estado: 'hecho',
+          cuando: m.tramo?.fecha_entrega ?? null,
+        }
       : enCamino
         ? { clave: 'llegada', titulo: 'Que el coche llegue a España', estado: 'esperando' }
         : yaRecogido
@@ -477,7 +487,9 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
   pasos.push({
     clave: 'tramites',
     titulo: conGestoria ? 'Encargados los trámites a la gestoría' : 'Encargarle los trámites a la gestoría',
-    estado: conGestoria ? 'hecho' : enTramites ? 'toca' : 'porVenir',
+    // Con el coche ya descargado en Zaragoza toca, aunque la etapa no se haya
+    // movido todavía: mover la etapa es parte de esto, no un requisito previo.
+    estado: conGestoria ? 'hecho' : (enTramites || yaEnZaragoza) ? 'toca' : 'porVenir',
     cuando: m.encargo_gestoria_enviado_at ?? null,
     donde: '/gestoria',
   });

@@ -127,7 +127,7 @@ before(async () => {
       return responde([fila]);
     }
     if (/^SELECT papel FROM erp_documentos/i.test(t)) return responde(documentos.filter((d) => d.ambito_id === p[0]));
-    if (/FROM erp_transportes/i.test(t)) {
+    if (/^SELECT DISTINCT pedido_id, estado FROM erp_transportes/i.test(t)) {
       const ids = (p[0] ?? []) as string[];
       return responde(transportes.filter((x) => ids.includes(String(x.pedido_id))));
     }

@@ -186,6 +186,8 @@ export interface MetaImportacion {
     orden_enviada_at?: string | null;
     /** Cuándo se lo llevaron de verdad, que no es cuando se contrató. */
     fecha_recogida?: string | null;
+    /** Y cuándo llegó a Zaragoza, que no es cuando el expediente cambia de etapa. */
+    fecha_entrega?: string | null;
   } | null;
   /** Cuándo se le preguntó al vendedor dónde y cuándo se recoge. */
   recogida_preguntada_at?: string | null;

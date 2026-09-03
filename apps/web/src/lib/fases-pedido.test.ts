@@ -256,3 +256,34 @@ describe('la franja del pedido mira lo que hay puesto', () => {
     );
   });
 });
+
+describe('«de camino» con el coche ya descargado', () => {
+  test('deja de decirlo y pide lo que toca', () => {
+    // El pedido pasa a «Recibido» cuando alguien lee los kilómetros y cuenta
+    // las llaves, y eso no lo hace el sistema. Pero mientras tanto no está de
+    // camino: está en la puerta esperando a que alguien lo mire.
+    assert.match(
+      queTocaEnElPedido('En camino', 'importacion', 'Viene de camino', { llegada_at: '2026-09-03T16:18:00Z' }),
+      /Ya está aquí: míralo y apunta los kilómetros y las llaves/
+    );
+  });
+
+  test('y mientras no llegue, sí viene de camino', () => {
+    assert.match(
+      queTocaEnElPedido('En camino', 'importacion', 'Viene de camino', {}),
+      /De camino a España/
+    );
+    assert.match(
+      queTocaEnElPedido('En camino', 'importacion', 'Viene de camino', { llegada_at: '  ' }),
+      /De camino a España/
+    );
+  });
+
+  test('vale para cualquier origen, no solo importación', () => {
+    // Un coche de un concesionario también se descarga antes de mirarlo.
+    assert.match(
+      queTocaEnElPedido('En camino', 'concesionario', 'Viene de camino', { llegada_at: '2026-09-03T16:18:00Z' }),
+      /Ya está aquí/
+    );
+  });
+});
