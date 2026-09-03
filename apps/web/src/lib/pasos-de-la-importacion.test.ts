@@ -15,7 +15,8 @@ import assert from 'node:assert/strict';
 
 import type { Expediente } from './expedientes-importacion.js';
 import {
-  pasosDeLaImportacion, loQueToca, loQueSeEspera, pideAlgoNuestro, pendientesPorPantalla, PLAZOS,
+  pasosDeLaImportacion, loQueToca, loQueSeEspera, loQueFaltaAparte, pideAlgoNuestro,
+  pendientesPorPantalla, PLAZOS,
 } from './pasos-de-la-importacion.js';
 
 const HOY = new Date('2026-09-10T12:00:00Z');
@@ -309,5 +310,53 @@ describe('la factura del perito, que llega cuando llega', () => {
       reserva_preguntada_at: '2026-09-02T10:00:00Z',
     });
     assert.equal(paso(x, 'facturaPerito').estado, 'porVenir');
+  });
+});
+
+describe('lo que mueve el coche y lo que va por su cuenta', () => {
+  /** Peritado y pagado, con el coche ya de camino y sin la factura del perito. */
+  const EN_MARCHA = kia({
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    verificado_alemania_at: '2026-09-07T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+    factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
+    peritacion: {
+      id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
+      perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
+      donde: 'Landsberger Str. 180', fecha_prevista: '2026-09-07', coste: 289,
+      encargo_enviado_at: '2026-09-03T10:00:00Z', cita_avisada_at: '2026-09-04T10:00:00Z',
+    },
+  }, 'En transporte');
+
+  test('con el coche de camino, no toca nada nuestro: se espera que llegue', () => {
+    // La factura del perito hay que pedirla, pero el coche no la espera: sigue
+    // a trámites sin ella. De titular, parecía que había algo parado.
+    assert.equal(loQueToca(pasosDeLaImportacion(EN_MARCHA, HOY)), null);
+    assert.equal(loQueSeEspera(pasosDeLaImportacion(EN_MARCHA, HOY))?.clave, 'llegada');
+  });
+
+  test('y en cuanto llega, lo que toca son los trámites', () => {
+    const aqui = kia(EN_MARCHA.meta as never, 'En trámites');
+    assert.equal(loQueToca(pasosDeLaImportacion(aqui, HOY))?.clave, 'tramites');
+  });
+
+  test('y la factura del perito se dice aparte', () => {
+    const aparte = loQueFaltaAparte(pasosDeLaImportacion(EN_MARCHA, HOY));
+    assert.deepEqual(aparte.map((x) => x.clave), ['facturaPerito']);
+  });
+
+  test('pero cuenta igual como trabajo pendiente', () => {
+    // El número rojo dice «hay trabajo», y pedirle la factura es trabajo.
+    assert.equal(pideAlgoNuestro(EN_MARCHA, HOY), true);
+  });
+
+  test('con todo hecho y la factura apuntada, no queda nada', () => {
+    const cerrado = kia({
+      ...EN_MARCHA.meta,
+      encargo_gestoria_enviado_at: '2026-09-09T10:00:00Z',
+      peritacion: { ...EN_MARCHA.meta!.peritacion!, factura_numero: 'PE-DE-0001' },
+    } as never, 'Entregado');
+    assert.equal(pideAlgoNuestro(cerrado, HOY), false);
   });
 });

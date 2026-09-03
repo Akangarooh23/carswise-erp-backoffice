@@ -48,6 +48,18 @@ export interface Paso {
   donde?: string;
   /** Días esperando, cuando se espera a alguien de fuera. */
   dias?: number;
+  /**
+   * Si este paso **mueve el coche** o va por su cuenta.
+   *
+   * La factura del perito hay que pedirla, pero el coche no la espera: sigue
+   * a transporte y a trámites sin ella. Puesta como «ahora toca», le robaba
+   * el titular al paso que sí mueve el expediente, y quien abre la ficha se
+   * queda con la impresión de que hay algo parado.
+   *
+   * Sigue contando como tarea nuestra —el número rojo la cuenta—, pero se
+   * dice aparte y sin prisa.
+   */
+  via?: 'principal' | 'aparte';
 }
 
 /** Lo que se aguanta esperando a cada uno antes de reclamar. */
@@ -236,21 +248,28 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
           estado: 'hecho',
           detalle: p?.factura_numero ?? undefined,
           donde: '/peritaciones',
+          via: 'aparte',
         }
       : p?.veredicto
         ? p?.factura_pedida_at
           // Ya se le ha pedido: la cuenta corre desde que se pidió, no desde
           // la visita. Reclamar dos días después de haberla pedido es prisa.
           ? esperando(
-              { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'esperando', donde: '/peritaciones' },
+              {
+                clave: 'facturaPerito', titulo: 'Que el perito mande su factura',
+                estado: 'esperando', donde: '/peritaciones', via: 'aparte',
+              },
               p.factura_pedida_at, PLAZOS.perito,
               'Reclamarle otra vez la factura al perito', hoy
             )
           : {
               clave: 'facturaPerito', titulo: 'Pedirle su factura al perito',
-              estado: 'toca', donde: '/peritaciones',
+              estado: 'toca', donde: '/peritaciones', via: 'aparte',
             }
-        : { clave: 'facturaPerito', titulo: 'Que el perito mande su factura', estado: 'porVenir' }
+        : {
+            clave: 'facturaPerito', titulo: 'Que el perito mande su factura',
+            estado: 'porVenir', via: 'aparte',
+          }
   );
 
   // 9 · El dinero sale.
@@ -275,6 +294,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
 
   // 11 · Traerlo.
   const enCamino = YA_ENVIADO.includes(x.status);
+  const enTramites = x.status === 'En trámites' || x.status === 'Entregado';
   pasos.push({
     clave: 'transporte',
     titulo: enCamino ? 'El transporte, organizado' : 'Organizar el transporte',
@@ -282,8 +302,21 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/transportes',
   });
 
-  // 12 · Ponerlo legal aquí.
-  const enTramites = x.status === 'En trámites' || x.status === 'Entregado';
+  /*
+   * 12 · Que llegue.
+   *
+   * Un coche de camino no pide nada nuestro, pero tampoco está parado: sin
+   * este paso el camino se quedaba sin nada que decir mientras cruzaba
+   * Europa, y «nada pendiente» en un expediente abierto se lee como que algo
+   * se ha perdido.
+   */
+  pasos.push({
+    clave: 'llegada',
+    titulo: enTramites ? 'El coche ha llegado a España' : 'Que el coche llegue a España',
+    estado: enTramites ? 'hecho' : enCamino ? 'esperando' : 'porVenir',
+  });
+
+  // 13 · Ponerlo legal aquí.
   const conGestoria = Boolean(m.encargo_gestoria_enviado_at);
   pasos.push({
     clave: 'tramites',
@@ -293,7 +326,7 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/gestoria',
   });
 
-  // 13 · Dárselo.
+  // 14 · Dárselo.
   const entregado = x.status === 'Entregado';
   pasos.push({
     clave: 'entrega',
@@ -305,9 +338,20 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
   return pasos;
 }
 
-/** El primero que depende de nosotros, que es la respuesta a «y ahora qué». */
+/**
+ * El primero que depende de nosotros **y mueve el coche**.
+ *
+ * Es la respuesta a «y ahora qué». Lo que no mueve el expediente —pedirle la
+ * factura al perito— es tarea igual, pero contestando eso a «ahora qué» se
+ * lee como que el coche está parado esperándola, y no lo está.
+ */
 export function loQueToca(pasos: readonly Paso[]): Paso | null {
-  return pasos.find((x) => x.estado === 'toca') ?? null;
+  return pasos.find((x) => x.estado === 'toca' && x.via !== 'aparte') ?? null;
+}
+
+/** Y lo que hay que hacer sin que el coche dependa de ello. */
+export function loQueFaltaAparte(pasos: readonly Paso[]): Paso[] {
+  return pasos.filter((x) => x.estado === 'toca' && x.via === 'aparte');
 }
 
 /** Lo que se está esperando de fuera, para poder decirlo sin alarmar. */
@@ -315,9 +359,15 @@ export function loQueSeEspera(pasos: readonly Paso[]): Paso | null {
   return pasos.find((x) => x.estado === 'esperando') ?? null;
 }
 
-/** Si este coche pide algo nuestro. Es lo que cuenta el número rojo del menú. */
+/**
+ * Si este coche pide algo nuestro, mueva o no mueva el expediente.
+ *
+ * Aquí sí cuenta lo de aparte: el número rojo dice «hay trabajo», y pedirle
+ * la factura al perito es trabajo.
+ */
 export function pideAlgoNuestro(x: Expediente, hoy: Date = new Date()): boolean {
-  return loQueToca(pasosDeLaImportacion(x, hoy)) !== null;
+  const pasos = pasosDeLaImportacion(x, hoy);
+  return loQueToca(pasos) !== null || loQueFaltaAparte(pasos).length > 0;
 }
 
 /**

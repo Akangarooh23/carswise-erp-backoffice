@@ -16,7 +16,9 @@
  */
 import { useState } from 'react';
 import type { Expediente } from '../lib/expedientes-importacion.js';
-import { pasosDeLaImportacion, loQueToca, loQueSeEspera, type Paso } from '../lib/pasos-de-la-importacion.js';
+import {
+  pasosDeLaImportacion, loQueToca, loQueSeEspera, loQueFaltaAparte, type Paso,
+} from '../lib/pasos-de-la-importacion.js';
 
 const dia = (v: unknown) => (v ? new Date(String(v)).toLocaleDateString('es-ES') : '');
 
@@ -64,6 +66,7 @@ export default function CaminoDelCoche({ x }: { x: Expediente }) {
   const pasos = pasosDeLaImportacion(x);
   const toca = loQueToca(pasos);
   const espera = loQueSeEspera(pasos);
+  const aparte = loQueFaltaAparte(pasos);
   const hechos = pasos.filter((p) => p.estado === 'hecho').length;
 
   return (
@@ -78,12 +81,25 @@ export default function CaminoDelCoche({ x }: { x: Expediente }) {
         */}
       <div className={`px-3 py-2 ${toca ? 'bg-amber-50 border-b border-amber-200' : 'bg-brand-50 border-b border-brand-200'}`}>
         <div className="text-[10px] uppercase tracking-wide text-brand-400">
-          {toca ? 'Ahora toca' : espera ? 'Esperando' : 'Nada pendiente'}
+          {toca ? 'Ahora toca' : espera ? 'Esperando' : aparte.length ? 'Nada que mueva el coche' : 'Nada pendiente'}
         </div>
         <div className={`text-[13px] font-bold ${toca ? 'text-amber-800' : 'text-brand-600'}`}>
-          {toca?.titulo ?? espera?.titulo ?? 'El expediente está cerrado'}
+          {toca?.titulo ?? espera?.titulo
+            ?? (aparte.length ? 'El coche puede seguir' : 'El expediente está cerrado')}
           {!toca && espera?.dias ? ` · ${espera.dias} ${espera.dias === 1 ? 'día' : 'días'}` : ''}
         </div>
+        {/*
+          * Y lo que hay que hacer sin que el coche lo espere.
+          *
+          * Va debajo y en pequeño: la factura del perito hay que pedirla, pero
+          * el expediente sigue a transporte y a trámites sin ella. Puesta
+          * arriba parecía que había algo parado.
+          */}
+        {aparte.length > 0 && (
+          <div className="text-[11px] text-brand-400 mt-1">
+            Además, sin que el coche lo espere: {aparte.map((x) => x.titulo.toLowerCase()).join(' · ')}
+          </div>
+        )}
       </div>
 
       <button onClick={() => setAbierto((v) => !v)}
