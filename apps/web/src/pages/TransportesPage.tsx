@@ -540,11 +540,11 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         </div>
 
         {toca('quien') && (
-        <Plegable titulo="Quién lo trae" abiertaPorDefecto={!hayTransportista}
+        <Plegable titulo="Empresa encargada y quién lo transporta" abiertaPorDefecto={!hayTransportista}
                   resumen={hayTransportista ? `${datos.transportista} · ${datos.coste} €` : 'sin elegir'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="col-span-2 text-[11px] text-brand-400">
-            Quién lo trae
+            Empresa encargada
             <div className="mt-0.5">
               <ElegirProveedor tipo="transportista" valor={datos.transportista}
                                placeholder="Elegir transportista…"
@@ -563,27 +563,35 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           <div className="col-span-2 text-[10px] text-brand-300 -mt-1">{PISTAS.transportista}</div>
 
           {/*
-            * Quién lleva este viaje por su parte.
+            * Y quién lo transporta, que es otra cosa.
             *
-            * En el tramo y no en su ficha: la ficha tiene la centralita, y el
-            * que contesta el presupuesto es el de tráfico, que cambia de un
-            * coche a otro. Su nombre va en el saludo de la orden —una orden
-            * que no nombra a nadie se queda en el buzón general como una
-            * más— y su teléfono se lo damos al vendedor, para que sepa quién
-            * le va a llamar.
+            * La empresa es la de arriba, de nuestra lista de Proveedores: a
+            * quien se le encarga y a quien se le paga. Esto es **la persona**
+            * que se presenta a recoger el coche, y se sabe después: la dan al
+            * confirmar que pueden.
+            *
+            * Va en el tramo y no en la ficha de la empresa, porque cambia de un
+            * coche a otro. Su nombre es el que se le dice al vendedor —el de la
+            * nave pregunta por alguien— y el que va en el saludo de la orden:
+            * una orden que no nombra a nadie se queda en el buzón general como
+            * una más.
             */}
           <label className="text-[11px] text-brand-400">
-            Quién lo lleva por su parte
-            <input value={datos.contacto_transportista} placeholder="Michael Schneider"
+            Nombre del transportista
+            <input value={datos.contacto_transportista} placeholder="Javier Müller"
                    onChange={(e) => setDatos((d) => ({ ...d, contacto_transportista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
           <label className="text-[11px] text-brand-400">
-            Su teléfono
-            <input value={datos.telefono_transportista} placeholder="+49 711 000000"
+            Teléfono del transportista
+            <input value={datos.telefono_transportista} placeholder="+34 600 000 000"
                    onChange={(e) => setDatos((d) => ({ ...d, telefono_transportista: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+          <div className="col-span-2 text-[10px] text-brand-300 -mt-1">
+            La persona que viene a recogerlo, no la empresa. La dicen al confirmar
+            que pueden hacerlo.
+          </div>
 
           {/*
             * Pedirle precio, que es lo que va antes de contratarlo.

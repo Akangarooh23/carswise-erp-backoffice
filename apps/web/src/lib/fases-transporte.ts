@@ -195,7 +195,7 @@ export function faltaParaLaOrden(t: {
 
 /** Cuándo se sabe cada dato, para no dejarlo a la intuición. */
 export const PISTAS: Record<string, string> = {
-  transportista: 'De la lista de Proveedores. Sin él no hay a quién mandarle la orden.',
+  transportista: 'La empresa, de nuestra lista de Proveedores. Sin ella no hay a quién mandarle la orden.',
   coste: 'Lo que nos cobra por este tramo, no lo que paga el cliente.',
   desde: 'La dirección exacta, la que dé el vendedor. Una ciudad no es una dirección.',
   hasta: 'A dónde lo lleva: nuestra campa, o la dirección del cliente en el último tramo.',
