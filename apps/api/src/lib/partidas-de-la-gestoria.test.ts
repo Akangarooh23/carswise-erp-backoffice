@@ -23,19 +23,55 @@ const FACTURA: Partida[] = [
 
 describe('lo que es de terceros y lo que es suyo', () => {
   test('se separan, que es para lo que existe esto', () => {
-    assert.deepEqual(resumenDeLaGestoria(FACTURA), {
-      cuantas: 4, total: 1754.77, suplidos: 1664.77, honorarios: 90,
-    });
+    const r = resumenDeLaGestoria(FACTURA);
+    assert.equal(r.cuantas, 4);
+    assert.equal(r.total, 1754.77);
+    assert.equal(r.suplidos, 1664.77);
+    assert.equal(r.honorarios, 90);
+  });
+
+  /*
+   * Y con el IVA, que son dos preguntas distintas.
+   *
+   * `honorarios` es lo que sale del banco; `honorariosBase` lo que cuesta el
+   * coche, porque el IVA de los honorarios se deduce. Con una sola cifra, o el
+   * pago o el margen salen mal.
+   */
+  test('lo suyo, con IVA y sin IVA', () => {
+    const conDesglose = [
+      ...FACTURA.filter((p) => p.que !== 'nuestro'),
+      { concepto: 'Honorarios de la gestoría', base: 74.38, iva: 21, importe: 90, que: 'nuestro' as const },
+    ];
+    const r = resumenDeLaGestoria(conDesglose);
+    assert.equal(r.honorarios, 90);
+    assert.equal(r.honorariosBase, 74.38);
+    assert.equal(r.iva, 15.62);
+    assert.equal(r.sinDesglosar, 0, 'los suplidos exentos sí se saben: van al 0 %');
+  });
+
+  test('y sin desglose se dice, en vez de suponerle un 21 %', () => {
+    // Un 21 % encima de unos honorarios que ya lo llevaban dentro no da un
+    // error visible: da una cifra plausible y equivocada.
+    const r = resumenDeLaGestoria([
+      { concepto: 'Honorarios de la gestoría', importe: 90, que: 'nuestro' as const },
+    ]);
+    assert.equal(r.honorariosBase, 90, 'sin saber el IVA, cuenta entera como base');
+    assert.equal(r.iva, 0);
+    assert.equal(r.sinDesglosar, 1);
+    assert.match(comoSeCuenta(r), /no dice su IVA/);
   });
 
   test('y se dice, porque un total suelto parece coste nuestro', () => {
     const dice = comoSeCuenta(resumenDeLaGestoria(FACTURA));
-    assert.match(dice, /664,77 € son suplidos/);
-    assert.match(dice, /dinero de terceros/);
+    assert.match(dice, /664,77 € de suplidos/);
+    assert.match(dice, /del cliente/);
   });
 
   test('sin partidas no se inventa una cuenta', () => {
-    assert.deepEqual(resumenDeLaGestoria([]), { cuantas: 0, total: 0, suplidos: 0, honorarios: 0 });
+    const r = resumenDeLaGestoria([]);
+    assert.equal(r.cuantas, 0);
+    assert.equal(r.total, 0);
+    assert.equal(r.honorarios, 0);
     assert.equal(comoSeCuenta(resumenDeLaGestoria(null)), 'Sin partidas todavía.');
   });
 
@@ -170,5 +206,63 @@ describe('las columnas de en medio de una factura', () => {
     const { partidas } = leeLoPegado('Envío kit concesionario 14h	12,10');
     assert.match(partidas[0].concepto, /Env[íi]o kit concesionario/);
     assert.equal(partidas[0].importe, 12.1);
+  });
+});
+
+/**
+ * Y lo pegado trae ya el desglose, si la factura lo trae.
+ *
+ * Una factura de gestoría viene «Concepto · base · %IVA · total». Antes se
+ * tiraban las dos columnas de en medio y había que teclear el desglose a mano,
+ * línea a línea, mirando el mismo papel del que se acababa de copiar. Ocho
+ * líneas tecleadas dos veces es donde se cuela un cero.
+ *
+ * Solo si cuadran: base por el tipo tiene que dar el total al céntimo. Si no
+ * cuadra, esas columnas eran otra cosa —una cantidad, un código— y quedarse con
+ * ellas sería inventarse un desglose que la factura no dice.
+ */
+describe('lo pegado con base e IVA', () => {
+  test('se queda con las tres columnas cuando cuadran', () => {
+    const { partidas } = leeLoPegado('Honorarios\t74,38\t21\t90,00');
+    assert.equal(partidas.length, 1);
+    assert.equal(partidas[0].base, 74.38);
+    assert.equal(partidas[0].iva, 21);
+    assert.equal(partidas[0].importe, 90);
+  });
+
+  test('y si no cuadran, se queda solo con el total', () => {
+    // «2» ahí era una cantidad, no una base. Un desglose inventado es peor que
+    // no tener desglose: parece un dato.
+    const { partidas } = leeLoPegado('Placas\t2\t19,97');
+    assert.equal(partidas[0].importe, 19.97);
+    assert.equal(partidas[0].base, undefined);
+    assert.equal(partidas[0].iva, undefined);
+  });
+
+  test('un suplido pegado sale exento, que es lo que es', () => {
+    const { partidas } = leeLoPegado('Tasa DGT\t99,77');
+    assert.equal(partidas[0].que, 'suplido');
+    assert.equal(partidas[0].regimen, 'exento');
+  });
+
+  test('y el concepto sigue saliendo limpio', () => {
+    // Arrastrar las columnas de en medio dejaba partidas llamadas
+    // «Placas 16,5 0,21», y con ese nombre no se reconoce si es suplido.
+    const { partidas } = leeLoPegado('Impuesto de matriculación\t1420,00\t0\t1420,00');
+    assert.equal(partidas[0].concepto, 'Impuesto de matriculación');
+    assert.equal(partidas[0].que, 'suplido');
+  });
+
+  test('una factura entera, con sus dos formas de línea', () => {
+    const { partidas } = leeLoPegado([
+      'Tasa DGT\t99,77',
+      'Honorarios\t74,38\t21\t90,00',
+    ].join('\n'));
+    const r = resumenDeLaGestoria(partidas);
+    assert.equal(r.total, 189.77);
+    assert.equal(r.suplidos, 99.77);
+    assert.equal(r.honorarios, 90);
+    assert.equal(r.honorariosBase, 74.38);
+    assert.equal(r.sinDesglosar, 0);
   });
 });

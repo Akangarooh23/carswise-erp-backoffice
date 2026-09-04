@@ -5,6 +5,7 @@ import {
   PARTIDAS_HABITUALES, resumenDeLaGestoria, comoSeCuenta, leeLoPegado,
   queEsPorDefecto, type Partida,
 } from '../lib/partidas-de-la-gestoria.js';
+import { noCuadra, TIPOS_DE_IVA } from '../lib/dinero.js';
 import { loQueCubre, faltaParaResolver, papelesQueVuelven } from '../lib/expediente-de-gestoria.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -612,11 +613,43 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
 
           {partidas.length > 0 && (
             <div className="mb-2 divide-y divide-brand-100 border-y border-brand-100">
-              {partidas.map((p, i) => (
-                <div key={i} className="flex items-center gap-1.5 py-1.5">
+              {/*
+                * Base, IVA y total, en este orden.
+                *
+                * Es como viene escrito en la factura, y es lo que hay que poder
+                * copiar sin traducir nada por el camino. El total es lo que se
+                * paga; la base, lo que cuesta de verdad, porque el IVA de sus
+                * honorarios se deduce.
+                */}
+              <div className="flex items-center gap-1.5 pb-1 text-[10px] text-brand-300 uppercase tracking-wide">
+                <span className="flex-1">Concepto</span>
+                <span className="w-16 text-right">Base</span>
+                <span className="w-12 text-right">IVA</span>
+                <span className="w-20 text-right">Total</span>
+                <span className="w-[68px]" />
+                <span className="w-4" />
+              </div>
+              {partidas.map((p, i) => {
+                const mal = noCuadra({ base: p.base, iva: p.iva, total: p.importe, regimen: p.regimen });
+                return (
+                <div key={i} className="py-1.5">
+                <div className="flex items-center gap-1.5">
                   <input value={p.concepto}
                          onChange={(e) => cambiaPartida(i, { concepto: e.target.value })}
                          className="flex-1 min-w-0 px-2 py-1 text-[12px] border border-brand-200 rounded" />
+                  <input value={String(p.base ?? '')} inputMode="decimal" placeholder="—"
+                         onChange={(e) => cambiaPartida(i, { base: e.target.value })}
+                         className="w-16 px-2 py-1 text-[12px] text-right border border-brand-200 rounded tabular-nums" />
+                  {/*
+                    * El tipo, de una lista y no a mano: un 15 % tecleado es una
+                    * errata, y una errata aquí acaba en un modelo 303.
+                    */}
+                  <select value={String(p.iva ?? '')}
+                          onChange={(e) => cambiaPartida(i, { iva: e.target.value })}
+                          className="w-12 px-1 py-1 text-[11px] border border-brand-200 rounded bg-white">
+                    <option value="">—</option>
+                    {TIPOS_DE_IVA.map((n) => <option key={n} value={n}>{n}%</option>)}
+                  </select>
                   <input value={String(p.importe ?? '')} inputMode="decimal"
                          onChange={(e) => cambiaPartida(i, { importe: e.target.value })}
                          className="w-20 px-2 py-1 text-[12px] text-right border border-brand-200 rounded tabular-nums" />
@@ -629,7 +662,18 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
                   <button onClick={() => quitaPartida(i)}
                           className="text-[11px] text-brand-300 hover:text-red-600 px-1">×</button>
                 </div>
-              ))}
+                {/*
+                  * Y si los tres números se contradicen, se dice ahora.
+                  *
+                  * Aquí es donde alguien tiene la factura delante y puede
+                  * corregirlo. En el cierre del trimestre ya no la tiene.
+                  */}
+                {mal && (
+                  <div className="text-[10px] text-amber-700 mt-0.5 pl-2">{mal}</div>
+                )}
+                </div>
+                );
+              })}
             </div>
           )}
 

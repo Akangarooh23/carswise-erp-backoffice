@@ -17,14 +17,40 @@
  * es perder la única distinción que Hacienda mira.
  */
 
+import { desglosa, cuenta, comoSeCuenta as comoSeCuentaElDinero, type Regimen } from './dinero.js';
+
 /** Si el dinero es de un tercero o es nuestro. */
 export type QueEs = 'suplido' | 'nuestro';
 
 export interface Partida {
   /** Cómo se llama. De la lista o escrita a mano. */
   concepto: string;
-  /** Lo que cuesta, tal cual llega: puede venir como texto de Postgres. */
+  /**
+   * Lo que cuesta **con IVA**, tal cual llega: puede venir como texto.
+   *
+   * Es el número que pone la línea de la factura, y el que se paga. Se sigue
+   * llamando `importe` porque es lo que hay escrito en cientos de partidas ya
+   * guardadas, y renombrarlo las dejaría todas a cero.
+   */
   importe?: string | number | null;
+  /**
+   * Y cómo se parte, cuando se sabe.
+   *
+   * `base` es lo que cuesta sin IVA e `iva` el tipo. Las dos pueden faltar:
+   * una partida guardada antes de que esto existiera solo tiene su importe, y
+   * suponerle un 21 % —a unas tasas que no lo llevan— daría una cifra
+   * plausible y equivocada. Sin ellas, la partida cuenta entera como base y se
+   * dice que está sin desglosar.
+   */
+  base?: string | number | null;
+  iva?: string | number | null;
+  /**
+   * De dónde viene, que cambia quién paga el IVA.
+   *
+   * En una gestoría española casi todo es nacional, pero las tasas y el
+   * impuesto son exentos: no llevan IVA ni dentro ni fuera.
+   */
+  regimen?: Regimen | null;
   /**
    * De quién es ese dinero.
    *
@@ -81,34 +107,61 @@ export function importeQueVale(v: unknown): number {
 export interface ResumenDeLaGestoria {
   /** Cuántas partidas hay. */
   cuantas: number;
-  /** Lo que factura en total. */
+  /** Lo que factura en total, con IVA: lo que se paga. */
   total: number;
   /** Lo que es de terceros y solo pasa por nosotros. */
   suplidos: number;
-  /** Lo suyo, que es lo que de verdad nos cuesta el servicio. */
+  /** Lo suyo con IVA dentro, que es lo que sale de la cuenta. */
   honorarios: number;
+  /** Y lo suyo **sin IVA**, que es lo que de verdad nos cuesta. */
+  honorariosBase: number;
+  /** El IVA de sus honorarios, que se deduce. */
+  iva: number;
+  /** Cuántas líneas no dicen cómo se parten. */
+  sinDesglosar: number;
 }
 
+/**
+ * La cuenta de un expediente de gestoría.
+ *
+ * `honorarios` y `honorariosBase` son dos preguntas distintas y las dos hacen
+ * falta: lo primero es lo que sale del banco y lo segundo lo que cuesta el
+ * coche, porque el IVA de los honorarios se deduce. Con una sola cifra, o el
+ * pago o el margen salen mal.
+ */
 export function resumenDeLaGestoria(partidas: Partida[] | null | undefined): ResumenDeLaGestoria {
   const lista = (partidas ?? []).filter((p) => p && String(p.concepto ?? '').trim());
-  let suplidos = 0;
-  let honorarios = 0;
-  for (const p of lista) {
-    const cuanto = importeQueVale(p.importe);
-    if ((p.que ?? queEsPorDefecto(p.concepto)) === 'nuestro') honorarios += cuanto;
-    else suplidos += cuanto;
-  }
-  // Con dos decimales: sumar céntimos en coma flotante deja 1754.7700000000002,
-  // y eso acaba impreso en una pantalla.
-  const redondo = (n: number) => Math.round(n * 100) / 100;
+  const c = cuenta(lista.map((p) => {
+    const que = p.que ?? queEsPorDefecto(p.concepto);
+    return {
+    base: p.base,
+    /*
+     * Un suplido sin tipo escrito va al 0 %, y eso no es suponer nada.
+     *
+     * Una tasa de la DGT o el impuesto de matriculación no llevan IVA: si lo
+     * llevaran no serían un suplido. Dejarlo «sin desglosar» diría que falta un
+     * dato que no existe, y ensuciaría el aviso de las que sí faltan.
+     */
+    iva: p.iva ?? (que === 'suplido' ? 0 : undefined),
+    total: p.importe,
+    que,
+    regimen: p.regimen ?? (que === 'suplido' ? 'exento' as const : 'nacional' as const),
+    };
+  }));
+  const conIva = lista
+    .filter((p) => (p.que ?? queEsPorDefecto(p.concepto)) !== 'suplido')
+    .reduce((s, p) => s + desglosa({ base: p.base, iva: p.iva, total: p.importe, regimen: p.regimen }).total, 0);
+  const redondea = (n: number) => Math.round(n * 100) / 100;
   return {
     cuantas: lista.length,
-    total: redondo(suplidos + honorarios),
-    suplidos: redondo(suplidos),
-    honorarios: redondo(honorarios),
+    total: c.pagado,
+    suplidos: c.suplidos,
+    honorarios: redondea(conIva),
+    honorariosBase: c.nuestro,
+    iva: c.ivaSoportado,
+    sinDesglosar: c.sinDesglosar,
   };
 }
-
 /**
  * Cómo se cuenta, dicho para quien lo mira.
  *
@@ -117,10 +170,13 @@ export function resumenDeLaGestoria(partidas: Partida[] | null | undefined): Res
  */
 export function comoSeCuenta(r: ResumenDeLaGestoria): string {
   if (!r.cuantas) return 'Sin partidas todavía.';
-  const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (!r.suplidos) return `${eur(r.total)} €, todo honorarios.`;
-  if (!r.honorarios) return `${eur(r.total)} €, todo suplidos: dinero de terceros que solo pasa por nosotros.`;
-  return `${eur(r.total)} €, de los que ${eur(r.suplidos)} € son suplidos —dinero de terceros— y ${eur(r.honorarios)} € honorarios de la gestoría.`;
+  return comoSeCuentaElDinero({
+    nuestro: r.honorariosBase,
+    suplidos: r.suplidos,
+    ivaSoportado: r.iva,
+    pagado: r.total,
+    sinDesglosar: r.sinDesglosar,
+  });
 }
 
 /**
@@ -169,10 +225,38 @@ export function leeLoPegado(texto: string): { partidas: Partida[]; malas: string
       .trim();
     if (!concepto) { malas.push(linea); continue; }
 
+    /*
+     * Y si la factura trae base e IVA, se quedan.
+     *
+     * Una factura de gestoría suele venir «Concepto · base · %IVA · total».
+     * Antes se tiraban las dos columnas de en medio y luego había que teclear
+     * el desglose a mano, línea a línea, mirando el mismo papel del que se
+     * acababa de copiar.
+     *
+     * Solo si cuadran: base por el tipo tiene que dar el total, al céntimo.
+     * Si no cuadra, es que esas columnas eran otra cosa —una cantidad, un
+     * código— y quedarse con ellas sería inventarse un desglose.
+     */
+    const que = queEsPorDefecto(concepto);
+    const total = importeQueVale(trozos[iImporte]);
+    const antes = trozos.slice(0, iImporte).filter(esDinero).map(importeQueVale);
+    let base: number | null = null;
+    let iva: number | null = null;
+    for (const posibleBase of antes) {
+      for (const tipo of [21, 10, 4, 0]) {
+        if (Math.abs(posibleBase * (1 + tipo / 100) - total) <= 0.01) {
+          base = posibleBase; iva = tipo; break;
+        }
+      }
+      if (base !== null) break;
+    }
+
     partidas.push({
       concepto,
-      importe: importeQueVale(trozos[iImporte]),
-      que: queEsPorDefecto(concepto),
+      importe: total,
+      ...(base !== null ? { base, iva } : {}),
+      que,
+      ...(que === 'suplido' ? { regimen: 'exento' as const } : {}),
     });
   }
 
