@@ -679,7 +679,8 @@ onEncargarALaGestoria, aviso }: PanelProps) {
     hora: x.meta?.appointment_time ?? "",
     donde: x.meta?.appointment_address || x.meta?.tramo_al_cliente?.hasta || "",
     /*
-     * Y quién se lo lleva, que en una entrega es lo contrario de lo que parece.
+     * Y quién lo lleva al cliente, que en una entrega es lo contrario de lo que
+     * parece.
      *
      * En una visita a un concesionario el cliente va a un sitio y pregunta por
      * alguien, y por eso el campo se llamaba «pregunta por». En una entrega a
@@ -1486,12 +1487,38 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                      onChange={(e) => setCita((c) => ({ ...c, hora: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             </label>
-            <input type="text" value={cita.donde} placeholder="Dónde"
-                   onChange={(e) => setCita((c) => ({ ...c, donde: e.target.value }))}
-                   className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <input type="text" value={cita.quien} placeholder="Quién se lo lleva"
-                   onChange={(e) => setCita((c) => ({ ...c, quien: e.target.value }))}
-                   className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            {/*
+              * Los dos con su nombre, no con un texto que se borra al escribir.
+              *
+              * Un campo con solo placeholder se queda sin nombre en cuanto
+              * tiene algo dentro: quien vuelve a mirarlo mañana ve dos huecos
+              * con texto y no sabe cuál es cuál.
+              */}
+            <label className="col-span-2 text-[11px] text-brand-400">
+              Dónde se le entrega
+              <input type="text" value={cita.donde}
+                     placeholder="Calle Mauricio Legendre 45, 28046 Madrid"
+                     onChange={(e) => setCita((c) => ({ ...c, donde: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+            {/*
+              * Y quién va a llamar al timbre.
+              *
+              * No es «pregunta por», que era el nombre de cuando la cita era una
+              * visita a un concesionario: allí el cliente iba a un sitio y
+              * preguntaba por alguien. Aquí no va a ninguna parte —le llevan el
+              * coche a casa— y lo que necesita saber es a quién va a abrirle.
+              */}
+            <label className="col-span-2 text-[11px] text-brand-400">
+              Quién lleva el coche a su casa
+              <input type="text" value={cita.quien} placeholder="Javier Campo"
+                     onChange={(e) => setCita((c) => ({ ...c, quien: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+              <span className="text-[10px] text-brand-300">
+                El conductor del segundo transporte. Es el nombre que el cliente
+                lee en su recordatorio: «te lo lleva…».
+              </span>
+            </label>
           </div>
           <button
             onClick={() => onCambiar({
