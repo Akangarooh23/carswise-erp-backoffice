@@ -189,6 +189,14 @@ export interface MetaImportacion {
     hasta?: string | null;
     transportista?: string | null;
     orden_enviada_at?: string | null;
+    /**
+     * Quién conduce, y en qué teléfono.
+     *
+     * Es lo que el cliente necesita saber: en una entrega a domicilio no va él
+     * a ningún sitio, viene alguien a su puerta.
+     */
+    conductor?: string | null;
+    telefono_conductor?: string | null;
     /** Cuándo cargó el camión: lo que lo pone en la carretera. */
     fecha_recogida?: string | null;
     fecha_entrega?: string | null;

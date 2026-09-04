@@ -678,7 +678,19 @@ onEncargarALaGestoria, aviso }: PanelProps) {
       ?? x.meta?.delivery_estimate?.slice(0, 10) ?? "",
     hora: x.meta?.appointment_time ?? "",
     donde: x.meta?.appointment_address || x.meta?.tramo_al_cliente?.hasta || "",
-    quien: x.meta?.appointment_contact ?? "",
+    /*
+     * Y quién se lo lleva, que en una entrega es lo contrario de lo que parece.
+     *
+     * En una visita a un concesionario el cliente va a un sitio y pregunta por
+     * alguien, y por eso el campo se llamaba «pregunta por». En una entrega a
+     * domicilio no va a ninguna parte: viene alguien a su puerta, y lo que
+     * necesita saber es **quién**.
+     *
+     * Se propone el conductor del segundo viaje, que es quien va a llamar al
+     * timbre. Antes se quedaba vacío, y vacío en el recordatorio es un cliente
+     * esperando a alguien sin nombre.
+     */
+    quien: x.meta?.appointment_contact || x.meta?.tramo_al_cliente?.conductor || '',
   });
   const [historial, setHistorial] = useState<Apunte[] | null>(null);
 
@@ -1477,7 +1489,7 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             <input type="text" value={cita.donde} placeholder="Dónde"
                    onChange={(e) => setCita((c) => ({ ...c, donde: e.target.value }))}
                    className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <input type="text" value={cita.quien} placeholder="Pregunta por"
+            <input type="text" value={cita.quien} placeholder="Quién se lo lleva"
                    onChange={(e) => setCita((c) => ({ ...c, quien: e.target.value }))}
                    className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </div>

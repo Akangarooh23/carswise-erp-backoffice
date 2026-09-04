@@ -518,6 +518,11 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       'transportista', t.transportista,
                       'orden_enviada_at', t.orden_enviada_at,
                       'fecha_recogida', t.fecha_recogida,
+                      -- Y quién conduce, que es lo que el cliente necesita
+                      -- saber: en una entrega a domicilio no va él a ningún
+                      -- sitio, viene alguien a su puerta.
+                      'conductor', t.contacto_transportista,
+                      'telefono_conductor', t.telefono_transportista,
                       'fecha_entrega', t.fecha_entrega)
                       FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 1
