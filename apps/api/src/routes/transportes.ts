@@ -15,10 +15,13 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
-import { enviar, MARCA } from '../lib/correo.js';
+import { enviar, MARCA, respuestaA } from '../lib/correo.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
+import {
+  correoDeFacturaAlTransportista, faltaParaPedirLaFactura,
+} from '../lib/factura-al-transportista.js';
 import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
 } from '../lib/aviso-de-recogida-al-origen.js';
@@ -106,6 +109,11 @@ const ENSURE_ORDEN = `
     -- lleva ocho y sale a un tercio por coche, así que decidirlo a ciegas
     -- cambia el precio del viaje.
     ADD COLUMN IF NOT EXISTS portacoches BOOLEAN,
+    -- Cuándo se le pidió su factura, y a qué correo. Sin esto no se sabe si
+    -- se pidió, y una factura de 890 € que nadie reclama no aparece en el
+    -- coste del coche: el margen sale mejor de lo que es.
+    ADD COLUMN IF NOT EXISTS factura_pedida_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS factura_pedida_a  TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS presupuesto_pedido_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS presupuesto_pedido_a  TEXT NOT NULL DEFAULT '',
     -- Y cuándo se le dijo al vendedor quién va a por el coche y qué día.
@@ -145,6 +153,7 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 TO_CHAR(entrega_prevista, 'YYYY-MM-DD')  AS entrega_prevista,
                 fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at,
                 orden_enviada_at, orden_enviada_a,
+                factura_pedida_at, factura_pedida_a,
                 recogida_preguntada_at, recogida_preguntada_a,
                 contacto_origen, telefono_origen, horario_origen,
                 portacoches, presupuesto_pedido_at, presupuesto_pedido_a,
@@ -698,6 +707,122 @@ transportesRouter.post('/transportes/:id/presupuesto', requireRole(['admin', 'op
  * tramo, que es donde están el transportista y el día. Preguntar y guardar no
  * tienen por qué pasar en la misma pantalla.
  */
+/**
+ * Pedirle al transportista su factura, con el coche ya entregado.
+ *
+ * No bloquea nada, y por eso se olvida: el coche llegó, el tramo está cerrado
+ * y nadie espera ese papel para poder seguir. Pero 890 € que no llegan al
+ * coste del coche hacen que el margen salga mejor de lo que es, y cuando la
+ * factura aparece ya se han sacado cuentas con un número que no era.
+ *
+ * El tramo ya se apunta solo en «facturas esperadas» al entregarlo. Esto es el
+ * otro lado: reclamarla. Tener apuntado que la esperamos y no habérsela pedido
+ * nunca es una lista que crece sola.
+ */
+transportesRouter.post('/transportes/:id/pedir-factura', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
+  try {
+    const r = await query<Record<string, unknown>>(
+      `SELECT t.*, TO_CHAR(t.fecha_entrega, 'DD/MM/YYYY') AS entregado_el
+         FROM erp_transportes t WHERE t.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const t = r.rows[0];
+    if (!t) { res.status(404).json({ ok: false, error: 'transporte_no_encontrado' }); return; }
+
+    /*
+     * Con el coche entregado, no antes.
+     *
+     * Una factura pedida a mitad de viaje llega antes de que sepamos si el
+     * coche llegó bien, y entonces se paga un porte que todavía puede tener una
+     * reclamación encima.
+     */
+    if (String(t.estado ?? '') !== 'Entregado') {
+      res.status(409).json({
+        ok: false, error: 'sin_entregar',
+        detail: 'Todavía no ha entregado el coche. La factura se pide con el viaje terminado.',
+      });
+      return;
+    }
+
+    const nombre = String(t.transportista ?? '').trim();
+    if (!nombre) {
+      res.status(409).json({ ok: false, error: 'sin_transportista', detail: 'No consta quién lo trajo.' });
+      return;
+    }
+    const v = await query<{ email: string | null }>(
+      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+      [nombreComparable(nombre)]
+    ).catch(() => ({ rows: [] as { email: string | null }[] }));
+    const para = String(v.rows[0]?.email ?? '').trim();
+    if (!para) {
+      res.status(409).json({
+        ok: false, error: 'sin_correo_del_transportista',
+        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+      });
+      return;
+    }
+
+    const datos = {
+      vehiculo: String(t.vehiculo_titulo ?? ''),
+      matricula: t.matricula as string | null,
+      desde: String(t.desde ?? ''),
+      hasta: String(t.hasta ?? ''),
+      cuando: String(t.entregado_el ?? ''),
+      importe: t.coste != null ? Number(t.coste) : null,
+      referencia: String(t.id),
+      // A dónde nos la manda: la misma dirección desde la que sale el correo.
+      paraFacturas: respuestaA() ?? null,
+      nota: notaEnParrafos(req.body?.nota),
+    };
+    const falta = faltaParaPedirLaFactura(datos);
+    if (falta.length) {
+      res.status(409).json({ ok: false, error: 'faltan_datos', detail: `Falta ${escritoEnLista(falta)}.` });
+      return;
+    }
+
+    const soloVista = req.body?.soloVista === true;
+    const idioma = elIdioma(req.body?.idioma);
+    const { subject, html } = correoDeFacturaAlTransportista(datos, idioma);
+    const aQuien = pareceUnCorreo(req.body?.para) ? String(req.body.para).trim() : para;
+    const elAsunto = asuntoLimpio(req.body?.asunto, subject);
+    const cajones = [{ ambito: 'transporte', id: req.params.id }];
+    const papeles = await papelesQueSePuedenAdjuntar(cajones);
+
+    if (soloVista) {
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma, idiomas: IDIOMAS });
+      return;
+    }
+
+    let adjuntos: { filename: string; content: string }[] = [];
+    let dicho = '';
+    try {
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, idioma);
+      adjuntos = va.attachments;
+      dicho = va.linea;
+    } catch (e) {
+      if (e instanceof NoSePuedenAdjuntar) {
+        res.status(409).json({ ok: false, error: 'adjuntos', detail: e.message });
+        return;
+      }
+      throw e;
+    }
+
+    await enviar({ to: aQuien, subject: elAsunto, html: html + dicho, attachments: adjuntos, alClienteSiempre: true });
+    await query(
+      `UPDATE erp_transportes
+          SET factura_pedida_at = NOW(), factura_pedida_a = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [req.params.id, aQuien]
+    ).catch((e: Error) => console.error('[transportes] no se ha podido anotar la factura pedida:', e.message));
+
+    res.json({ ok: true, para: aQuien });
+  } catch (err) {
+    console.error('[transportes] pedir factura:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'pedir_factura_failed' });
+  }
+});
+
 transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 'operations']), async (req, res) => {
   await prepara();
   try {

@@ -84,6 +84,9 @@ interface Transporte {
   // Cuándo se le mandó la orden de recogida, y a qué correo.
   orden_enviada_at?: string | null;
   orden_enviada_a?: string | null;
+  /** Y cuándo se le pidió su factura, que si no se olvida. */
+  factura_pedida_at?: string | null;
+  factura_pedida_a?: string | null;
   // Cuándo se le preguntó al vendedor dónde y cuándo se recoge.
   recogida_preguntada_at?: string | null;
   recogida_preguntada_a?: string | null;
@@ -177,6 +180,15 @@ export default function TransportesPage() {
 
   const mandaLaOrden = (id: string, datos?: Record<string, unknown>) =>
     abreParaRevisar(`/transportes/${id}/orden`, id, undefined, datos);
+  /**
+   * Y pedirle su factura, con el coche ya entregado.
+   *
+   * No bloquea nada y por eso se olvida: el viaje terminó y nadie espera ese
+   * papel para poder seguir. Pero 890 € que no llegan al coste del coche hacen
+   * que el margen salga mejor de lo que es.
+   */
+  const pideLaFactura = (id: string) =>
+    abreParaRevisar(`/transportes/${id}/pedir-factura`, id);
   /**
    * Pedirle precio, que va antes de la orden y es otra cosa.
    *
@@ -337,6 +349,7 @@ export default function TransportesPage() {
           onMandarOrden={(d) => void mandaLaOrden(abierto.id, d)}
           onPedirPresupuesto={(d) => void pideElPresupuesto(abierto.id, d)}
           onAvisarAlVendedor={(d) => void avisaAlVendedor(abierto.id, d)}
+          onPedirFactura={() => void pideLaFactura(abierto.id)}
           onPreguntarRecogida={(d) => void preguntaLaRecogida(abierto.id, d)}
           aviso={errorDelPanel}
         />
@@ -406,13 +419,16 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
   );
 }
 
-function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onAvisarAlVendedor, onPreguntarRecogida, aviso }: {
+function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onAvisarAlVendedor, onPreguntarRecogida, onPedirFactura, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
   // Los cuatro reciben lo que hay en pantalla: se graba antes de preparar el
   // correo, porque el correo lo escribe el servidor con lo grabado.
   onPedirPresupuesto: (datos: Record<string, unknown>) => void;
   onAvisarAlVendedor: (datos: Record<string, unknown>) => void;
   onMandarOrden: (datos: Record<string, unknown>) => void;
+  // Esta no lleva datos: se pide con el viaje ya cerrado y nada de la
+  // pantalla cambia lo que dice el correo.
+  onPedirFactura: () => void;
   onPreguntarRecogida: (datos: Record<string, unknown>) => void;
   aviso: string;
 }) {
@@ -886,6 +902,44 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         {enViaje && (
         <div className="mt-4 pt-3 border-t border-brand-200">
           <LlegoComoSalioBloque llegada={llegada} setLlegada={setLlegada} entregadoEl={t.fecha_entrega} />
+        </div>
+        )}
+
+        {/*
+          * Su factura, cuando el viaje ya está cerrado.
+          *
+          * Aquí abajo y no arriba: es lo último que queda de un tramo, cuando
+          * todo lo demás está hecho. Y solo con el coche entregado — pedirla a
+          * mitad de viaje es pagar un porte que todavía puede llevar una
+          * reclamación encima.
+          */}
+        {t.estado === 'Entregado' && (
+        <div className="mt-4 pt-3 border-t border-brand-200">
+          <div className="text-xs font-semibold text-brand-500 mb-1.5">Su factura</div>
+          {t.factura_pedida_at ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[12px] font-bold text-emerald-700">
+                ✓ Pedida el {new Date(t.factura_pedida_at).toLocaleDateString('es-ES')}
+                {t.factura_pedida_a ? ` a ${t.factura_pedida_a}` : ''}
+              </span>
+              <button onClick={onPedirFactura} disabled={guardando}
+                      className="text-[11px] text-brand-400 underline underline-offset-2">
+                volver a pedírsela
+              </button>
+            </div>
+          ) : (
+            <>
+              <button onClick={onPedirFactura} disabled={guardando}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
+                Pedirle su factura
+              </button>
+              <div className="text-[11px] text-brand-300 mt-1.5">
+                Con el coche, el viaje, el día y lo acordado dentro. Sin esto,
+                {' '}{Number(t.coste || 0) > 0 ? `${eur(t.coste)} ` : 'lo que costó '}
+                no llega al coste del coche y el margen sale mejor de lo que es.
+              </div>
+            </>
+          )}
         </div>
         )}
 
