@@ -976,7 +976,12 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
         [req.params.id]
       )
         .catch(() => ({ rows: [] as { coste?: unknown; partidas?: Partida[] }[] })),
-      query(`SELECT importe::numeric AS importe FROM erp_gastos_pedido WHERE pedido_id = $1`, [req.params.id])
+      query(
+        `SELECT importe::numeric AS importe, base::numeric AS base, iva::numeric AS iva,
+                regimen, que
+           FROM erp_gastos_pedido WHERE pedido_id = $1`,
+        [req.params.id]
+      )
         .catch(() => ({ rows: [] as { importe?: unknown }[] })),
     ]);
 
@@ -1031,8 +1036,12 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
             base: g.honorariosBase, total: g.honorarios, que: 'nuestro' as const,
             iva: g.iva > 0 ? 21 : undefined, regimen: 'nacional' as const,
           })),
-          ...(gastos.rows as { importe?: unknown }[]).map((x) => ({
-            total: x.importe, que: 'nuestro' as const,
+          // El taller también se parte: 480 € cuestan 396,69, y los 83,31
+          // restantes son IVA que se deduce.
+          ...(gastos.rows as Record<string, unknown>[]).map((x) => ({
+            base: x.base, iva: x.iva, total: x.importe,
+            que: (x.que as 'nuestro') ?? 'nuestro',
+            regimen: (x.regimen as 'nacional') ?? 'nacional',
           })),
         ];
         cuenta = cuentaDeUnaImportacion({

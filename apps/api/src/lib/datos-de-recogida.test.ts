@@ -97,3 +97,49 @@ describe('lo que hace falta para mandarlo', () => {
     assert.deepEqual(faltaParaPedirLaRecogida({ vehiculo: '  ' }), ['qué coche es']);
   });
 });
+
+/**
+ * Y los tres papeles que el ERP esperaba y nadie pedía nunca.
+ *
+ * El contrato de compraventa y el justificante de baja estaban en la lista de lo
+ * que hay que reunir de una importación; el libro de mantenimiento, en la de lo
+ * que se le entrega al cliente. Ninguno de los tres salía en ningún correo del
+ * ERP: se quedaban esperando a que alguien se acordara de pedirlos por su
+ * cuenta, que es otra forma de decir que no llegaban.
+ *
+ * Ninguno bloquea nada, y por eso mismo hay que pedirlos aquí: lo que no se pide
+ * en el correo que ya se manda no se pide nunca.
+ */
+describe('los papeles que nadie pedía', () => {
+  test('el libro de mantenimiento viaja con el coche', () => {
+    // Es lo que hace que valga mil euros más el día que el cliente lo venda, y
+    // si no sale del concesionario alemán ya no sale nunca.
+    const { html } = correoDeDatosDeRecogida(CASO);
+    assert.match(html, /Serviceheft/);
+    assert.match(html, /service book/);
+  });
+
+  test('el contrato y la baja se piden por correo, antes', () => {
+    // No viajan con el coche: los queremos escaneados. Pedirlos cuando el coche
+    // ya está aquí es pedirle un favor a alguien que ya ha cobrado.
+    const { html } = correoDeDatosDeRecogida(CASO);
+    assert.match(html, /Kaufvertrag/);
+    assert.match(html, /Abmeldebescheinigung/);
+    assert.match(html, /vorab per E-Mail/);
+  });
+
+  test('y el inglés dice lo mismo', () => {
+    const { html } = correoDeDatosDeRecogida(CASO);
+    assert.match(html, /email us the sales contract in advance/);
+    assert.match(html, /deregistration certificate/);
+  });
+
+  test('la cuenta de lo que se pide cuadra con lo que se pregunta', () => {
+    // «Cinco cosas» seguido de seis puntos hace dudar de las seis.
+    const { html } = correoDeDatosDeRecogida(CASO);
+    const puntos = (html.match(/<li /g) ?? []).length;
+    assert.equal(puntos, 6);
+    assert.match(html, /sechs Angaben/);
+    assert.match(html, /We need six things/);
+  });
+});

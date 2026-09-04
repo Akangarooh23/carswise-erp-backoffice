@@ -643,3 +643,47 @@ describe('la cuenta de una importación en la ficha', () => {
     assert.match(FUENTE, /data: \{ \.\.\.coste, margen: margenDelCoche\(coste\.total, venta\), cuenta \}/);
   });
 });
+
+/**
+ * Y el gasto de taller, que era lo último sin desglosar.
+ *
+ * 480 € de neumáticos cuestan 396,69: los 83,31 restantes son IVA que se
+ * deduce, no coste. Guardado como un número suelto, el coche sale más caro de lo
+ * que fue y el margen peor. Y un gasto también puede ser un suplido —una tasa
+ * que adelanta el taller por nosotros no es coste nuestro—.
+ */
+describe('los gastos del pedido también se parten', () => {
+  const GASTOS = readFileSync(new URL('./gastos.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const PEDIDOS = readFileSync(new URL('./pedidos.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('las cuatro columnas existen', () => {
+    assert.match(GASTOS, /ADD COLUMN IF NOT EXISTS base NUMERIC\(12,2\)/);
+    assert.match(GASTOS, /ADD COLUMN IF NOT EXISTS iva NUMERIC\(5,2\)/);
+    assert.match(GASTOS, /ADD COLUMN IF NOT EXISTS regimen TEXT NOT NULL DEFAULT 'nacional'/);
+    assert.match(GASTOS, /ADD COLUMN IF NOT EXISTS que TEXT NOT NULL DEFAULT 'nuestro'/);
+  });
+
+  test('y se crean al preparar', () => {
+    // La tabla ya existe en producción: un CREATE TABLE IF NOT EXISTS con
+    // columnas nuevas no las añade.
+    assert.match(GASTOS, /await query\(ENSURE_DESGLOSE, \[\]\)/);
+  });
+
+  test('sin tipo escrito no se supone ninguno', () => {
+    // Un 21 % encima de un gasto que ya lo llevaba dentro no da un error
+    // visible: da una cifra plausible y equivocada.
+    assert.match(GASTOS, /if \(!s\) return null;/);
+  });
+
+  test('un régimen o un «que» inventados no se guardan', () => {
+    assert.match(GASTOS, /\['nacional', 'intracomunitario', 'exento'\]\.includes\(nt\(req\.body\?\.regimen\)\)/);
+    assert.match(GASTOS, /nt\(req\.body\?\.que\) === 'suplido' \? 'suplido' : 'nuestro'/);
+  });
+
+  test('y la cuenta del coche los lee con su desglose', () => {
+    assert.match(PEDIDOS, /base::numeric AS base, iva::numeric AS iva,\s*\n\s*regimen, que\s*\n\s*FROM erp_gastos_pedido/);
+    assert.match(PEDIDOS, /base: x\.base, iva: x\.iva, total: x\.importe,/);
+  });
+});

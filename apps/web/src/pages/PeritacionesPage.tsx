@@ -131,10 +131,34 @@ export default function PeritacionesPage() {
     }
   }
 
-  /** Ninguno se manda de un clic: se abre para revisarlo. */
-  async function preparaElCorreo(id: string, que: string) {
+  /**
+   * Ninguno se manda de un clic: se abre para revisarlo.
+   *
+   * Y antes se graba lo que hay en pantalla. El correo lo escribe el servidor
+   * con lo **grabado**, y la pantalla enseña lo que se está escribiendo:
+   * elegir el perito, pulsar «encargarle la revisión» y llevarse un «no consta
+   * quién lo revisa» es la peor forma de contarlo, porque el dato está delante
+   * en su casilla.
+   *
+   * Decirlo en una línea debajo del botón ya se intentaba, y no basta: nadie
+   * lee la letra pequeña de un botón que parece listo. Es el mismo fallo que
+   * mordió en Transportes, y se arregla igual.
+   */
+  async function preparaElCorreo(id: string, que: string, guardarAntes?: Record<string, unknown>) {
     setGuardando(true);
     try {
+      /*
+       * Si falla el guardado, no se sigue: enseñar para revisar algo que no es
+       * lo que se acaba de escribir deja la revisión sin sentido —se aprueba
+       * una cosa y sale otra—.
+       */
+      if (guardarAntes) {
+        const g = await api.patch(`/peritaciones/${id}`, guardarAntes);
+        if (!g.ok) {
+          setError((g as { detail?: string }).detail || g.error || 'No se ha podido guardar.');
+          return;
+        }
+      }
       const r = await api.post<VistaDelCorreo>(`/peritaciones/${id}/${que}`, { soloVista: true });
       if (!r.ok) { setError((r as { detail?: string }).detail || r.error || 'No se ha podido preparar.'); return; }
       const d = r.data as unknown as VistaDelCorreo;
@@ -314,8 +338,8 @@ export default function PeritacionesPage() {
           guardando={guardando}
           onCerrar={() => setAbierta(null)}
           onGuardar={(c) => void guarda(abierta.id, c)}
-          onEncargar={() => void preparaElCorreo(abierta.id, 'encargo')}
-          onAvisarCita={() => void preparaElCorreo(abierta.id, 'cita')}
+          onEncargar={(d) => void preparaElCorreo(abierta.id, 'encargo', d)}
+          onAvisarCita={(d) => void preparaElCorreo(abierta.id, 'cita', d)}
           onPedirFactura={() => void preparaElCorreo(abierta.id, 'pedir-factura')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
           onFactura={(d, pdf) => void anotaLaFactura(abierta.id, d, pdf)}
@@ -353,10 +377,12 @@ function PeritacionAbierta({
   guardando: boolean;
   onCerrar: () => void;
   onGuardar: (c: Record<string, unknown>) => void;
-  onEncargar: () => void;
+  // Los dos primeros llevan lo que hay en pantalla: se graba antes, porque el
+  // correo lo escribe el servidor con lo grabado.
+  onEncargar: (datos: Record<string, unknown>) => void;
   onResultado: (veredicto: string, notas: string) => void;
   onFactura: (datos: Record<string, string>, pdf?: File | null) => void;
-  onAvisarCita: () => void;
+  onAvisarCita: (datos: Record<string, unknown>) => void;
   onPedirFactura: () => void;
   onApuntarDano: (d: { pieza: string; coste: string; notas: string }) => void;
   onCorregirDano: (danoId: string, d: Record<string, string>) => void;
@@ -490,13 +516,13 @@ function PeritacionAbierta({
             <span className="text-[13px] font-bold text-emerald-700">
               ✓ Mandado el {dia(p.encargo_enviado_at)}{p.encargo_enviado_a ? ` a ${p.encargo_enviado_a}` : ''}
             </span>
-            <button onClick={onEncargar} disabled={guardando}
+            <button onClick={() => onEncargar(datos)} disabled={guardando}
                     className="text-[11px] text-brand-400 underline underline-offset-2">
               mandarlo otra vez
             </button>
           </div>
         ) : (
-          <button onClick={onEncargar} disabled={guardando || !datos.perito.trim()}
+          <button onClick={() => onEncargar(datos)} disabled={guardando || !datos.perito.trim()}
                   className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
             Encargarle la revisión
           </button>
@@ -504,7 +530,7 @@ function PeritacionAbierta({
         p.encargo_enviado_at
           ? 'Le pedimos que confirme la cita y que nos diga lo que cuesta.'
           : datos.perito.trim()
-            ? 'Guarda antes los cambios: el correo sale con lo que hay grabado.'
+            ? 'Se manda con lo que hay en pantalla.'
             : 'Elige primero quién va a verlo.'
       ),
     },
@@ -589,13 +615,13 @@ function PeritacionAbierta({
             <span className="text-[13px] font-bold text-emerald-700">
               ✓ Avisado el {dia(p.cita_avisada_at)}{p.cita_avisada_a ? ` a ${p.cita_avisada_a}` : ''}
             </span>
-            <button onClick={onAvisarCita} disabled={guardando}
+            <button onClick={() => onAvisarCita(datos)} disabled={guardando}
                     className="text-[11px] text-brand-400 underline underline-offset-2">
               avisar otra vez
             </button>
           </div>
         ) : (
-          <button onClick={onAvisarCita} disabled={guardando}
+          <button onClick={() => onAvisarCita(datos)} disabled={guardando}
                   className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
             Confirmarle el día y la hora
           </button>

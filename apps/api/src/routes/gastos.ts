@@ -27,6 +27,23 @@ const ENSURE_TABLE = `
     created_at  TIMESTAMPTZ DEFAULT NOW()
   )`;
 
+/**
+ * Y cómo se parte, que era lo último que quedaba sin desglosar.
+ *
+ * Un gasto de taller de 480 € cuesta 396,69: los 83,31 restantes son IVA que
+ * se deduce, no coste. Guardado como un número suelto, el coche sale más caro
+ * de lo que fue y el margen peor.
+ *
+ * Y `que`, porque un gasto también puede ser un suplido: una tasa que adelanta
+ * el taller por nosotros no es coste nuestro.
+ */
+const ENSURE_DESGLOSE = `
+  ALTER TABLE erp_gastos_pedido
+    ADD COLUMN IF NOT EXISTS base NUMERIC(12,2),
+    ADD COLUMN IF NOT EXISTS iva NUMERIC(5,2),
+    ADD COLUMN IF NOT EXISTS regimen TEXT NOT NULL DEFAULT 'nacional',
+    ADD COLUMN IF NOT EXISTS que TEXT NOT NULL DEFAULT 'nuestro'`;
+
 const ENSURE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_gastos_pedido
     ON erp_gastos_pedido (pedido_id, created_at DESC)`;
@@ -35,6 +52,7 @@ let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
+  await query(ENSURE_DESGLOSE, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   preparado = true;
 }
@@ -96,12 +114,33 @@ gastosRouter.post('/pedidos/:id/gastos', requireRole(['admin', 'operations']), a
 
   try {
     await prepara();
+    /*
+     * El desglose, con lo que se pueda saber.
+     *
+     * `importe` sigue siendo el total con IVA, que es lo que pone el ticket y
+     * lo que se paga; la base es lo que cuesta de verdad. Sin tipo escrito no
+     * se supone ninguno: un 21 % encima de un gasto que ya lo llevaba dentro no
+     * da un error visible, da una cifra plausible y equivocada.
+     */
+    const numero = (v: unknown) => {
+      const s = nt(v);
+      if (!s) return null;
+      const n = Number(s.replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
+    };
+    const elRegimen = ['nacional', 'intracomunitario', 'exento'].includes(nt(req.body?.regimen))
+      ? nt(req.body.regimen) : 'nacional';
+    const deQuien = nt(req.body?.que) === 'suplido' ? 'suplido' : 'nuestro';
+
     const r = await query(
-      `INSERT INTO erp_gastos_pedido (pedido_id, concepto, proveedor, importe, fecha, notas, creado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO erp_gastos_pedido
+         (pedido_id, concepto, proveedor, importe, base, iva, regimen, que, fecha, notas, creado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING id, concepto, proveedor, importe::numeric AS importe,
+                 base::numeric AS base, iva::numeric AS iva, regimen, que,
                  TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha, notas, creado_por, created_at`,
       [req.params.id, concepto, nt(req.body?.proveedor), importe,
+       numero(req.body?.base), numero(req.body?.iva), elRegimen, deQuien,
        nt(req.body?.fecha) || null, nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '']
     );
     res.json({ ok: true, data: r.rows[0] });
