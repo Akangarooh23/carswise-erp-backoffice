@@ -27,6 +27,7 @@ const ImportacionesPage = lazy(() => import('./pages/ImportacionesPage.js'));
 const PedidosPage       = lazy(() => import('./pages/PedidosPage.js'));
 const GestoriaPage      = lazy(() => import('./pages/GestoriaPage.js'));
 const TransportesPage   = lazy(() => import('./pages/TransportesPage.js'));
+const ContabilidadPage  = lazy(() => import('./pages/ContabilidadPage.js'));
 const PeritacionesPage  = lazy(() => import('./pages/PeritacionesPage.js'));
 const ProveedoresPage   = lazy(() => import('./pages/ProveedoresPage.js'));
 const FunnelPage            = lazy(() => import('./pages/FunnelPage.js'));
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'pedidos',           element: <Suspense fallback={<Loader />}><PedidosPage /></Suspense> },
       { path: 'gestoria',          element: <Suspense fallback={<Loader />}><GestoriaPage /></Suspense> },
       { path: 'transportes',       element: <Suspense fallback={<Loader />}><TransportesPage /></Suspense> },
+      { path: 'contabilidad',      element: <Suspense fallback={<Loader />}><ContabilidadPage /></Suspense> },
       { path: 'peritaciones',      element: <Suspense fallback={<Loader />}><PeritacionesPage /></Suspense> },
       { path: 'proveedores',       element: <Suspense fallback={<Loader />}><ProveedoresPage /></Suspense> },
       { path: 'funnel',             element: <Suspense fallback={<Loader />}><FunnelPage /></Suspense> },

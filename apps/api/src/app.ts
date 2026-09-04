@@ -21,6 +21,7 @@ import { documentosRouter } from './routes/documentos.js';
 import { pedidosRouter } from './routes/pedidos.js';
 import { tramitesRouter } from './routes/tramites.js';
 import { transportesRouter } from './routes/transportes.js';
+import { contabilidadRouter } from './routes/contabilidad.js';
 import { gastosRouter } from './routes/gastos.js';
 import { proveedoresRouter } from './routes/proveedores.js';
 import { tarifasRouter } from './routes/tarifas.js';
@@ -74,6 +75,7 @@ export function createApp() {
   app.use('/api', pedidosRouter);
   app.use('/api', tramitesRouter);
   app.use('/api', transportesRouter);
+  app.use('/api', contabilidadRouter);
   app.use('/api', gastosRouter);
   app.use('/api', proveedoresRouter);
   app.use('/api', tarifasRouter);
