@@ -45,6 +45,15 @@ export function faltaParaAvisarDeLaRecogida(d: DatosDelAviso): string[] {
   if (!String(d.vehiculo ?? '').trim()) falta.push('decir qué coche es');
   if (!String(d.cuando ?? '').trim()) falta.push('cerrar el día de la recogida');
   if (!String(d.transportista ?? '').trim()) falta.push('saber quién lo trae');
+  /*
+   * Y el nombre de quien viene, que es la mitad del aviso.
+   *
+   * El de la nave tiene que saber a quién esperar y a quién entregarle las
+   * llaves. Con la empresa sola, el aviso dice que irá alguien de una
+   * empresa algún día, y eso es no avisar: el conductor se presenta y le
+   * piden que espere mientras llaman aquí.
+   */
+  if (!String(d.contacto ?? '').trim()) falta.push('el nombre de quien va a ir');
   return falta;
 }
 

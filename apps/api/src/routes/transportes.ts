@@ -432,11 +432,21 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       coste: t.coste != null ? Number(t.coste) : null,
     };
     const falta = faltaParaLaOrden(datos);
-    // Y que el vendedor sepa quién va. La pantalla apaga el botón, pero entre
-    // lo que se cargó y el clic caben unos minutos y otra persona.
-    if (esElPrimero && t.recogida_preguntada_at && !t.aviso_recogida_at) {
-      falta.push('avisarle antes al vendedor de quién va y qué día');
+    /*
+     * Y lo de la parte 3, que la pantalla ya exige.
+     *
+     * Se comprueba también aquí porque entre lo que se cargó y el clic caben
+     * unos minutos y otra persona, y porque este correo **es** el contrato:
+     * no se marca «Contratado» y luego se manda, se manda y con eso queda
+     * contratado. Lo que salga mal aquí sale mal ya pagado.
+     */
+    if (esElPrimero && !t.aviso_recogida_at) {
+      falta.push('avisarle antes al origen de quién va y qué día');
     }
+    if (!String(t.contacto_origen ?? '').trim()) falta.push('por quién pregunta el conductor');
+    if (!String(t.horario_origen ?? '').trim()) falta.push('el horario de recogida');
+    // Tres valores y no dos: «todavía no lo sé» no es «entra».
+    if (typeof t.portacoches !== 'boolean') falta.push('saber si entra un portacoches');
     if (falta.length) {
       res.status(409).json({
         ok: false, error: 'faltan_datos_del_tramo',

@@ -1,348 +1,333 @@
 /**
- * Qué se puede hacer con un tramo en cada momento.
+ * Las tres partes de un tramo de transporte.
  *
- * Lo que se sostiene aquí es lo caro: **la orden de recogida no sale sin haberle
- * preguntado antes al vendedor**. Sin esa respuesta, lo que hay escrito en
- * «Desde» es la ciudad del anuncio, y un camión no va a una ciudad: va a una
- * calle, un día, a una hora y preguntando por alguien. Un camión en la puerta
- * equivocada no se deshace.
+ * Lo que se sostiene aquí es el **orden**: nosotros ponemos la empresa y las
+ * dos direcciones y preguntamos; el transportista contesta día, precio y quién
+ * viene; con eso se avisa al origen; el origen contesta por quién preguntar,
+ * en qué horas y si entra un portacoches; y solo entonces se confirma.
+ *
+ * Cada botón está apagado hasta que se pueda pulsar de verdad, y esa es la
+ * parte que importa: un camión en la puerta equivocada no se deshace, y un
+ * conductor que llega donde nadie le espera se va vacío con el viaje pagado.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, PISTAS,
-  queTocaEnElTramo,
-  queViajeEs,
-  comoSeLlamaElCampo, pistaDelCampo,
+  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteToca,
+  faltaParaSolicitar, faltaParaAvisarAlOrigen, faltaParaConfirmar,
+  seSabeLoDelPortacoches, comoSeLlamaElCampo, pistaDelCampo, PISTAS,
+  type DatosDelTramo,
 } from './fases-transporte.js';
 
-describe('qué se ve en cada fase', () => {
-  test('recién nacido: quién lo trae, y preguntarle al vendedor', () => {
-    assert.deepEqual(bloquesDelTramo('Por organizar'), ['quien', 'dondeRecoger']);
+/** Un tramo con la parte 1 puesta, que es lo que ponemos nosotros. */
+const PARTE_1: DatosDelTramo = {
+  estado: 'Por organizar',
+  tramo: 1,
+  transportista: 'TransLog GmbH',
+  desde: 'Musterstraße 18, 80331 München',
+  hasta: 'Avenida Cataluña 103, 50014 Zaragoza',
+};
+
+/** Y con lo que contestó el transportista. */
+const PARTE_2: DatosDelTramo = {
+  ...PARTE_1,
+  presupuesto_pedido_at: '2026-09-02T09:00:00Z',
+  recogida_prevista: '2026-09-04',
+  entrega_prevista: '2026-09-08',
+  coste: 890,
+  contacto_transportista: 'Michael Schneider',
+  telefono_transportista: '+49 711 000000',
+  aviso_recogida_at: '2026-09-03T10:00:00Z',
+};
+
+/** Y con lo que contestó el origen: ya se puede confirmar. */
+const PARTE_3: DatosDelTramo = {
+  ...PARTE_2,
+  contacto_origen: 'Daniel Weber',
+  telefono_origen: '+49 89 000000',
+  horario_origen: 'Viernes 4, de 9:00 a 17:00',
+  portacoches: true,
+};
+
+describe('parte 1: lo que ponemos nosotros', () => {
+  test('sin nada, faltan la empresa y las dos direcciones', () => {
+    assert.deepEqual(faltaParaSolicitar({}), [
+      'elegir la empresa de transporte',
+      'la dirección completa de donde sale',
+      'la dirección completa de a dónde va',
+    ]);
   });
 
-  test('pero con la pregunta hecha, la ruta se enseña ya', () => {
-    // Su respuesta es lo que hace falta para pedir precio: la calle, el día,
-    // por quién preguntar. Si los campos no están, el correo llega al buzón y
-    // no hay dónde copiarlo — y lo que no se apunta no existe para nadie más.
-    const b = bloquesDelTramo('Por organizar', { recogida_preguntada_at: '2026-09-02T10:00:00Z' });
-    assert.ok(b.includes('ruta'));
-    assert.ok(b.includes('quien'));
+  test('con las tres, ya se le puede preguntar', () => {
+    assert.deepEqual(faltaParaSolicitar(PARTE_1), []);
   });
 
-  test('y sin preguntar sigue escondida', () => {
-    // Un hueco vacío delante parece una tarea pendiente y se rellena con lo
-    // primero que sirva, que aquí es la ciudad del anuncio.
-    assert.ok(!bloquesDelTramo('Por organizar', { recogida_preguntada_at: null }).includes('ruta'));
-    assert.ok(!bloquesDelTramo('Por organizar', { recogida_preguntada_at: '  ' }).includes('ruta'));
+  test('una dirección en blanco no cuenta como dirección', () => {
+    assert.deepEqual(faltaParaSolicitar({ ...PARTE_1, desde: '   ' }),
+      ['la dirección completa de donde sale']);
   });
 
-  test('la ruta y la orden aparecen cuando ya hay transportista contratado', () => {
-    const b = bloquesDelTramo('Contratado');
-    assert.ok(b.includes('ruta'));
-    assert.ok(b.includes('orden'));
-  });
-
-  test('y la orden sale ya sin organizar, en cuanto hay con quién y por cuánto', () => {
-    // Mandarla es contratar: se acuerda por correo y la orden lo confirma.
-    // Pedir que se marque «Contratado» antes obliga a declarar cerrado algo
-    // que se cierra con el correo que todavía no ha salido.
-    const b = bloquesDelTramo('Por organizar', { transportista: 'TransLog GmbH', coste: 890 });
-    assert.ok(b.includes('orden'));
-  });
-
-  test('con nombre pero sin precio, todavía no', () => {
-    // Una orden sin precio acordado es un encargo abierto, y la factura será
-    // la que quieran.
-    const b = bloquesDelTramo('Por organizar', { transportista: 'TransLog GmbH', coste: 0 });
-    assert.ok(!b.includes('orden'));
-  });
-
-  test('ni con precio y sin nombre', () => {
-    assert.ok(!bloquesDelTramo('Por organizar', { transportista: '', coste: 890 }).includes('orden'));
-  });
-
-  test('y no se duplica si la fase ya la traía', () => {
-    const b = bloquesDelTramo('Contratado', { transportista: 'TransLog GmbH', coste: 890 });
-    assert.equal(b.filter((x) => x === 'orden').length, 1);
-  });
-
-  test('las fotos, cuando ya lo tiene: son del viaje, no del coche', () => {
-    // Son lo único que distingue un golpe que ya venía de uno que se hizo por
-    // el camino. Antes de que lo recojan no hay viaje del que hacer fotos.
-    assert.ok(!bloquesDelTramo('Por organizar').includes('fotos'));
-    assert.ok(bloquesDelTramo('Recogido').includes('fotos'));
-    assert.ok(bloquesDelTramo('Entregado').includes('fotos'));
-  });
-
-  test('con una incidencia se enseña todo', () => {
-    // Puede pasar en cualquier punto: esconder media pantalla mientras alguien
-    // intenta averiguar qué ha ocurrido es lo contrario de ayudar.
-    assert.equal(bloquesDelTramo('Con incidencia').length, 5);
-  });
-
-  test('un estado desconocido no abre nada de más', () => {
-    assert.deepEqual(bloquesDelTramo('Lo que sea'), ['quien']);
+  test('y no hace falta haber contratado a nadie para pedir precio', () => {
+    // Es justo la gracia: se le pide a una, se apunta lo que diga, y se cambia
+    // de nombre. Entre la primera y la tercera hay varios cientos de euros.
+    assert.deepEqual(faltaParaSolicitar({ ...PARTE_1, coste: 0, orden_enviada_at: null }), []);
   });
 });
 
-describe('a quién se le pregunta por la recogida', () => {
+describe('parte 2: lo que contesta el transportista', () => {
+  test('sin habérselo preguntado, no hay nada que apuntar todavía', () => {
+    assert.ok(faltaParaAvisarAlOrigen(PARTE_1).includes('pedirle antes disponibilidad y precio'));
+  });
+
+  test('preguntado y sin contestar, faltan sus tres datos', () => {
+    const falta = faltaParaAvisarAlOrigen({ ...PARTE_1, presupuesto_pedido_at: '2026-09-02T09:00:00Z' });
+    assert.deepEqual(falta, [
+      'el día que lo recoge',
+      'el precio acordado',
+      'el nombre del transportista que viene',
+    ]);
+  });
+
+  test('con su respuesta, ya se puede avisar al origen', () => {
+    assert.deepEqual(faltaParaAvisarAlOrigen(PARTE_2), []);
+  });
+
+  test('un precio de cero no es un precio acordado', () => {
+    // «Cero» no es lo que cuesta: es que no se ha apuntado. Una orden sin
+    // precio es un encargo abierto, y la factura será la que quieran.
+    assert.ok(faltaParaAvisarAlOrigen({ ...PARTE_2, coste: 0 }).includes('el precio acordado'));
+    assert.ok(faltaParaAvisarAlOrigen({ ...PARTE_2, coste: '' }).includes('el precio acordado'));
+  });
+
+  test('el precio con coma se entiende igual', () => {
+    assert.deepEqual(faltaParaAvisarAlOrigen({ ...PARTE_2, coste: '890,50' }), []);
+  });
+
+  test('sin nombre de quien viene, el aviso no dice a quién esperar', () => {
+    assert.ok(faltaParaAvisarAlOrigen({ ...PARTE_2, contacto_transportista: '' })
+      .includes('el nombre del transportista que viene'));
+  });
+});
+
+describe('parte 3: lo que contesta el origen', () => {
+  test('con todo, se puede confirmar', () => {
+    assert.deepEqual(faltaParaConfirmar(PARTE_3), []);
+  });
+
+  test('sin por quién preguntar, no', () => {
+    // La orden decía «preguntar por AutoCheck Deutschland», que es a quién le
+    // compramos y no quien sale a abrir.
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, contacto_origen: '' }),
+      ['por quién pregunta el conductor']);
+  });
+
+  test('sin horario, tampoco: manda al conductor a una puerta cerrada', () => {
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, horario_origen: '' }),
+      ['el horario de recogida']);
+  });
+
+  test('y sin saber lo del portacoches, tampoco', () => {
+    // El precio de la parte 2 se dio suponiendo que entra. Si no entra, ya no
+    // vale, y el camión se presenta y no puede cargar.
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, portacoches: null }),
+      ['si entra un portacoches']);
+  });
+
+  test('«no entra» sí es una respuesta; «todavía no lo sé» no', () => {
+    assert.equal(seSabeLoDelPortacoches(false), true);
+    assert.equal(seSabeLoDelPortacoches(true), true);
+    assert.equal(seSabeLoDelPortacoches('si'), true);
+    assert.equal(seSabeLoDelPortacoches('no'), true);
+    assert.equal(seSabeLoDelPortacoches(''), false);
+    assert.equal(seSabeLoDelPortacoches(null), false);
+    assert.equal(seSabeLoDelPortacoches(undefined), false);
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, portacoches: 'no' }), []);
+  });
+
+  test('sin avisar al origen, no se confirma', () => {
+    // Un conductor que llega a una nave donde nadie le espera se va vacío, y
+    // ese viaje se paga igual.
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, aviso_recogida_at: null }),
+      ['avisar al origen de quién va y qué día']);
+  });
+
+  test('en el segundo viaje eso no se pide: el origen es nuestra nave', () => {
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, tramo: 2, aviso_recogida_at: null }), []);
+  });
+
+  test('y lo de las partes de antes sigue haciendo falta', () => {
+    const falta = faltaParaConfirmar({ ...PARTE_3, transportista: '', coste: 0, entrega_prevista: '' });
+    assert.ok(falta.includes('elegir la empresa de transporte'));
+    assert.ok(falta.includes('el precio acordado'));
+    assert.ok(falta.includes('el día que llega'));
+  });
+
+  test('pero no se le exige haber pedido el presupuesto por segunda vez', () => {
+    // Ese aviso es de la parte 1 y ahí se queda: repetirlo aquí es ruido.
+    assert.ok(!faltaParaConfirmar({ ...PARTE_3, presupuesto_pedido_at: null })
+      .includes('pedirle antes disponibilidad y precio'));
+  });
+});
+
+describe('cuál de las tres partes está esperando algo', () => {
+  test('un tramo recién nacido espera en la primera', () => {
+    assert.equal(queParteToca({ estado: 'Por organizar', tramo: 1 }), 'solicitud');
+  });
+
+  test('con los datos puestos pero sin preguntar, sigue en la primera', () => {
+    // El botón de preguntar está ahí: la parte no termina con los campos, sino
+    // con el correo.
+    assert.equal(queParteToca(PARTE_1), 'solicitud');
+  });
+
+  test('preguntado, pasa a la segunda', () => {
+    assert.equal(queParteToca({ ...PARTE_1, presupuesto_pedido_at: '2026-09-02T09:00:00Z' }), 'respuesta');
+  });
+
+  test('con su respuesta pero sin avisar al origen, sigue en la segunda', () => {
+    assert.equal(queParteToca({ ...PARTE_2, aviso_recogida_at: null }), 'respuesta');
+  });
+
+  test('avisado, pasa a la tercera', () => {
+    assert.equal(queParteToca(PARTE_2), 'origen');
+  });
+
+  test('y con la orden fuera ya no espera ninguna', () => {
+    assert.equal(queParteToca({ ...PARTE_3, orden_enviada_at: '2026-09-03T12:00:00Z' }), null);
+  });
+
+  test('con todo relleno pero sin confirmar, la tercera', () => {
+    assert.equal(queParteToca(PARTE_3), 'origen');
+  });
+
+  test('en el segundo viaje se salta el aviso al origen', () => {
+    assert.equal(queParteToca({ ...PARTE_2, tramo: 2, aviso_recogida_at: null }), 'origen');
+  });
+});
+
+describe('a quién se le avisa de la recogida', () => {
   test('solo en el primer tramo, que es el que sale del vendedor', () => {
     assert.equal(seLePreguntaAlVendedor(1), true);
+    assert.equal(seLePreguntaAlVendedor('1'), true);
+    assert.equal(seLePreguntaAlVendedor(null), false);
   });
 
   test('en el segundo no: sale de nuestra campa', () => {
-    // El correo iría igualmente al concesionario alemán, preguntándole por una
-    // recogida que no es suya.
     assert.equal(seLePreguntaAlVendedor(2), false);
-    assert.equal(seLePreguntaAlVendedor(null), false);
-    assert.equal(seLePreguntaAlVendedor(undefined), false);
-  });
-});
-
-describe('el vendedor se entera antes que el camión', () => {
-  const CERRADO = {
-    transportista: 'TransLog Fahrzeugtransporte GmbH',
-    desde: 'Musterstraße 18, 80331 München',
-    hasta: 'Zaragoza', tramo: 1,
-    recogida_preguntada_at: '2026-09-03T09:40:00Z',
-  };
-
-  test('sin avisarle, la orden no sale', () => {
-    // Un conductor que llega a una nave donde nadie le espera se va vacío, y
-    // ese viaje se paga igual.
-    assert.deepEqual(faltaParaLaOrden(CERRADO), ['avisar al vendedor de quién va y qué día']);
-  });
-
-  test('avisado, ya no falta nada', () => {
-    assert.deepEqual(faltaParaLaOrden({ ...CERRADO, aviso_recogida_at: '2026-09-03T12:00:00Z' }), []);
-  });
-
-  test('en el segundo tramo no aplica: no sale de casa de ningún vendedor', () => {
-    assert.deepEqual(faltaParaLaOrden({ ...CERRADO, tramo: 2, recogida_preguntada_at: null }), []);
-  });
-
-  test('y primero se pregunta, que es lo que da la dirección', () => {
-    // Sin la pregunta no se pide el aviso todavía: pedir las dos cosas a la vez
-    // esconde cuál es la que toca.
-    assert.deepEqual(
-      faltaParaLaOrden({ ...CERRADO, recogida_preguntada_at: null }),
-      ['preguntarle antes al vendedor dónde y cuándo se recoge']
-    );
-  });
-});
-
-describe('lo que impide mandar la orden de recogida', () => {
-  const LISTO = {
-    transportista: 'Business Ontime GmbH',
-    desde: 'Landsberger Str. 180, 80687 München',
-    hasta: 'Zaragoza',
-    tramo: 1,
-    recogida_preguntada_at: '2026-09-02T10:00:00Z',
-    // Listo del todo incluye que el vendedor sepa quién va: eso se comprueba
-    // arriba, y aquí estorbaría en cada caso.
-    aviso_recogida_at: '2026-09-03T12:00:00Z',
-  };
-
-  test('con todo puesto, nada', () => {
-    assert.deepEqual(faltaParaLaOrden(LISTO), []);
-  });
-
-  test('sin transportista no hay a quién mandársela', () => {
-    assert.deepEqual(faltaParaLaOrden({ ...LISTO, transportista: '' }), ['elegir quién lo trae']);
-  });
-
-  test('sin las dos puntas, tampoco', () => {
-    assert.deepEqual(faltaParaLaOrden({ ...LISTO, desde: '', hasta: '' }),
-      ['de dónde sale', 'a dónde va']);
-  });
-
-  test('y en el primer tramo, sin haber preguntado al vendedor', () => {
-    // Es el que evita el camión en la puerta equivocada.
-    assert.deepEqual(
-      faltaParaLaOrden({ ...LISTO, recogida_preguntada_at: null }),
-      ['preguntarle antes al vendedor dónde y cuándo se recoge']
-    );
-  });
-
-  test('en el segundo tramo eso no se pide: no hay vendedor', () => {
-    assert.deepEqual(faltaParaLaOrden({ ...LISTO, tramo: 2, recogida_preguntada_at: null }), []);
-  });
-});
-
-describe('las pistas', () => {
-  test('cada dato dice cuándo se sabe', () => {
-    for (const clave of ['transportista', 'coste', 'desde', 'hasta', 'recogida_prevista']) {
-      assert.ok(PISTAS[clave]?.trim().length > 10, `sin pista: ${clave}`);
-    }
-  });
-
-  test('la de «desde» avisa de lo que se hace mal', () => {
-    assert.match(PISTAS.desde, /ciudad no es una dirección/);
   });
 });
 
 describe('qué toca ahora en un tramo', () => {
-  const CERRADO = {
-    estado: 'Por organizar',
-    transportista: 'Business Ontime GmbH', coste: 890,
-    desde: 'Musterstraße 18, 80331 München', recogida_prevista: '2026-09-10',
-    tramo: 1,
-    recogida_preguntada_at: '2026-09-03T09:40:00Z',
-    aviso_recogida_at: '2026-09-03T10:49:00Z',
-  };
-
-  test('sin transportista, lo primero es buscarlo', () => {
-    assert.match(queTocaEnElTramo({ ...CERRADO, transportista: '' }), /Elige quién lo trae/);
-    assert.match(queTocaEnElTramo({ ...CERRADO, coste: 0 }), /pídele precio/);
+  test('lo primero, la empresa y las dos direcciones', () => {
+    assert.match(queTocaEnElTramo({ estado: 'Por organizar', tramo: 1 }),
+      /empresa de transporte y pon las dos direcciones/);
   });
 
-  test('con precio pero sin preguntar al vendedor, se le pregunta', () => {
+  test('luego, pedirle disponibilidad', () => {
+    assert.match(queTocaEnElTramo(PARTE_1), /disponibilidad y precio/);
+  });
+
+  test('pedida y sin contestar, apuntar lo que conteste', () => {
     assert.match(
-      queTocaEnElTramo({ ...CERRADO, recogida_preguntada_at: null }),
-      /Pregúntale al vendedor/
+      queTocaEnElTramo({ ...PARTE_1, presupuesto_pedido_at: '2026-09-02T09:00:00Z' }),
+      /Apunta lo que conteste/
     );
   });
 
-  test('preguntado y sin apuntar su respuesta, se apunta', () => {
-    assert.match(queTocaEnElTramo({ ...CERRADO, recogida_prevista: '' }), /Apunta lo que ha contestado/);
+  test('sin la fecha de llegada, todavía es su respuesta lo que falta', () => {
+    // Es la que se le dice al cliente: sin ella, «va de camino» no responde a
+    // la única pregunta que él tiene.
+    assert.match(queTocaEnElTramo({ ...PARTE_2, entrega_prevista: '' }), /Apunta lo que conteste/);
   });
 
-  test('con la respuesta puesta, avisar al vendedor de quién va', () => {
-    assert.match(
-      queTocaEnElTramo({ ...CERRADO, aviso_recogida_at: null }),
-      /Dile al vendedor quién va/
-    );
+  test('con su respuesta, avisar al origen', () => {
+    assert.match(queTocaEnElTramo({ ...PARTE_2, aviso_recogida_at: null }),
+      /Avisa al origen/);
+  });
+
+  test('avisado y sin lo del origen, apuntar lo que conteste el origen', () => {
+    assert.match(queTocaEnElTramo(PARTE_2),
+      /por quién preguntar, el horario y si entra un portacoches/);
   });
 
   test('y con todo, confirmárselo al transportista', () => {
-    assert.match(queTocaEnElTramo(CERRADO), /Confírmaselo al transportista/);
+    assert.match(queTocaEnElTramo(PARTE_3), /Confírmaselo al transportista/);
   });
 
   test('con la orden fuera, se espera a que lo recojan', () => {
     assert.match(
-      queTocaEnElTramo({ ...CERRADO, orden_enviada_at: '2026-09-03T11:02:00Z' }),
+      queTocaEnElTramo({ ...PARTE_3, orden_enviada_at: '2026-09-03T11:02:00Z' }),
       /Esperando a que lo recojan/
     );
   });
 
   test('con el coche fuera, lo que toca es mirarlo al llegar', () => {
-    // Es el aviso que Ana no veía: el campo estaba al final del panel y el
-    // botón de «Entregado» apagado sin decir por qué delante.
     for (const estado of ['Recogido', 'En tránsito']) {
-      assert.match(queTocaEnElTramo({ ...CERRADO, estado }), /míralo antes de darlo por entregado/);
+      assert.match(queTocaEnElTramo({ ...PARTE_3, estado }), /míralo antes de darlo por entregado/);
     }
   });
 
   test('entregado sin haberlo mirado, eso es lo que falta', () => {
     assert.match(
-      queTocaEnElTramo({ ...CERRADO, estado: 'Entregado' }),
-      /Falta decir si el coche llegó como salió/
+      queTocaEnElTramo({ ...PARTE_3, estado: 'Entregado' }),
+      /llegó como salió/
     );
   });
 
   test('y mirado, se acabó', () => {
     assert.equal(
-      queTocaEnElTramo({ ...CERRADO, estado: 'Entregado', llegada: { conforme: true } }),
+      queTocaEnElTramo({ ...PARTE_3, estado: 'Entregado', llegada: { conforme: true } }),
       'Entregado.'
     );
   });
 
-  test('en el segundo tramo no se pregunta a ningún vendedor', () => {
-    // Sale de nuestra campa: ahí no hay a quién preguntarle ni a quién avisar.
-    assert.match(
-      queTocaEnElTramo({ ...CERRADO, tramo: 2, recogida_preguntada_at: null, aviso_recogida_at: null }),
-      /Confírmaselo al transportista/
+  test('en el segundo tramo no se avisa a ningún vendedor', () => {
+    // El coche está en nuestra nave: el correo iría al concesionario alemán,
+    // avisándole de una recogida que no es suya.
+    assert.doesNotMatch(
+      queTocaEnElTramo({ ...PARTE_2, tramo: 2, aviso_recogida_at: null }),
+      /Avisa al origen/
     );
   });
 });
 
 describe('de qué viaje es un tramo', () => {
   test('una importación hace dos, y se dice cuál es cuál', () => {
-    // Dos tarjetas del mismo coche en el mismo tablero, sin decirlo, se leen
-    // como un duplicado.
-    assert.match(queViajeEs(1, 'importacion'), /1 de 2 · traerlo a Zaragoza/);
-    assert.match(queViajeEs(2, 'importacion'), /2 de 2 · llevárselo al cliente/);
+    assert.match(queViajeEs(1, 'importacion'), /traerlo a Zaragoza/);
+    assert.match(queViajeEs(2, 'importacion'), /llevárselo al cliente/);
   });
 
   test('los demás coches hacen uno, y no se dice nada', () => {
-    // «Tramo 1 de 1» es ruido: solo hay uno y se ve.
-    assert.equal(queViajeEs(1, 'concesionario'), '');
+    assert.equal(queViajeEs(1, 'stock'), '');
     assert.equal(queViajeEs(1, null), '');
-    assert.equal(queViajeEs(1, undefined), '');
   });
 
   test('sin número de tramo se supone el primero', () => {
-    assert.match(queViajeEs(null, 'importacion'), /1 de 2/);
-  });
-});
-
-describe('pedir precio en el segundo viaje', () => {
-  // La regla vive en la pantalla, pero lo que la sostiene es esto: en el
-  // segundo tramo no hay vendedor a quien preguntar, así que exigir su
-  // respuesta dejaba el botón escondido para siempre.
-  test('al segundo no se le pregunta a nadie', () => {
-    assert.equal(seLePreguntaAlVendedor(2), false);
-  });
-
-  test('y el primero sí depende de lo que conteste', () => {
-    assert.equal(seLePreguntaAlVendedor(1), true);
-  });
-
-  test('lo que toca en el segundo, sin pasar por el vendedor', () => {
-    assert.match(
-      queTocaEnElTramo({ estado: 'Por organizar', tramo: 2, desde: 'Zaragoza' }),
-      /Elige quién lo trae/
-    );
-    assert.match(
-      queTocaEnElTramo({ estado: 'Por organizar', tramo: 2, transportista: 'Becker', coste: 450,
-        desde: 'Zaragoza', recogida_prevista: '2026-10-05' }),
-      /Confírmaselo al transportista/
-    );
-  });
-});
-
-describe('la ruta del segundo viaje', () => {
-  test('se puede escribir desde el principio', () => {
-    // No hay vendedor a quien preguntar: el coche está en nuestra nave. Sin
-    // esto no había dónde escribir la calle ni por quién pregunta el conductor,
-    // y el correo al transportista salía diciendo «Zaragoza» a secas.
-    assert.ok(bloquesDelTramo('Por organizar', { tramo: 2 }).includes('ruta'));
-  });
-
-  test('y en el primero sigue esperando a que conteste el vendedor', () => {
-    assert.ok(!bloquesDelTramo('Por organizar', { tramo: 1 }).includes('ruta'));
-    assert.ok(bloquesDelTramo('Por organizar', {
-      tramo: 1, recogida_preguntada_at: '2026-09-03T10:00:00Z',
-    }).includes('ruta'));
-  });
-
-  test('sin decir de qué tramo se trata, se supone el primero', () => {
-    // Es el que más hay, y equivocarse al revés enseña campos que todavía no
-    // se pueden rellenar.
-    assert.ok(!bloquesDelTramo('Por organizar').includes('ruta'));
+    assert.match(queViajeEs(null, 'importacion'), /traerlo a Zaragoza/);
   });
 });
 
 describe('cada viaje llama a las cosas por su nombre', () => {
-  test('en el primero, el día lo pone el vendedor', () => {
-    assert.equal(comoSeLlamaElCampo('recogida_prevista', 1), 'Recogida prevista');
-    assert.match(pistaDelCampo('recogida_prevista', 1), /lo dice el vendedor|dice el vendedor/i);
-  });
-
-  test('en el segundo lo dice el transportista, y hasta entonces no se sabe', () => {
-    // El coche está en nuestra nave y disponible desde ya: preguntar «recogida
-    // prevista» ahí es pedir un día que nadie puede saber todavía, y quien lo
-    // lee acaba inventándose uno.
+  test('las fechas se llaman igual en los dos: las dice el transportista', () => {
+    assert.equal(comoSeLlamaElCampo('recogida_prevista', 1), 'Cuándo lo recoge');
     assert.equal(comoSeLlamaElCampo('recogida_prevista', 2), 'Cuándo lo recoge');
-    assert.match(pistaDelCampo('recogida_prevista', 2), /diga el transportista/);
-    assert.match(pistaDelCampo('entrega_prevista', 2), /Se apunta al contestar/);
+    assert.equal(comoSeLlamaElCampo('entrega_prevista', 1), 'Cuándo llega');
+    assert.equal(comoSeLlamaElCampo('entrega_prevista', 2), 'Cuándo llega');
   });
 
-  test('y las dos puntas también cambian de nombre', () => {
+  test('y las dos puntas sí cambian de nombre', () => {
+    assert.equal(comoSeLlamaElCampo('desde', 1), 'Desde');
     assert.equal(comoSeLlamaElCampo('desde', 2), 'Dónde está ahora');
     assert.equal(comoSeLlamaElCampo('hasta', 2), 'A dónde va');
-    assert.equal(comoSeLlamaElCampo('desde', 1), 'Desde');
+  });
+
+  test('en el segundo, la pista dice de dónde sale de verdad', () => {
+    assert.match(pistaDelCampo('desde', 2), /nuestra nave/);
+    assert.match(pistaDelCampo('hasta', 2), /cliente/);
+  });
+
+  test('la de «desde» avisa de lo que se hace mal', () => {
+    assert.match(PISTAS.desde ?? '', /Una ciudad no es una dirección/);
   });
 });

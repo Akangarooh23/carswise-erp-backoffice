@@ -68,3 +68,50 @@ describe('los tramos que faltan', () => {
     assert.match(fuente, /await abreLosTramosQueFalten\(\)\.catch/);
   });
 });
+
+/**
+ * Confirmar al transportista es contratarlo, y el servidor lo comprueba.
+ *
+ * El correo de la orden **es** el contrato: no se marca «Contratado» y luego se
+ * manda, se manda y con eso queda contratado. Lo que salga mal aquí sale mal ya
+ * pagado, así que lo que la pantalla exige lo exige también la ruta: entre lo
+ * que se cargó y el clic caben unos minutos y otra persona, y dos pestañas
+ * abiertas no ven lo mismo.
+ *
+ * Son las tres partes del tramo, cerradas en orden: el origen avisado de quién
+ * va, por quién pregunta el conductor, en qué horas y si entra un portacoches.
+ * Sin lo primero, un conductor llega donde nadie le espera y se va vacío con el
+ * viaje pagado igual. Sin lo último, el precio acordado ya no es el que se paga.
+ */
+describe('lo que el servidor exige antes de confirmar', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const GUARDA = FUENTE.slice(
+    FUENTE.indexOf('const falta = faltaParaLaOrden(datos)'),
+    FUENTE.indexOf("error: 'faltan_datos_del_tramo'")
+  );
+
+  test('el origen tiene que estar avisado, en el tramo que sale de fuera', () => {
+    assert.match(GUARDA, /if \(esElPrimero && !t\.aviso_recogida_at\)/);
+  });
+
+  test('y eso no depende de que se le preguntara antes desde el expediente', () => {
+    // Lo estuvo, y era un agujero: un tramo al que nadie le había preguntado
+    // nada se saltaba también el aviso, que es el que evita el viaje en balde.
+    assert.doesNotMatch(GUARDA, /recogida_preguntada_at/);
+  });
+
+  test('por quién pregunta el conductor', () => {
+    assert.match(GUARDA, /t\.contacto_origen/);
+  });
+
+  test('y en qué horas puede ir', () => {
+    assert.match(GUARDA, /t\.horario_origen/);
+  });
+
+  test('lo del portacoches, sabido y no supuesto', () => {
+    // Tres valores y no dos: «todavía no lo sé» no es «entra». Comprobar que no
+    // es nulo dejaría pasar el «no lo sé» del desplegable.
+    assert.match(GUARDA, /typeof t\.portacoches !== 'boolean'/);
+  });
+});

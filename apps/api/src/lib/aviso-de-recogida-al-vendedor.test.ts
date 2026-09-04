@@ -92,6 +92,16 @@ describe('lo que impide avisarle', () => {
     );
   });
 
+  test('ni sin decir quién va a ir', () => {
+    // Con la empresa sola, el aviso dice que irá alguien de una empresa algún
+    // día. El de la nave tiene que saber a quién esperar y a quién darle las
+    // llaves; si no, el conductor se planta allí y le piden que espere.
+    assert.deepEqual(
+      faltaParaAvisarDeLaRecogida({ ...KIA, contacto: '' }),
+      ['el nombre de quien va a ir']
+    );
+  });
+
   test('con lo del Kia, no falta nada', () => {
     assert.deepEqual(faltaParaAvisarDeLaRecogida(KIA), []);
   });

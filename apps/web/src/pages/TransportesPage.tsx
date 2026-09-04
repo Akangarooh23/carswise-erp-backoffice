@@ -19,7 +19,8 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  */
 
 import {
-  bloquesDelTramo, seLePreguntaAlVendedor, faltaParaLaOrden, queTocaEnElTramo, queViajeEs,
+  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteToca,
+  faltaParaSolicitar, faltaParaAvisarAlOrigen, faltaParaConfirmar,
   comoSeLlamaElCampo, pistaDelCampo, PISTAS,
 } from '../lib/fases-transporte.js';
 import {
@@ -388,55 +389,34 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const siguiente = siguienteEstado(t.estado);
   const dias = diasDesde(t.fecha_recogida);
 
-  /**
-   * Qué toca en este tramo, y qué no todavía.
-   *
-   * Igual que en los pedidos: se enseña lo de la fase y lo demás se queda
-   * detrás de «Ver todo». Un hueco vacío puesto delante en la fase que no
-   * toca parece una tarea pendiente, y se rellena con lo primero que sirva.
-   */
-  const [verTodo, setVerTodo] = useState(false);
   const [llegada, setLlegada] = useState<LlegoComoSalio>(t.llegada ?? {});
 
   /*
-   * Qué está hecho ya, para poder plegarlo.
+   * Las tres partes, y cuál de ellas está esperando algo.
    *
-   * Con todo abierto a la vez, lo que falta no se distingue de lo que sobra:
-   * el único campo que toca queda debajo de dos pantallas de datos correctos,
-   * y ni siquiera se ve que falta. Se pliega lo terminado, con una línea que
-   * dice lo que guarda dentro para no tener que abrirlo por curiosidad.
+   * Se enseñan siempre y en su orden —lo fijó Ana—, pero solo una se abre: la
+   * que toca. Con las tres abiertas a la vez, lo que falta no se distingue de
+   * lo que sobra, y el único campo pendiente queda debajo de dos pantallas de
+   * datos correctos.
+   *
+   * Se mira lo que se está escribiendo, no lo último grabado: quien acaba de
+   * poner el precio espera ver el botón, no tener que guardar para saber si va
+   * a aparecer.
    */
-  const hayTransportista = Boolean(datos.transportista.trim()) && Number(datos.coste || 0) > 0;
-  const rutaPuesta = Boolean(datos.desde.trim() && datos.hasta.trim() && datos.recogida_prevista);
-  const vendedorAvisado = Boolean(t.recogida_preguntada_at && t.aviso_recogida_at);
+  const vivo = { ...t, ...datos, llegada };
+  const parte = queParteToca(vivo);
+  const faltaSolicitar = faltaParaSolicitar(vivo);
+  const faltaAvisar = faltaParaAvisarAlOrigen(vivo);
+  const faltaConfirmar = faltaParaConfirmar(vivo);
   const ordenFuera = Boolean(t.orden_enviada_at);
-  // Con lo que se está editando, no con lo último grabado: quien acaba de
-  // escribir el precio espera ver el botón, no tener que guardar para saber
-  // si va a aparecer.
-  const bloques = bloquesDelTramo(t.estado, { ...t, ...datos });
-  const toca = (b: string) => verTodo || bloques.includes(b as never);
   const alVendedor = seLePreguntaAlVendedor(t.tramo);
-  /**
-   * Pedir precio se puede en cuanto se sabe de dónde sale de verdad.
-   *
-   * No hace falta haber contratado a nadie —esa es justo la gracia—, pero sí
-   * la dirección: con la ciudad del anuncio, lo que vuelve es un número que
-   * luego no se sostiene.
-   *
-   * En el primer viaje esa dirección la da el vendedor, así que hay que
-   * habérsela preguntado. En el segundo sale de nuestra campa y no hay a quién
-   * preguntar: exigirlo dejaba el botón escondido para siempre, con el panel
-   * diciendo «elige quién lo trae y pídele precio» y ningún sitio donde
-   * hacerlo.
-   */
-  const puedePedirPrecio = Boolean(datos.desde.trim())
-    && (!seLePreguntaAlVendedor(t.tramo) || Boolean(t.recogida_preguntada_at));
 
-  const faltaOrden = faltaParaLaOrden({
-    transportista: datos.transportista, desde: datos.desde, hasta: datos.hasta,
-    tramo: t.tramo, recogida_preguntada_at: t.recogida_preguntada_at,
-    aviso_recogida_at: t.aviso_recogida_at,
-  });
+  /*
+   * Las fotos son del viaje, no del coche: antes de que lo recojan no hay
+   * viaje del que hacer fotos.
+   */
+  const enViaje = t.estado === 'Recogido' || t.estado === 'En tránsito'
+    || t.estado === 'Entregado' || t.estado === INCIDENCIA;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onCerrar}>
@@ -539,42 +519,139 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           )}
         </div>
 
-        {toca('quien') && (
-        <Plegable titulo="Empresa encargada y quién lo transporta" abiertaPorDefecto={!hayTransportista}
-                  resumen={hayTransportista ? `${datos.transportista} · ${datos.coste} €` : 'sin elegir'}>
+        {/*
+          * Parte 1 · lo que ponemos nosotros.
+          *
+          * La empresa sale de Proveedores, y las dos direcciones enteras: un
+          * transportista no va a una ciudad, va a una calle y un número. Con
+          * «Múnich» lo que vuelve no es un precio, es una estimación que se
+          * discute con el camión ya cargado.
+          */}
+        <Plegable titulo="1 · Empresa, de dónde sale y a dónde va"
+                  abiertaPorDefecto={parte === 'solicitud'}
+                  resumen={t.presupuesto_pedido_at
+                    ? `pedido a ${t.presupuesto_pedido_a || datos.transportista}`
+                    : faltaSolicitar.length > 0 ? 'falta rellenarlo' : 'sin pedir todavía'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="col-span-2 text-[11px] text-brand-400">
-            Empresa encargada
+            Empresa de transporte
             <div className="mt-0.5">
               <ElegirProveedor tipo="transportista" valor={datos.transportista}
                                placeholder="Elegir transportista…"
                                onCambio={(v) => setDatos((d) => ({ ...d, transportista: v }))} />
             </div>
+            <div className="text-[10px] text-brand-300 mt-0.5">{PISTAS.transportista}</div>
           </div>
-          <label className="text-[11px] text-brand-400">
-            Coste
-            <input value={datos.coste} inputMode="decimal"
-                   onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-          </label>
           <div className="col-span-2">
             <LoQueTieneAcordado nombre={datos.transportista} />
           </div>
-          <div className="col-span-2 text-[10px] text-brand-300 -mt-1">{PISTAS.transportista}</div>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            {comoSeLlamaElCampo('desde', t.tramo)}
+            <input value={datos.desde}
+                   placeholder="Musterstraße 18, 80331 München"
+                   onChange={(e) => setDatos((d) => ({ ...d, desde: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('desde', t.tramo)}</span>
+          </label>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            {comoSeLlamaElCampo('hasta', t.tramo)}
+            <input value={datos.hasta}
+                   placeholder="Avenida Cataluña 103, 50014 Zaragoza"
+                   onChange={(e) => setDatos((d) => ({ ...d, hasta: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('hasta', t.tramo)}</span>
+          </label>
 
           {/*
-            * Y quién lo transporta, que es otra cosa.
+            * Y el botón que cierra la parte: preguntarle si puede.
             *
-            * La empresa es la de arriba, de nuestra lista de Proveedores: a
-            * quien se le encarga y a quien se le paga. Esto es **la persona**
-            * que se presenta a recoger el coche, y se sabe después: la dan al
-            * confirmar que pueden.
+            * Se le pide a más de uno: se elige una empresa, se le pregunta, se
+            * apunta lo que diga y se cambia de nombre. Entre la primera y la
+            * tercera hay varios cientos de euros.
+            */}
+          <div className="col-span-2 pt-2 border-t border-brand-100">
+            {t.presupuesto_pedido_at ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[12px] font-bold text-emerald-700">
+                  ✓ Disponibilidad pedida el {new Date(t.presupuesto_pedido_at).toLocaleDateString('es-ES')}
+                  {t.presupuesto_pedido_a ? ` a ${t.presupuesto_pedido_a}` : ''}
+                </span>
+                <button onClick={onPedirPresupuesto} disabled={guardando}
+                        className="text-[11px] text-brand-400 underline underline-offset-2">
+                  pedírselo a otra
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={onPedirPresupuesto} disabled={guardando || faltaSolicitar.length > 0}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
+                  Solicitar disponibilidad al proveedor
+                </button>
+                <div className="text-[11px] text-brand-300 mt-1.5">
+                  {faltaSolicitar.length > 0
+                    ? `Antes hace falta ${faltaSolicitar.join(', ')}.`
+                    : 'Le va la dirección exacta y se le pregunta si puede, cuándo y por cuánto. Guarda antes los cambios: el correo sale con lo que hay grabado.'}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        </Plegable>
+
+        {/*
+          * Parte 2 · lo que contesta el transportista.
+          *
+          * Estos cuatro datos no se saben antes: los dice él al aceptar. Y los
+          * tres primeros son los que van en el aviso al origen —qué día, quién
+          * viene y en qué teléfono—, que es el botón con el que se cierra esta
+          * parte.
+          */}
+        <Plegable titulo="2 · Lo que contesta el transportista"
+                  abiertaPorDefecto={parte === 'respuesta'}
+                  resumen={faltaAvisar.length > 0 || !datos.entrega_prevista
+                    ? 'esperando su respuesta'
+                    : `${datos.contacto_transportista} · ${datos.recogida_prevista} · ${datos.coste} €`}>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <label className="text-[11px] text-brand-400">
+            {comoSeLlamaElCampo('recogida_prevista', t.tramo)}
+            <input type="date" value={datos.recogida_prevista}
+                   onChange={(e) => setDatos((d) => ({ ...d, recogida_prevista: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{pistaDelCampo('recogida_prevista', t.tramo)}</span>
+          </label>
+          {/*
+            * Cuándo estiman llegar.
             *
-            * Va en el tramo y no en la ficha de la empresa, porque cambia de un
-            * coche a otro. Su nombre es el que se le dice al vendedor —el de la
-            * nave pregunta por alguien— y el que va en el saludo de la orden:
-            * una orden que no nombra a nadie se queda en el buzón general como
-            * una más.
+            * Es lo que se le cuenta al cliente: sin esta fecha, «va de camino»
+            * no responde a la única pregunta que él tiene, que es cuándo lo
+            * tiene.
+            */}
+          <label className="text-[11px] text-brand-400">
+            {comoSeLlamaElCampo('entrega_prevista', t.tramo)}
+            <input type="date" value={datos.entrega_prevista}
+                   onChange={(e) => setDatos((d) => ({ ...d, entrega_prevista: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">
+              {pistaDelCampo('entrega_prevista', t.tramo) || 'La que te dé el transportista al aceptar.'}
+            </span>
+          </label>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            Precio del transporte
+            <input value={datos.coste} inputMode="decimal" placeholder="890"
+                   onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <span className="text-[10px] text-brand-300">{PISTAS.coste}</span>
+          </label>
+
+          {/*
+            * Y quién lo transporta, que no es la empresa.
+            *
+            * La empresa es la de la parte 1: a quien se le encarga y a quien se
+            * le paga. Esto es **la persona** que se presenta a recoger el coche,
+            * y la dan al confirmar que pueden. Su nombre es el que se le dice al
+            * origen —el de la nave pregunta por alguien— y el que va en el
+            * saludo de la orden: una orden que no nombra a nadie se queda en el
+            * buzón general como una más.
             */}
           <label className="text-[11px] text-brand-400">
             Nombre del transportista
@@ -594,109 +671,74 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           </div>
 
           {/*
-            * Pedirle precio, que es lo que va antes de contratarlo.
+            * Avisar al origen, antes de confirmar nada.
             *
-            * Aparece con la respuesta del vendedor ya apuntada: sin la calle,
-            * el día y las horas, lo que vuelve no es un precio sino una
-            * estimación que se discute con el camión ya cargado.
-            *
-            * Y se le pide a más de uno: se elige un transportista, se le
-            * pregunta, se apunta lo que diga y se cambia de nombre. Entre el
-            * primero y el tercero hay varios cientos de euros.
+            * Va antes de la orden a propósito. Quien tiene que preparar el coche
+            * y sacar los papeles del cajón es el de la nave, y un conductor que
+            * llega donde nadie le espera se va vacío. Ese viaje se paga igual.
             */}
-          {puedePedirPrecio && (
           <div className="col-span-2 pt-2 border-t border-brand-100">
-            {t.presupuesto_pedido_at ? (
+            {!alVendedor ? (
+              <div className="text-[11px] text-brand-300">
+                El origen es nuestra nave: no hay a quién avisar. Lo que conteste
+                el transportista se apunta aquí y se pasa a la parte 3.
+              </div>
+            ) : t.aviso_recogida_at ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[12px] font-bold text-emerald-700">
-                  ✓ Precio pedido el {new Date(t.presupuesto_pedido_at).toLocaleDateString('es-ES')}
-                  {t.presupuesto_pedido_a ? ` a ${t.presupuesto_pedido_a}` : ''}
+                  ✓ Origen avisado el {new Date(t.aviso_recogida_at).toLocaleDateString('es-ES')}
                 </span>
-                <button onClick={onPedirPresupuesto} disabled={guardando}
+                <button onClick={onAvisarAlVendedor} disabled={guardando}
                         className="text-[11px] text-brand-400 underline underline-offset-2">
-                  pedírselo a otro
+                  volver a avisarle
                 </button>
               </div>
             ) : (
               <>
-                <button onClick={onPedirPresupuesto} disabled={guardando || !datos.transportista.trim()}
-                        className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
-                  Preguntarle si puede y cuánto cobra
+                <button onClick={onAvisarAlVendedor} disabled={guardando || faltaAvisar.length > 0}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
+                  Avisar al origen de la llegada del transportista
                 </button>
                 <div className="text-[11px] text-brand-300 mt-1.5">
-                  {datos.transportista.trim()
-                    ? 'Le va la dirección exacta, el día, el horario, por quién preguntar y si entra un portacoches. Guarda antes los cambios: el correo sale con lo que hay grabado.'
-                    : 'Elige arriba a quién se lo pides. Para comparar, se lo pides a uno, apuntas lo que diga y cambias de nombre.'}
+                  {faltaAvisar.length > 0
+                    ? `Antes hace falta ${faltaAvisar.join(', ')}.`
+                    : 'El día, la empresa, quién le va a llamar y qué tiene que darle al conductor. Guarda antes los cambios: el correo sale con lo que hay grabado.'}
                 </div>
               </>
             )}
           </div>
-          )}
         </div>
         </Plegable>
-        )}
 
         {/*
-          * La ruta, con la respuesta del vendedor delante.
+          * Parte 3 · lo que contesta el origen.
           *
-          * «Desde» no es una ciudad: es una calle, un número y un código
-          * postal. Sale de lo que conteste el vendedor, así que aparece con la
-          * fase en la que ya se le ha preguntado.
+          * Por quién pregunta el conductor, en qué teléfono, en qué horas y si
+          * entra un portacoches. Sin lo primero, la orden decía «preguntar por
+          * AutoCheck Deutschland», que es a quién le compramos y no quien sale a
+          * abrir: el conductor llega a una nave con ochenta coches y llama aquí.
           */}
-        {toca('ruta') && (
-        <Plegable titulo={alVendedor ? 'Dónde y cuándo se recoge' : 'De dónde sale y cuándo'}
-                  abiertaPorDefecto={!rutaPuesta}
-                  resumen={rutaPuesta ? `${datos.desde} · ${datos.recogida_prevista}` : 'falta la dirección o el día'}>
+        <Plegable titulo="3 · Lo que contesta el origen"
+                  abiertaPorDefecto={parte === 'origen'}
+                  resumen={ordenFuera && t.orden_enviada_at
+                    ? `confirmado el ${new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}`
+                    : faltaConfirmar.length > 0 ? 'falta lo que diga el origen' : 'sin confirmar'}>
         <div className="grid grid-cols-2 gap-2 mb-3">
+          {alVendedor && (
+            <div className="col-span-2 text-[11px] text-brand-300">
+              {t.recogida_preguntada_at
+                ? `Se le preguntó el ${new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}, desde el expediente.`
+                : (
+                  <>
+                    Esto lo contesta el vendedor. Se le pregunta desde el{' '}
+                    <a href="/importaciones" className="underline underline-offset-2">expediente</a>,
+                    con los otros correos suyos.
+                  </>
+                )}
+            </div>
+          )}
           <label className="text-[11px] text-brand-400">
-            {comoSeLlamaElCampo('recogida_prevista', t.tramo)}
-            <input type="date" value={datos.recogida_prevista}
-                   onChange={(e) => setDatos((d) => ({ ...d, recogida_prevista: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">{pistaDelCampo('recogida_prevista', t.tramo)}</span>
-          </label>
-          {/*
-            * Cuándo estiman llegar.
-            *
-            * Lo dice el transportista al dar el precio, y es lo que se le
-            * cuenta al cliente: sin esta fecha, «va de camino» no responde a la
-            * única pregunta que él tiene, que es cuándo lo tiene.
-            */}
-          <label className="text-[11px] text-brand-400">
-            {comoSeLlamaElCampo('entrega_prevista', t.tramo)}
-            <input type="date" value={datos.entrega_prevista}
-                   onChange={(e) => setDatos((d) => ({ ...d, entrega_prevista: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">
-              {pistaDelCampo('entrega_prevista', t.tramo) || 'La que te dé el transportista al aceptar.'}
-            </span>
-          </label>
-          <label className="col-span-2 text-[11px] text-brand-400">
-            {comoSeLlamaElCampo('desde', t.tramo)}
-            <input value={datos.desde} onChange={(e) => setDatos((d) => ({ ...d, desde: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">{pistaDelCampo('desde', t.tramo)}</span>
-          </label>
-          <label className="col-span-2 text-[11px] text-brand-400">
-            {comoSeLlamaElCampo('hasta', t.tramo)}
-            <input value={datos.hasta} onChange={(e) => setDatos((d) => ({ ...d, hasta: e.target.value }))}
-                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <span className="text-[10px] text-brand-300">{pistaDelCampo('hasta', t.tramo)}</span>
-          </label>
-
-          {/*
-            * Por quién pregunta el conductor al llegar, y en qué horas.
-            *
-            * Sin esto, la orden decía «preguntar por AutoCheck Deutschland»,
-            * que es a quién le compramos y no quien sale a abrir. El
-            * conductor llega a una nave con ochenta coches y llama aquí.
-            *
-            * El horario es texto libre: lo que contestan es «de lunes a
-            * viernes de 9 a 17, avisando antes», y eso no cabe en dos horas
-            * sueltas sin perder la mitad.
-            */}
-          <label className="text-[11px] text-brand-400">
-            Preguntar por
+            Persona de contacto en origen
             <input value={datos.contacto_origen} placeholder="Daniel Weber"
                    onChange={(e) => setDatos((d) => ({ ...d, contacto_origen: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
@@ -707,25 +749,34 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                    onChange={(e) => setDatos((d) => ({ ...d, telefono_origen: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+          <div className="col-span-2 text-[10px] text-brand-300 -mt-1">
+            Por quién pregunta el conductor al llegar, y dónde llamar si no le
+            abren.
+          </div>
+          {/*
+            * El horario es texto libre: lo que contestan es «de lunes a viernes
+            * de 9 a 17, avisando antes», y eso no cabe en dos horas sueltas sin
+            * perder la mitad.
+            */}
           <label className="col-span-2 text-[11px] text-brand-400">
             Horario de recogida
             <input value={datos.horario_origen}
-                   placeholder="De lunes a viernes, de 9:00 a 17:00, avisando antes"
+                   placeholder="Viernes 4, de 9:00 a 17:00, avisando antes"
                    onChange={(e) => setDatos((d) => ({ ...d, horario_origen: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             <span className="text-[10px] text-brand-300">
-              Va en la orden, debajo de la fecha. «A partir del» sin horas manda al
-              conductor a una puerta cerrada.
+              El día y las horas. Va en la orden, debajo de la fecha: «a partir
+              del» sin horas manda al conductor a una puerta cerrada.
             </span>
           </label>
 
           {/*
-            * Y el dato que decide el precio del viaje.
+            * Y el dato que puede mover el precio ya acordado.
             *
-            * Un portacoches lleva ocho coches y sale a un tercio por coche;
-            * una grúa individual cuesta lo que cuesta. Tres valores y no dos:
-            * «todavía no lo sé» no es «no entra», y pedir precio con un «no»
-            * inventado es pagar de más sin motivo.
+            * Un portacoches lleva ocho coches y sale a un tercio por coche; una
+            * grúa individual cuesta lo que cuesta. Tres valores y no dos:
+            * «todavía no lo sé» no es «no entra», y confirmar con un «sí»
+            * inventado es que el camión se presente y no pueda entrar.
             */}
           <label className="col-span-2 text-[11px] text-brand-400">
             ¿Entra un portacoches hasta el coche?
@@ -737,147 +788,48 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
               <option value="no">No: sótano, calle estrecha o patio</option>
             </select>
             <span className="text-[10px] text-brand-300">
-              Cambia el precio: un portacoches lleva ocho coches y sale a un tercio
-              por coche.
+              Si no entra, el precio de arriba cambia: díselo antes de confirmar.
             </span>
           </label>
-        </div>
-        </Plegable>
-        )}
-        {/*
-          * La orden de recogida.
-          *
-          * Va aquí, debajo de los datos del tramo, porque es lo que se hace
-          * justo después de rellenarlos: mandárselos a quien tiene que ir a por
-          * el coche. Escribirlo a mano es copiar tres direcciones de tres
-          * pantallas, y ahí es donde se cuelan los errores.
-          *
-          * Con botón y no automático: un camión que se presenta en la puerta
-          * equivocada no se deshace.
-          */}
-        {/*
-          * Primero se le pregunta al vendedor, luego se manda la orden.
-          *
-          * «Desde» dice solo una ciudad, porque es lo único que trae el anuncio.
-          * Un transportista no va a una ciudad: va a una calle, un día, a una
-          * hora y preguntando por alguien. La respuesta a este correo es lo que
-          * se escribe arriba.
-          */}
-        {/*
-          * Este correo se manda desde el expediente.
-          *
-          * Es al vendedor, y los tres que le escribimos viven juntos allí:
-          * cada pantalla manda los correos de su interlocutor. Aquí se queda
-          * la orden de recogida, que es al transportista, y **su respuesta**,
-          * que es lo que se escribe en «Desde» y en «Recogida prevista».
-          */}
-        {toca('dondeRecoger') && alVendedor && (
-        <Plegable titulo="Lo que se le ha dicho al vendedor" abiertaPorDefecto={!vendedorAvisado}
-                  resumen={vendedorAvisado ? 'preguntado y avisado' : 'falta preguntarle o avisarle'}>
-        <div>
-          {t.recogida_preguntada_at ? (
-            <span className="text-[13px] font-bold text-emerald-700">
-              ✓ Preguntado al vendedor el {new Date(t.recogida_preguntada_at).toLocaleDateString('es-ES')}
-            </span>
-          ) : (
-            <div className="text-[11px] text-brand-300">
-              Todavía sin preguntar. Se le pregunta desde el{' '}
-              <a href="/importaciones" className="underline underline-offset-2">expediente</a>,
-              con los otros dos correos al vendedor. Sin su respuesta, «Desde» es la
-              ciudad del anuncio, y un camión no va a una ciudad.
-            </div>
-          )}
 
           {/*
-            * Y avisarle de quién va y qué día.
+            * Y confirmar, que es contratar.
             *
-            * El correo es al vendedor y también está en el expediente, con
-            * los otros suyos. Pero se pulsa aquí porque aquí es donde están
-            * el transportista y el día, y donde se está justo después de
-            * cerrarlo: mandar desde el expediente un correo cuyos datos no se
-            * ven en el expediente es pulsar a ciegas.
-            *
-            * Va antes de la orden a propósito. Quien tiene que preparar el
-            * coche y sacar los papeles del cajón es el vendedor, y un
-            * conductor que llega a una nave donde nadie le espera se va
-            * vacío. Ese viaje se paga igual.
+            * El correo cierra el encargo: no se marca «Contratado» y luego se
+            * manda: se manda, y con él fuera el tramo deja de estar sin
+            * organizar. Apagado hasta que se pueda mandar de verdad, porque un
+            * camión en la puerta equivocada no se deshace.
             */}
-          {t.recogida_preguntada_at && (
-            <div className="mt-2.5">
-              {t.aviso_recogida_at ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[13px] font-bold text-emerald-700">
-                    ✓ Avisado de quién va el {new Date(t.aviso_recogida_at).toLocaleDateString('es-ES')}
-                  </span>
-                  <button onClick={onAvisarAlVendedor} disabled={guardando}
-                          className="text-[11px] text-brand-400 underline underline-offset-2">
-                    volver a avisarle
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button onClick={onAvisarAlVendedor} disabled={guardando}
-                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
-                    Decirle al vendedor quién va y qué día
-                  </button>
-                  <div className="text-[11px] text-brand-300 mt-1.5">
-                    El día, la empresa, quién le va a llamar y qué tiene que darle al
-                    conductor. Sale de lo que hay arriba: guarda antes los cambios.
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-        </Plegable>
-        )}
-
-        {toca('orden') && (
-        <Plegable titulo="La orden de recogida" abiertaPorDefecto={!ordenFuera}
-                  resumen={ordenFuera && t.orden_enviada_at
-                    ? `mandada el ${new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}`
-                    : 'sin mandar'}>
-        <div>
-          {t.orden_enviada_at ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] font-bold text-emerald-700">
-                ✓ Mandada el {new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}
-                {t.orden_enviada_a ? ` a ${t.orden_enviada_a}` : ''}
-              </span>
-              <button onClick={onMandarOrden} disabled={guardando}
-                      className="text-[11px] text-brand-400 underline underline-offset-2">
-                mandarla otra vez
-              </button>
-            </div>
-          ) : (
-            <>
-              {/*
-                * Apagada hasta que se pueda mandar de verdad.
-                *
-                * Un camión que se presenta en la puerta equivocada no se
-                * deshace, y la puerta sale de lo que conteste el vendedor.
-                */}
-              <button onClick={onMandarOrden} disabled={guardando || faltaOrden.length > 0}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
-                {t.estado === 'Por organizar'
-                  ? 'Confirmárselo y mandarle la orden'
-                  : 'Mandársela al transportista'}
-              </button>
-              <div className="text-[11px] text-brand-300 mt-1.5">
-                {faltaOrden.length > 0
-                  ? `Antes hay que ${faltaOrden.join(', ')}.`
-                  : t.estado === 'Por organizar'
-                    // Mandarla es contratar: el correo confirma el encargo, y con
-                    // él fuera el tramo deja de estar sin organizar.
-                    ? 'Con esto queda contratado. Guarda antes los cambios: la orden sale con lo que hay grabado.'
-                    : 'Guarda antes los cambios: la orden sale con lo que hay grabado.'}
+          <div className="col-span-2 pt-2 border-t border-brand-100">
+            {t.orden_enviada_at ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[12px] font-bold text-emerald-700">
+                  ✓ Confirmado el {new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}
+                  {t.orden_enviada_a ? ` a ${t.orden_enviada_a}` : ''}
+                </span>
+                <button onClick={onMandarOrden} disabled={guardando}
+                        className="text-[11px] text-brand-400 underline underline-offset-2">
+                  mandarlo otra vez
+                </button>
               </div>
-            </>
-          )}
-          {aviso && <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>}
+            ) : (
+              <>
+                <button onClick={onMandarOrden} disabled={guardando || faltaConfirmar.length > 0}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
+                  Confirmar transportista
+                </button>
+                <div className="text-[11px] text-brand-300 mt-1.5">
+                  {faltaConfirmar.length > 0
+                    ? `Antes hace falta ${faltaConfirmar.join(', ')}.`
+                    : 'Se le manda la orden con todo esto dentro, y con ella queda contratado. Guarda antes los cambios: sale con lo que hay grabado.'}
+                </div>
+              </>
+            )}
+            {aviso && <div className="text-[11px] text-red-700 font-medium mt-1.5">{aviso}</div>}
+          </div>
         </div>
         </Plegable>
-        )}
+
 
         {/*
           * ¿Llegó como salió?, para volver sobre ella después.
@@ -887,7 +839,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * luego: apuntar la reclamación dentro de los siete días, o corregir
           * lo que se escribió con el conductor esperando.
           */}
-        {toca('fotos') && (
+        {enViaje && (
         <div className="mt-4 pt-3 border-t border-brand-200">
           <LlegoComoSalioBloque llegada={llegada} setLlegada={setLlegada} entregadoEl={t.fecha_entrega} />
         </div>
@@ -901,12 +853,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
         {/* Las fotos van aquí, del viaje y no del coche: son lo único que
             distingue un golpe que ya venía de uno que se hizo por el camino.
             Antes de que lo recojan no hay viaje del que hacer fotos. */}
-        {toca('fotos') && <Documentos ambito="transporte" id={t.id} />}
+        {enViaje && <Documentos ambito="transporte" id={t.id} />}
 
-        <button onClick={() => setVerTodo((v) => !v)}
-                className="mt-4 w-full px-3 py-2 text-[11px] font-semibold text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
-          {verTodo ? 'Ver solo lo de esta fase' : 'Ver todos los datos del tramo'}
-        </button>
 
         {t.notas && (
           <div className="mt-4 pt-4 border-t border-brand-100">

@@ -1,85 +1,158 @@
 /**
- * Qué se enseña de un tramo de transporte en cada fase.
+ * Cómo se reparte un tramo de transporte: tres partes, siempre las mismas.
  *
- * Un tramo recién nacido enseñaba a la vez el transportista, el precio, la
- * dirección exacta de recogida, el día, el botón de preguntarle al vendedor y
- * el de mandarle la orden al transportista. La mitad de eso no se puede hacer
- * todavía, y **un hueco vacío parece una tarea pendiente**: puesto delante en
- * la fase que no toca se rellena con lo primero que sirva.
+ * Lo fijó Ana, y el orden es el de la conversación real, no el de la ficha:
  *
- * Y uno de esos botones hacía daño de verdad. La orden de recogida se podía
- * mandar antes de preguntarle al vendedor dónde y cuándo se recoge, así que
- * salía con la ciudad del anuncio por dirección. Un camión no va a una ciudad:
- * va a una calle, un día, a una hora y preguntando por alguien. Un camión en la
- * puerta equivocada no se deshace.
+ *   1. **Lo que sabemos nosotros.** Qué empresa lo lleva, de dónde sale y a
+ *      dónde va. Con eso se le pregunta si puede y cuánto cobra.
+ *   2. **Lo que contesta el transportista.** Qué día lo recoge, qué día llega,
+ *      cuánto cuesta y quién viene a por el coche. Con eso se avisa al origen.
+ *   3. **Lo que contesta el origen.** Por quién pregunta el conductor, en qué
+ *      teléfono, en qué horas y si entra un portacoches. Con eso se le confirma
+ *      al transportista, y eso es contratarlo.
  *
- * Es el mismo criterio que en los pedidos y en las peritaciones: se enseña lo
- * de la fase, y lo demás sigue estando detrás de «Ver todo».
+ * Cada parte termina en un botón, y ese botón es lo que abre la siguiente: los
+ * campos de la parte 2 están vacíos porque todavía no ha contestado nadie, no
+ * porque se hayan olvidado. Antes, con las tres partes mezcladas, un hueco
+ * vacío parecía una tarea pendiente y se rellenaba con lo primero que sirviera
+ * —la ciudad del anuncio por dirección, una fecha inventada por día de
+ * recogida—, y un camión en la puerta equivocada no se deshace.
+ *
+ * Las tres se enseñan siempre y en este orden. Lo que cambia es cuál está
+ * abierta: la que toca. Las terminadas se pliegan con una línea que dice lo que
+ * guardan dentro.
  */
 
-export type BloqueDeTramo = 'quien' | 'dondeRecoger' | 'ruta' | 'orden' | 'fotos';
+export type ParteDelTramo = 'solicitud' | 'respuesta' | 'origen';
 
-export const LO_DE_CADA_FASE: Record<string, BloqueDeTramo[]> = {
-  // Buscando quién lo trae. Y, si sale del vendedor, preguntarle dónde y cuándo.
-  'Por organizar': ['quien', 'dondeRecoger'],
-  // Contratado: con su respuesta se cierra la ruta y se manda la orden.
-  'Contratado':    ['quien', 'dondeRecoger', 'ruta', 'orden'],
-  // Ya lo tiene: lo que queda son las fotos del viaje.
-  'Recogido':      ['ruta', 'orden', 'fotos'],
-  'En tránsito':   ['ruta', 'fotos'],
-  'Entregado':     ['ruta', 'fotos'],
-  // Una incidencia puede pasar en cualquier momento: se enseña todo.
-  'Con incidencia': ['quien', 'dondeRecoger', 'ruta', 'orden', 'fotos'],
-};
+export const PARTES: ParteDelTramo[] = ['solicitud', 'respuesta', 'origen'];
 
-/**
- * Y con la pregunta al vendedor ya hecha, la ruta se enseña antes.
- *
- * La tabla decía que la ruta viene después de contratar, y está al revés: su
- * respuesta —la calle, el día, por quién preguntar, si entra un portacoches—
- * es justo lo que hace falta para pedir precio. Sin enseñar esos campos, el
- * correo llega al buzón y no hay dónde copiarlo; y lo que no se apunta no
- * existe para nadie más que para quien lo leyó.
- *
- * Antes de preguntar siguen escondidos, que era el motivo original: un hueco
- * vacío puesto delante parece una tarea pendiente y se rellena con lo primero
- * que sirva, que aquí es la ciudad del anuncio.
- */
-/**
- * Y con quién lo trae y por cuánto ya elegidos, la orden se enseña también.
- *
- * La tabla pedía pasar a «Contratado» y luego mandar la orden, y eso está al
- * revés de como ocurre: se acuerda por correo, se manda la orden confirmando
- * el encargo, y **eso es contratar**. Pedir que se marque antes obliga a
- * declarar cerrado algo que se cierra con el correo que todavía no ha salido.
- *
- * Hace falta el precio, no solo el nombre: una orden sin precio acordado es
- * un encargo abierto, y la factura será la que quieran.
- */
-export function bloquesDelTramo(
-  estado: string,
-  t?: {
-    recogida_preguntada_at?: string | null;
-    transportista?: string | null;
-    coste?: unknown;
-    tramo?: number | string | null;
-  } | null
-): BloqueDeTramo[] {
-  const base = [...(LO_DE_CADA_FASE[estado] ?? ['quien'])];
-  /*
-   * En el primero, la ruta aparece con la respuesta del vendedor. En el
-   * segundo no hay a quién preguntar —el coche está en nuestra nave— así que
-   * está desde el principio: si no, no había dónde escribir la calle ni por
-   * quién pregunta el conductor, y el correo salía diciendo «Zaragoza».
-   */
-  const conRespuesta = String(t?.recogida_preguntada_at ?? '').trim()
-    || !seLePreguntaAlVendedor(t?.tramo ?? 1);
-  if (conRespuesta && !base.includes('ruta')) base.push('ruta');
-  const hayTrato = Boolean(String(t?.transportista ?? '').trim()) && Number(t?.coste ?? 0) > 0;
-  if (hayTrato && !base.includes('orden')) base.push('orden');
-  return base;
+/** Los datos de un tramo, tal como los mira este fichero. */
+export interface DatosDelTramo {
+  estado?: string | null;
+  tramo?: number | string | null;
+  transportista?: string | null;
+  desde?: string | null;
+  hasta?: string | null;
+  coste?: unknown;
+  recogida_prevista?: string | null;
+  entrega_prevista?: string | null;
+  contacto_transportista?: string | null;
+  telefono_transportista?: string | null;
+  contacto_origen?: string | null;
+  telefono_origen?: string | null;
+  horario_origen?: string | null;
+  /** Puede venir de la base (booleano o nulo) o del formulario ('si' | 'no' | ''). */
+  portacoches?: unknown;
+  presupuesto_pedido_at?: string | null;
+  aviso_recogida_at?: string | null;
+  orden_enviada_at?: string | null;
+  recogida_preguntada_at?: string | null;
+  llegada?: { conforme?: boolean } | null;
 }
 
+const hay = (v: unknown): boolean => Boolean(String(v ?? '').trim());
+const importe = (v: unknown): number => Number(String(v ?? '').replace(',', '.')) || 0;
+
+/**
+ * Si se sabe ya lo del portacoches.
+ *
+ * Tres valores y no dos: «todavía no lo sé» no es «no entra». En la base es un
+ * booleano o nulo; en el formulario, 'si', 'no' o vacío. Las dos cosas llegan
+ * aquí porque el panel mezcla lo grabado con lo que se está escribiendo.
+ */
+export function seSabeLoDelPortacoches(v: unknown): boolean {
+  if (typeof v === 'boolean') return true;
+  return v === 'si' || v === 'no';
+}
+
+/**
+ * Avisar al vendedor de que va un camión **solo tiene sentido en el tramo 1**.
+ *
+ * Es el que sale de la nave del vendedor alemán. El segundo sale de nuestra
+ * campa, y ahí no hay a quién avisar: el correo iría igualmente al
+ * concesionario, avisándole de una recogida que no es suya.
+ */
+export function seLePreguntaAlVendedor(tramo: number | string | null | undefined): boolean {
+  return Number(tramo) === 1;
+}
+
+/**
+ * Parte 1: lo que ponemos nosotros antes de preguntar nada.
+ *
+ * La dirección, entera. Un transportista no va a una ciudad: va a una calle,
+ * un número y un código postal. Con «Múnich» lo que vuelve no es un precio,
+ * es una estimación que se discute con el camión ya cargado.
+ */
+export function faltaParaSolicitar(t: DatosDelTramo): string[] {
+  const falta: string[] = [];
+  if (!hay(t.transportista)) falta.push('elegir la empresa de transporte');
+  if (!hay(t.desde)) falta.push('la dirección completa de donde sale');
+  if (!hay(t.hasta)) falta.push('la dirección completa de a dónde va');
+  return falta;
+}
+
+/**
+ * Parte 2: lo que hace falta para avisar al origen de que va un camión.
+ *
+ * El aviso dice tres cosas —qué día, quién viene y en qué teléfono— y las tres
+ * las acaba de dar el transportista al contestar. Sin ellas el correo sale
+ * diciendo que irá alguien algún día, que es no avisar.
+ */
+export function faltaParaAvisarAlOrigen(t: DatosDelTramo): string[] {
+  const falta: string[] = [];
+  if (!hay(t.presupuesto_pedido_at)) falta.push('pedirle antes disponibilidad y precio');
+  if (!hay(t.recogida_prevista)) falta.push('el día que lo recoge');
+  if (importe(t.coste) <= 0) falta.push('el precio acordado');
+  if (!hay(t.contacto_transportista)) falta.push('el nombre del transportista que viene');
+  return falta;
+}
+
+/**
+ * Parte 3: lo que hace falta para confirmárselo al transportista.
+ *
+ * Confirmar es contratar: el correo cierra el encargo. Así que antes tiene que
+ * estar todo lo que va dentro de la orden, y en especial lo que contesta el
+ * origen. Sin por quién preguntar, el conductor llega a una nave con ochenta
+ * coches y llama aquí; sin horario, a una puerta cerrada; y sin saber si entra
+ * un portacoches, el precio de arriba puede no ser el que se pague.
+ */
+export function faltaParaConfirmar(t: DatosDelTramo): string[] {
+  const falta = [...faltaParaSolicitar(t), ...faltaParaAvisarAlOrigen(t)]
+    .filter((x) => x !== 'pedirle antes disponibilidad y precio');
+  if (!hay(t.entrega_prevista)) falta.push('el día que llega');
+  /*
+   * Y el origen tiene que saber quién va antes de que salga el camión.
+   *
+   * Lo puso Ana como regla y es la que evita el fallo caro: un conductor que
+   * llega a una nave donde nadie le espera se va vacío, y ese viaje se paga
+   * igual. Confirmar primero es apostar a que el origen se entera a tiempo por
+   * su cuenta.
+   */
+  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) {
+    falta.push('avisar al origen de quién va y qué día');
+  }
+  if (!hay(t.contacto_origen)) falta.push('por quién pregunta el conductor');
+  if (!hay(t.horario_origen)) falta.push('el horario de recogida');
+  if (!seSabeLoDelPortacoches(t.portacoches)) falta.push('si entra un portacoches');
+  return falta;
+}
+
+/**
+ * Cuál de las tres partes está esperando algo.
+ *
+ * Es la que se abre al entrar; las otras dos van plegadas. Se mira **lo que
+ * hay**, no el estado del desplegable: un tramo «Contratado» al que le falta el
+ * horario y otro que lo tiene todo no están en el mismo sitio aunque digan lo
+ * mismo.
+ */
+export function queParteToca(t: DatosDelTramo): ParteDelTramo | null {
+  if (faltaParaSolicitar(t).length > 0 || !hay(t.presupuesto_pedido_at)) return 'solicitud';
+  if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) return 'respuesta';
+  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) return 'respuesta';
+  if (faltaParaConfirmar(t).length > 0 || !hay(t.orden_enviada_at)) return 'origen';
+  return null;
+}
 
 /**
  * De qué viaje es este tramo, dicho para quien lo lee.
@@ -96,40 +169,13 @@ export function queViajeEs(tramo: number | string | null | undefined, origen?: s
 }
 
 /**
- * Preguntarle al vendedor dónde se recoge **solo tiene sentido en el tramo 1**.
- *
- * Es el que sale de la nave del vendedor alemán. El segundo sale de nuestra
- * campa, y ahí no hay a quién preguntar: el correo iría igualmente al
- * concesionario, preguntándole por una recogida que no es suya.
- */
-export function seLePreguntaAlVendedor(tramo: number | string | null | undefined): boolean {
-  return Number(tramo) === 1;
-}
-
-
-/**
  * Qué toca ahora en un tramo, en una frase.
  *
- * El panel enseña ocho campos y cuatro botones, y con todo delante no se
- * distingue lo que falta de lo que ya está: el único dato que toca queda
- * debajo de dos pantallas de datos correctos, y ni siquiera se ve que falta.
- *
- * Se mira **lo que hay**, no el estado: un tramo «En tránsito» al que le falta
- * mirar el coche y otro al que no están en el mismo sitio aunque digan lo
- * mismo en el desplegable.
+ * El panel enseña doce campos y tres botones, y con todo delante no se
+ * distingue lo que falta de lo que ya está. Esta frase va arriba del todo y es
+ * la respuesta a «y ahora qué», que es la pregunta con la que se abre un tramo.
  */
-export function queTocaEnElTramo(t: {
-  estado?: string | null;
-  transportista?: string | null;
-  coste?: unknown;
-  desde?: string | null;
-  recogida_prevista?: string | null;
-  tramo?: number | string | null;
-  recogida_preguntada_at?: string | null;
-  aviso_recogida_at?: string | null;
-  orden_enviada_at?: string | null;
-  llegada?: { conforme?: boolean } | null;
-}): string {
+export function queTocaEnElTramo(t: DatosDelTramo): string {
   const estado = String(t.estado ?? '');
   if (estado === 'Entregado') {
     return typeof t.llegada?.conforme === 'boolean'
@@ -142,76 +188,44 @@ export function queTocaEnElTramo(t: {
     return 'Cuando llegue, míralo antes de darlo por entregado: ahí se dice si llegó como salió.';
   }
 
-  // Y antes de que salga, en el orden en que se hace.
-  if (!String(t.transportista ?? '').trim() || !(Number(t.coste ?? 0) > 0)) {
-    return 'Elige quién lo trae y pídele precio.';
+  // Y antes de que salga, las tres partes en su orden.
+  if (faltaParaSolicitar(t).length > 0) {
+    return 'Elige la empresa de transporte y pon las dos direcciones completas.';
   }
-  if (seLePreguntaAlVendedor(t.tramo) && !t.recogida_preguntada_at) {
-    return 'Pregúntale al vendedor dónde y cuándo se recoge, desde el expediente.';
+  if (!hay(t.presupuesto_pedido_at)) {
+    return 'Pídele disponibilidad y precio a la empresa.';
   }
-  if (!String(t.desde ?? '').trim() || !String(t.recogida_prevista ?? '').trim()) {
-    return 'Apunta lo que ha contestado el vendedor: la dirección exacta y el día.';
+  if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) {
+    return 'Apunta lo que conteste: qué día lo recoge, qué día llega, cuánto y quién viene.';
   }
-  if (seLePreguntaAlVendedor(t.tramo) && !t.aviso_recogida_at) {
-    return 'Dile al vendedor quién va a por el coche y qué día.';
+  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) {
+    return 'Avisa al origen de que va el transportista, quién es y qué día.';
   }
-  if (!t.orden_enviada_at) {
-    return 'Confírmaselo al transportista y mándale la orden.';
+  if (!hay(t.contacto_origen) || !hay(t.horario_origen) || !seSabeLoDelPortacoches(t.portacoches)) {
+    return 'Apunta lo que conteste el origen: por quién preguntar, el horario y si entra un portacoches.';
+  }
+  if (!hay(t.orden_enviada_at)) {
+    return 'Confírmaselo al transportista: con eso queda contratado.';
   }
   return 'Esperando a que lo recojan.';
 }
 
-/** Lo que impide mandar la orden de recogida, si algo lo impide. */
-export function faltaParaLaOrden(t: {
-  transportista?: string | null;
-  desde?: string | null;
-  hasta?: string | null;
-  tramo?: number | string | null;
-  recogida_preguntada_at?: string | null;
-  aviso_recogida_at?: string | null;
-}): string[] {
-  const falta: string[] = [];
-  if (!String(t.transportista ?? '').trim()) falta.push('elegir quién lo trae');
-  if (!String(t.desde ?? '').trim()) falta.push('de dónde sale');
-  if (!String(t.hasta ?? '').trim()) falta.push('a dónde va');
-  // En el primer tramo, la dirección buena la da el vendedor. Sin preguntarle,
-  // lo que hay escrito en «Desde» es la ciudad del anuncio.
-  if (seLePreguntaAlVendedor(t.tramo) && !t.recogida_preguntada_at) {
-    falta.push('preguntarle antes al vendedor dónde y cuándo se recoge');
-  }
-  /*
-   * Y el vendedor tiene que saber quién va antes de que salga el camión.
-   *
-   * Lo puso Ana como regla y es la que evita el fallo caro: un conductor que
-   * llega a una nave donde nadie le espera se va vacío, y ese viaje se paga
-   * igual. Mandar la orden primero es apostar a que el vendedor se entera a
-   * tiempo por su cuenta.
-   */
-  if (seLePreguntaAlVendedor(t.tramo) && t.recogida_preguntada_at && !t.aviso_recogida_at) {
-    falta.push('avisar al vendedor de quién va y qué día');
-  }
-  return falta;
-}
-
 /** Cuándo se sabe cada dato, para no dejarlo a la intuición. */
 export const PISTAS: Record<string, string> = {
-  transportista: 'La empresa, de nuestra lista de Proveedores. Sin ella no hay a quién mandarle la orden.',
+  transportista: 'La empresa, de nuestra lista de Proveedores. Sin ella no hay a quién preguntarle.',
   coste: 'Lo que nos cobra por este tramo, no lo que paga el cliente.',
   desde: 'La dirección exacta, la que dé el vendedor. Una ciudad no es una dirección.',
   hasta: 'A dónde lo lleva: nuestra campa, o la dirección del cliente en el último tramo.',
-  recogida_prevista: 'El día que dice el vendedor que se lo pueden llevar.',
+  recogida_prevista: 'El día que diga el transportista que va a por él.',
 };
 
 /**
  * Y las mismas cosas quieren decir otra en el segundo viaje.
  *
- * En el primero, el día de recogida lo pone el vendedor —«está listo desde el
- * 4»— y por eso se apunta antes de contratar a nadie. En el segundo el coche
- * está en nuestra nave y disponible desde ya: **las dos fechas las dice el
- * transportista al contestar el precio**, y hasta entonces no se saben.
- *
- * Con las etiquetas del primero, quien abre el segundo se encuentra pidiéndole
- * un día que todavía no puede saber, y acaba inventándose uno.
+ * En el primero, el día de recogida lo condiciona el vendedor —«está listo
+ * desde el 4»—. En el segundo el coche está en nuestra nave y disponible desde
+ * ya. En los dos, la fecha que se apunta es la que dice el transportista al
+ * contestar; lo que cambia es de dónde sale y a dónde va.
  */
 export const PISTAS_DEL_SEGUNDO: Record<string, string> = {
   desde: 'Dónde está el coche ahora: nuestra nave, con su calle.',
@@ -224,8 +238,8 @@ export const PISTAS_DEL_SEGUNDO: Record<string, string> = {
 export function comoSeLlamaElCampo(campo: string, tramo: number | string | null | undefined): string {
   const segundo = !seLePreguntaAlVendedor(tramo);
   if (!segundo) {
-    return campo === 'recogida_prevista' ? 'Recogida prevista'
-      : campo === 'entrega_prevista' ? 'Llegada estimada'
+    return campo === 'recogida_prevista' ? 'Cuándo lo recoge'
+      : campo === 'entrega_prevista' ? 'Cuándo llega'
       : campo === 'desde' ? 'Desde' : 'Hasta';
   }
   return campo === 'recogida_prevista' ? 'Cuándo lo recoge'
