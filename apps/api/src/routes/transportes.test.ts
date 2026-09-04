@@ -222,3 +222,35 @@ describe('quién sale a abrir, en la ficha del proveedor', () => {
     assert.match(FUENTE, /'direccion', 'contacto', 'horario', 'notas'/);
   });
 });
+
+/**
+ * En el segundo viaje también hay alguien a quien preguntar.
+ *
+ * La orden se quedó sin nombre en el origen cuando el segundo viaje salía de
+ * «Zaragoza» a secas y allí no había ficha de nadie. Ahora sale de nuestro
+ * depósito, con su calle y con la persona que abre: sin eso, el conductor llega
+ * a una nave y llama aquí, que es justo lo que esta orden existe para evitar.
+ */
+describe('a quién pregunta el conductor, en los dos viajes', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const ORDEN = FUENTE.slice(
+    FUENTE.indexOf('const origen = {'),
+    FUENTE.indexOf('const falta = faltaParaLaOrden(datos)')
+  );
+
+  test('el origen lleva nombre y teléfono, sin mirar el tramo', () => {
+    assert.match(ORDEN, /quien: String\(t\.contacto_origen/);
+    assert.match(ORDEN, /telefono: String\(t\.telefono_origen/);
+  });
+
+  test('y el vendedor solo vale de repuesto en el primero', () => {
+    // En el segundo mandaría al conductor a preguntar por un concesionario
+    // alemán en una nave de Zaragoza.
+    assert.match(ORDEN, /esElPrimero \? \(t\.vendedor as string \| null\) : null/);
+  });
+
+  test('y le va lo del portacoches, que decide qué camión mandan', () => {
+    assert.match(ORDEN, /portacoches: typeof t\.portacoches === 'boolean'/);
+  });
+});

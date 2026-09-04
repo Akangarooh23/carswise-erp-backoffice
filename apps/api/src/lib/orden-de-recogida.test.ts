@@ -175,3 +175,74 @@ describe('las fechas', () => {
     assert.equal(enFecha(''), '');
   });
 });
+
+/**
+ * Lo que la orden tenía que decir y no decía.
+ *
+ * Lo leyó Ana en la del segundo viaje. Tres cosas:
+ *
+ * 1. Saludaba a la empresa **por el nombre del conductor**. El campo estuvo
+ *    hecho para el de tráfico, el que contesta los presupuestos; desde que
+ *    significa quien conduce, el saludo le escribe a quien no lo va a leer.
+ * 2. En el segundo viaje no decía **por quién preguntar** al recoger, porque
+ *    se escribió cuando el segundo salía de «Zaragoza» a secas y allí no había
+ *    ficha de nadie. Ahora sale de nuestro depósito y hay alguien que abre.
+ * 3. No decía **si entra un portacoches**, que es lo que decide si mandan el
+ *    camión grande o una grúa, y por tanto el precio que ya está acordado.
+ */
+describe('lo que hay que decirle al recoger', () => {
+  const CON_TODO = {
+    ...TRAMO,
+    origen: { donde: 'Avenida Cataluña 103, 50014, Zaragoza', quien: 'Juan Hernández', telefono: '682791928' },
+    horarioOrigen: 'De lunes a viernes, de 9:00 a 17:00',
+    portacoches: true,
+    contactoSuyo: 'Javier Campo',
+  };
+
+  test('el saludo no lleva nombre', () => {
+    // Va al buzón de la empresa, y el nombre que tenemos es el del conductor.
+    const { html } = correoDeOrdenDeRecogida(CON_TODO);
+    assert.match(html, /Hola,/);
+    assert.doesNotMatch(html, /Hola Javier Campo/);
+  });
+
+  test('pero el conductor sigue estando, en la tabla', () => {
+    // Les devuelve el nombre que nos dieron: así se ve si hablamos del mismo.
+    const { html } = correoDeOrdenDeRecogida(CON_TODO);
+    assert.match(html, /Conductor/);
+    assert.match(html, /Javier Campo/);
+  });
+
+  test('y sin nombre de conductor no se inventa la fila', () => {
+    const { html } = correoDeOrdenDeRecogida({ ...CON_TODO, contactoSuyo: null });
+    assert.doesNotMatch(html, /Conductor/);
+  });
+
+  test('dice si entra un portacoches', () => {
+    assert.match(correoDeOrdenDeRecogida(CON_TODO).html, /Entra un portacoches/);
+    assert.match(correoDeOrdenDeRecogida(CON_TODO).html, /llega hasta el coche/);
+  });
+
+  test('y dice también que no entra, que es lo que cambia el camión', () => {
+    assert.match(
+      correoDeOrdenDeRecogida({ ...CON_TODO, portacoches: false }).html,
+      /hay que sacarlo a la calle/
+    );
+  });
+
+  test('mientras no se sabe, se calla', () => {
+    // Callarlo es mejor que afirmar un «sí» inventado: así es como se manda un
+    // portacoches a un sótano.
+    assert.doesNotMatch(
+      correoDeOrdenDeRecogida({ ...CON_TODO, portacoches: null }).html,
+      /portacoches/i
+    );
+  });
+
+  test('en los tres idiomas', () => {
+    assert.match(correoDeOrdenDeRecogida(CON_TODO, 'de').html, /Autotransporter/);
+    assert.match(correoDeOrdenDeRecogida(CON_TODO, 'en').html, /car carrier/);
+    assert.match(correoDeOrdenDeRecogida(CON_TODO, 'de').html, /Fahrer/);
+    assert.match(correoDeOrdenDeRecogida(CON_TODO, 'en').html, /Driver/);
+  });
+});

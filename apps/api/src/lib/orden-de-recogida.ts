@@ -48,12 +48,24 @@ export interface DatosDeLaOrden {
    */
   horarioOrigen?: string | null;
   /**
-   * Quién lleva este viaje por su parte, si nos han dado un nombre.
+   * El conductor que nos han dicho que viene, si nos han dado un nombre.
    *
-   * Va en el saludo. Una orden que entra por una dirección general y no
-   * nombra a nadie se queda en el buzón de tráfico como una más.
+   * Va en la tabla y **no en el saludo**. Estuvo en el saludo mientras este
+   * campo era el de tráfico, el que contesta los presupuestos; desde que
+   * significa el conductor, saludar con su nombre a una empresa es escribirle
+   * a quien no lo va a leer. En la tabla sí sirve: les devuelve el nombre que
+   * nos dieron, y así se ve si hablamos del mismo.
    */
   contactoSuyo?: string | null;
+  /**
+   * Si entra un portacoches hasta el coche.
+   *
+   * Es lo que decide si viene el camión grande o una grúa individual, y por
+   * tanto el precio. Nulo mientras no se sepa: «todavía no lo sé» no es «no
+   * entra», y una orden que afirma un «sí» inventado manda un portacoches a un
+   * sótano.
+   */
+  portacoches?: boolean | null;
   /** Lo acordado, si ya está cerrado. */
   coste?: number | null;
   /** Lo que añada quien revisa antes de mandarla, ya en HTML. */
@@ -111,13 +123,20 @@ const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2,
 const TEXTOS: Record<Idioma, {
   asunto: string; vehiculo: string; sinMatricula: string;
   recogerEn: string; entregarEn: string; aPartirDel: string; horario: string;
+  portacoches: string; portacochesSi: string; portacochesNo: string;
+  conductor: string;
   precio: string; referencia: string;
   saludo: string; entradilla: string; conFecha: string; sinFecha: string; cierre: string;
 }> = {
   es: {
     asunto: 'Recogida', vehiculo: 'Vehículo', sinMatricula: 'sin matricular todavía',
     recogerEn: 'Recoger en', entregarEn: 'Entregar en', aPartirDel: 'A partir del',
-    horario: 'Horario de recogida', precio: 'Precio acordado', referencia: 'Nuestra referencia',
+    horario: 'Horario de recogida',
+    portacoches: '¿Entra un portacoches?',
+    portacochesSi: 'Sí, llega hasta el coche',
+    portacochesNo: 'No, hay que sacarlo a la calle',
+    conductor: 'Conductor',
+    precio: 'Precio acordado', referencia: 'Nuestra referencia',
     saludo: 'Hola,', entradilla: 'Os pasamos un coche para recoger:',
     conFecha: 'Decidnos qué día podéis y os confirmamos.',
     sinFecha: 'Todavía no tenemos fecha de salida. En cuanto la tengamos os la decimos; si necesitáis avisar con antelación, contadnos cuánta.',
@@ -126,7 +145,12 @@ const TEXTOS: Record<Idioma, {
   de: {
     asunto: 'Abholung', vehiculo: 'Fahrzeug', sinMatricula: 'noch nicht zugelassen',
     recogerEn: 'Abholort', entregarEn: 'Lieferort', aPartirDel: 'Ab dem',
-    horario: 'Abholzeiten', precio: 'Vereinbarter Preis', referencia: 'Unsere Referenz',
+    horario: 'Abholzeiten',
+    portacoches: 'Autotransporter möglich?',
+    portacochesSi: 'Ja, direkt bis zum Fahrzeug',
+    portacochesNo: 'Nein, das Fahrzeug muss auf die Straße gebracht werden',
+    conductor: 'Fahrer',
+    precio: 'Vereinbarter Preis', referencia: 'Unsere Referenz',
     saludo: 'Guten Tag,', entradilla: 'hiermit beauftragen wir Sie mit der Abholung dieses Fahrzeugs:',
     conFecha: 'Bitte teilen Sie uns mit, an welchem Tag Sie abholen, und wir bestätigen es Ihnen.',
     sinFecha: 'Ein Abholtermin steht noch nicht fest. Sobald wir ihn haben, melden wir uns; falls Sie Vorlaufzeit brauchen, sagen Sie uns bitte wie viel.',
@@ -135,7 +159,12 @@ const TEXTOS: Record<Idioma, {
   en: {
     asunto: 'Pick-up', vehiculo: 'Vehicle', sinMatricula: 'not registered yet',
     recogerEn: 'Collect at', entregarEn: 'Deliver to', aPartirDel: 'From',
-    horario: 'Pick-up hours', precio: 'Agreed price', referencia: 'Our reference',
+    horario: 'Pick-up hours',
+    portacoches: 'Can a car carrier reach the car?',
+    portacochesSi: 'Yes, right up to the car',
+    portacochesNo: 'No, it has to be brought out to the street',
+    conductor: 'Driver',
+    precio: 'Agreed price', referencia: 'Our reference',
     saludo: 'Hello,', entradilla: 'here is a car for you to collect:',
     conFecha: 'Tell us which day works for you and we will confirm it.',
     sinFecha: 'We do not have a departure date yet. We will tell you as soon as we do; if you need notice, tell us how much.',
@@ -164,16 +193,25 @@ export function correoDeOrdenDeRecogida(d: DatosDeLaOrden, idioma: Idioma = 'es'
     // El horario va pegado a la fecha: son la misma pregunta del conductor,
     // que es «cuándo voy». Suelto al final se lee después de haber salido.
     (String(d.horarioOrigen ?? '').trim() ? fila(t.horario, String(d.horarioOrigen).trim()) : '') +
+    // Y si entra el camión grande, que es lo que decide el precio y el vehículo
+    // que mandan. Solo cuando se sabe: callarlo es mejor que afirmar un «sí»
+    // inventado, que es como se manda un portacoches a un sótano.
+    (typeof d.portacoches === 'boolean'
+      ? fila(t.portacoches, d.portacoches ? t.portacochesSi : t.portacochesNo) : '') +
     (d.coste ? fila(t.precio, eur(Number(d.coste))) : '') +
+    // El conductor que nos dieron, devuelto: así se ve si hablamos del mismo.
+    (String(d.contactoSuyo ?? '').trim() ? fila(t.conductor, String(d.contactoSuyo).trim()) : '') +
     fila(t.referencia, d.referencia) +
     '</table>';
 
   const p = (html: string) =>
     `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#2A2A28">${html}</p>`;
 
-  const quienSuyo = String(d.contactoSuyo ?? '').trim();
   const html =
-    p(quienSuyo ? `${t.saludo.replace(/,$/, '')} ${esc(quienSuyo)},` : t.saludo) +
+    // Sin nombre en el saludo: esto va al buzón de la empresa, y el nombre que
+    // tenemos es el del conductor. Saludar a la empresa por el nombre de su
+    // conductor es escribirle a quien no lo va a leer.
+    p(t.saludo) +
     p(t.entradilla) +
     tabla +
     p(cuando ? t.conFecha : t.sinFecha) +

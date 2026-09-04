@@ -411,13 +411,24 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
      * quien pregunta el conductor al llegar. No son lo mismo, y el que sirve
      * en la puerta es el segundo.
      */
-    const origen = esElPrimero
-      ? {
-          donde: String(t.desde ?? ''),
-          quien: String(t.contacto_origen ?? '').trim() || (t.vendedor as string | null),
-          telefono: String(t.telefono_origen ?? '').trim() || null,
-        }
-      : { donde: String(t.desde ?? '') };
+    /*
+     * Y en el segundo también hay alguien a quien preguntar.
+     *
+     * Se dejó sin nombre cuando el segundo viaje salía de «Zaragoza» a secas y
+     * allí no había ficha de nadie. Ahora sale de nuestro depósito, con su
+     * calle y con la persona que abre: sin eso, el conductor llega a una nave
+     * y llama aquí, que es justo lo que esta orden existe para evitar.
+     *
+     * El nombre del vendedor solo vale de repuesto en el primero: en el
+     * segundo no pinta nada, y ponerlo mandaría al conductor a preguntar por
+     * un concesionario alemán en una nave de Zaragoza.
+     */
+    const origen = {
+      donde: String(t.desde ?? ''),
+      quien: String(t.contacto_origen ?? '').trim()
+        || (esElPrimero ? (t.vendedor as string | null) : null),
+      telefono: String(t.telefono_origen ?? '').trim() || null,
+    };
     const destino = esElPrimero
       ? { donde: String(t.hasta ?? '') }
       : (enCasaDelCliente.donde ? enCasaDelCliente : { donde: String(t.hasta ?? '') });
@@ -430,6 +441,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
       recogidaPrevista: t.recogida_prevista as string | null,
       contactoSuyo: String(t.contacto_transportista ?? '').trim() || null,
       horarioOrigen: String(t.horario_origen ?? '').trim() || null,
+      portacoches: typeof t.portacoches === 'boolean' ? t.portacoches : null,
       coste: t.coste != null ? Number(t.coste) : null,
     };
     const falta = faltaParaLaOrden(datos);
