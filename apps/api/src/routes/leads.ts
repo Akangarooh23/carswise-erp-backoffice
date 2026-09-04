@@ -224,6 +224,104 @@ function entregaEmailHtml(lead: Lead, antes: string): string {
  * garaje se quede sin dar de alta; lo que no puede es quedarse callado, así que
  * el fallo se escribe.
  */
+/**
+ * El expediente se da por entregado cuando el coche llega a su casa.
+ *
+ * Lo pidió Ana dos veces, y la segunda con razón: marcar el tramo entregado y
+ * tener que repetirlo en Importaciones es contar dos veces el mismo hecho. El
+ * camión descargó en su puerta; el coche está entregado.
+ *
+ * **Menos si el impuesto está sin liquidar.** Esa es la única puerta que se
+ * queda, y es de dinero: el cliente puso una provisión y el impuesto real sale
+ * otro. Si se cierra el expediente sin ajustarlo, esa diferencia no se
+ * recupera —él ya tiene su coche— o se le queda a él un dinero que era suyo.
+ * Mientras no esté liquidada, el expediente se queda abierto y la pantalla dice
+ * por qué.
+ *
+ * Y hace lo mismo que la entrega a mano: pone la fecha, arranca la garantía
+ * desde ese día, le da de alta el IdCar y le manda el correo. Media entrega
+ * automática —el estado sí, la garantía no— sería peor que ninguna: un coche
+ * entregado sin garantía empezada es un coche sin garantía.
+ */
+export async function daloPorEntregadoSiYaLlego(): Promise<number> {
+  const listos = await query<{ id: string; llegada: string; entrega: Entrega | null }>(
+    `SELECT l.id, t.fecha_entrega::text AS llegada, l.entrega
+       FROM moveadvisor_market_leads l
+       JOIN erp_transportes t ON t.lead_id = l.id AND t.tramo > 1
+      WHERE l.lead_type = 'import'
+        AND l.status <> 'Entregado'
+        AND t.fecha_entrega IS NOT NULL
+        -- Con el impuesto liquidado, o sin nada que liquidar todavía.
+        AND NOT EXISTS (
+          SELECT 1 FROM erp_tramites tr, LATERAL jsonb_array_elements(tr.partidas) p
+           WHERE (tr.lead_id = l.id
+              OR tr.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = l.id))
+             AND lower(btrim(p->>'concepto')) LIKE 'impuesto de matriculaci%'
+             AND COALESCE(p->>'importe', '') <> ''
+             AND l.liquidacion_at IS NULL)
+      LIMIT 20`
+  ).catch(() => ({ rows: [] as { id: string; llegada: string; entrega: Entrega | null }[] }));
+
+  let cerrados = 0;
+  for (const x of listos.rows) {
+    const cuando = String(x.llegada ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+
+    /*
+     * La garantía, desde el día que lo tuvo.
+     *
+     * No desde hoy: si esto se recupera tres días después porque nadie miró la
+     * pantalla, la garantía empezaría tarde y el cliente tendría tres días
+     * menos de los que pagó.
+     */
+    const previa = (x.entrega ?? {}) as Entrega;
+    const nueva: Entrega = { ...previa, fecha: previa.fecha ?? cuando };
+    if (!nueva.garantia_hasta) {
+      const g = await query<{ nombre: string | null; meses: number | null }>(
+        `SELECT g.nombre, g.meses FROM moveadvisor_market_leads l
+           LEFT JOIN market_garantias g ON g.id = l.garantia_id WHERE l.id = $1`,
+        [x.id]
+      ).catch(() => ({ rows: [] as { nombre: string | null; meses: number | null }[] }));
+      const cuenta = garantiaDeUnaImportacion(g.rows[0]);
+      nueva.garantia_de = cuenta.de;
+      nueva.garantia_producto = cuenta.producto;
+      nueva.garantia_meses = cuenta.meses;
+      nueva.garantia_hasta = cuenta.meses ? garantiaHasta(new Date(cuando), cuenta.meses) : null;
+    }
+
+    const dia = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const linea = `[${dia} · En transporte → Entregado] El transportista lo entregó en su domicilio.`;
+    const movido = await query<{ user_email: string | null; contact_name: string | null; vehicle_title: string | null; erp_response: string | null }>(
+      `UPDATE moveadvisor_market_leads
+          SET status = 'Entregado', entrega = $3,
+              erp_notes = CASE WHEN COALESCE(erp_notes, '') = '' THEN $2
+                               ELSE erp_notes || E'\n' || $2 END
+        WHERE id = $1 AND status <> 'Entregado'
+      RETURNING user_email, contact_name, vehicle_title, erp_response`,
+      [x.id, linea, JSON.stringify(nueva)]
+    ).catch((e: Error) => {
+      console.error('[leads] no se ha podido dar por entregado:', e.message);
+      return { rows: [] as never[] };
+    });
+    if (!movido.rows.length) continue;
+    cerrados += 1;
+
+    // Lo mismo que la entrega a mano, y en el mismo orden: el garaje y luego
+    // el correo que lo anuncia.
+    const lead = movido.rows[0];
+    await daleSuIdCar(x.id)
+      .catch((e: Error) => console.error('[leads] no se ha podido dar de alta el IdCar:', e.message));
+    if (String(lead.user_email ?? '').trim()) {
+      await alCliente(
+        String(lead.user_email),
+        `Tu coche ya es tuyo — ${lead.vehicle_title || 'PopCar'}`,
+        entregadoEmailHtml(lead as unknown as Lead)
+      ).catch((e: Error) => console.error('[leads] aviso de entrega final:', e.message));
+    }
+  }
+  if (cerrados) console.log('[leads] dados por entregados %d expedientes', cerrados);
+  return cerrados;
+}
+
 export async function daleSuIdCar(leadId: string): Promise<string | null> {
   const r = await query<{
     user_email: string; vehicle_title: string; matricula: string | null;
@@ -373,6 +471,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   await abreElTramoAlCliente().catch(() => 0);
   await laFechaQueLeHemosDicho().catch(() => 0);
   await laCitaQueYaSabemos().catch(() => 0);
+  await daloPorEntregadoSiYaLlego().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();

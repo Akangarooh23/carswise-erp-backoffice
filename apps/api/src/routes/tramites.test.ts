@@ -380,11 +380,11 @@ describe('el impuesto sale de las partidas', () => {
 
   test('se busca la partida y no el trámite que ya no existe', () => {
     assert.doesNotMatch(LEADS, /t\.tipo = 'Impuesto de matriculación'/);
-    assert.equal(
-      (LEADS.match(/lower\(btrim\(p->>'concepto'\)\) LIKE 'impuesto de matriculaci%'/g) ?? []).length,
-      2,
-      'son dos los sitios que lo leen: la lista de expedientes y la liquidación'
-    );
+    // Y todos los que lo miran, lo miran por la partida. Cuántos son da
+    // igual: lo que no puede quedar es uno buscando por el tipo viejo.
+    const porLaPartida =
+      (LEADS.match(/lower\(btrim\(p->>'concepto'\)\) LIKE 'impuesto de matriculaci%'/g) ?? []).length;
+    assert.ok(porLaPartida >= 2, `solo ${porLaPartida} sitio lo busca por la partida`);
   });
 
   test('y en el coche entero, por sus dos columnas', () => {
@@ -395,10 +395,9 @@ describe('el impuesto sale de las partidas', () => {
   test('una partida sin importe no cuenta como importe', () => {
     // Se apuntan conceptos antes de saber lo que valen. Un vacío leído como
     // cero diría que hay que devolverle la provisión entera.
-    assert.equal(
-      (LEADS.match(/AND COALESCE\(p->>'importe', ''\) <> ''/g) ?? []).length,
-      2
-    );
+    const conGuarda = (LEADS.match(/AND COALESCE\(p->>'importe', ''\) <> ''/g) ?? []).length;
+    const buscan = (LEADS.match(/lower\(btrim\(p->>'concepto'\)\) LIKE 'impuesto de matriculaci%'/g) ?? []).length;
+    assert.equal(conGuarda, buscan, 'hay una búsqueda del impuesto sin la guarda del importe vacío');
   });
 
   test('sale como texto, que es como está escrito', () => {

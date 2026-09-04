@@ -297,3 +297,66 @@ describe('el coche entregado entra en su garaje', () => {
     assert.match(bloque, /\.then\(\(\) => alCliente\(/);
   });
 });
+
+/**
+ * El expediente se da por entregado cuando el coche llega a su casa.
+ *
+ * Lo pidió Ana dos veces: marcar el tramo entregado y tener que repetirlo en
+ * Importaciones es contar dos veces el mismo hecho. El camión descargó en su
+ * puerta; el coche está entregado.
+ *
+ * Lo que se sostiene aquí son las dos cosas que harían daño al automatizarlo:
+ * cerrar el expediente con el impuesto sin ajustar —esa diferencia ya no se
+ * recupera— y cerrarlo a medias, con el estado puesto y la garantía sin
+ * arrancar, que es un coche entregado sin garantía.
+ */
+describe('el expediente se cierra cuando llega el coche', () => {
+  const FUENTE = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const CIERRE = FUENTE.slice(
+    FUENTE.indexOf('export async function daloPorEntregadoSiYaLlego'),
+    FUENTE.indexOf('export async function daleSuIdCar')
+  );
+
+  test('lo decide el segundo tramo entregado', () => {
+    assert.match(CIERRE, /JOIN erp_transportes t ON t\.lead_id = l\.id AND t\.tramo > 1/);
+    assert.match(CIERRE, /AND t\.fecha_entrega IS NOT NULL/);
+  });
+
+  test('pero no con el impuesto sin liquidar', () => {
+    // Es la única puerta que queda, y es de dinero: cerrado el expediente, esa
+    // diferencia no se recupera —él ya tiene su coche— o se le queda a él un
+    // dinero que era suyo.
+    assert.match(CIERRE, /AND l\.liquidacion_at IS NULL\)/);
+    assert.match(CIERRE, /impuesto de matriculaci%/);
+  });
+
+  test('y sin nada que liquidar, no estorba', () => {
+    // Mientras la gestoría no haya escrito el importe no hay nada que ajustar,
+    // y bloquear ahí sería no entregar nunca un coche cuya gestoría va lenta.
+    assert.match(CIERRE, /AND COALESCE\(p->>'importe', ''\) <> ''/);
+  });
+
+  test('la garantía empieza el día que lo tuvo, no hoy', () => {
+    // Si esto se recupera tres días después porque nadie miró la pantalla, la
+    // garantía empezaría tarde y el cliente tendría tres días menos.
+    assert.match(CIERRE, /garantiaHasta\(new Date\(cuando\), cuenta\.meses\)/);
+    assert.match(CIERRE, /fecha: previa\.fecha \?\? cuando/);
+  });
+
+  test('no se cierra dos veces', () => {
+    // El WHERE sobre el estado anterior: sin él, cada pasada le mandaría otra
+    // vez el correo de «tu coche ya es tuyo».
+    assert.match(CIERRE, /WHERE id = \$1 AND status <> 'Entregado'/);
+    assert.match(CIERRE, /if \(!movido\.rows\.length\) continue;/);
+  });
+
+  test('y hace lo mismo que la entrega a mano: garaje y correo', () => {
+    assert.match(CIERRE, /await daleSuIdCar\(x\.id\)/);
+    assert.match(CIERRE, /entregadoEmailHtml\(lead as unknown as Lead\)/);
+  });
+
+  test('se mira al abrir Importaciones', () => {
+    assert.match(FUENTE, /await daloPorEntregadoSiYaLlego\(\)\.catch/);
+  });
+});

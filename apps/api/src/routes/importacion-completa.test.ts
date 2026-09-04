@@ -125,6 +125,37 @@ before(async () => {
      * con los cuatro desactivados, que es lo mismo que no probarlos.
      */
 
+    /*
+     * Los coches que ya están en casa del cliente.
+     *
+     * Sin esta rama, el genérico de `FROM moveadvisor_market_leads` contestaba
+     * con **todos** los expedientes: el reconciliador daba por entregado un
+     * coche que acababa de salir de Alemania. Una base falsa que contesta que
+     * sí a todo hace que una función parezca funcionar y haga lo contrario.
+     */
+    if (/JOIN erp_transportes t ON t\.lead_id = l\.id AND t\.tramo > 1/i.test(t)) {
+      return responde(tablas.leads.filter((l) => {
+        if (l.lead_type !== 'import' || l.status === 'Entregado') return false;
+        const alCliente = tablas.transportes.find((x) =>
+          x.lead_id === l.id && Number(x.tramo) > 1 && Boolean(x.fecha_entrega));
+        if (!alCliente) return false;
+        // Y el impuesto: si hay partida con importe y no está liquidado, no.
+        const suyos = tablas.tramites.filter((tr) =>
+          tr.lead_id === l.id
+          || tablas.pedidos.some((pe) => pe.id === tr.pedido_id && pe.lead_id === l.id));
+        const conImpuesto = suyos.some((tr) => (Array.isArray(tr.partidas) ? tr.partidas : [])
+          .some((p) => /^impuesto de matriculaci/i.test(String(p?.concepto ?? '').trim())
+            && String(p?.importe ?? '').trim() !== ''));
+        if (conImpuesto && !l.liquidacion_at) return false;
+        return true;
+      }).map((l) => ({
+        id: l.id,
+        llegada: String(tablas.transportes.find((x) =>
+          x.lead_id === l.id && Number(x.tramo) > 1)?.fecha_entrega ?? ''),
+        entrega: l.entrega ?? null,
+      })));
+    }
+
     // Etapas que se han quedado atrás respecto a sus dos viajes.
     if (/JOIN erp_transportes t1 ON t1\.lead_id = l\.id AND t1\.tramo = 1/i.test(t)) {
       return responde(tablas.leads.filter((l) =>
