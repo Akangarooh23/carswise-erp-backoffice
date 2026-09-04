@@ -409,3 +409,76 @@ describe('el precio del transporte se parte', () => {
     assert.match(bloque, /regimen: t\.regimen/);
   });
 });
+
+/**
+ * La cita de entrega se rellena sola con lo que ya sabemos.
+ *
+ * Lo dijo Ana: esos datos ya los tenemos. El día lo dio el transportista al
+ * aceptar el segundo viaje, la dirección es la del cliente escrita en ese mismo
+ * tramo y el nombre es el del conductor que va a llamar al timbre. Pedirle a
+ * alguien que copie tres cosas de una pantalla a otra es pedirle que se
+ * equivoque en una.
+ *
+ * El UPDATE está probado contra la base dentro de una transacción deshecha:
+ * rellena las tres del Kia y en la segunda pasada no toca ninguna fila.
+ */
+describe('la cita que ya sabemos', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const CITA = FUENTE.slice(
+    FUENTE.indexOf('export async function laCitaQueYaSabemos'),
+    FUENTE.indexOf('export async function laFechaQueLeHemosDicho')
+  );
+
+  test('el día, la dirección y quién lo lleva', () => {
+    assert.match(CITA, /appointment_date = COALESCE\(l\.appointment_date, t\.entrega_prevista\)/);
+    assert.match(CITA, /appointment_address = CASE WHEN/);
+    assert.match(CITA, /appointment_contact = CASE WHEN/);
+  });
+
+  test('la hora no: es lo único que no sabemos', () => {
+    // La pone el conductor el mismo día, cuando llama antes de llegar. Una hora
+    // inventada es la que el cliente se apunta.
+    assert.doesNotMatch(CITA, /appointment_time/);
+  });
+
+  test('con el coche ya en la carretera, no antes', () => {
+    // Una cita de un viaje que todavía no ha salido es una fecha que puede
+    // moverse antes de llegar a nadie — y esa fecha enciende recordatorios.
+    assert.match(CITA, /AND t\.fecha_recogida IS NOT NULL/);
+  });
+
+  test('y solo del segundo viaje', () => {
+    // La fecha del primero es la llegada al depósito, con semanas de trámites
+    // por delante.
+    assert.match(CITA, /AND t\.tramo > 1/);
+  });
+
+  test('solo lo vacío: lo que alguien escribió manda', () => {
+    // Se comprueba en la asignación y no solo en el WHERE. Con un CASE WHEN
+    // TRUE arriba, la condición de abajo sigue estando y el nombre se pisa
+    // igual en cuanto falte cualquiera de los tres campos.
+    assert.match(CITA, /l\.appointment_date IS NULL AND t\.entrega_prevista IS NOT NULL/);
+    assert.match(CITA, /appointment_address = CASE WHEN COALESCE\(l\.appointment_address, ''\) = ''/);
+    assert.match(CITA, /appointment_contact = CASE WHEN COALESCE\(l\.appointment_contact, ''\) = ''/);
+  });
+
+  test('y no escribe por escribir en cada visita', () => {
+    // Sin la condición de que falte algo, cada pasada tocaría todas las filas y
+    // dejaría una nota nueva.
+    assert.match(CITA, /AND \(\s*\n\s*\(l\.appointment_date IS NULL/);
+  });
+
+  test('deja dicho de dónde salió', () => {
+    // Una fecha que enciende correos al cliente y aparece sola tiene que poder
+    // explicarse después.
+    assert.match(CITA, /erp_notes = CASE WHEN/);
+  });
+
+  test('se mira en las dos pantallas', () => {
+    for (const donde of ['transportes', 'leads']) {
+      const fuente = readFileSync(new URL(`./${donde}.ts`, import.meta.url), 'utf8');
+      assert.match(fuente, /await laCitaQueYaSabemos\(\)\.catch/, `en ${donde} no se mira`);
+    }
+  });
+});

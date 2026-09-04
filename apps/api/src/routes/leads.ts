@@ -8,6 +8,7 @@ import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import {
   abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas, laFechaQueLeHemosDicho,
+  laCitaQueYaSabemos,
 } from './transportes.js';
 import {
   dondeVaEnSuPanel, marcaYModelo, faltaParaDarleElIdCar, urlDelFichero,
@@ -371,6 +372,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
   await laFechaQueLeHemosDicho().catch(() => 0);
+  await laCitaQueYaSabemos().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();

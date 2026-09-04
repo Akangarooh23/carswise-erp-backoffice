@@ -181,6 +181,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   await laMatriculaQueYaTiene().catch(() => 0);
   await rellenaElOrigenQueYaConocemos().catch(() => 0);
   await laFechaQueLeHemosDicho().catch(() => 0);
+  await laCitaQueYaSabemos().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -1536,6 +1537,62 @@ export async function abreElTramoAlCliente(): Promise<number> {
  * Y solo si está vacía. Una fecha escrita a mano manda: puede haberse acordado
  * otra cosa por teléfono, y lo que se le prometió no se pisa desde aquí.
  */
+/**
+ * La cita de entrega se rellena sola con lo que ya sabemos.
+ *
+ * Lo dijo Ana: esos datos ya los tenemos. El día lo dio el transportista al
+ * aceptar el segundo viaje, la dirección es la del cliente escrita en ese mismo
+ * tramo y el nombre es el del conductor que va a llamar al timbre. Pedirle a
+ * alguien que copie tres cosas de una pantalla a otra es pedirle que se
+ * equivoque en una.
+ *
+ * **La hora no.** Es lo único que no sabemos —la pone el conductor el mismo
+ * día, cuando llama antes de llegar— y una hora inventada es la que el cliente
+ * se apunta.
+ *
+ * Poner el día no es prometer nada nuevo: al cargar el segundo camión ya le
+ * salió un correo diciéndole que su coche llega ese día. Lo que hace es
+ * encender los recordatorios de la víspera y del mismo día, que hasta ahora
+ * dependían de que alguien tecleara una fecha que ya estaba escrita.
+ *
+ * Solo lo vacío, campo a campo: si se acordó otra cosa por teléfono, manda lo
+ * que alguien escribió.
+ */
+export async function laCitaQueYaSabemos(): Promise<number> {
+  await prepara();
+  const r = await query(
+    `UPDATE moveadvisor_market_leads l
+        SET appointment_date = COALESCE(l.appointment_date, t.entrega_prevista),
+            appointment_address = CASE WHEN COALESCE(l.appointment_address, '') = ''
+                                       THEN COALESCE(t.hasta, '') ELSE l.appointment_address END,
+            appointment_contact = CASE WHEN COALESCE(l.appointment_contact, '') = ''
+                                       THEN COALESCE(t.contacto_transportista, '')
+                                       ELSE l.appointment_contact END,
+            erp_notes = CASE WHEN COALESCE(l.erp_notes, '') = ''
+                             THEN $1 ELSE l.erp_notes || E'\n' || $1 END
+       FROM erp_transportes t
+      WHERE t.lead_id = l.id
+        AND t.tramo > 1
+        -- Con el coche ya en la carretera: una cita de un viaje que todavía no
+        -- ha salido es una fecha que puede moverse antes de llegar a nadie.
+        AND t.fecha_recogida IS NOT NULL
+        AND (
+          (l.appointment_date IS NULL AND t.entrega_prevista IS NOT NULL)
+          OR (COALESCE(l.appointment_address, '') = '' AND COALESCE(t.hasta, '') <> '')
+          OR (COALESCE(l.appointment_contact, '') = ''
+              AND COALESCE(t.contacto_transportista, '') <> '')
+        )`
+    , ['[automático] El día, la dirección y quién lleva el coche salen del segundo transporte.']
+  ).catch((e: Error) => {
+    console.error('[transportes] no se ha podido poner la cita:', e.message);
+    return { rowCount: 0 };
+  });
+  if (r.rowCount) {
+    console.log('[transportes] puesta la cita de entrega en %d expedientes', r.rowCount);
+  }
+  return r.rowCount ?? 0;
+}
+
 export async function laFechaQueLeHemosDicho(): Promise<number> {
   await prepara();
   const r = await query(
