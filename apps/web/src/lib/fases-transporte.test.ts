@@ -14,7 +14,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteToca,
+  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteSeAbre,
   faltaParaSolicitar, faltaParaAvisarAlOrigen, faltaParaConfirmar,
   seSabeLoDelPortacoches, comoSeLlamaElCampo, pistaDelCampo, PISTAS,
   type DatosDelTramo,
@@ -170,42 +170,57 @@ describe('parte 3: lo que contesta el origen', () => {
   });
 });
 
-describe('cuál de las tres partes está esperando algo', () => {
-  test('un tramo recién nacido espera en la primera', () => {
-    assert.equal(queParteToca({ estado: 'Por organizar', tramo: 1 }), 'solicitud');
+describe('cuál de las tres se abre, y cuándo se abre sola', () => {
+  /*
+   * Lo pidió Ana así: primero la 1, y al ejecutar su botón se abre la 2; al
+   * ejecutar el suyo, la 3.
+   *
+   * Lo que se sostiene aquí es que eso lo decide **lo ejecutado** y no lo
+   * tecleado. Si lo decidiera el formulario, la sección se cerraría bajo los
+   * dedos al rellenar el último hueco y la de abajo se abriría de golpe
+   * mientras todavía se está escribiendo en esta.
+   */
+
+  test('un tramo recién nacido abre la primera', () => {
+    assert.equal(queParteSeAbre({ estado: 'Por organizar', tramo: 1 }), 'solicitud');
   });
 
-  test('con los datos puestos pero sin preguntar, sigue en la primera', () => {
-    // El botón de preguntar está ahí: la parte no termina con los campos, sino
+  test('con los campos puestos pero sin pedir nada, sigue abierta la primera', () => {
+    // El botón está ahí abajo: la parte no termina con los campos, termina
     // con el correo.
-    assert.equal(queParteToca(PARTE_1), 'solicitud');
+    assert.equal(queParteSeAbre(PARTE_1), 'solicitud');
   });
 
-  test('preguntado, pasa a la segunda', () => {
-    assert.equal(queParteToca({ ...PARTE_1, presupuesto_pedido_at: '2026-09-02T09:00:00Z' }), 'respuesta');
+  test('pedida la disponibilidad, se abre la segunda', () => {
+    assert.equal(
+      queParteSeAbre({ ...PARTE_1, presupuesto_pedido_at: '2026-09-02T09:00:00Z' }),
+      'respuesta'
+    );
   });
 
-  test('con su respuesta pero sin avisar al origen, sigue en la segunda', () => {
-    assert.equal(queParteToca({ ...PARTE_2, aviso_recogida_at: null }), 'respuesta');
+  test('y no se cierra por haber tecleado su respuesta, solo por avisar al origen', () => {
+    // Este es el fallo que se evita: rellenar el último campo no puede cerrar
+    // la sección en la que se está escribiendo.
+    assert.equal(queParteSeAbre({ ...PARTE_2, aviso_recogida_at: null }), 'respuesta');
+    assert.equal(queParteSeAbre(PARTE_2), 'origen');
   });
 
-  test('avisado, pasa a la tercera', () => {
-    assert.equal(queParteToca(PARTE_2), 'origen');
+  test('en el segundo viaje la cierra el guardar, que es el botón que hay', () => {
+    // No hay a quién avisar: el origen es nuestra nave.
+    const segundo = { ...PARTE_2, tramo: 2, aviso_recogida_at: null };
+    assert.equal(queParteSeAbre({ ...segundo, contacto_transportista: '' }), 'respuesta');
+    assert.equal(queParteSeAbre({ ...segundo, entrega_prevista: '' }), 'respuesta');
+    assert.equal(queParteSeAbre(segundo), 'origen');
   });
 
-  test('y con la orden fuera ya no espera ninguna', () => {
-    assert.equal(queParteToca({ ...PARTE_3, orden_enviada_at: '2026-09-03T12:00:00Z' }), null);
+  test('con la orden fuera ya no se abre ninguna', () => {
+    assert.equal(queParteSeAbre({ ...PARTE_3, orden_enviada_at: '2026-09-03T12:00:00Z' }), null);
   });
 
-  test('con todo relleno pero sin confirmar, la tercera', () => {
-    assert.equal(queParteToca(PARTE_3), 'origen');
-  });
-
-  test('en el segundo viaje se salta el aviso al origen', () => {
-    assert.equal(queParteToca({ ...PARTE_2, tramo: 2, aviso_recogida_at: null }), 'origen');
+  test('y hasta confirmarla, la tercera', () => {
+    assert.equal(queParteSeAbre(PARTE_3), 'origen');
   });
 });
-
 describe('a quién se le avisa de la recogida', () => {
   test('solo en el primer tramo, que es el que sale del vendedor', () => {
     assert.equal(seLePreguntaAlVendedor(1), true);

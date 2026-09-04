@@ -19,7 +19,7 @@ import ElegirProveedor from '../components/ElegirProveedor.js';
  */
 
 import {
-  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteToca,
+  seLePreguntaAlVendedor, queTocaEnElTramo, queViajeEs, queParteSeAbre,
   faltaParaSolicitar, faltaParaAvisarAlOrigen, faltaParaConfirmar,
   comoSeLlamaElCampo, pistaDelCampo, PISTAS,
 } from '../lib/fases-transporte.js';
@@ -404,7 +404,12 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
    * a aparecer.
    */
   const vivo = { ...t, ...datos, llegada };
-  const parte = queParteToca(vivo);
+  /*
+   * Cuál se abre. Sale de lo grabado y no de lo que se está escribiendo: la
+   * siguiente se abre al ejecutar el botón de la anterior, no al terminar de
+   * teclear el último campo.
+   */
+  const parte = queParteSeAbre(t);
   const faltaSolicitar = faltaParaSolicitar(vivo);
   const faltaAvisar = faltaParaAvisarAlOrigen(vivo);
   const faltaConfirmar = faltaParaConfirmar(vivo);

@@ -139,18 +139,31 @@ export function faltaParaConfirmar(t: DatosDelTramo): string[] {
 }
 
 /**
- * Cuál de las tres partes está esperando algo.
+ * Cuál de las tres se abre al entrar, y cuál se abre sola después.
  *
- * Es la que se abre al entrar; las otras dos van plegadas. Se mira **lo que
- * hay**, no el estado del desplegable: un tramo «Contratado» al que le falta el
- * horario y otro que lo tiene todo no están en el mismo sitio aunque digan lo
- * mismo.
+ * Lo pidió Ana así: primero la parte 1, y **al ejecutar su botón** se abre la
+ * 2; al ejecutar el suyo, la 3. Por eso esto mira solo lo ya grabado —los
+ * correos que han salido y los datos guardados— y no lo que se está
+ * escribiendo: si mirara el formulario, la sección se cerraría bajo los dedos
+ * en cuanto se rellenara el último hueco, y la siguiente se abriría de golpe
+ * mientras todavía se está escribiendo en esta.
+ *
+ * En el segundo viaje no hay a quién avisar —el origen es nuestra nave—, así
+ * que la parte 2 la cierra el guardar de lo que conteste el transportista,
+ * que es el botón que hay.
+ *
+ * Es distinto de queTocaEnElTramo, que sí mira lo vivo: aquella contesta «qué
+ * falta ahora mismo» y va cambiando mientras se escribe. Esta decide qué se
+ * despliega, y eso no puede moverse solo.
  */
-export function queParteToca(t: DatosDelTramo): ParteDelTramo | null {
-  if (faltaParaSolicitar(t).length > 0 || !hay(t.presupuesto_pedido_at)) return 'solicitud';
-  if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) return 'respuesta';
-  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) return 'respuesta';
-  if (faltaParaConfirmar(t).length > 0 || !hay(t.orden_enviada_at)) return 'origen';
+export function queParteSeAbre(t: DatosDelTramo): ParteDelTramo | null {
+  if (!hay(t.presupuesto_pedido_at)) return 'solicitud';
+  if (seLePreguntaAlVendedor(t.tramo)) {
+    if (!hay(t.aviso_recogida_at)) return 'respuesta';
+  } else if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) {
+    return 'respuesta';
+  }
+  if (!hay(t.orden_enviada_at)) return 'origen';
   return null;
 }
 
