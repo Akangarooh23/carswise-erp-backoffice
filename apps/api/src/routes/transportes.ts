@@ -158,6 +158,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
+  await rellenaElOrigenQueYaConocemos().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -1253,6 +1254,68 @@ export async function abreElTramoAlCliente(): Promise<number> {
   }
 
   return abiertos;
+}
+
+/**
+ * Si sabemos de dónde sale, sabemos quién sale a abrir.
+ *
+ * El segundo viaje de una importación sale de nuestro depósito, y ahí siempre
+ * está la misma persona, con el mismo teléfono y el mismo horario. Escribirlo
+ * a mano coche a coche es teclear tres veces lo que ya está escrito en su
+ * ficha de Proveedores, con la variedad de erratas que eso trae, y es
+ * exactamente el hueco vacío que acaba rellenándose con lo primero que sirva.
+ *
+ * La regla no habla de tramos ni de depósitos: **si la dirección de donde sale
+ * es la de un proveedor nuestro, quien está allí es el suyo.** Vale igual para
+ * el depósito de Zaragoza y para un vendedor cuya nave ya conocemos, y el día
+ * que haya dos depósitos sigue valiendo sin tocar nada.
+ *
+ * Solo rellena lo que está **vacío**, campo a campo: lo que alguien escribió no
+ * se pisa nunca, ni aunque la ficha diga otra cosa. Si el vendedor contestó que
+ * ese día pregunte por otra persona, manda su respuesta.
+ *
+ * Y es un reconciliador y no un disparo al crear el tramo, por lo de siempre:
+ * un disparo ocurre en un momento, y un momento se pierde. Los tramos que ya
+ * existen, y los que se abran cuando la ficha todavía no tenía contacto, se
+ * arreglan solos la próxima vez que alguien mire la pantalla.
+ */
+export async function rellenaElOrigenQueYaConocemos(): Promise<number> {
+  await prepara();
+  /*
+   * Las direcciones se comparan en minúsculas y con los espacios apretados.
+   * No se intenta nada más listo: si no coinciden, no se rellena, y no pasa
+   * nada. Adivinar direcciones parecidas es como se manda un camión a la nave
+   * de al lado.
+   */
+  const r = await query(
+    `UPDATE erp_transportes t
+        SET contacto_origen = CASE WHEN COALESCE(t.contacto_origen, '') = ''
+                                   THEN p.contacto ELSE t.contacto_origen END,
+            telefono_origen = CASE WHEN COALESCE(t.telefono_origen, '') = ''
+                                   THEN p.telefono ELSE t.telefono_origen END,
+            horario_origen  = CASE WHEN COALESCE(t.horario_origen, '') = ''
+                                   THEN p.horario  ELSE t.horario_origen  END,
+            updated_at = NOW()
+       FROM erp_proveedores p
+      WHERE p.activo
+        AND lower(regexp_replace(btrim(p.direccion), '\\s+', ' ', 'g'))
+          = lower(regexp_replace(btrim(COALESCE(t.desde, '')), '\\s+', ' ', 'g'))
+        AND COALESCE(p.direccion, '') <> ''
+        -- Algo que dar: si su ficha está vacía, esto no es una escritura.
+        AND (COALESCE(p.contacto, '') <> '' OR COALESCE(p.horario, '') <> ''
+          OR COALESCE(p.telefono, '') <> '')
+        -- Y algo que rellenar, para no escribir por escribir en cada visita.
+        AND (COALESCE(t.contacto_origen, '') = '' AND COALESCE(p.contacto, '') <> ''
+          OR COALESCE(t.telefono_origen, '') = '' AND COALESCE(p.telefono, '') <> ''
+          OR COALESCE(t.horario_origen, '')  = '' AND COALESCE(p.horario, '')  <> '')`
+  ).catch((e: Error) => {
+    console.error('[transportes] no se ha podido rellenar el origen:', e.message);
+    return { rowCount: 0 };
+  });
+  if (r.rowCount) {
+    console.log('[transportes] rellenado el origen de %d tramos desde su ficha', r.rowCount);
+  }
+  return r.rowCount ?? 0;
 }
 
 export async function abreTransporteDePedido(datos: {

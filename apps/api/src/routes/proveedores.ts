@@ -64,10 +64,29 @@ const ENSURE_MATRIZ = `
 const ENSURE_IBAN = `
   ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS iban TEXT NOT NULL DEFAULT ''`;
 
+/**
+ * Quién sale a abrir, y en qué horas.
+ *
+ * Una empresa tiene centralita; un camión pregunta por alguien. Y esas dos
+ * cosas acababan escritas a mano en cada tramo, coche a coche: nuestro
+ * depósito es el origen de todos los segundos viajes y el mismo nombre, el
+ * mismo teléfono y el mismo horario se volvían a teclear cada vez, con la
+ * variedad de erratas que eso trae.
+ *
+ * El horario es texto libre y no dos horas: lo que se contesta es «de lunes a
+ * viernes de 9 a 17, avisando antes», y eso no cabe en un desplegable sin
+ * perder la mitad.
+ */
+const ENSURE_CONTACTO = `
+  ALTER TABLE erp_proveedores
+    ADD COLUMN IF NOT EXISTS contacto TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS horario  TEXT NOT NULL DEFAULT ''`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_TABLE, []).catch(() => {});
+  await query(ENSURE_CONTACTO, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
   await query(ENSURE_MATRIZ, []).catch(() => {});
   await query(ENSURE_IBAN, []).catch(() => {});
@@ -135,7 +154,8 @@ async function traeLoQueYaEstaba() {
   }
 }
 
-const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, iban, notas, activo, created_at,
+const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, contacto, horario,
+                iban, notas, activo, created_at,
                 matriz_id,
                 (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz`;
 
@@ -191,10 +211,12 @@ proveedoresRouter.post('/proveedores', requireRole(['admin', 'operations']), asy
       () => siguienteDeSerie('erp_proveedores', prefijoAnual('PRV')),
       async (nuevoId) => {
         await query(
-          `INSERT INTO erp_proveedores (id, nombre, clave, tipos, nif, telefono, email, direccion, iban, notas, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          `INSERT INTO erp_proveedores (id, nombre, clave, tipos, nif, telefono, email, direccion,
+                                        contacto, horario, iban, notas, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [nuevoId, nombre, clave, tipos, nt(req.body?.nif), nt(req.body?.telefono),
-           nt(req.body?.email).toLowerCase(), nt(req.body?.direccion), ibanLimpio(req.body?.iban),
+           nt(req.body?.email).toLowerCase(), nt(req.body?.direccion),
+           nt(req.body?.contacto), nt(req.body?.horario), ibanLimpio(req.body?.iban),
            nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '']
         );
       }
@@ -226,7 +248,7 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
       if (!tipos.length) { res.status(400).json({ ok: false, error: 'falta_tipo' }); return; }
       pon('tipos', tipos);
     }
-    for (const campo of ['nif', 'telefono', 'email', 'direccion', 'notas'] as const) {
+    for (const campo of ['nif', 'telefono', 'email', 'direccion', 'contacto', 'horario', 'notas'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     // El IBAN se guarda sin espacios: escrito de dos formas distintas, el mismo

@@ -38,6 +38,15 @@ interface Proveedor {
   telefono: string;
   email: string;
   direccion: string;
+  /**
+   * Quién sale a abrir en esa dirección, y en qué horas.
+   *
+   * La empresa tiene centralita; un camión pregunta por alguien. Nuestro
+   * depósito es el origen de todos los segundos viajes, y sin esto su nombre,
+   * su teléfono y su horario se volvían a teclear coche a coche.
+   */
+  contacto: string;
+  horario: string;
   // Dónde se le paga. De este dato depende que salga dinero: a un vendedor
   // alemán se le transfieren 16.890 € de un cliente.
   iban: string;
@@ -315,6 +324,7 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
   const [datos, setDatos] = useState({
     nombre: p.nombre, nif: p.nif ?? '', telefono: p.telefono ?? '',
     email: p.email ?? '', direccion: p.direccion ?? '', iban: p.iban ?? '',
+    contacto: p.contacto ?? '', horario: p.horario ?? '',
     notas: p.notas ?? '',
     matriz_id: p.matriz_id ?? '',
   });
@@ -404,6 +414,31 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
             <input value={datos.direccion} onChange={(e) => setDatos((d) => ({ ...d, direccion: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
+
+          {/*
+            * Quién sale a abrir en esa dirección, y en qué horas.
+            *
+            * Un camión no pregunta por una empresa: pregunta por alguien. Y esto
+            * se copia solo al tramo que sale de aquí, así que escrito una vez
+            * deja de teclearse coche a coche.
+            */}
+          <label className="text-[11px] text-brand-400">
+            Persona de contacto allí
+            <input value={datos.contacto} placeholder="Juan Hernández"
+                   onChange={(e) => setDatos((d) => ({ ...d, contacto: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="text-[11px] text-brand-400">
+            Horario
+            <input value={datos.horario} placeholder="De lunes a viernes, de 9:00 a 17:00"
+                   onChange={(e) => setDatos((d) => ({ ...d, horario: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <div className="col-span-2 text-[10px] text-brand-300 -mt-1">
+            Se copian al tramo que sale de esta dirección: por quién pregunta el
+            conductor y en qué horas puede ir. Lo que ya esté escrito en el tramo
+            no se toca.
+          </div>
           {/*
             * El IBAN, con su aviso de para qué es.
             *

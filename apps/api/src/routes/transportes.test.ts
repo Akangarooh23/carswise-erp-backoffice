@@ -120,3 +120,105 @@ describe('lo que el servidor exige antes de confirmar', () => {
     assert.match(GUARDA, /typeof t\.portacoches !== 'boolean'/);
   });
 });
+
+/**
+ * Si sabemos de dónde sale, sabemos quién sale a abrir.
+ *
+ * El segundo viaje de una importación sale de nuestro depósito, y allí siempre
+ * está la misma persona, con el mismo teléfono y el mismo horario. Escribirlo a
+ * mano coche a coche es teclear tres veces lo que ya está en su ficha, con la
+ * variedad de erratas que eso trae — y es exactamente el hueco vacío que acaba
+ * rellenándose con lo primero que sirva.
+ *
+ * Lo que se sostiene aquí son las dos cosas que pueden hacer daño: que **no se
+ * pise lo que alguien escribió**, y que **no se adivine la dirección**. Un
+ * camión mandado a la nave de al lado no se deshace.
+ *
+ * El UPDATE se ha probado contra la base, dentro de una transacción deshecha:
+ * rellena el tramo 2, no toca el 1 —la dirección alemana no es la de ningún
+ * proveedor nuestro— y en la segunda pasada no escribe ninguna fila.
+ */
+describe('el origen que ya conocemos', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const RELLENA = FUENTE.slice(
+    FUENTE.indexOf('export async function rellenaElOrigenQueYaConocemos'),
+    FUENTE.indexOf('export async function abreTransporteDePedido')
+  );
+
+  test('se mira al abrir la pantalla, como los demás', () => {
+    // Reconciliador y no disparo al crear el tramo: un disparo ocurre en un
+    // momento, y un momento se pierde. Los tramos que ya existen se arreglan la
+    // próxima vez que alguien mire.
+    assert.match(FUENTE, /await rellenaElOrigenQueYaConocemos\(\)\.catch/);
+  });
+
+  test('solo rellena lo que está vacío, campo a campo', () => {
+    // Si el vendedor contestó que ese día pregunte por otra persona, manda su
+    // respuesta, no la ficha.
+    assert.ok(RELLENA.includes(`contacto_origen = CASE WHEN COALESCE(t.contacto_origen, '') = ''`),
+      'el contacto se pisaría');
+    assert.ok(RELLENA.includes(`telefono_origen = CASE WHEN COALESCE(t.telefono_origen, '') = ''`),
+      'el teléfono se pisaría');
+    assert.ok(RELLENA.includes(`horario_origen  = CASE WHEN COALESCE(t.horario_origen, '') = ''`),
+      'el horario se pisaría');
+  });
+
+  test('y solo si la dirección es exactamente la misma', () => {
+    // Sin adivinar parecidos: si no coinciden, no se rellena y no pasa nada.
+    // Adivinar direcciones parecidas es como se manda un camión a la nave de al
+    // lado.
+    assert.match(RELLENA, /lower\(regexp_replace\(btrim\(p\.direccion\)/);
+    assert.match(RELLENA, /lower\(regexp_replace\(btrim\(COALESCE\(t\.desde/);
+    assert.doesNotMatch(RELLENA, /LIKE|ILIKE|similarity/);
+  });
+
+  test('no habla de tramos ni de depósitos', () => {
+    // La regla es «quien esté en esa dirección», no «el tramo 2». Así vale
+    // igual para el depósito de Zaragoza, para un vendedor cuya nave ya
+    // conocemos, y para el segundo depósito que haya algún día.
+    assert.doesNotMatch(RELLENA, /t\.tramo/);
+  });
+
+  test('con una ficha vacía no escribe nada', () => {
+    // Ni una escritura por visita: sin nada que dar, y sin nada que rellenar,
+    // el UPDATE no toca ninguna fila.
+    assert.ok(RELLENA.includes(`AND (COALESCE(p.contacto, '') <> ''`),
+      'escribiría con la ficha vacía');
+    assert.ok(RELLENA.includes(`AND (COALESCE(t.contacto_origen, '') = ''`),
+      'escribiría en cada visita');
+  });
+
+  test('y a un proveedor dado de baja no se le pregunta', () => {
+    assert.match(RELLENA, /WHERE p\.activo/);
+  });
+});
+
+/**
+ * Y la ficha del proveedor tiene dónde guardarlo.
+ *
+ * Estaba en «notas», que es texto libre: ahí se lee, pero de ahí no lo puede
+ * coger nada. Un nombre y un horario que no se pueden leer desde el código son
+ * un nombre y un horario que se vuelven a teclear en cada coche.
+ */
+describe('quién sale a abrir, en la ficha del proveedor', () => {
+  const FUENTE = readFileSync(new URL('./proveedores.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('las dos columnas existen', () => {
+    assert.match(FUENTE, /ADD COLUMN IF NOT EXISTS contacto TEXT/);
+    assert.match(FUENTE, /ADD COLUMN IF NOT EXISTS horario  TEXT/);
+  });
+
+  test('y se crean al preparar, no solo en el CREATE TABLE', () => {
+    // La tabla ya existe en producción: un CREATE TABLE IF NOT EXISTS con dos
+    // columnas más no las añade, y la consulta fallaría en la primera lectura.
+    assert.match(FUENTE, /await query\(ENSURE_CONTACTO, \[\]\)/);
+  });
+
+  test('se leen, se pueden dar de alta y se pueden cambiar', () => {
+    assert.match(FUENTE, /const CAMPOS = [\s\S]{0,200}contacto, horario/);
+    assert.match(FUENTE, /nt\(req\.body\?\.contacto\), nt\(req\.body\?\.horario\)/);
+    assert.match(FUENTE, /'direccion', 'contacto', 'horario', 'notas'/);
+  });
+});
