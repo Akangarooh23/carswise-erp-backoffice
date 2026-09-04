@@ -161,6 +161,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   await abreLosTramitesQueFalten().catch(() => 0);
   await laMatriculaQueYaTiene().catch(() => 0);
   await rellenaElOrigenQueYaConocemos().catch(() => 0);
+  await laFechaQueLeHemosDicho().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);
   const condiciones: string[] = [];
@@ -1359,6 +1360,48 @@ export async function abreElTramoAlCliente(): Promise<number> {
  * existen, y los que se abran cuando la ficha todavía no tenía contacto, se
  * arreglan solos la próxima vez que alguien mire la pantalla.
  */
+/**
+ * La fecha que le hemos dicho al cliente sale del segundo viaje.
+ *
+ * En el expediente hay una casilla —«cuándo le hemos dicho que lo tendrá»— que
+ * es lo que él ve en su panel. Se rellenaba a mano, y para entonces la fecha ya
+ * estaba escrita dos pantallas más allá: la dio el transportista al aceptar el
+ * viaje a su casa, y con ella salió el correo que le dice que llega el día tal.
+ *
+ * Con la casilla vacía, el panel del cliente no dice ninguna fecha mientras su
+ * correo dice una. Quien no se fía llama, y la llamada es sobre algo que ya
+ * sabemos.
+ *
+ * **Solo del segundo viaje.** La fecha del primero es cuándo llega el camión a
+ * nuestro depósito, y entre eso y tener el coche hay semanas de matriculación:
+ * ponerla ahí sería prometerle su coche para dentro de tres días.
+ *
+ * Y solo si está vacía. Una fecha escrita a mano manda: puede haberse acordado
+ * otra cosa por teléfono, y lo que se le prometió no se pisa desde aquí.
+ */
+export async function laFechaQueLeHemosDicho(): Promise<number> {
+  await prepara();
+  const r = await query(
+    `UPDATE moveadvisor_market_leads l
+        SET delivery_estimate = t.entrega_prevista,
+            erp_notes = CASE WHEN COALESCE(l.erp_notes, '') = ''
+                             THEN $1 ELSE l.erp_notes || E'\n' || $1 END
+       FROM erp_transportes t
+      WHERE t.lead_id = l.id
+        AND t.tramo > 1
+        AND t.entrega_prevista IS NOT NULL
+        AND l.delivery_estimate IS NULL`
+    , ['[automático] La fecha de entrega al cliente sale del segundo transporte: es la que dio el transportista al aceptar.']
+  ).catch((e: Error) => {
+    console.error('[transportes] no se ha podido poner la fecha de entrega:', e.message);
+    return { rowCount: 0 };
+  });
+  if (r.rowCount) {
+    console.log('[transportes] puesta la fecha de entrega en %d expedientes', r.rowCount);
+  }
+  return r.rowCount ?? 0;
+}
+
 export async function rellenaElOrigenQueYaConocemos(): Promise<number> {
   await prepara();
   /*

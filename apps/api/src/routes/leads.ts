@@ -6,7 +6,9 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
-import { abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas } from './transportes.js';
+import {
+  abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas, laFechaQueLeHemosDicho,
+} from './transportes.js';
 import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
 import { abreLosTramitesQueFalten, abreTramitesDeVenta } from './tramites.js';
 import {
@@ -236,6 +238,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   // abren los papeleos y el segundo tramo.
   await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
+  await laFechaQueLeHemosDicho().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
   const status  = String(req.query.status || '').trim();

@@ -307,3 +307,63 @@ describe('el aviso al cliente cuando el coche sale', () => {
     assert.match(AVISO, /No salió el correo de «\$\{cual\}»/);
   });
 });
+
+/**
+ * La fecha que le hemos dicho al cliente sale del segundo viaje.
+ *
+ * En el expediente hay una casilla —«cuándo le hemos dicho que lo tendrá»— que
+ * es lo que él ve en su panel. Se rellenaba a mano, y para entonces la fecha ya
+ * estaba escrita dos pantallas más allá: la dio el transportista al aceptar el
+ * viaje a su casa, y con ella salió el correo que le dice que llega el día tal.
+ * Con la casilla vacía, su panel no dice ninguna fecha mientras su correo dice
+ * una, y quien no se fía llama por algo que ya sabemos.
+ *
+ * Lo que se sostiene aquí son las dos cosas que harían daño: prometerle el
+ * coche con la fecha del **primer** viaje —que es la llegada a nuestro
+ * depósito, con semanas de matriculación por delante— y pisar una fecha que
+ * alguien acordó por teléfono.
+ *
+ * El UPDATE se ha probado contra la base dentro de una transacción deshecha:
+ * pone la fecha del Kia y en la segunda pasada no toca ninguna fila.
+ */
+describe('la fecha que le hemos dicho', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const FECHA = FUENTE.slice(
+    FUENTE.indexOf('export async function laFechaQueLeHemosDicho'),
+    FUENTE.indexOf('export async function rellenaElOrigenQueYaConocemos')
+  );
+
+  test('sale del segundo viaje, nunca del primero', () => {
+    // La del primero es cuándo llega el camión al depósito. Ponerla ahí sería
+    // prometerle su coche para dentro de tres días.
+    assert.match(FECHA, /AND t\.tramo > 1/);
+    assert.match(FECHA, /delivery_estimate = t\.entrega_prevista/);
+  });
+
+  test('y solo si la casilla está vacía', () => {
+    // Puede haberse acordado otra cosa por teléfono. Lo que se le prometió no
+    // se pisa desde aquí.
+    assert.match(FECHA, /AND l\.delivery_estimate IS NULL/);
+  });
+
+  test('no escribe una fecha que no existe', () => {
+    assert.match(FECHA, /AND t\.entrega_prevista IS NOT NULL/);
+  });
+
+  test('y deja dicho de dónde salió', () => {
+    // Una fecha que el cliente ve aparecer sola tiene que poder explicarse
+    // después, igual que un cambio de etapa.
+    assert.match(FECHA, /erp_notes = CASE WHEN/);
+    assert.match(FECHA, /\[automático\] La fecha de entrega al cliente sale del segundo transporte/);
+  });
+
+  test('se mira en las dos pantallas donde se lee', () => {
+    // Reconciliador y no un disparo al guardar el tramo: la fecha pudo
+    // escribirse antes de que esto existiera, o a mano en la base.
+    for (const donde of ['transportes', 'leads']) {
+      const fuente = readFileSync(new URL(`./${donde}.ts`, import.meta.url), 'utf8');
+      assert.match(fuente, /await laFechaQueLeHemosDicho\(\)\.catch/, `en ${donde} no se mira`);
+    }
+  });
+});
