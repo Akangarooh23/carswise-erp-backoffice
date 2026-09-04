@@ -9,6 +9,9 @@ import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import {
   abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas, laFechaQueLeHemosDicho,
 } from './transportes.js';
+import {
+  dondeVaEnSuPanel, marcaYModelo, faltaParaDarleElIdCar, urlDelFichero,
+} from '../lib/idcar-del-cliente.js';
 import { ponAlDiaLosPedidosDeImportacion } from './pedidos.js';
 import { abreLosTramitesQueFalten, abreTramitesDeVenta } from './tramites.js';
 import {
@@ -199,6 +202,127 @@ function entregaEmailHtml(lead: Lead, antes: string): string {
  * están sus facturas. Lo que haya que contarle además —dónde recogerlo, qué
  * papeles lleva— se escribe en la respuesta y sale aquí dentro.
  */
+/**
+ * Y el coche entregado pasa a ser el IdCar del cliente.
+ *
+ * El día de la entrega el expediente se cerraba y ahí se acababa todo: el
+ * cliente tenía un coche y en su panel no tenía nada. Sus papeles —el permiso,
+ * la ficha técnica, el COC, las facturas— se quedaban en nuestros cajones, que
+ * son los del ERP y él no ve. Y son suyos: los va a necesitar el día que lo
+ * venda, el día que le paren y el día que pida un presupuesto de taller.
+ *
+ * Los documentos no se copian, se apuntan: el fichero ya está en el mismo
+ * almacén que usa su panel, y duplicar un PDF por cada coche entregado es
+ * pagar dos veces por el mismo byte y quedarse con dos copias que pueden
+ * acabar diciendo cosas distintas.
+ *
+ * Una sola vez por expediente: `source_lead_id` es la marca. Volver a guardar
+ * un expediente entregado no puede dejarle el garaje con dos coches iguales.
+ *
+ * No revienta la entrega si falla. Un coche entregado está entregado aunque el
+ * garaje se quede sin dar de alta; lo que no puede es quedarse callado, así que
+ * el fallo se escribe.
+ */
+export async function daleSuIdCar(leadId: string): Promise<string | null> {
+  const r = await query<{
+    user_email: string; vehicle_title: string; matricula: string | null;
+    km: string | null; pedido_id: string | null; proveedor: string | null;
+  }>(
+    `SELECT l.user_email, l.vehicle_title,
+            pe.matricula, pe.id AS pedido_id, pe.proveedor,
+            pe.recepcion->>'km' AS km
+       FROM moveadvisor_market_leads l
+       LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+      WHERE l.id = $1
+      ORDER BY pe.created_at DESC LIMIT 1`,
+    [leadId]
+  );
+  const x = r.rows[0];
+  if (!x) return null;
+
+  const falta = faltaParaDarleElIdCar({ correo: x.user_email, vehiculo: x.vehicle_title });
+  if (falta.length) {
+    console.error('[leads] no se le puede dar el IdCar: falta %s', falta.join(', '));
+    return null;
+  }
+
+  // Si ya lo tiene, no se le da otro.
+  const ya = await query<{ id: string }>(
+    `SELECT id FROM moveadvisor_user_vehicles WHERE source_lead_id = $1 LIMIT 1`,
+    [leadId]
+  ).catch(() => ({ rows: [] as { id: string }[] }));
+  if (ya.rows.length) return ya.rows[0].id;
+
+  const { brand, model, version } = marcaYModelo(x.vehicle_title);
+  const id = `idcar-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const km = String(x.km ?? '').trim();
+
+  await query(
+    `INSERT INTO moveadvisor_user_vehicles
+       (id, user_email, title, brand, model, version, plate, mileage, mileage_km,
+        purchased_from, source_lead_id, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
+    [id, x.user_email, x.vehicle_title, brand, model, version,
+     String(x.matricula ?? '').trim(), km,
+     Number.isFinite(Number(km)) && km ? Number(km) : null,
+     String(x.proveedor ?? '').trim(), leadId]
+  );
+
+  /*
+   * Y sus papeles, apuntados donde su panel los busca.
+   *
+   * De los tres cajones del coche —el expediente, el pedido y el expediente de
+   * gestoría— porque los papeles están repartidos entre los tres según por
+   * dónde entraron. Solo los que son suyos: el presupuesto del transportista y
+   * la factura del perito son papeles de nuestra operación, y meterlos en su
+   * garaje es darle a leer nuestros costes.
+   */
+  const papeles = await query<{ papel: string; nombre: string; tipo: string; ruta: string; tamano: string | null }>(
+    `SELECT d.papel, d.nombre, d.tipo, d.ruta, d.tamano
+       FROM erp_documentos d
+      WHERE (d.ambito = 'lead' AND d.ambito_id = $1)
+         OR (d.ambito = 'pedido' AND d.ambito_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1))
+         OR (d.ambito = 'tramite' AND d.ambito_id IN (
+              SELECT tr.id FROM erp_tramites tr
+               WHERE tr.lead_id = $1
+                  OR tr.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = $1)))
+      ORDER BY d.created_at`,
+    [leadId]
+  ).catch(() => ({ rows: [] as { papel: string; nombre: string; tipo: string; ruta: string; tamano: string | null }[] }));
+
+  const base = config.SUPABASE_URL ?? '';
+  const puestos = new Set<string>();
+  for (const d of papeles.rows) {
+    const sitio = dondeVaEnSuPanel(d.papel);
+    if (!sitio) continue;
+    const url = urlDelFichero(base, d.ruta);
+    if (!url || puestos.has(url)) continue;
+    puestos.add(url);
+    /*
+     * Dos cajones, según lo que sea.
+     *
+     * El permiso y la ficha técnica van al de documentos del coche, que tiene
+     * un tipo cerrado y una pantalla que los enseña con su nombre. El COC y
+     * las facturas, al de ficheros, que no lo tiene. Meter una factura como
+     * «ficha técnica» para que entre en el hueco bonito sería mentirle a su
+     * propia pantalla.
+     */
+    const tabla = sitio.donde === 'documento'
+      ? 'moveadvisor_user_vehicle_documents'
+      : 'moveadvisor_user_vehicle_files';
+    const columna = sitio.donde === 'documento' ? 'document_type' : 'file_type';
+    await query(
+      `INSERT INTO ${tabla}
+         (vehicle_id, ${columna}, file_name, file_size, file_mime_type, file_content_base64, file_url, created_at)
+       VALUES ($1,$2,$3,$4,$5,'',$6,NOW())`,
+      [id, sitio.tipo, d.nombre, Number(d.tamano) || 0, d.tipo, url]
+    ).catch((e: Error) => console.error('[leads] no se ha podido enganchar %s al IdCar:', d.papel, e.message));
+  }
+
+  console.log('[leads] IdCar %s dado de alta para %s con %d papeles', id, x.user_email, puestos.size);
+  return id;
+}
+
 function entregadoEmailHtml(lead: Lead): string {
   return plantilla({
     titulo: 'Tu coche ya es tuyo',
@@ -208,6 +332,14 @@ function entregadoEmailHtml(lead: Lead): string {
       (lead.erp_response
         ? datos([['Mensaje del equipo', `<span style="white-space:pre-wrap;font-weight:400">${esc(lead.erp_response)}</span>`]])
         : '') +
+      /*
+       * Y que su coche ya está en su garaje.
+       *
+       * Es la mitad útil de este correo: no solo «ya es tuyo», sino que tiene
+       * dónde llevarlo. Con los papeles dentro, que son los que va a buscar el
+       * día que lo venda o le paren.
+       */
+      parrafo('Lo hemos dado de alta como <strong>IdCar</strong> en tu panel, con el permiso de circulación, la ficha técnica y las facturas dentro. Desde ahí llevas sus revisiones, su seguro y sus papeles, y el día que quieras venderlo se publica con un botón.') +
       parrafo('Tienes las facturas de esta compra en tu panel, en Facturación.', 14) +
       enlace('Ver mi panel', PANEL()),
   });
@@ -874,11 +1006,21 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     // entregado no puede mandarle otra vez el mismo correo.
     if (status === 'Entregado' && prev.status !== 'Entregado'
         && updatedLead.lead_type === 'import' && updatedLead.user_email) {
-      alCliente(
-        updatedLead.user_email,
-        `Tu coche ya es tuyo — ${updatedLead.vehicle_title || 'PopCar'}`,
-        entregadoEmailHtml(updatedLead)
-      ).catch((e: Error) => console.error('[leads] aviso de entrega final:', e.message));
+      /*
+       * Primero el garaje, y luego el correo que lo anuncia.
+       *
+       * En este orden a propósito: el correo le dice que su coche ya está en su
+       * panel, y si el alta fallara después, el cliente entraría a buscar algo
+       * que no está. Si falla el alta se escribe y el correo sale igual: un
+       * coche entregado está entregado, y callarse la entrega sería peor.
+       */
+      void daleSuIdCar(req.params.id)
+        .catch((e: Error) => console.error('[leads] no se ha podido dar de alta el IdCar:', e.message))
+        .then(() => alCliente(
+          updatedLead.user_email,
+          `Tu coche ya es tuyo — ${updatedLead.vehicle_title || 'PopCar'}`,
+          entregadoEmailHtml(updatedLead)
+        ).catch((e: Error) => console.error('[leads] aviso de entrega final:', e.message)));
     }
 
     // Vender es cambiar de dueño: sale su transferencia.

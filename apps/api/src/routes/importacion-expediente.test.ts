@@ -17,6 +17,7 @@
  */
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import type { Server } from 'http';
 import pg from 'pg';
@@ -210,5 +211,89 @@ describe('el expediente de importación', { concurrency: 1 }, () => {
     const r = await api(`/leads/${LEAD}`, { delivery_estimate: '2026-10-15' });
     assert.equal(r.codigo, 409,
       'la fecha la da el vendedor al aceptar el pedido: antes de eso es inventada');
+  });
+});
+
+/**
+ * Y al entregarlo, el coche pasa a ser suyo también en su panel.
+ *
+ * El día de la entrega el expediente se cerraba y ahí se acababa todo: el
+ * cliente tenía un coche y en su panel no tenía nada. Sus papeles se quedaban en
+ * nuestros cajones, que son los del ERP y él no ve.
+ *
+ * Lo que se sostiene aquí: que el alta ocurra, que ocurra **una sola vez**
+ * —volver a guardar un expediente entregado no puede dejarle el garaje con dos
+ * coches iguales— y que el correo se lo diga, porque un coche dado de alta que
+ * él no sabe que existe es lo mismo que no darlo de alta.
+ */
+describe('el coche entregado entra en su garaje', () => {
+  const FUENTE = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const ALTA = FUENTE.slice(
+    FUENTE.indexOf('export async function daleSuIdCar'),
+    FUENTE.indexOf('function entregadoEmailHtml')
+  );
+
+  test('se da de alta al entregar, no antes', () => {
+    const bloque = FUENTE.slice(
+      FUENTE.indexOf("if (status === 'Entregado' && prev.status !== 'Entregado'"),
+      FUENTE.indexOf("if (status === 'Vendido'")
+    );
+    assert.match(bloque, /daleSuIdCar\(req\.params\.id\)/);
+  });
+
+  test('y una sola vez: source_lead_id es la marca', () => {
+    assert.match(ALTA, /SELECT id FROM moveadvisor_user_vehicles WHERE source_lead_id = \$1/);
+    assert.match(ALTA, /if \(ya\.rows\.length\) return ya\.rows\[0\]\.id;/);
+  });
+
+  test('con los papeles de los tres cajones del coche', () => {
+    // Están repartidos entre el expediente, el pedido y el de gestoría según
+    // por dónde entraron.
+    assert.match(ALTA, /d\.ambito = 'lead'/);
+    assert.match(ALTA, /d\.ambito = 'pedido'/);
+    assert.match(ALTA, /d\.ambito = 'tramite'/);
+  });
+
+  test('y solo los que son suyos', () => {
+    // El presupuesto del transportista y la factura del perito son papeles de
+    // nuestra operación: meterlos en su garaje es darle a leer nuestros costes.
+    assert.match(ALTA, /const sitio = dondeVaEnSuPanel\(d\.papel\);/);
+    assert.match(ALTA, /if \(!sitio\) continue;/);
+  });
+
+  test('sin copiar el fichero, apuntando el que ya está', () => {
+    // Duplicar un PDF por cada coche entregado es pagar dos veces por el mismo
+    // byte y quedarse con dos copias que pueden acabar diciendo cosas distintas.
+    assert.match(ALTA, /urlDelFichero\(base, d\.ruta\)/);
+    assert.match(ALTA, /file_content_base64/);
+    assert.match(ALTA, /''.\$6,NOW\(\)\)/);
+  });
+
+  test('y el mismo fichero no se engancha dos veces', () => {
+    // La factura del vendedor está subida en dos sitios del mismo coche.
+    assert.match(ALTA, /if \(!url \|\| puestos\.has\(url\)\) continue;/);
+  });
+
+  test('el correo se lo dice, con lo que puede hacer desde ahí', () => {
+    // Un coche dado de alta que él no sabe que existe es lo mismo que no darlo
+    // de alta.
+    const correo = FUENTE.slice(
+      FUENTE.indexOf('function entregadoEmailHtml'),
+      FUENTE.indexOf('function rentingNotifyEmailHtml')
+    );
+    assert.match(correo, /IdCar/);
+    assert.match(correo, /permiso de circulación/);
+  });
+
+  test('y si el alta falla, la entrega no se cae', () => {
+    // Un coche entregado está entregado aunque el garaje se quede sin dar de
+    // alta. Lo que no puede es quedarse callado.
+    const bloque = FUENTE.slice(
+      FUENTE.indexOf('void daleSuIdCar(req.params.id)'),
+      FUENTE.indexOf("if (status === 'Vendido'")
+    );
+    assert.match(bloque, /\.catch\(\(e: Error\) => console\.error/);
+    assert.match(bloque, /\.then\(\(\) => alCliente\(/);
   });
 });

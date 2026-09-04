@@ -1419,6 +1419,29 @@ onEncargarALaGestoria, aviso }: PanelProps) {
         </div>
         </Plegable>
 
+        {/*
+          * El coche ya está en su casa y el expediente sigue abierto.
+          *
+          * El segundo camión lo entregó: en Transportes está cerrado y aquí
+          * no ha pasado nada. La etapa no se mueve sola porque cerrar un
+          * expediente es más que descargar un coche —empieza la garantía, se
+          * firma y se ajusta el impuesto—, pero quien lo mira tiene que ver
+          * que le toca y qué le falta, no deducirlo de dos pantallas.
+          */}
+        {x.status !== 'Entregado' && x.meta?.tramo_al_cliente?.fecha_entrega && (
+        <div className="mt-4 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className="text-[12px] font-bold text-emerald-800">
+            El coche ya está en casa del cliente
+          </div>
+          <div className="text-[11px] text-emerald-700 mt-0.5">
+            Lo entregó el transportista el{' '}
+            {dia(x.meta.tramo_al_cliente.fecha_entrega)}. Para cerrar el expediente
+            falta pasarlo a «Entregado» aquí arriba, con lo que se le entrega y el
+            impuesto liquidado.
+          </div>
+        </div>
+        )}
+
         {/* ── El día de la entrega ──
 
             Es una cita como cualquier otra: el cliente recibe el aviso de la
