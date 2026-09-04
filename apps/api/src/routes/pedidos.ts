@@ -25,7 +25,7 @@ import {
 } from '../lib/pedidos.js';
 import { papelesQueFaltan, faltaAlgoImprescindible } from '../lib/documentos.js';
 import { preparaDocumentos } from './documentos.js';
-import { abreTramitesDePedido } from './tramites.js';
+import { abreTramitesDePedido, laMatriculaQueYaTiene } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
 import { haSalido } from '../lib/transportes.js';
 import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
@@ -409,6 +409,7 @@ pedidosRouter.get('/pedidos/comprobaciones/:origen', requireRole(['admin', 'supp
 pedidosRouter.get('/pedidos', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   // Antes de contar nada, que lo que se cuenta sea de hoy.
   await ponAlDiaLosPedidosDeImportacion().catch(() => 0);
+  await laMatriculaQueYaTiene().catch(() => 0);
   const estado = nt(req.query.estado);
   const origen = nt(req.query.origen);
   const q = nt(req.query.q);

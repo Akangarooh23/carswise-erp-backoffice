@@ -24,7 +24,7 @@ import {
 } from '../lib/aviso-de-recogida-al-origen.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
 import { correoDeCocheHaciaTuCasa } from '../lib/coche-hacia-tu-casa.js';
-import { abreLosTramitesQueFalten } from './tramites.js';
+import { abreLosTramitesQueFalten, laMatriculaQueYaTiene } from './tramites.js';
 import {
   anotaLaLlegada, puedeDarsePorEntregado, faltaPorMirarAlLlegar, type LlegoComoSalio,
 } from '../lib/llego-como-salio.js';
@@ -159,6 +159,7 @@ transportesRouter.get('/transportes', requireRole(['admin', 'support', 'operatio
   await ponAlDiaLasEtapas().catch(() => 0);
   await abreElTramoAlCliente().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
+  await laMatriculaQueYaTiene().catch(() => 0);
   await rellenaElOrigenQueYaConocemos().catch(() => 0);
   const estado = nt(req.query.estado);
   const pedido = nt(req.query.pedido_id);

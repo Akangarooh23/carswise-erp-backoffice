@@ -119,6 +119,7 @@ tramitesRouter.get('/tramites', requireRole(['admin', 'support', 'operations', '
    */
   await ponAlDiaLasEtapas().catch(() => 0);
   await abreLosTramitesQueFalten().catch(() => 0);
+  await laMatriculaQueYaTiene().catch(() => 0);
   const estado = nt(req.query.estado);
   const gestoria = nt(req.query.gestoria);
   const q = nt(req.query.q);
@@ -499,6 +500,77 @@ async function abreTramites(tipos: string[], datos: {
  * camino haya movido la etapa: el resultado es el mismo. Es el mismo patrón que
  * los tramos que faltan y los pedidos que se ponen al día.
  */
+/**
+ * La matrícula española nace en la gestoría, y de ahí no salía.
+ *
+ * Es el trámite el que la trae: hasta que la gestoría no matricula, el coche
+ * no tiene ninguna. Y en cuanto la tiene, **es la matrícula del coche** —no un
+ * dato del papeleo—: es como se le busca, cómo se le nombra en una orden de
+ * recogida y lo que el cliente está esperando leer.
+ *
+ * Se quedaba escrita en el expediente de gestoría y en ningún sitio más. El
+ * pedido seguía sin matrícula, los tramos también, y el correo que le dice al
+ * cliente que su coche sale hacia su casa decía «ya está matriculado» sin poder
+ * decir con qué matrícula, que es justo la frase que él quería leer.
+ *
+ * Reconciliador y no un disparo al guardar el trámite, por lo de siempre: se
+ * escribió a mano en la base, se guardó desde una pantalla que no lo copiaba,
+ * se resolvió antes de que esto existiera. El hecho —la matrícula está ahí—
+ * sigue mañana; el momento en que se tecleó, no.
+ *
+ * Solo rellena lo que está **vacío**. Una matrícula escrita a mano en el pedido
+ * gana: puede ser la buena y la del trámite un dedazo, y la que alguien tecleó
+ * mirando el permiso de circulación no se pisa desde aquí.
+ */
+export async function laMatriculaQueYaTiene(): Promise<number> {
+  await prepara();
+  let puestas = 0;
+
+  /*
+   * El mismo coche por sus dos columnas.
+   *
+   * Un papeleo cuelga del pedido o del expediente según por dónde se abriera,
+   * y las dos cosas son el mismo coche. Mirando una sola, la mitad de las
+   * matrículas no llegaría a ninguna parte.
+   */
+  const alPedido = await query(
+    `UPDATE erp_pedidos pe
+        SET matricula = tr.matricula, updated_at = NOW()
+       FROM erp_tramites tr
+      WHERE COALESCE(pe.matricula, '') = ''
+        AND COALESCE(tr.matricula, '') <> ''
+        AND (tr.pedido_id = pe.id OR tr.lead_id = pe.lead_id)`
+  ).catch((e: Error) => {
+    console.error('[tramites] no se ha podido llevar la matrícula al pedido:', e.message);
+    return { rowCount: 0 };
+  });
+  puestas += alPedido.rowCount ?? 0;
+
+  /*
+   * Y a los viajes, que es donde se lee.
+   *
+   * Va en el asunto de la orden de recogida —es como la van a buscar en su
+   * bandeja— y en el correo al cliente. También al primer tramo, aunque
+   * entonces el coche viajara con matrícula alemana: el tramo no guarda la
+   * matrícula que tenía ese día, guarda de qué coche es.
+   */
+  const alViaje = await query(
+    `UPDATE erp_transportes t
+        SET matricula = tr.matricula, updated_at = NOW()
+       FROM erp_tramites tr
+      WHERE COALESCE(t.matricula, '') = ''
+        AND COALESCE(tr.matricula, '') <> ''
+        AND (tr.pedido_id = t.pedido_id OR tr.lead_id = t.lead_id)`
+  ).catch((e: Error) => {
+    console.error('[tramites] no se ha podido llevar la matrícula al viaje:', e.message);
+    return { rowCount: 0 };
+  });
+  puestas += alViaje.rowCount ?? 0;
+
+  if (puestas) console.log('[tramites] repartida la matrícula a %d fichas', puestas);
+  return puestas;
+}
+
 export async function abreLosTramitesQueFalten(): Promise<number> {
   await prepara();
   /*

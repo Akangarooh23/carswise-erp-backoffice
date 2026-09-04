@@ -300,3 +300,64 @@ describe('gestoría', { concurrency: 1 }, () => {
     });
   });
 });
+
+/**
+ * La matrícula española nace en la gestoría y tiene que salir de ahí.
+ *
+ * Es el trámite el que la trae: hasta que la gestoría no matricula, el coche no
+ * tiene ninguna. Y en cuanto la tiene, es **la matrícula del coche** —no un dato
+ * del papeleo—: es como se le busca, cómo se le nombra en una orden de recogida
+ * y lo que el cliente está esperando leer.
+ *
+ * Se quedaba escrita en el expediente de gestoría y en ningún sitio más. El
+ * pedido seguía sin matrícula, los tramos también, y el correo que le dice al
+ * cliente que su coche sale hacia su casa decía «ya está matriculado» sin poder
+ * decir con cuál, que es justo la frase que él quería leer.
+ *
+ * El SQL se ha probado contra la base dentro de una transacción deshecha: pone
+ * la matrícula en el pedido y en los dos viajes, y en la segunda pasada no toca
+ * ninguna fila.
+ */
+describe('la matrícula sale de la gestoría', () => {
+  const FUENTE = readFileSync(new URL('./tramites.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const REPARTE = FUENTE.slice(
+    FUENTE.indexOf('export async function laMatriculaQueYaTiene'),
+    FUENTE.indexOf('export async function abreLosTramitesQueFalten')
+  );
+
+  test('llega al pedido y a los viajes', () => {
+    assert.match(REPARTE, /UPDATE erp_pedidos pe/);
+    assert.match(REPARTE, /UPDATE erp_transportes t/);
+  });
+
+  test('solo si allí está vacía: la escrita a mano gana', () => {
+    // Puede ser la buena y la del trámite un dedazo. La que alguien tecleó
+    // mirando el permiso de circulación no se pisa desde aquí.
+    assert.ok(REPARTE.includes(`WHERE COALESCE(pe.matricula, '') = ''`));
+    assert.ok(REPARTE.includes(`WHERE COALESCE(t.matricula, '') = ''`));
+  });
+
+  test('y solo si el trámite tiene alguna que dar', () => {
+    // Sin esto, cada visita escribiría una cadena vacía sobre otra.
+    assert.equal((REPARTE.match(/COALESCE\(tr\.matricula, ''\) <> ''/g) ?? []).length, 2);
+  });
+
+  test('mira el coche por sus dos columnas', () => {
+    // Un papeleo cuelga del pedido o del expediente según por dónde se abriera,
+    // y las dos cosas son el mismo coche. Mirando una sola, la mitad de las
+    // matrículas no llegaría a ninguna parte.
+    assert.match(REPARTE, /tr\.pedido_id = pe\.id OR tr\.lead_id = pe\.lead_id/);
+    assert.match(REPARTE, /tr\.pedido_id = t\.pedido_id OR tr\.lead_id = t\.lead_id/);
+  });
+
+  test('y se mira en las tres pantallas donde se lee', () => {
+    // Reconciliador y no un disparo al guardar el trámite: se escribe a mano en
+    // la base, se resuelve desde una pantalla que no lo copiaba, se resolvió
+    // antes de que esto existiera. El hecho sigue mañana; el momento, no.
+    for (const donde of ['tramites', 'transportes', 'pedidos']) {
+      const fuente = readFileSync(new URL(`./${donde}.ts`, import.meta.url), 'utf8');
+      assert.match(fuente, /await laMatriculaQueYaTiene\(\)\.catch/, `en ${donde} no se mira`);
+    }
+  });
+});
