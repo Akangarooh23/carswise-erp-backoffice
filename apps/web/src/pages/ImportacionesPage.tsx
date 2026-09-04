@@ -42,9 +42,11 @@ const COLOR_ETAPA: Record<Columna, string> = {
   'Verificado y pagado': 'bg-blue-50 border-blue-200 text-blue-800',
   'En transporte':     'bg-indigo-50 border-indigo-200 text-indigo-800',
   'En trámites':       'bg-violet-50 border-violet-200 text-violet-800',
-  // El último viaje, con el verde de lo que ya casi está: en el tablero se
-  // distingue de un vistazo de la columna del primero.
-  [COLUMNA_SEGUNDO_VIAJE]: 'bg-teal-50 border-teal-200 text-teal-800',
+  // Del mismo color que el primero, que es lo que pidió Ana: los dos son un
+  // camión con el coche dentro. Lo que los distingue es dónde están en la fila
+  // y qué dicen, no el color; pintarlos distintos sugería que son dos cosas
+  // diferentes, y lo diferente es el destino.
+  [COLUMNA_SEGUNDO_VIAJE]: 'bg-indigo-50 border-indigo-200 text-indigo-800',
   'Entregado':         'bg-emerald-50 border-emerald-200 text-emerald-800',
 };
 
