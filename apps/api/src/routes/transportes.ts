@@ -21,7 +21,7 @@ import { escritoEnLista } from '../lib/escrow.js';
 import { correoDeOrdenDeRecogida, faltaParaLaOrden } from '../lib/orden-de-recogida.js';
 import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
-} from '../lib/aviso-de-recogida-al-vendedor.js';
+} from '../lib/aviso-de-recogida-al-origen.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
 import { abreLosTramitesQueFalten } from './tramites.js';
 import {
@@ -440,7 +440,7 @@ transportesRouter.post('/transportes/:id/orden', requireRole(['admin', 'operatio
      * no se marca «Contratado» y luego se manda, se manda y con eso queda
      * contratado. Lo que salga mal aquí sale mal ya pagado.
      */
-    if (esElPrimero && !t.aviso_recogida_at) {
+    if (!t.aviso_recogida_at) {
       falta.push('avisarle antes al origen de quién va y qué día');
     }
     if (!String(t.contacto_origen ?? '').trim()) falta.push('por quién pregunta el conductor');
@@ -695,25 +695,42 @@ transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 
     const t = r.rows[0];
     if (!t) { res.status(404).json({ ok: false, error: 'transporte_no_encontrado' }); return; }
 
-    const nombre = String(t.proveedor ?? '').trim();
-    if (!nombre) {
-      res.status(409).json({
-        ok: false, error: 'sin_vendedor',
-        detail: 'Este tramo no viene de un pedido, así que no se sabe a quién avisar.',
-      });
-      return;
-    }
-    const v = await query<{ email: string | null }>(
-      `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
-      [nombreComparable(nombre)]
-    ).catch(() => ({ rows: [] as { email: string | null }[] }));
-    const para = String(v.rows[0]?.email ?? '').trim();
-    if (!para) {
-      res.status(409).json({
-        ok: false, error: 'sin_correo_del_vendedor',
-        detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
-      });
-      return;
+    /*
+     * A quién se avisa, que no siempre es el vendedor.
+     *
+     * El primer viaje sale de su nave y el correo va a la dirección que tiene
+     * en Proveedores. El segundo sale de la nuestra, en Zaragoza, y quien
+     * tiene que tener el coche listo y las llaves a mano es nuestra propia
+     * persona de allí. Que no le espere nadie sale igual de caro tanto si la
+     * nave es suya como si es nuestra.
+     *
+     * De los nuestros no guardamos correo en ningún sitio, así que la vista
+     * previa sale con el destinatario en blanco y lo escribe quien la manda,
+     * que es justo para lo que sirve ese campo. Sin él no se manda.
+     */
+    const esElPrimero = Number(t.tramo ?? 1) <= 1;
+    let para = '';
+    if (esElPrimero) {
+      const nombre = String(t.proveedor ?? '').trim();
+      if (!nombre) {
+        res.status(409).json({
+          ok: false, error: 'sin_vendedor',
+          detail: 'Este tramo no viene de un pedido, así que no se sabe a quién avisar.',
+        });
+        return;
+      }
+      const v = await query<{ email: string | null }>(
+        `SELECT email FROM erp_proveedores WHERE clave = $1 LIMIT 1`,
+        [nombreComparable(nombre)]
+      ).catch(() => ({ rows: [] as { email: string | null }[] }));
+      para = String(v.rows[0]?.email ?? '').trim();
+      if (!para) {
+        res.status(409).json({
+          ok: false, error: 'sin_correo_del_vendedor',
+          detail: `No hay correo de ${nombre}. Se rellena en Proveedores.`,
+        });
+        return;
+      }
     }
 
     /*
@@ -733,6 +750,7 @@ transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 
       contacto: String(t.contacto_transportista ?? '').trim() || null,
       telefono: String(t.telefono_transportista ?? '').trim() || null,
       preguntarPor: String(t.contacto_origen ?? '').trim() || null,
+      aQuien: esElPrimero ? ('vendedor' as const) : ('los-nuestros' as const),
     };
     const falta = faltaParaAvisarDeLaRecogida(datos);
     if (falta.length) {
@@ -757,8 +775,24 @@ transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 
     ];
     const papeles = await papelesQueSePuedenAdjuntar(cajones);
 
+    const idioma = esElPrimero ? ('de' as const) : ('es' as const);
     if (soloVista) {
-      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma: 'de' });
+      res.json({ ok: true, vista: true, para: aQuien, subject: elAsunto, html, papeles, idioma });
+      return;
+    }
+
+    /*
+     * Y con destinatario, siempre.
+     *
+     * En el segundo viaje sale en blanco a propósito, para que lo escriba
+     * quien lo manda. El cuadro no deja mandarlo vacío, pero esto es un POST
+     * y el cuadro es solo la puerta de delante.
+     */
+    if (!pareceUnCorreo(aQuien)) {
+      res.status(409).json({
+        ok: false, error: 'sin_destinatario',
+        detail: 'Falta a quién se le manda. En el segundo viaje es nuestra persona del origen, y se escribe en el cuadro.',
+      });
       return;
     }
 
@@ -767,7 +801,7 @@ transportesRouter.post('/transportes/:id/aviso-recogida', requireRole(['admin', 
     // menciona es un adjunto que no se abre.
     let dicho = '';
     try {
-      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, 'de');
+      const va = await loQueSeAdjunta(cajones, req.body?.adjuntos, idioma);
       adjuntos = va.attachments;
       dicho = va.linea;
     } catch (e) {

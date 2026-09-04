@@ -91,8 +91,13 @@ describe('lo que el servidor exige antes de confirmar', () => {
     FUENTE.indexOf("error: 'faltan_datos_del_tramo'")
   );
 
-  test('el origen tiene que estar avisado, en el tramo que sale de fuera', () => {
-    assert.match(GUARDA, /if \(esElPrimero && !t\.aviso_recogida_at\)/);
+  test('el origen tiene que estar avisado, en los dos viajes', () => {
+    // En el primero es el vendedor alemán; en el segundo, nuestra persona de
+    // Zaragoza. Que no le espere nadie sale igual de caro tanto si la nave es
+    // suya como si es nuestra, y el de la nuestra además tiene que sacar las
+    // llaves y los papeles del cajón.
+    assert.match(GUARDA, /if \(!t\.aviso_recogida_at\)/);
+    assert.doesNotMatch(GUARDA, /esElPrimero && !t\.aviso_recogida_at/);
   });
 
   test('y eso no depende de que se le preguntara antes desde el expediente', () => {

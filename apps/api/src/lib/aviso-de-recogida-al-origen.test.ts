@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
-} from './aviso-de-recogida-al-vendedor.js';
+} from './aviso-de-recogida-al-origen.js';
 
 const KIA = {
   vehiculo: 'Kia Sorento 2.4 GDI AWD Automatik Kamera LED',
@@ -104,5 +104,56 @@ describe('lo que impide avisarle', () => {
 
   test('con lo del Kia, no falta nada', () => {
     assert.deepEqual(faltaParaAvisarDeLaRecogida(KIA), []);
+  });
+});
+
+/**
+ * Y el mismo aviso cuando el origen es nuestra propia nave.
+ *
+ * Una importación hace dos viajes: el primero sale de la nave alemana y el
+ * segundo de la nuestra, en Zaragoza. Quien tiene que tener el coche listo y
+ * las llaves a mano es entonces nuestra persona de allí, y merece el mismo
+ * aviso: que no le espere nadie sale igual de caro tanto si la nave es suya
+ * como si es nuestra.
+ *
+ * Lo que cambia de verdad no es el idioma: es que aquí **no se piden los
+ * papeles alemanes**. Para entonces el coche ya lleva matrícula española, y
+ * pedirle a un compañero de Zaragoza la Zulassungsbescheinigung Teil II es
+ * mandarle a buscar algo que ya no existe.
+ */
+describe('cuando el origen es nuestra nave', () => {
+  const NUESTRO = { ...KIA, aQuien: 'los-nuestros' as const, preguntarPor: 'Marta' };
+
+  test('va en castellano, que es quien lo lee', () => {
+    const { subject, html } = correoDeAvisoDeRecogida(NUESTRO);
+    assert.match(subject, /Recogida del/);
+    assert.match(html, /El transporte está organizado/);
+    assert.doesNotMatch(html, /Guten Tag|Abholtermin/);
+  });
+
+  test('con el día escrito como lo lee un español', () => {
+    // Y con el día de la semana delante: es lo que hace que se lea de un
+    // vistazo y que nadie lo confunda con el 9 de abril.
+    assert.match(correoDeAvisoDeRecogida(NUESTRO).html, /viernes, 4 de septiembre de 2026/);
+  });
+
+  test('y le pide los papeles que sí tiene, no los alemanes', () => {
+    const { html } = correoDeAvisoDeRecogida(NUESTRO);
+    assert.match(html, /permiso de circulación/i);
+    assert.match(html, /ficha técnica/i);
+    assert.doesNotMatch(html, /Zulassungsbescheinigung|COC/);
+  });
+
+  test('sigue diciendo quién va y por quién pregunta', () => {
+    // Es lo que hace que el de la nave sepa a quién esperar y a quién no
+    // entregarle un coche.
+    const { html } = correoDeAvisoDeRecogida(NUESTRO);
+    assert.match(html, /Michael Schneider/);
+    assert.match(html, /Marta/);
+  });
+
+  test('y al vendedor se le sigue escribiendo en alemán', () => {
+    // La bifurcación no puede llevarse por delante el correo de siempre.
+    assert.match(correoDeAvisoDeRecogida(KIA).html, /Guten Tag/);
   });
 });

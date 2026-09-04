@@ -152,8 +152,12 @@ describe('parte 3: lo que contesta el origen', () => {
       ['avisar al origen de quién va y qué día']);
   });
 
-  test('en el segundo viaje eso no se pide: el origen es nuestra nave', () => {
-    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, tramo: 2, aviso_recogida_at: null }), []);
+  test('y en el segundo viaje también, que el origen es nuestra nave', () => {
+    // También hay que avisar: el de nuestra nave tiene que sacar las llaves y
+    // los papeles del cajón y tener el coche listo el día que va el camión.
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, tramo: 2, aviso_recogida_at: null }),
+      ['avisar al origen de quién va y qué día']);
+    assert.deepEqual(faltaParaConfirmar({ ...PARTE_3, tramo: 2 }), []);
   });
 
   test('y lo de las partes de antes sigue haciendo falta', () => {
@@ -205,12 +209,14 @@ describe('cuál de las tres se abre, y cuándo se abre sola', () => {
     assert.equal(queParteSeAbre(PARTE_2), 'origen');
   });
 
-  test('en el segundo viaje la cierra el guardar, que es el botón que hay', () => {
-    // No hay a quién avisar: el origen es nuestra nave.
+  test('en el segundo viaje la cierra el mismo botón: avisar al origen', () => {
+    // El origen es nuestra nave, pero hay alguien allí y también hay que
+    // avisarle. Sin eso, la parte 2 no se da por terminada.
     const segundo = { ...PARTE_2, tramo: 2, aviso_recogida_at: null };
     assert.equal(queParteSeAbre({ ...segundo, contacto_transportista: '' }), 'respuesta');
     assert.equal(queParteSeAbre({ ...segundo, entrega_prevista: '' }), 'respuesta');
-    assert.equal(queParteSeAbre(segundo), 'origen');
+    assert.equal(queParteSeAbre(segundo), 'respuesta');
+    assert.equal(queParteSeAbre({ ...segundo, aviso_recogida_at: '2026-09-03T10:00:00Z' }), 'origen');
   });
 
   test('con la orden fuera ya no se abre ninguna', () => {
@@ -297,10 +303,10 @@ describe('qué toca ahora en un tramo', () => {
     );
   });
 
-  test('en el segundo tramo no se avisa a ningún vendedor', () => {
-    // El coche está en nuestra nave: el correo iría al concesionario alemán,
-    // avisándole de una recogida que no es suya.
-    assert.doesNotMatch(
+  test('en el segundo tramo se avisa igual, y a los nuestros', () => {
+    // El coche está en nuestra nave, pero allí hay alguien que tiene que
+    // tenerlo listo y sacar los papeles del cajón.
+    assert.match(
       queTocaEnElTramo({ ...PARTE_2, tramo: 2, aviso_recogida_at: null }),
       /Avisa al origen/
     );

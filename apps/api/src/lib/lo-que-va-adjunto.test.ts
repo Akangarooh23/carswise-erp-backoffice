@@ -54,7 +54,10 @@ describe('los correos a proveedores dicen lo que llevan', () => {
         // Sin él, la pantalla anunciaría en español un adjunto de un correo
         // alemán, y lo que se revisa dejaría de ser lo que sale. Puede ser fijo
         // —al vendedor se le escribe en alemán y punto— o el que se ha elegido.
-        assert.match(v, /idioma: '(de|es|en)'|idioma,/, `en ${donde} una vista previa no dice su idioma`);
+        // Puede ser fijo, o la variable cuando depende de quién lo lea: el
+        // aviso de recogida va en alemán al vendedor y en castellano a los
+        // nuestros, y es el mismo correo.
+        assert.match(v, /idioma: '(de|es|en)'|idioma\s*[,}]/, `en ${donde} una vista previa no dice su idioma`);
       }
     }
   });

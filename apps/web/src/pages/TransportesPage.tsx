@@ -683,12 +683,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
             * llega donde nadie le espera se va vacío. Ese viaje se paga igual.
             */}
           <div className="col-span-2 pt-2 border-t border-brand-100">
-            {!alVendedor ? (
-              <div className="text-[11px] text-brand-300">
-                El origen es nuestra nave: no hay a quién avisar. Lo que conteste
-                el transportista se apunta aquí y se pasa a la parte 3.
-              </div>
-            ) : t.aviso_recogida_at ? (
+            {t.aviso_recogida_at ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[12px] font-bold text-emerald-700">
                   ✓ Origen avisado el {new Date(t.aviso_recogida_at).toLocaleDateString('es-ES')}
@@ -707,7 +702,9 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                 <div className="text-[11px] text-brand-300 mt-1.5">
                   {faltaAvisar.length > 0
                     ? `Antes hace falta ${faltaAvisar.join(', ')}.`
-                    : 'El día, la empresa, quién le va a llamar y qué tiene que darle al conductor. Guarda antes los cambios: el correo sale con lo que hay grabado.'}
+                    : alVendedor
+                      ? 'El día, la empresa, quién le va a llamar y qué tiene que darle al conductor. Guarda antes los cambios: el correo sale con lo que hay grabado.'
+                      : 'Va a nuestra persona del origen, en castellano, y el correo suyo se escribe en el cuadro: no lo tenemos guardado. Guarda antes los cambios.'}
                 </div>
               </>
             )}
@@ -723,7 +720,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
           * AutoCheck Deutschland», que es a quién le compramos y no quien sale a
           * abrir: el conductor llega a una nave con ochenta coches y llama aquí.
           */}
-        <Plegable titulo="3 · Lo que contesta el origen"
+        <Plegable titulo={alVendedor ? '3 · Lo que contesta el origen' : '3 · Quién lo entrega en origen'}
                   abiertaPorDefecto={parte === 'origen'}
                   resumen={ordenFuera && t.orden_enviada_at
                     ? `confirmado el ${new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}`

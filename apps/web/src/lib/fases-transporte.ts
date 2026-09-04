@@ -128,8 +128,13 @@ export function faltaParaConfirmar(t: DatosDelTramo): string[] {
    * llega a una nave donde nadie le espera se va vacío, y ese viaje se paga
    * igual. Confirmar primero es apostar a que el origen se entera a tiempo por
    * su cuenta.
+   *
+   * En los dos viajes. En el primero el origen es el vendedor alemán; en el
+   * segundo, nuestra persona de Zaragoza. Que no le espere nadie sale igual de
+   * caro tanto si la nave es suya como si es nuestra, y el de la nuestra
+   * además tiene que sacar las llaves y los papeles del cajón.
    */
-  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) {
+  if (!hay(t.aviso_recogida_at)) {
     falta.push('avisar al origen de quién va y qué día');
   }
   if (!hay(t.contacto_origen)) falta.push('por quién pregunta el conductor');
@@ -148,9 +153,9 @@ export function faltaParaConfirmar(t: DatosDelTramo): string[] {
  * en cuanto se rellenara el último hueco, y la siguiente se abriría de golpe
  * mientras todavía se está escribiendo en esta.
  *
- * En el segundo viaje no hay a quién avisar —el origen es nuestra nave—, así
- * que la parte 2 la cierra el guardar de lo que conteste el transportista,
- * que es el botón que hay.
+ * En los dos viajes la cierra el mismo botón, el de avisar al origen: en el
+ * primero es el vendedor alemán y en el segundo nuestra persona de Zaragoza,
+ * pero los dos tienen que tener el coche listo el día que va el camión.
  *
  * Es distinto de queTocaEnElTramo, que sí mira lo vivo: aquella contesta «qué
  * falta ahora mismo» y va cambiando mientras se escribe. Esta decide qué se
@@ -158,11 +163,8 @@ export function faltaParaConfirmar(t: DatosDelTramo): string[] {
  */
 export function queParteSeAbre(t: DatosDelTramo): ParteDelTramo | null {
   if (!hay(t.presupuesto_pedido_at)) return 'solicitud';
-  if (seLePreguntaAlVendedor(t.tramo)) {
-    if (!hay(t.aviso_recogida_at)) return 'respuesta';
-  } else if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) {
-    return 'respuesta';
-  }
+  if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) return 'respuesta';
+  if (!hay(t.aviso_recogida_at)) return 'respuesta';
   if (!hay(t.orden_enviada_at)) return 'origen';
   return null;
 }
@@ -211,7 +213,7 @@ export function queTocaEnElTramo(t: DatosDelTramo): string {
   if (faltaParaAvisarAlOrigen(t).length > 0 || !hay(t.entrega_prevista)) {
     return 'Apunta lo que conteste: qué día lo recoge, qué día llega, cuánto y quién viene.';
   }
-  if (seLePreguntaAlVendedor(t.tramo) && !hay(t.aviso_recogida_at)) {
+  if (!hay(t.aviso_recogida_at)) {
     return 'Avisa al origen de que va el transportista, quién es y qué día.';
   }
   if (!hay(t.contacto_origen) || !hay(t.horario_origen) || !seSabeLoDelPortacoches(t.portacoches)) {
