@@ -28,6 +28,15 @@
  * papeles que hacen falta para matricular aquí. A los nuestros no: para
  * entonces el coche ya está matriculado, y lo que sale con él son las llaves,
  * el permiso de circulación y la ficha técnica.
+ *
+ * Y al vendedor se le pide el **justificante de baja alemán**, que solo se
+ * puede pedir aquí. Ese papel no existe cuando se organiza la recogida —la baja
+ * se tramita al exportar el coche, o sea después de que salga— y pedirlo
+ * después tampoco se puede, porque **este es el último correo que le
+ * escribimos**. Así que se pide en futuro: cuando lo dé de baja, que lo mande.
+ *
+ * No bloquea nada, y por eso llevaba desde el principio en la lista de papeles
+ * de una importación sin que ningún correo lo pidiera.
  */
 
 export interface DatosDelAviso {
@@ -223,6 +232,9 @@ export function correoDeAvisoDeRecogida(d: DatosDelAviso): { subject: string; ht
     p('<strong>Bitte übergeben Sie dem Fahrer:</strong>') +
     papeles +
     p('Bitte bestätigen Sie uns kurz, dass der Termin passt und das Fahrzeug bereitsteht.') +
+    // Y la baja, que solo se puede pedir aquí: no existe hasta que el coche
+    // sale, y después de esto ya no le escribimos.
+    p('Sobald Sie das Fahrzeug zur Ausfuhr abgemeldet haben, senden Sie uns bitte die <strong>Abmeldebescheinigung</strong>.') +
     String(d.nota ?? '') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
@@ -234,7 +246,7 @@ export function correoDeAvisoDeRecogida(d: DatosDelAviso): { subject: string; ht
       (quien ? `, contact ${esc(quien)}` : '') +
       '. They will call you before arriving. Please hand the driver <strong>all keys, ' +
       'registration parts I and II, and the COC</strong>, and let us know the date works ' +
-      'and the car will be ready.</em>'
+      'and the car will be ready. Once you have deregistered it for export, please send us the <strong>deregistration certificate</strong>.</em>'
     );
 
   return { subject, html };

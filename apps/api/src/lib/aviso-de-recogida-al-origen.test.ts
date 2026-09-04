@@ -157,3 +157,35 @@ describe('cuando el origen es nuestra nave', () => {
     assert.match(correoDeAvisoDeRecogida(KIA).html, /Guten Tag/);
   });
 });
+
+/**
+ * Y el justificante de baja, que solo se puede pedir aquí.
+ *
+ * Ese papel no existe cuando se organiza la recogida: la baja se tramita al
+ * exportar el coche, o sea después de que salga. Pedirlo antes es pedir algo que
+ * nadie puede mandar, y pedirlo después tampoco se puede, porque **este es el
+ * último correo que le escribimos al vendedor**.
+ *
+ * Así que se pide aquí y en futuro: cuando lo dé de baja, que lo mande. No
+ * bloquea nada, y por eso llevaba desde el principio en la lista de papeles de
+ * una importación sin que ningún correo lo pidiera.
+ */
+describe('la baja alemana', () => {
+  test('se pide, y en futuro', () => {
+    const { html } = correoDeAvisoDeRecogida(KIA);
+    assert.match(html, /Abmeldebescheinigung/);
+    assert.match(html, /Sobald Sie das Fahrzeug zur Ausfuhr abgemeldet haben/);
+  });
+
+  test('y el inglés dice lo mismo', () => {
+    assert.match(correoDeAvisoDeRecogida(KIA).html, /Once you have deregistered it for export/);
+  });
+
+  test('pero no a los nuestros: nuestro depósito no da de baja nada', () => {
+    // El segundo viaje sale de nuestra nave con el coche ya matriculado aquí.
+    // Pedirle a un compañero de Zaragoza una baja alemana es mandarle a buscar
+    // algo que no existe.
+    const { html } = correoDeAvisoDeRecogida({ ...KIA, aQuien: 'los-nuestros' });
+    assert.doesNotMatch(html, /Abmeldebescheinigung|deregistration/);
+  });
+});

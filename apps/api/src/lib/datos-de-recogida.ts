@@ -14,17 +14,11 @@
  * sin la Zulassungsbescheinigung II no se puede matricular aquí, y eso se
  * descubre semanas después, con el coche ya en Zaragoza.
  *
- * Y desde hoy pide tres papeles que el ERP esperaba y que **nadie pedía nunca**:
- * el contrato de compraventa, el justificante de baja alemán y el libro de
- * mantenimiento. Los tres estaban en la lista de lo que hay que reunir o en la
- * de lo que se le entrega al cliente, y ninguno salía en ningún correo: se
- * quedaban esperando a que alguien se acordara de pedirlos por su cuenta, que
- * es otra forma de decir que no llegaban.
- *
- * El contrato es a lo que se agarra una reclamación contra el vendedor; el
- * libro es lo que hace que un coche valga mil euros más el día que el cliente
- * lo venda. Ninguno bloquea nada, y por eso mismo se piden aquí: lo que no se
- * pide en el correo que ya se manda no se pide nunca.
+ * Y el **libro de mantenimiento**, que estaba en la lista de lo que se le
+ * entrega al cliente y no salía en ningún correo. Va aquí y no en otro sitio
+ * porque es un papel físico que viaja en la guantera: si no sale del
+ * concesionario alemán con el coche, ya no sale, y es lo que hace que valga
+ * mil euros más el día que el cliente lo venda.
  *
  * Y una que parece de detalle y decide el precio del viaje: **si puede entrar
  * un camión portacoches**. Un portacoches lleva ocho y sale a un tercio por
@@ -87,15 +81,7 @@ export function correoDeDatosDeRecogida(d: DatosDeLaRecogida): { subject: string
     li('<strong>An welchem Tag und zu welcher Uhrzeit</strong> können wir es abholen? Falls es flexibel ist: ab wann steht es bereit und zu welchen Öffnungszeiten?') +
     li('<strong>Ansprechpartner und Telefonnummer</strong> vor Ort. Der Fahrer fragt nach ihm.') +
     li('<strong>Was bekommt der Fahrer mit?</strong> Schlüssel, Zulassungsbescheinigung Teil I und II, COC, Serviceheft.') +
-    /*
-     * Y los papeles que se mandan por correo, que son otra cosa.
-     *
-     * Estos no viajan con el coche: los queremos antes, escaneados. El
-     * contrato es a lo que se agarra una reclamación y la baja es lo que
-     * prueba que allí ya no está matriculado; pedirlos cuando el coche ya está
-     * aquí es pedirle un favor a alguien que ya ha cobrado.
-     */
-    li('<strong>Bitte senden Sie uns vorab per E-Mail</strong> den <strong>Kaufvertrag</strong> und, falls vorhanden, die <strong>Abmeldebescheinigung</strong>.') +
+
     li('<strong>Kommt ein Autotransporter bis zum Fahrzeug?</strong> Ein LKW mit mehreren Fahrzeugen braucht Platz und Höhe. Wenn nicht — Tiefgarage, enge Straße, Innenhof —, sagen Sie uns bitte, wo wir es stattdessen übernehmen können.') +
     '</ol>';
 
@@ -103,14 +89,14 @@ export function correoDeDatosDeRecogida(d: DatosDeLaRecogida): { subject: string
     p('Guten Tag,') +
     p('wir organisieren jetzt die Abholung dieses Fahrzeugs:') +
     delCoche +
-    p('Dafür brauchen wir sechs Angaben:') +
+    p('Dafür brauchen wir fünf Angaben:') +
     preguntas +
     String(d.nota ?? '') +
     p('Sobald wir das haben, melden wir uns mit dem Abholtermin.') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
     p('<em>Hello,</em>') +
-    p('<em>we are arranging the pick-up. We need six things: the <strong>exact pick-up address</strong>; <strong>which day and time</strong> we can collect it —or from when it is ready and your opening hours—; a <strong>contact person and phone number</strong> on site, the driver will ask for them; <strong>what the driver takes with the car</strong>: keys, registration parts I and II, the COC and the service book; whether a <strong>car-carrier truck can reach the vehicle</strong> —if it cannot, underground parking, narrow street or inner courtyard, tell us where we can collect it instead—; and please <strong>email us the sales contract in advance</strong>, and the deregistration certificate if you have it.</em>');
+    p('<em>we are arranging the pick-up. We need five things: the <strong>exact pick-up address</strong>; <strong>which day and time</strong> we can collect it —or from when it is ready and your opening hours—; a <strong>contact person and phone number</strong> on site, the driver will ask for them; <strong>what the driver takes with the car</strong>: keys, registration parts I and II, the COC and the service book; and whether a <strong>car-carrier truck can reach the vehicle</strong>. If it cannot —underground parking, narrow street, inner courtyard—, tell us where we can collect it instead.</em>');
 
   return { subject, html };
 }

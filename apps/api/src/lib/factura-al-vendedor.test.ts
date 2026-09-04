@@ -154,3 +154,33 @@ describe('la dirección, en una línea', () => {
     );
   });
 });
+
+/**
+ * Y el contrato de compraventa, que va con la factura.
+ *
+ * Son los dos papeles de la misma compra cerrada. Antes no existe —el correo de
+ * la reserva pregunta si el coche sigue ahí, y el de la recogida organiza un
+ * camión: pedir en cualquiera de los dos el contrato de una compra que aún no se
+ * ha cerrado es pedir un papel que nadie ha firmado— y después ya no hay a quién
+ * pedírselo con la misma prisa.
+ *
+ * Este correo se manda con el dinero ya transferido, que es el único momento en
+ * que un vendedor contesta un correo de papeleo el mismo día.
+ */
+describe('el contrato, con la factura', () => {
+  test('se pide en el mismo correo', () => {
+    // Un correo que pide una cosa se contesta con una cosa; pedir las dos por
+    // separado es mandar dos correos y recibir uno.
+    const { html } = correoDeFacturaAlVendedor(CASO);
+    assert.match(html, /Kaufvertrag/);
+    assert.match(html, /sales contract/);
+  });
+
+  test('y también a nombre del cliente', () => {
+    // Un contrato a nombre de PopCar contradice la factura y deja de servir
+    // para sostener que los 16.890 € son un suplido.
+    const { html } = correoDeFacturaAlVendedor(CASO);
+    assert.match(html, /Kaufvertrag<\/strong> als PDF, ebenfalls auf den Endkunden/);
+    assert.match(html, /also made out to the end customer/);
+  });
+});

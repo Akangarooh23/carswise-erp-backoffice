@@ -128,6 +128,13 @@ export function correoDeFacturaAlVendedor(d: DatosDeLaPeticion): { subject: stri
     datosDelCliente +
     p('Fahrzeug:') +
     delCoche +
+    /*
+     * Y el contrato, en la misma petición.
+     *
+     * Un correo que pide una cosa se contesta con una cosa; pedir las dos por
+     * separado es mandar dos correos y recibir uno.
+     */
+    p('Bitte senden Sie uns außerdem den <strong>Kaufvertrag</strong> als PDF, ebenfalls auf den Endkunden ausgestellt.') +
     String(d.nota ?? '') +
     p('Vielen Dank.') +
     '<hr style="border:none;border-top:1px solid #E4E4DF;margin:22px 0">' +
@@ -136,7 +143,7 @@ export function correoDeFacturaAlVendedor(d: DatosDeLaPeticion): { subject: stri
       (pagado
         ? `<strong>The payment has been made</strong>${d.importe ? ` &mdash; ${eur(Number(d.importe))}` : ''}, transferred on <strong>${esc(pagado)}</strong>. `
         : '') +
-      'We are buying this vehicle on behalf of our customer. <strong>The invoice must be made out to the end customer</strong>, not to PopCar: we act as an intermediary and the car goes directly from the seller to the buyer. Please issue the invoice with the details above.</em>');
+      'We are buying this vehicle on behalf of our customer. <strong>The invoice must be made out to the end customer</strong>, not to PopCar: we act as an intermediary and the car goes directly from the seller to the buyer. Please issue the invoice with the details above, and send us the <strong>sales contract</strong> as a PDF as well, also made out to the end customer.</em>');
 
   return { subject, html };
 }

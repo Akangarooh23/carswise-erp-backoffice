@@ -110,36 +110,38 @@ describe('lo que hace falta para mandarlo', () => {
  * Ninguno bloquea nada, y por eso mismo hay que pedirlos aquí: lo que no se pide
  * en el correo que ya se manda no se pide nunca.
  */
-describe('los papeles que nadie pedía', () => {
-  test('el libro de mantenimiento viaja con el coche', () => {
-    // Es lo que hace que valga mil euros más el día que el cliente lo venda, y
-    // si no sale del concesionario alemán ya no sale nunca.
+/**
+ * Y el libro de mantenimiento, que va aquí y no en otro correo.
+ *
+ * Es un papel físico que viaja en la guantera: si no sale del concesionario
+ * alemán con el coche, ya no sale. Por eso va en la lista de lo que se lleva el
+ * conductor y no en una petición por correo, que es donde van el contrato y la
+ * baja.
+ *
+ * Estaba en la lista de lo que se le entrega al cliente y no salía en ningún
+ * correo del ERP: esperaba a que alguien se acordara de pedirlo por su cuenta.
+ */
+describe('el libro de mantenimiento', () => {
+  test('viaja con el coche, en la lista del conductor', () => {
     const { html } = correoDeDatosDeRecogida(CASO);
     assert.match(html, /Serviceheft/);
     assert.match(html, /service book/);
   });
 
-  test('el contrato y la baja se piden por correo, antes', () => {
-    // No viajan con el coche: los queremos escaneados. Pedirlos cuando el coche
-    // ya está aquí es pedirle un favor a alguien que ya ha cobrado.
+  test('y aquí no se piden el contrato ni la baja', () => {
+    // El contrato va con la factura —son los dos papeles de la misma compra
+    // cerrada— y la baja en el aviso de recogida, porque hasta que el coche no
+    // sale no existe.
     const { html } = correoDeDatosDeRecogida(CASO);
-    assert.match(html, /Kaufvertrag/);
-    assert.match(html, /Abmeldebescheinigung/);
-    assert.match(html, /vorab per E-Mail/);
-  });
-
-  test('y el inglés dice lo mismo', () => {
-    const { html } = correoDeDatosDeRecogida(CASO);
-    assert.match(html, /email us the sales contract in advance/);
-    assert.match(html, /deregistration certificate/);
+    assert.doesNotMatch(html, /Kaufvertrag/);
+    assert.doesNotMatch(html, /Abmeldebescheinigung/);
   });
 
   test('la cuenta de lo que se pide cuadra con lo que se pregunta', () => {
     // «Cinco cosas» seguido de seis puntos hace dudar de las seis.
     const { html } = correoDeDatosDeRecogida(CASO);
-    const puntos = (html.match(/<li /g) ?? []).length;
-    assert.equal(puntos, 6);
-    assert.match(html, /sechs Angaben/);
-    assert.match(html, /We need six things/);
+    assert.equal((html.match(/<li /g) ?? []).length, 5);
+    assert.match(html, /fünf Angaben/);
+    assert.match(html, /We need five things/);
   });
 });
