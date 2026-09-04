@@ -254,3 +254,56 @@ describe('a quién pregunta el conductor, en los dos viajes', () => {
     assert.match(ORDEN, /portacoches: typeof t\.portacoches === 'boolean'/);
   });
 });
+
+/**
+ * Al cliente se le avisa cuando el coche sale, y con el correo que toca.
+ *
+ * Sale en el mismo momento en que el tramo pasa a «Recogido»: es cuando el
+ * coche deja de estar donde estaba, y es el momento en que el expediente se
+ * mueve a «En transporte». Antes no hay nada que contar y después ya ha
+ * llamado él.
+ *
+ * Y son dos correos que dicen cosas contrarias. El del primer viaje dice **«no
+ * va a tu domicilio todavía»** —el coche va a Zaragoza a matricularse— y esa
+ * frase le sujeta la expectativa varias semanas. Mandarlo otra vez en el
+ * segundo viaje sería negarle justo lo que está pasando.
+ */
+describe('el aviso al cliente cuando el coche sale', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const AVISO = FUENTE.slice(
+    FUENTE.indexOf("if (lead && etapaNueva === 'En transporte'"),
+    FUENTE.indexOf('Entregado: el transportista ya puede facturar')
+  );
+
+  test('sale al moverse la etapa, que es al marcar el tramo recogido', () => {
+    // Y una sola vez: el UPDATE lleva WHERE sobre la etapa anterior y solo
+    // devuelve fila si de verdad se movió. Sin eso, «Recogido» y luego «En
+    // tránsito» le mandarían dos correos iguales el mismo día.
+    assert.match(FUENTE, /const lead = movido\.rows\[0\];/);
+    assert.match(AVISO, /await enviar\(\{/);
+  });
+
+  test('el del segundo viaje cuando va a su casa, el del primero cuando no', () => {
+    assert.match(AVISO, /const aSuCasa = Number\(previo\.tramo \?\? 1\) > 1;/);
+    assert.match(AVISO, /aSuCasa[\s\S]{0,80}correoDeCocheHaciaTuCasa/);
+    assert.match(AVISO, /: correoDeCocheEnCamino/);
+  });
+
+  test('con la fecha que dio el transportista, no con la del pedido', () => {
+    // La del pedido es la estimación vieja, de cuando no se sabía nada. La que
+    // el cliente necesita es cuándo llega este camión.
+    assert.match(AVISO, /llegadaEstimada: previo\.entrega_prevista/);
+  });
+
+  test('y con quién conduce, que va a llamar a su puerta', () => {
+    assert.match(AVISO, /conductor: String\(previo\.contacto_transportista/);
+    assert.match(AVISO, /telefonoConductor: String\(previo\.telefono_transportista/);
+  });
+
+  test('si el correo no sale, queda escrito', () => {
+    // Un cliente sin avisar y nadie enterado es peor que un correo que no
+    // salió. Y dice cuál de los dos era.
+    assert.match(AVISO, /No salió el correo de «\$\{cual\}»/);
+  });
+});

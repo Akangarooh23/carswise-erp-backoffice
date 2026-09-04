@@ -23,6 +23,7 @@ import {
   correoDeAvisoDeRecogida, faltaParaAvisarDeLaRecogida,
 } from '../lib/aviso-de-recogida-al-origen.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
+import { correoDeCocheHaciaTuCasa } from '../lib/coche-hacia-tu-casa.js';
 import { abreLosTramitesQueFalten } from './tramites.js';
 import {
   anotaLaLlegada, puedeDarsePorEntregado, faltaPorMirarAlLlegar, type LlegoComoSalio,
@@ -1000,18 +1001,45 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       // abriéndolos, el mismo coche acababa con seis.
 
       if (lead && etapaNueva === 'En transporte' && String(lead.user_email ?? '').trim()) {
-        const { subject, html } = correoDeCocheEnCamino({
-          nombre: lead.contact_name,
-          vehiculo: lead.vehicle_title,
-          entregaEstimada: lead.delivery_estimate,
-          destino: String(previo.hasta ?? '').trim() || 'Zaragoza',
-          panel: `${MARCA.sitioUrl}/panel/solicitudes`,
-        });
+        /*
+         * Y cuál de los dos, que dicen cosas contrarias.
+         *
+         * Cuando el coche salió de Alemania se le escribió «no va a tu domicilio
+         * todavía», y esa frase le ha sujetado la expectativa varias semanas. El
+         * segundo viaje sí va a su casa, y si se le manda el primero otra vez se
+         * le está diciendo justo lo contrario de lo que pasa.
+         *
+         * Sin este correo el segundo viaje ocurriría entero en silencio: un
+         * camión aparece en su calle sin avisar, o —lo normal— llama él
+         * preguntando por un coche que ya está en la carretera. Y esta vez sí
+         * tiene que hacer algo: la entrega se firma, y un camión que llega a una
+         * casa vacía se vuelve con el coche dentro y el viaje se paga igual.
+         */
+        const aSuCasa = Number(previo.tramo ?? 1) > 1;
+        const { subject, html } = aSuCasa
+          ? correoDeCocheHaciaTuCasa({
+            nombre: lead.contact_name,
+            vehiculo: lead.vehicle_title,
+            matricula: (r.rows[0] as Record<string, unknown> | undefined)?.matricula as string | null,
+            destino: String(previo.hasta ?? '').trim() || null,
+            llegadaEstimada: previo.entrega_prevista as string | null,
+            conductor: String(previo.contacto_transportista ?? '').trim() || null,
+            telefonoConductor: String(previo.telefono_transportista ?? '').trim() || null,
+            panel: `${MARCA.sitioUrl}/panel/solicitudes`,
+          })
+          : correoDeCocheEnCamino({
+            nombre: lead.contact_name,
+            vehiculo: lead.vehicle_title,
+            entregaEstimada: lead.delivery_estimate,
+            destino: String(previo.hasta ?? '').trim() || 'Zaragoza',
+            panel: `${MARCA.sitioUrl}/panel/solicitudes`,
+          });
         await enviar({
           to: String(lead.user_email), subject, html, alClienteSiempre: true,
         }).catch(async (e: Error) => {
           console.error('[transportes] no se ha podido avisar al cliente:', e.message);
-          const fallo = `[${cuando}] No salió el correo de «tu coche viene de camino»: ${e.message}`;
+          const cual = aSuCasa ? 'tu coche sale hacia tu casa' : 'tu coche viene de camino';
+          const fallo = `[${cuando}] No salió el correo de «${cual}»: ${e.message}`;
           await query(
             `UPDATE moveadvisor_market_leads SET erp_notes = erp_notes || E'\n' || $2 WHERE id = $1`,
             [String(previo.lead_id), fallo]
