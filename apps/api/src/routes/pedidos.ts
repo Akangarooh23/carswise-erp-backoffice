@@ -955,7 +955,20 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
     const [transportes, tramites, gastos] = await Promise.all([
       query(`SELECT coste::numeric AS coste FROM erp_transportes WHERE pedido_id = $1`, [req.params.id])
         .catch(() => ({ rows: [] as { coste?: unknown }[] })),
-      query(`SELECT coste::numeric AS coste FROM erp_tramites WHERE pedido_id = $1`, [req.params.id])
+      /*
+       * Los papeleos del coche, por sus dos columnas.
+       *
+       * Un papeleo cuelga del pedido o del expediente según por dónde se
+       * abriera, y las dos cosas son el mismo coche. Mirando solo el pedido, la
+       * gestoría de una importación no llegaba al coste: 253 € que no aparecen
+       * hacen que el coche parezca más barato de lo que fue.
+       */
+      query(
+        `SELECT t.coste::numeric AS coste FROM erp_tramites t
+          WHERE t.pedido_id = $1
+             OR t.lead_id IN (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = $1)`,
+        [req.params.id]
+      )
         .catch(() => ({ rows: [] as { coste?: unknown }[] })),
       query(`SELECT importe::numeric AS importe FROM erp_gastos_pedido WHERE pedido_id = $1`, [req.params.id])
         .catch(() => ({ rows: [] as { importe?: unknown }[] })),
@@ -1003,8 +1016,13 @@ pedidosRouter.get('/pedidos/margen-por-origen', requireRole(['admin', 'operation
       query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_transportes
               WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
         .catch(() => ({ rows: [] as Record<string, unknown>[] })),
-      query(`SELECT pedido_id, SUM(coste)::numeric AS coste FROM erp_tramites
-              WHERE pedido_id IS NOT NULL GROUP BY pedido_id`)
+      // Por sus dos columnas, como arriba: un papeleo cuelga del pedido o del
+      // expediente según por dónde se abriera, y el coche es el mismo.
+      query(`SELECT pe.id AS pedido_id, SUM(t.coste)::numeric AS coste
+               FROM erp_pedidos pe
+               JOIN erp_tramites t
+                 ON t.pedido_id = pe.id OR t.lead_id = pe.lead_id
+              GROUP BY pe.id`)
         .catch(() => ({ rows: [] as Record<string, unknown>[] })),
       query(`SELECT pedido_id, SUM(importe)::numeric AS coste FROM erp_gastos_pedido
               GROUP BY pedido_id`)

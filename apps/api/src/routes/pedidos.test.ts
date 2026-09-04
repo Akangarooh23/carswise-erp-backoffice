@@ -560,3 +560,35 @@ describe('el primer tramo nace con el pedido de importación', () => {
     assert.match(crear, /ciudadDeLaOferta\(datos\.vehiculoId\)\) \|\| proveedor \|\| 'El vendedor'/);
   });
 });
+
+/**
+ * El coste de un coche cuenta también su gestoría.
+ *
+ * Un papeleo cuelga del pedido o del expediente según por dónde se abriera —al
+ * llegar a Zaragoza cuelga del expediente, al darse el pedido por recibido
+ * cuelga del pedido— y las dos cosas son el mismo coche.
+ *
+ * Mirando solo el pedido, los 253 € de la gestoría de una importación no
+ * llegaban al coste: el coche parecía más barato de lo que fue, y el margen
+ * mejor. Es la tercera vez que la misma consulta a una sola columna deja fuera
+ * la mitad de los papeleos.
+ */
+describe('el coste cuenta los papeleos del coche entero', () => {
+  const FUENTE = readFileSync(new URL('./pedidos.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('la ficha del pedido los busca por sus dos columnas', () => {
+    assert.match(
+      FUENTE,
+      /WHERE t\.pedido_id = \$1\s*\n\s*OR t\.lead_id IN \(SELECT pe\.lead_id FROM erp_pedidos pe WHERE pe\.id = \$1\)/
+    );
+  });
+
+  test('y la lista también', () => {
+    assert.match(FUENTE, /ON t\.pedido_id = pe\.id OR t\.lead_id = pe\.lead_id/);
+  });
+
+  test('ninguna de las dos mira solo el pedido', () => {
+    assert.doesNotMatch(FUENTE, /FROM erp_tramites\s+WHERE pedido_id IS NOT NULL GROUP BY pedido_id/);
+  });
+});

@@ -183,6 +183,20 @@ before(async () => {
     }
 
     /*
+     * Lo que cuestan los papeleos de un coche.
+     *
+     * También por sus dos columnas: el papeleo cuelga del pedido o del
+     * expediente según por dónde se abriera, y mirando solo una la gestoría no
+     * llegaba al coste del coche.
+     */
+    if (/FROM erp_tramites t WHERE t\.pedido_id = \$1/i.test(t)) {
+      const pedidoId = String(p[0] ?? '');
+      const suLead = tablas.pedidos.find((pe) => pe.id === pedidoId)?.lead_id;
+      return responde(tablas.tramites.filter((x) =>
+        x.pedido_id === pedidoId || (Boolean(suLead) && x.lead_id === suLead)));
+    }
+
+    /*
      * ¿Este coche ya tiene ese papeleo?
      *
      * Se pregunta por el coche entero —su expediente y sus pedidos— porque se
