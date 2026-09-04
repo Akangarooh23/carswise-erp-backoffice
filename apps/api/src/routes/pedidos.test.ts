@@ -592,3 +592,54 @@ describe('el coste cuenta los papeleos del coche entero', () => {
     assert.doesNotMatch(FUENTE, /FROM erp_tramites\s+WHERE pedido_id IS NOT NULL GROUP BY pedido_id/);
   });
 });
+
+/**
+ * Las dos cuentas de una importación, en la ficha del pedido.
+ *
+ * El desglose de siempre vale para el stock, donde el coche es nuestro. En una
+ * importación el coche es del cliente —16.890 € camino de un concesionario
+ * alemán— y ese total no significa nada: hay que separar el dinero que solo pasa
+ * por nosotros del que es nuestro.
+ *
+ * Se manda **además**, no en vez de: la ficha sigue enseñando en qué se ha ido
+ * el dinero, que es una pregunta legítima.
+ */
+describe('la cuenta de una importación en la ficha', () => {
+  const FUENTE = readFileSync(new URL('./pedidos.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const BLOQUE = FUENTE.slice(
+    FUENTE.indexOf("if (pedido.origen === 'importacion' && pedido.lead_id)"),
+    FUENTE.indexOf('res.json({ ok: true, data: { ...coste,')
+  );
+
+  test('solo en las importaciones', () => {
+    // En el stock el coche sí es nuestro y la cuenta de siempre es la buena.
+    assert.match(FUENTE, /if \(pedido\.origen === 'importacion' && pedido\.lead_id\)/);
+    assert.match(FUENTE, /let cuenta = null;/);
+  });
+
+  test('de la gestoría solo entran los honorarios, no sus suplidos', () => {
+    // Sus tasas y el impuesto ya se cuentan en lo que va a terceros. Contarlos
+    // aquí también sería cobrárselos dos veces al margen.
+    assert.match(BLOQUE, /resumenDeLaGestoria\(x\.partidas\)/);
+    assert.match(BLOQUE, /base: g\.honorariosBase/);
+    assert.doesNotMatch(BLOQUE, /g\.suplidos/);
+  });
+
+  test('y los transportes entran con su base y su régimen', () => {
+    // 890 € alemanes y 400 € españoles no cuestan lo mismo.
+    assert.match(BLOQUE, /base: x\.base, iva: x\.iva, total: x\.coste/);
+    assert.match(BLOQUE, /regimen: \(x\.regimen as 'nacional'\) \?\? 'nacional'/);
+  });
+
+  test('el desglose se lee de la base, no se supone', () => {
+    assert.match(FUENTE, /base::numeric AS base, iva::numeric AS iva, regimen/);
+    assert.match(FUENTE, /t\.coste::numeric AS coste, t\.partidas/);
+  });
+
+  test('y el coste de siempre se sigue mandando', () => {
+    // En qué se ha ido el dinero es una pregunta legítima, y la ficha la sigue
+    // contestando.
+    assert.match(FUENTE, /data: \{ \.\.\.coste, margen: margenDelCoche\(coste\.total, venta\), cuenta \}/);
+  });
+});

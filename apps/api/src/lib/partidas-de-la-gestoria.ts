@@ -129,8 +129,22 @@ export interface ResumenDeLaGestoria {
  * coche, porque el IVA de los honorarios se deduce. Con una sola cifra, o el
  * pago o el margen salen mal.
  */
-export function resumenDeLaGestoria(partidas: Partida[] | null | undefined): ResumenDeLaGestoria {
-  const lista = (partidas ?? []).filter((p) => p && String(p.concepto ?? '').trim());
+export function resumenDeLaGestoria(
+  partidas: Partida[] | string | null | undefined
+): ResumenDeLaGestoria {
+  /*
+   * Lo que llegue, tratado como lo que es.
+   *
+   * De Postgres viene un array, pero no siempre: una columna JSONB leída por
+   * otro camino llega como texto, y una fila vieja puede traer null. Un
+   * `.filter` sobre eso revienta la ficha entera del pedido, y un coste que no
+   * se puede ver es peor que un coste a cero.
+   */
+  const crudas = typeof partidas === 'string'
+    ? (() => { try { return JSON.parse(partidas) as Partida[]; } catch { return []; } })()
+    : partidas;
+  const lista = (Array.isArray(crudas) ? crudas : [])
+    .filter((p) => p && String(p.concepto ?? '').trim());
   const c = cuenta(lista.map((p) => {
     const que = p.que ?? queEsPorDefecto(p.concepto);
     return {

@@ -28,7 +28,10 @@ import { preparaDocumentos } from './documentos.js';
 import { abreTramitesDePedido, laMatriculaQueYaTiene } from './tramites.js';
 import { abreTransporteDePedido } from './transportes.js';
 import { haSalido } from '../lib/transportes.js';
-import { costeDelCoche, margenDelCoche, margenPorOrigen } from '../lib/coste.js';
+import {
+  costeDelCoche, margenDelCoche, margenPorOrigen, cuentaDeUnaImportacion,
+} from '../lib/coste.js';
+import { resumenDeLaGestoria, type Partida } from '../lib/partidas-de-la-gestoria.js';
 import {
   esTitularidad, titularidadPorDefecto, vigilaElPlazo, revenderAntesDe, PLAZO_REVENTA_MESES,
 } from '../lib/titularidad.js';
@@ -953,8 +956,11 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
     if (!pedido) { res.status(404).json({ ok: false, error: 'pedido_no_encontrado' }); return; }
 
     const [transportes, tramites, gastos] = await Promise.all([
-      query(`SELECT coste::numeric AS coste FROM erp_transportes WHERE pedido_id = $1`, [req.params.id])
-        .catch(() => ({ rows: [] as { coste?: unknown }[] })),
+      query(
+        `SELECT coste::numeric AS coste, base::numeric AS base, iva::numeric AS iva, regimen
+           FROM erp_transportes WHERE pedido_id = $1`,
+        [req.params.id]
+      ).catch(() => ({ rows: [] as { coste?: unknown }[] })),
       /*
        * Los papeleos del coche, por sus dos columnas.
        *
@@ -964,12 +970,12 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
        * hacen que el coche parezca más barato de lo que fue.
        */
       query(
-        `SELECT t.coste::numeric AS coste FROM erp_tramites t
+        `SELECT t.coste::numeric AS coste, t.partidas FROM erp_tramites t
           WHERE t.pedido_id = $1
              OR t.lead_id IN (SELECT pe.lead_id FROM erp_pedidos pe WHERE pe.id = $1)`,
         [req.params.id]
       )
-        .catch(() => ({ rows: [] as { coste?: unknown }[] })),
+        .catch(() => ({ rows: [] as { coste?: unknown; partidas?: Partida[] }[] })),
       query(`SELECT importe::numeric AS importe FROM erp_gastos_pedido WHERE pedido_id = $1`, [req.params.id])
         .catch(() => ({ rows: [] as { importe?: unknown }[] })),
     ]);
@@ -989,7 +995,60 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
       venta = (l.rows[0] as { sale_price?: unknown } | undefined)?.sale_price ?? null;
     }
 
-    res.json({ ok: true, data: { ...coste, margen: margenDelCoche(coste.total, venta) } });
+    /*
+     * Y si es una importación, sus dos cuentas.
+     *
+     * El desglose de arriba vale para el stock, donde el coche es nuestro. En
+     * una importación el coche es del cliente y ese total no significa nada:
+     * hay que separar el dinero que solo pasa por nosotros del que es nuestro.
+     * Se manda además, no en vez de: la ficha sigue enseñando en qué se ha ido
+     * el dinero, que es una pregunta legítima.
+     */
+    let cuenta = null;
+    if (pedido.origen === 'importacion' && pedido.lead_id) {
+      const l = await query<Record<string, unknown>>(
+        `SELECT escrow_coche, escrow_fee, escrow_impuesto, escrow_garantia, deposit_quoted
+           FROM moveadvisor_market_leads WHERE id = $1`,
+        [pedido.lead_id]
+      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+      const e = l.rows[0];
+      if (e) {
+        /*
+         * Los costes nuestros, cada uno con lo que se sepa de su IVA.
+         *
+         * De la gestoría solo los honorarios: sus tasas y el impuesto son
+         * suplidos y ya se cuentan en lo que va a terceros. Contarlos aquí
+         * también sería cobrárselos dos veces al margen.
+         */
+        const suGestoria = (tramites.rows as { partidas?: Partida[] }[])
+          .map((x) => resumenDeLaGestoria(x.partidas));
+        const costes = [
+          ...(transportes.rows as Record<string, unknown>[]).map((x) => ({
+            base: x.base, iva: x.iva, total: x.coste, que: 'nuestro' as const,
+            regimen: (x.regimen as 'nacional') ?? 'nacional',
+          })),
+          ...suGestoria.map((g) => ({
+            base: g.honorariosBase, total: g.honorarios, que: 'nuestro' as const,
+            iva: g.iva > 0 ? 21 : undefined, regimen: 'nacional' as const,
+          })),
+          ...(gastos.rows as { importe?: unknown }[]).map((x) => ({
+            total: x.importe, que: 'nuestro' as const,
+          })),
+        ];
+        cuenta = cuentaDeUnaImportacion({
+          escrow: {
+            coche: e.escrow_coche, fee: e.escrow_fee,
+            impuesto: e.escrow_impuesto, garantia: e.escrow_garantia,
+            total: e.deposit_quoted,
+          },
+          precioProveedor: pedido.importe,
+          impuestoReal: null,
+          costes,
+        });
+      }
+    }
+
+    res.json({ ok: true, data: { ...coste, margen: margenDelCoche(coste.total, venta), cuenta } });
   } catch (err) {
     console.error('[pedidos] coste:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'pedidos_failed' });

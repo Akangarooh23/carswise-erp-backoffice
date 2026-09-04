@@ -1087,6 +1087,12 @@ function LoQueCuesta({ id }: { id: string }) {
     partidas: { concepto: string; importe: number }[];
     total: number;
     margen: { coste: number; venta: number; margen: number; porcentaje: number | null } | null;
+    /** Y, si es una importación, sus dos cuentas: la del cliente y la nuestra. */
+    cuenta: {
+      deposito: number; aTerceros: number; ingreso: number; descuadre: number;
+      coste: number; margen: number; porcentaje: number | null;
+      ivaSoportado: number; sinDesglosar: number;
+    } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -1114,6 +1120,88 @@ function LoQueCuesta({ id }: { id: string }) {
           </tr>
         </tbody>
       </table>
+
+      {/*
+        * Y si es una importación, las dos cuentas.
+        *
+        * Va encima del margen de compraventa a propósito: en una importación
+        * ese margen no significa nada —el coche no es nuestro— y lo primero
+        * que hay que ver es si el dinero del cliente cuadra.
+        */}
+      {coste.cuenta && (
+        <div className="mt-3">
+          <div className="text-xs font-semibold text-brand-500 mb-1.5">Su dinero</div>
+          <table className="w-full text-[12px]">
+            <tbody>
+              <tr>
+                <td className="py-0.5 text-brand-500">Depositó</td>
+                <td className="py-0.5 text-right tabular-nums text-brand-600">{eur(coste.cuenta.deposito)}</td>
+              </tr>
+              <tr>
+                <td className="py-0.5 text-brand-500">A terceros · coche, impuesto, garantía</td>
+                <td className="py-0.5 text-right tabular-nums text-brand-600">−{eur(coste.cuenta.aTerceros)}</td>
+              </tr>
+              <tr>
+                <td className="py-0.5 text-brand-500">Nuestro servicio</td>
+                <td className="py-0.5 text-right tabular-nums text-brand-600">−{eur(coste.cuenta.ingreso)}</td>
+              </tr>
+            </tbody>
+          </table>
+          {Math.abs(coste.cuenta.descuadre) > 0.01 ? (
+            <div className="mt-1.5 px-3 py-2 rounded-lg text-[12px] bg-amber-50 border border-amber-200 text-amber-800">
+              {coste.cuenta.descuadre > 0
+                ? `Sobran ${eur(coste.cuenta.descuadre)} de lo que depositó: son suyos y hay que devolvérselos.`
+                : `Faltan ${eur(Math.abs(coste.cuenta.descuadre))} de su depósito: ese dinero lo estamos poniendo nosotros.`}
+            </div>
+          ) : (
+            <div className="mt-1.5 text-[11px] text-emerald-700 font-semibold">Cuadra.</div>
+          )}
+
+          {/*
+            * Y la nuestra, que es la que dice si el coche ha dejado dinero.
+            *
+            * El ingreso es el servicio; el coste, lo que pagamos por hacerlo, en
+            * base, porque el IVA se deduce. El coche no está aquí porque no es
+            * nuestro.
+            */}
+          <div className="text-xs font-semibold text-brand-500 mt-3 mb-1.5">Lo nuestro</div>
+          <table className="w-full text-[12px]">
+            <tbody>
+              <tr>
+                <td className="py-0.5 text-brand-500">Servicio</td>
+                <td className="py-0.5 text-right tabular-nums text-brand-600">{eur(coste.cuenta.ingreso)}</td>
+              </tr>
+              <tr>
+                <td className="py-0.5 text-brand-500">Peritación, transportes, honorarios y taller</td>
+                <td className="py-0.5 text-right tabular-nums text-brand-600">−{eur(coste.cuenta.coste)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className={`mt-1.5 px-3 py-2 rounded-lg text-[12px] ${coste.cuenta.margen >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+            <span className="font-bold">
+              {coste.cuenta.margen >= 0 ? "Margen" : "Pérdida"}: {eur(Math.abs(coste.cuenta.margen))}
+            </span>
+            {coste.cuenta.porcentaje != null && <span> · {coste.cuenta.porcentaje} % del servicio</span>}
+            {coste.cuenta.ivaSoportado > 0 && (
+              <span className="block opacity-80">
+                Y {eur(coste.cuenta.ivaSoportado)} de IVA que se deduce, que no es margen.
+              </span>
+            )}
+            {/*
+              * Un margen con líneas sin IVA conocido no es un margen: es una
+              * estimación por lo bajo, porque cuentan enteras como base.
+              */}
+            {coste.cuenta.sinDesglosar > 0 && (
+              <span className="block opacity-80">
+                {coste.cuenta.sinDesglosar === 1
+                  ? "Una línea no dice su IVA"
+                  : `${coste.cuenta.sinDesglosar} líneas no dicen su IVA`}: hasta que se
+                {' '}ponga, el margen sale por lo bajo.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {coste.margen ? (
         <div className={`mt-2 px-3 py-2 rounded-lg text-[12px] ${coste.margen.margen >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>

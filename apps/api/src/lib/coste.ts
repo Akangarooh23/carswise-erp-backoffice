@@ -97,3 +97,128 @@ export function margenPorOrigen(
   }
   return acumulado;
 }
+
+/*
+ * ── Y la cuenta de una importación, que no es una compraventa ──────────────
+ *
+ * `costeDelCoche` de aquí arriba vale para el stock: ese coche lo compramos
+ * nosotros, lo arreglamos y lo vendemos, y coste y venta son lo que parecen.
+ *
+ * Una importación es otra cosa y contarla igual da un número que no significa
+ * nada. **El coche no es nuestro**: los 16.890 € del Kia son dinero del cliente
+ * que pasa por nuestra cuenta camino de un concesionario alemán, igual que los
+ * 1.420 € del impuesto van camino de Hacienda. Meterlos en «lo que cuesta el
+ * coche» y compararlos con «lo que se cobró» mezcla dos cosas que no se pueden
+ * sumar.
+ *
+ * Son dos cuentas y hay que mirarlas por separado:
+ *
+ * 1. **La del cliente.** Puso 21.500 € y tienen que salir 21.500 €: el coche al
+ *    vendedor, el impuesto y las tasas a quien toque, la garantía a su
+ *    proveedor y nuestro servicio a nosotros. La única pregunta es si cuadra.
+ *    Si no cuadra, hay dinero suyo en nuestra cuenta o le estamos poniendo
+ *    dinero nuestro, y las dos cosas hay que saberlas hoy y no en el cierre.
+ *
+ * 2. **La nuestra.** Ingresamos el servicio y gastamos en peritación,
+ *    transportes, honorarios de gestoría y reacondicionado. Eso —y solo eso—
+ *    es el margen. Todo en base, porque el IVA soportado se deduce: no es
+ *    coste, es un préstamo a Hacienda.
+ */
+
+import { cuenta as cuentaDelDinero, importe as leeImporte, type LineaDeDinero } from './dinero.js';
+
+export interface CuentaDeImportacion {
+  /** Lo que el cliente depositó. */
+  deposito: number;
+  /** De ese dinero, lo que va a terceros: coche, impuesto, tasas, garantía. */
+  aTerceros: number;
+  /** Y lo que es nuestro: el servicio. */
+  ingreso: number;
+  /** Lo que sobra o falta de su depósito. Cero es lo que tiene que salir. */
+  descuadre: number;
+  /** Lo que nos cuesta de verdad, en base. */
+  coste: number;
+  /** Ingreso menos coste. */
+  margen: number;
+  /** Sobre el ingreso, que es lo que se mira en un servicio. */
+  porcentaje: number | null;
+  /** El IVA que se deduce, que no es margen ni coste. */
+  ivaSoportado: number;
+  /** Cuántas líneas de coste no dicen cómo se parten. */
+  sinDesglosar: number;
+}
+
+const dosDecimales = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Las dos cuentas de una importación.
+ *
+ * `sinDesglosar` viaja pegado al margen a propósito: un margen calculado con
+ * cuatro líneas sin IVA conocido no es un margen, es una estimación por lo
+ * bajo —cuentan enteras como base— y quien lo mira tiene que saberlo sin ir a
+ * buscarlo.
+ */
+export function cuentaDeUnaImportacion(datos: {
+  /** Lo que puso el cliente, partido como se le cobró. */
+  escrow: {
+    coche?: unknown;
+    fee?: unknown;
+    impuesto?: unknown;
+    garantia?: unknown;
+    total?: unknown;
+  };
+  /** Lo que se le paga al vendedor alemán, que sale de su factura. */
+  precioProveedor?: unknown;
+  /** Lo que ha costado el impuesto de verdad, si ya se sabe. */
+  impuestoReal?: unknown;
+  /** Nuestros costes, cada uno con su base, su tipo y su régimen. */
+  costes: LineaDeDinero[];
+}): CuentaDeImportacion {
+  const e = datos.escrow ?? {};
+  const deposito = leeImporte(e.total) || (
+    leeImporte(e.coche) + leeImporte(e.fee) + leeImporte(e.impuesto) + leeImporte(e.garantia)
+  );
+  const ingreso = leeImporte(e.fee);
+
+  /*
+   * Lo que sale hacia terceros, con lo que ha costado de verdad.
+   *
+   * El coche vale lo que dice su factura, no lo que se estimó al cobrar; y el
+   * impuesto, lo que puso la gestoría. Mientras no se sepan, se usa lo cobrado:
+   * decir que descuadra porque todavía no ha llegado un papel sería un aviso
+   * falso todos los días hasta que llegue.
+   */
+  const coche = leeImporte(datos.precioProveedor) || leeImporte(e.coche);
+  const impuesto = leeImporte(datos.impuestoReal) || leeImporte(e.impuesto);
+  const aTerceros = dosDecimales(coche + impuesto + leeImporte(e.garantia));
+
+  const c = cuentaDelDinero(datos.costes);
+
+  const margen = dosDecimales(ingreso - c.nuestro);
+  return {
+    deposito: dosDecimales(deposito),
+    aTerceros,
+    ingreso: dosDecimales(ingreso),
+    descuadre: dosDecimales(deposito - aTerceros - ingreso),
+    coste: c.nuestro,
+    margen,
+    porcentaje: ingreso > 0 ? Math.round((margen / ingreso) * 1000) / 10 : null,
+    ivaSoportado: c.ivaSoportado,
+    sinDesglosar: c.sinDesglosar,
+  };
+}
+
+/**
+ * Lo que hay que decir del descuadre, si lo hay.
+ *
+ * No es lo mismo que sobre a que falte, y las dos cosas se arreglan de forma
+ * distinta: lo que sobra es dinero suyo que hay que devolverle, y lo que falta
+ * es dinero nuestro puesto en su coche.
+ */
+export function quePasaConSuDinero(c: CuentaDeImportacion): string | null {
+  if (Math.abs(c.descuadre) <= 0.01) return null;
+  const eur = (n: number) => `${Math.abs(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  return c.descuadre > 0
+    ? `Sobran ${eur(c.descuadre)} de lo que depositó: son suyos y hay que devolvérselos.`
+    : `Faltan ${eur(c.descuadre)} de su depósito: ese dinero lo estamos poniendo nosotros.`;
+}

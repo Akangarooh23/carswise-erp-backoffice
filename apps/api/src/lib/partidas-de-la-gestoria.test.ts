@@ -266,3 +266,33 @@ describe('lo pegado con base e IVA', () => {
     assert.equal(r.sinDesglosar, 0);
   });
 });
+
+/**
+ * Y aguanta lo que llegue de la base.
+ *
+ * De Postgres viene un array, pero no siempre: una columna JSONB leída por otro
+ * camino llega como texto, y una fila vieja puede traer null. Un `.filter` sobre
+ * eso revienta la ficha entera del pedido —lo hizo— y un coste que no se puede
+ * ver es peor que un coste a cero.
+ */
+describe('lo que llegue de la base', () => {
+  test('un array, lo normal', () => {
+    assert.equal(resumenDeLaGestoria([{ concepto: 'Tasa DGT', importe: 99.77 }]).total, 99.77);
+  });
+
+  test('el mismo array como texto', () => {
+    const r = resumenDeLaGestoria(JSON.stringify([{ concepto: 'Tasa DGT', importe: 99.77 }]));
+    assert.equal(r.total, 99.77);
+    assert.equal(r.suplidos, 99.77);
+  });
+
+  test('un texto que no es JSON no revienta', () => {
+    assert.equal(resumenDeLaGestoria('lo que sea').cuantas, 0);
+  });
+
+  test('ni nada de lo que pueda venir en una fila vieja', () => {
+    assert.equal(resumenDeLaGestoria(null).cuantas, 0);
+    assert.equal(resumenDeLaGestoria(undefined).cuantas, 0);
+    assert.equal(resumenDeLaGestoria('{}' as unknown as string).cuantas, 0);
+  });
+});
