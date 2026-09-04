@@ -429,9 +429,22 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                      WHERE t.lead_id = moveadvisor_market_leads.id
                   ),
                   'impuesto_real', (
-                    SELECT t.coste FROM erp_tramites t
-                     WHERE t.lead_id = moveadvisor_market_leads.id
-                       AND t.tipo = 'Impuesto de matriculación'
+                    -- El impuesto es una **partida** del expediente de gestoría, no un trámite
+                    -- suyo: los tres papeleos se juntaron en uno. Buscarlo por un tipo que ya no
+                    -- existe devolvía nulo siempre, y con nulo no se ve la liquidación y se
+                    -- puede entregar el coche sin ajustar lo que el cliente puso a cuenta.
+                    --
+                    -- Se busca por el coche entero: un papeleo cuelga del expediente o del
+                    -- pedido según por dónde se abriera.
+                    --
+                    -- Sale como texto a propósito. De un Excel pegado llega «1.420,00 €», y
+                    -- convertirlo aquí a número daría 1,42: lo entiende importeQueVale.
+                    SELECT p->>'importe'
+                      FROM erp_tramites t, LATERAL jsonb_array_elements(t.partidas) p
+                     WHERE (t.lead_id = moveadvisor_market_leads.id
+                        OR t.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = moveadvisor_market_leads.id))
+                       AND lower(btrim(p->>'concepto')) LIKE 'impuesto de matriculaci%'
+                       AND COALESCE(p->>'importe', '') <> ''
                      ORDER BY t.created_at DESC LIMIT 1
                   )
                 ) AS meta
@@ -1669,8 +1682,15 @@ leadsRouter.patch('/leads/:id/entrega', requireRole(['admin', 'operations', 'sal
        */
       const liq = await query<{ provision: string | null; real: string | null; hecha: string | null }>(
         `SELECT l.escrow_impuesto AS provision, l.liquidacion_at AS hecha,
-                (SELECT t.coste FROM erp_tramites t
-                  WHERE t.lead_id = l.id AND t.tipo = 'Impuesto de matriculación'
+                -- Una partida del expediente de gestoría, no un trámite suyo:
+                -- los tres papeleos se juntaron en uno. Como texto, que de un
+                -- Excel pegado llega «1.420,00 €».
+                (SELECT p->>'importe'
+                   FROM erp_tramites t, LATERAL jsonb_array_elements(t.partidas) p
+                  WHERE (t.lead_id = l.id
+                     OR t.pedido_id IN (SELECT pe.id FROM erp_pedidos pe WHERE pe.lead_id = l.id))
+                    AND lower(btrim(p->>'concepto')) LIKE 'impuesto de matriculaci%'
+                    AND COALESCE(p->>'importe', '') <> ''
                   ORDER BY t.created_at DESC LIMIT 1) AS real
            FROM moveadvisor_market_leads l WHERE l.id = $1`,
         [req.params.id]

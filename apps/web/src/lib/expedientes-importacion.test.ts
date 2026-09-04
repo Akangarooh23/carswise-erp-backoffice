@@ -14,7 +14,8 @@ import {
   puedeLiberar, repartoDelDeposito,
   bloquesDelExpediente,
   type Expediente,
-  COLUMNAS, COLUMNA_SEGUNDO_VIAJE, QUE_TOCA_COLUMNA, columnaDelExpediente,
+  COLUMNAS, COLUMNA_SEGUNDO_VIAJE, QUE_TOCA_COLUMNA, columnaDelExpediente,
+  liquidacionDelImpuesto,
 } from './expedientes-importacion.js';
 
 function exp(parcial: Partial<Expediente> & { status: string }): Expediente {
@@ -389,5 +390,51 @@ describe('las dos columnas del transporte', () => {
       QUE_TOCA_COLUMNA[COLUMNA_SEGUNDO_VIAJE]
     );
     assert.match(QUE_TOCA_COLUMNA[COLUMNA_SEGUNDO_VIAJE], /cliente/);
+  });
+});
+
+/**
+ * El impuesto llega como una partida de la gestoría, con su formato.
+ *
+ * Los tres papeleos se juntaron en un solo expediente, así que el impuesto ya
+ * no es un trámite con su coste: es una línea de la tabla de partidas, pegada
+ * de un Excel. «1.420,00 €» son mil cuatrocientos veinte, y `Number()` de eso
+ * es NaN.
+ *
+ * Un NaN aquí no da error: apaga el bloque de la liquidación sin decir nada, y
+ * el ERP deja entregar el coche sin ajustar lo que el cliente puso a cuenta.
+ */
+describe('la liquidación entiende lo que llega de la gestoría', () => {
+  const conImpuesto = (real: unknown, provision: unknown = 1420) => liquidacionDelImpuesto(exp({
+    status: 'En trámites',
+    meta: { escrow_impuesto: provision as number, impuesto_real: real as number },
+  }));
+
+  test('con puntos de millar y coma decimal', () => {
+    const l = conImpuesto('1.687,50 €');
+    assert.equal(l?.real, 1688);
+    assert.equal(l?.provision, 1420);
+    assert.equal(l?.quien, 'cobrar');
+  });
+
+  test('y con punto decimal, que también llega así', () => {
+    assert.equal(conImpuesto('1250.40')?.real, 1250);
+  });
+
+  test('menos de lo que puso: se le devuelve', () => {
+    const l = conImpuesto('980,00');
+    assert.equal(l?.quien, 'devolver');
+    assert.equal(l?.diferencia, -440);
+  });
+
+  test('sin partida todavía, no se inventa una liquidación', () => {
+    // El importe llega cuando la gestoría lo escribe. Un bloque que dice
+    // «pendiente» durante seis semanas es ruido.
+    assert.equal(conImpuesto(null), null);
+    assert.equal(conImpuesto(''), null);
+  });
+
+  test('y una provisión con formato raro tampoco se pierde', () => {
+    assert.equal(conImpuesto('1.420,00', '1.420,00 €')?.quien, 'cuadra');
   });
 });

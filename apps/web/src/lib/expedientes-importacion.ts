@@ -11,6 +11,8 @@
  * la vez, que es lo que se quiere.
  */
 
+import { importeQueVale } from './partidas-de-la-gestoria.js';
+
 export const ETAPAS = [
   'Pendiente',
   'Contactado',
@@ -332,8 +334,15 @@ export function liquidacionDelImpuesto(x: Expediente): {
 } | null {
   const real = x.meta?.impuesto_real;
   if (real == null || real === "") return null;
-  const provision = Math.round(Number(x.meta?.escrow_impuesto) || 0);
-  const cierto = Math.round(Number(real) || 0);
+  /*
+   * Con importeQueVale y no con Number.
+   *
+   * El importe sale de una partida del expediente de gestoría, y ahí llega
+   * pegado de un Excel: «1.420,00 €». Number() de eso es NaN, y un NaN aquí
+   * apaga el bloque de la liquidación sin decir nada.
+   */
+  const provision = Math.round(importeQueVale(x.meta?.escrow_impuesto));
+  const cierto = Math.round(importeQueVale(real));
   const diferencia = cierto - provision;
   return {
     provision,

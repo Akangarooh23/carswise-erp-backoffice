@@ -361,3 +361,49 @@ describe('la matrícula sale de la gestoría', () => {
     }
   });
 });
+
+/**
+ * El impuesto de matriculación es una partida, no un trámite.
+ *
+ * Los tres papeleos de una importación se juntaron en un solo expediente de
+ * gestoría, porque los lleva la misma gestoría con una factura. Desde
+ * entonces, buscar «el trámite de tipo Impuesto de matriculación» devuelve
+ * nulo siempre.
+ *
+ * Y con nulo pasan dos cosas, las dos de dinero: no se ve la liquidación de lo
+ * que el cliente puso a cuenta, y el ERP deja entregar el coche sin ajustarla.
+ * Con el coche ya entregado, esa conversación es mucho más difícil.
+ */
+describe('el impuesto sale de las partidas', () => {
+  const LEADS = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('se busca la partida y no el trámite que ya no existe', () => {
+    assert.doesNotMatch(LEADS, /t\.tipo = 'Impuesto de matriculación'/);
+    assert.equal(
+      (LEADS.match(/lower\(btrim\(p->>'concepto'\)\) LIKE 'impuesto de matriculaci%'/g) ?? []).length,
+      2,
+      'son dos los sitios que lo leen: la lista de expedientes y la liquidación'
+    );
+  });
+
+  test('y en el coche entero, por sus dos columnas', () => {
+    // Un papeleo cuelga del expediente o del pedido según por dónde se abriera.
+    assert.match(LEADS, /OR t\.pedido_id IN \(SELECT pe\.id FROM erp_pedidos pe/);
+  });
+
+  test('una partida sin importe no cuenta como importe', () => {
+    // Se apuntan conceptos antes de saber lo que valen. Un vacío leído como
+    // cero diría que hay que devolverle la provisión entera.
+    assert.equal(
+      (LEADS.match(/AND COALESCE\(p->>'importe', ''\) <> ''/g) ?? []).length,
+      2
+    );
+  });
+
+  test('sale como texto, que es como está escrito', () => {
+    // «1.420,00 €» convertido a número en SQL daría 1,42. Lo entiende
+    // importeQueVale, que ya sabe de Excel pegado.
+    assert.match(LEADS, /SELECT p->>'importe'/);
+  });
+});

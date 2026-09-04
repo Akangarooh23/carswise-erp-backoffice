@@ -225,9 +225,17 @@ describe('no se entrega con el impuesto sin liquidar', () => {
     assert.match(FUENTE, /falta_liquidar_impuesto/);
   });
 
-  test('y el importe real sale del trámite, no de un campo aparte', () => {
+  test('y el importe real sale de la gestoría, no de un campo aparte', () => {
     // Un dato en dos sitios acaba diciendo dos cosas.
-    assert.match(FUENTE, /t\.tipo = 'Impuesto de matriculación'/);
+    //
+    // Estuvo en el coste de un trámite de tipo «Impuesto de matriculación».
+    // Los tres papeleos se juntaron en un solo expediente y ese tipo dejó de
+    // existir: desde entonces el impuesto es una **partida** de ese expediente,
+    // y buscarlo por el tipo viejo devolvía nulo siempre — con lo que ni se veía
+    // la liquidación ni estorbaba a la entrega, que es justo lo que tenía que
+    // hacer.
+    assert.match(FUENTE, /lower\(btrim\(p->>'concepto'\)\) LIKE 'impuesto de matriculaci%'/);
+    assert.doesNotMatch(FUENTE, /t\.tipo = 'Impuesto de matriculación'/);
   });
 
   test('solo estorba cuando ya se sabe el importe real', () => {
