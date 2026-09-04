@@ -403,6 +403,10 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       'hasta', t.hasta,
                       'transportista', t.transportista,
                       'orden_enviada_at', t.orden_enviada_at,
+                      -- Cuándo cargó el camión, que es lo que pone el coche en
+                      -- la carretera. Un tramo contratado no es un coche
+                      -- viajando, y el tablero necesita distinguirlo.
+                      'fecha_recogida', t.fecha_recogida,
                       'fecha_entrega', t.fecha_entrega)
                       FROM erp_transportes t
                      WHERE t.lead_id = moveadvisor_market_leads.id AND t.tramo = 2

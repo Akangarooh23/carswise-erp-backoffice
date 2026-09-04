@@ -187,6 +187,8 @@ export interface MetaImportacion {
     hasta?: string | null;
     transportista?: string | null;
     orden_enviada_at?: string | null;
+    /** Cuándo cargó el camión: lo que lo pone en la carretera. */
+    fecha_recogida?: string | null;
     fecha_entrega?: string | null;
   } | null;
   /** Lo que ese tramo ya sabe, para no confundir esperar con poder hacer. */
@@ -376,9 +378,63 @@ export function diasDesde(v?: string | null, ahora: Date = new Date()): number |
   return Math.floor((ahora.getTime() - d.getTime()) / 86_400_000);
 }
 
-export function agrupaPorEtapa(expedientes: Expediente[]): Map<Etapa, Expediente[]> {
-  const mapa = new Map<Etapa, Expediente[]>(ETAPAS.map((e) => [e, [] as Expediente[]]));
-  for (const x of expedientes) if (esEtapa(x.status)) mapa.get(x.status)!.push(x);
+/**
+ * Las columnas del tablero. El transporte son **dos**, no uno.
+ *
+ * Una importación viaja dos veces: de Alemania al depósito y del depósito a
+ * casa del cliente, con los trámites en medio. La etapa se llama igual las dos
+ * veces —es el mismo tipo de cosa— y la tarjeta volvía a la columna de
+ * «En transporte», tres a la izquierda de donde estaba el día anterior.
+ *
+ * Podía defenderse: el coche está donde dice. Pero un tablero se lee de
+ * izquierda a derecha, y una tarjeta que retrocede se lee como que algo ha
+ * salido mal. Además tapa lo único que importa de esa columna, que es si el
+ * coche está viniendo o ya está yéndose.
+ *
+ * Las **etapas** no cambian: son las de la API y las del panel del cliente, y
+ * cambiar aquí lo que se llama de otra forma allí es como se acaba hablando de
+ * cosas distintas. Lo que se desdobla es cómo se enseñan.
+ */
+export const COLUMNA_SEGUNDO_VIAJE = 'En transporte 2';
+
+export const COLUMNAS = [
+  'Pendiente',
+  'Contactado',
+  'Depósito retenido',
+  'Verificado y pagado',
+  'En transporte',
+  'En trámites',
+  COLUMNA_SEGUNDO_VIAJE,
+  'Entregado',
+] as const;
+
+export type Columna = (typeof COLUMNAS)[number];
+
+export const QUE_TOCA_COLUMNA: Record<Columna, string> = {
+  ...QUE_TOCA,
+  'En transporte': 'Viene de Alemania al depósito',
+  [COLUMNA_SEGUNDO_VIAJE]: 'Del depósito a casa del cliente',
+};
+
+/**
+ * En qué columna cae un expediente.
+ *
+ * Lo decide **el camión, no la etapa**: el segundo viaje empieza cuando alguien
+ * carga el coche, no cuando se contrata el transporte. Un tramo organizado con
+ * el coche todavía en el depósito sigue siendo un coche en el depósito.
+ */
+export function columnaDelExpediente(x: Expediente): Columna | null {
+  if (!esEtapa(x.status)) return null;
+  if (x.status !== 'En transporte') return x.status;
+  return x.meta?.tramo_al_cliente?.fecha_recogida ? COLUMNA_SEGUNDO_VIAJE : x.status;
+}
+
+export function agrupaPorEtapa(expedientes: Expediente[]): Map<Columna, Expediente[]> {
+  const mapa = new Map<Columna, Expediente[]>(COLUMNAS.map((e) => [e, [] as Expediente[]]));
+  for (const x of expedientes) {
+    const donde = columnaDelExpediente(x);
+    if (donde) mapa.get(donde)!.push(x);
+  }
   return mapa;
 }
 

@@ -8,12 +8,13 @@ import { comoSeCuenta } from '../lib/danos.js';
 import CaminoDelCoche from '../components/CaminoDelCoche.js';
 import Plegable from '../components/Plegable.js';
 import {
-  ETAPAS, QUE_TOCA, siguienteEtapa, fianzaPagada, puedeDarFecha, bloquesDelExpediente,
+  ETAPAS, COLUMNAS, QUE_TOCA, QUE_TOCA_COLUMNA, COLUMNA_SEGUNDO_VIAJE,
+  siguienteEtapa, fianzaPagada, puedeDarFecha, bloquesDelExpediente,
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
   facturaDelVendedorPedida, encargoALaGestoriaEnviado, reservaPreguntada,
   liquidacionDelImpuesto,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
-  type Etapa, type Expediente,
+  type Etapa, type Columna, type Expediente,
 } from '../lib/expedientes-importacion.js';
 
 /**
@@ -34,13 +35,16 @@ import {
  * cambia es cómo se enseña.
  */
 
-const COLOR_ETAPA: Record<Etapa, string> = {
+const COLOR_ETAPA: Record<Columna, string> = {
   'Pendiente':         'bg-amber-50 border-amber-200 text-amber-800',
   'Contactado':        'bg-amber-50 border-amber-200 text-amber-800',
   'Depósito retenido':     'bg-blue-50 border-blue-200 text-blue-800',
   'Verificado y pagado': 'bg-blue-50 border-blue-200 text-blue-800',
   'En transporte':     'bg-indigo-50 border-indigo-200 text-indigo-800',
   'En trámites':       'bg-violet-50 border-violet-200 text-violet-800',
+  // El último viaje, con el verde de lo que ya casi está: en el tablero se
+  // distingue de un vistazo de la columna del primero.
+  [COLUMNA_SEGUNDO_VIAJE]: 'bg-teal-50 border-teal-200 text-teal-800',
   'Entregado':         'bg-emerald-50 border-emerald-200 text-emerald-800',
 };
 
@@ -331,13 +335,13 @@ export default function ImportacionesPage() {
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {ETAPAS.map((etapa) => {
+          {COLUMNAS.map((etapa) => {
             const lista = porEtapa.get(etapa) ?? [];
             return (
               <div key={etapa} className="min-w-[240px] w-[240px] shrink-0">
                 <div className={`px-3 py-2 rounded-t-xl border text-xs font-bold ${COLOR_ETAPA[etapa]}`}>
                   {etapa} <span className="opacity-70">· {lista.length}</span>
-                  <div className="font-normal opacity-80 mt-0.5 text-[11px]">{QUE_TOCA[etapa]}</div>
+                  <div className="font-normal opacity-80 mt-0.5 text-[11px]">{QUE_TOCA_COLUMNA[etapa]}</div>
                 </div>
                 <div className="border border-t-0 border-brand-200 rounded-b-xl bg-brand-50/40 p-2 min-h-[80px] flex flex-col gap-2">
                   {lista.length === 0 && (

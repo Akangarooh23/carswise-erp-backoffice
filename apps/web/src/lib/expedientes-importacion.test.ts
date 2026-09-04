@@ -14,6 +14,7 @@ import {
   puedeLiberar, repartoDelDeposito,
   bloquesDelExpediente,
   type Expediente,
+  COLUMNAS, COLUMNA_SEGUNDO_VIAJE, QUE_TOCA_COLUMNA, columnaDelExpediente,
 } from './expedientes-importacion.js';
 
 function exp(parcial: Partial<Expediente> & { status: string }): Expediente {
@@ -290,5 +291,103 @@ describe('qué partes del expediente tienen sentido en cada etapa', () => {
 
   test('una etapa que no existe no abre nada', () => {
     assert.deepEqual(bloquesDelExpediente('Lo que sea'), []);
+  });
+});
+
+/**
+ * El tablero tiene una columna para cada viaje.
+ *
+ * Una importación viaja dos veces: de Alemania al depósito y del depósito a
+ * casa del cliente, con los trámites en medio. La etapa se llama igual las dos
+ * veces —es el mismo tipo de cosa— y la tarjeta volvía a la columna de «En
+ * transporte», tres a la izquierda de donde estaba el día anterior.
+ *
+ * Podía defenderse, porque el coche está donde dice. Pero un tablero se lee de
+ * izquierda a derecha y una tarjeta que retrocede se lee como que algo ha ido
+ * mal; y además tapaba lo único que importa de esa columna, que es si el coche
+ * está viniendo o ya se está yendo.
+ *
+ * Las **etapas** no cambian: son las de la API y las del panel del cliente.
+ * Lo que se desdobla es cómo se enseñan.
+ */
+describe('las dos columnas del transporte', () => {
+  const BASE = {
+    id: 'imp-1', user_email: 'ana@ejemplo.es', title: 'Kia Sorento',
+    created_at: '2026-09-01T10:00:00Z',
+  };
+
+  test('la segunda va después de los trámites, no antes', () => {
+    // Es lo que hacía retroceder la tarjeta.
+    const i = COLUMNAS.indexOf(COLUMNA_SEGUNDO_VIAJE);
+    assert.ok(i > COLUMNAS.indexOf('En trámites'));
+    assert.ok(i < COLUMNAS.indexOf('Entregado'));
+  });
+
+  test('y las etapas de verdad siguen siendo siete', () => {
+    // Son las de la API y las del panel del cliente: desdoblar el tablero no
+    // puede inventarse un estado que nadie más conoce.
+    assert.equal(ETAPAS.length, 7);
+    assert.ok(!(ETAPAS as readonly string[]).includes(COLUMNA_SEGUNDO_VIAJE));
+  });
+
+  test('con el primer viaje, en la columna de siempre', () => {
+    assert.equal(
+      columnaDelExpediente({ ...BASE, status: 'En transporte' }),
+      'En transporte'
+    );
+  });
+
+  test('con el segundo camión ya cargado, en la suya', () => {
+    assert.equal(
+      columnaDelExpediente({
+        ...BASE, status: 'En transporte',
+        meta: { tramo_al_cliente: { id: 'TRP-2', fecha_recogida: '2026-09-21T09:00:00Z' } },
+      }),
+      COLUMNA_SEGUNDO_VIAJE
+    );
+  });
+
+  test('un tramo organizado y sin recoger sigue siendo el primer viaje', () => {
+    // Un camión contratado no es un coche en la carretera. Con el coche todavía
+    // en el depósito, el expediente está donde estaba.
+    assert.equal(
+      columnaDelExpediente({
+        ...BASE, status: 'En transporte',
+        meta: { tramo_al_cliente: { id: 'TRP-2', estado: 'Contratado', orden_enviada_at: '2026-09-20T09:00:00Z' } },
+      }),
+      'En transporte'
+    );
+  });
+
+  test('las demás etapas caen donde siempre', () => {
+    for (const etapa of ['Pendiente', 'En trámites', 'Entregado'] as const) {
+      assert.equal(columnaDelExpediente({ ...BASE, status: etapa }), etapa);
+    }
+  });
+
+  test('y lo que está fuera del camino no cae en ninguna', () => {
+    assert.equal(columnaDelExpediente({ ...BASE, status: 'Cancelado' }), null);
+  });
+
+  test('el agrupado las reparte en las dos', () => {
+    const enCamino = { ...BASE, id: 'imp-1', status: 'En transporte' };
+    const aCasa = {
+      ...BASE, id: 'imp-2', status: 'En transporte',
+      meta: { tramo_al_cliente: { id: 'TRP-2', fecha_recogida: '2026-09-21T09:00:00Z' } },
+    };
+    const mapa = agrupaPorEtapa([enCamino, aCasa]);
+    assert.deepEqual(mapa.get('En transporte')?.map((x) => x.id), ['imp-1']);
+    assert.deepEqual(mapa.get(COLUMNA_SEGUNDO_VIAJE)?.map((x) => x.id), ['imp-2']);
+  });
+
+  test('cada columna dice qué toca, y las dos del transporte no dicen lo mismo', () => {
+    for (const c of COLUMNAS) {
+      assert.ok(QUE_TOCA_COLUMNA[c], `${c} no dice qué toca`);
+    }
+    assert.notEqual(
+      QUE_TOCA_COLUMNA['En transporte'],
+      QUE_TOCA_COLUMNA[COLUMNA_SEGUNDO_VIAJE]
+    );
+    assert.match(QUE_TOCA_COLUMNA[COLUMNA_SEGUNDO_VIAJE], /cliente/);
   });
 });
