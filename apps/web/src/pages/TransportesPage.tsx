@@ -159,20 +159,35 @@ export default function TransportesPage() {
    * está mirando el tramo, y un error detrás del panel abierto se lee como que
    * el botón no hace nada.
    */
+  /**
+   * Los cuatro guardan antes de preparar el correo.
+   *
+   * El correo lo escribe el servidor con lo que hay **grabado**, y la pantalla
+   * enseña lo que se está escribiendo. Escribir el horario, pulsar y que salte
+   * «falta el horario» es la peor forma de contarlo: el dato está delante, en
+   * su casilla, y el aviso dice que no está.
+   *
+   * Decirlo en una línea debajo del botón no bastaba —nadie lee la letra
+   * pequeña de un botón que parece listo—, así que se guarda y ya está. No es
+   * un atajo: pulsar «mandarle esto» es querer mandar lo que se ve.
+   */
   /** Preguntarle al vendedor dónde y cuándo se recoge. */
-  const preguntaLaRecogida = (id: string) =>
-    abreParaRevisar(`/transportes/${id}/datos-recogida`, id);
+  const preguntaLaRecogida = (id: string, datos?: Record<string, unknown>) =>
+    abreParaRevisar(`/transportes/${id}/datos-recogida`, id, undefined, datos);
 
-  const mandaLaOrden = (id: string) => abreParaRevisar(`/transportes/${id}/orden`, id);
+  const mandaLaOrden = (id: string, datos?: Record<string, unknown>) =>
+    abreParaRevisar(`/transportes/${id}/orden`, id, undefined, datos);
   /**
    * Pedirle precio, que va antes de la orden y es otra cosa.
    *
    * La orden se manda a quien ya ha dicho que sí y por cuánto. Esto es la
    * pregunta que lleva a ese precio, y se le hace a más de uno.
    */
-  const pideElPresupuesto = (id: string) => abreParaRevisar(`/transportes/${id}/presupuesto`, id);
-  /** Y decirle al vendedor quién va a por el coche y qué día. */
-  const avisaAlVendedor = (id: string) => abreParaRevisar(`/transportes/${id}/aviso-recogida`, id);
+  const pideElPresupuesto = (id: string, datos?: Record<string, unknown>) =>
+    abreParaRevisar(`/transportes/${id}/presupuesto`, id, undefined, datos);
+  /** Y decirle al origen quién va a por el coche y qué día. */
+  const avisaAlVendedor = (id: string, datos?: Record<string, unknown>) =>
+    abreParaRevisar(`/transportes/${id}/aviso-recogida`, id, undefined, datos);
 
   /**
    * Pide un correo sin mandarlo y lo abre para revisarlo.
@@ -183,9 +198,32 @@ export default function TransportesPage() {
    * Con `finally`: sin él, una llamada que revienta deja el panel entero en
    * «guardando» y todos los botones apagados sin decir por qué.
    */
-  async function abreParaRevisar(ruta: string, id: string, idioma?: string) {
+  async function abreParaRevisar(
+    ruta: string, id: string, idioma?: string, guardarAntes?: Record<string, unknown>
+  ) {
     setGuardando(true);
     try {
+      /*
+       * Primero se graba lo que hay en pantalla.
+       *
+       * Si falla, no se sigue: preparar el correo con lo de antes es enseñar
+       * para revisar algo que no es lo que se acaba de escribir, y revisar deja
+       * de servir para nada.
+       *
+       * Al cambiar de idioma no se vuelve a grabar: es el mismo correo otra vez
+       * y no hay nada nuevo que escribir.
+       */
+      if (guardarAntes) {
+        const g = await api.patch<Transporte>(`/transportes/${id}`, guardarAntes);
+        if (!g.ok) {
+          const mal = (g as { detail?: string }).detail || g.error || 'No se ha podido guardar.';
+          setError(mal);
+          setErrorDelPanel(mal);
+          return;
+        }
+        setAbierto((previo) => (previo && previo.id === id
+          ? { ...previo, ...(g.data as Partial<Transporte>) } : previo));
+      }
       const r = await api.post<VistaDelCorreo>(ruta, { soloVista: true, idioma });
       if (!r.ok) {
         const dice = (r as { detail?: string }).detail || r.error || 'No se ha podido preparar.';
@@ -296,10 +334,10 @@ export default function TransportesPage() {
           guardando={guardando}
           onCerrar={() => setAbierto(null)}
           onCambiar={(c) => void cambia(abierto.id, c)}
-          onMandarOrden={() => void mandaLaOrden(abierto.id)}
-          onPedirPresupuesto={() => void pideElPresupuesto(abierto.id)}
-          onAvisarAlVendedor={() => void avisaAlVendedor(abierto.id)}
-          onPreguntarRecogida={() => void preguntaLaRecogida(abierto.id)}
+          onMandarOrden={(d) => void mandaLaOrden(abierto.id, d)}
+          onPedirPresupuesto={(d) => void pideElPresupuesto(abierto.id, d)}
+          onAvisarAlVendedor={(d) => void avisaAlVendedor(abierto.id, d)}
+          onPreguntarRecogida={(d) => void preguntaLaRecogida(abierto.id, d)}
           aviso={errorDelPanel}
         />
       )}
@@ -370,9 +408,13 @@ function Bloque({ titulo, pie, lista, onAbrir, conDias = false }: {
 
 function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, onPedirPresupuesto, onAvisarAlVendedor, onPreguntarRecogida, aviso }: {
   t: Transporte; guardando: boolean; onCerrar: () => void; onCambiar: (c: Record<string, unknown>) => void;
-  onPedirPresupuesto: () => void;
-  onAvisarAlVendedor: () => void;
-  onMandarOrden: () => void; onPreguntarRecogida: () => void; aviso: string;
+  // Los cuatro reciben lo que hay en pantalla: se graba antes de preparar el
+  // correo, porque el correo lo escribe el servidor con lo grabado.
+  onPedirPresupuesto: (datos: Record<string, unknown>) => void;
+  onAvisarAlVendedor: (datos: Record<string, unknown>) => void;
+  onMandarOrden: (datos: Record<string, unknown>) => void;
+  onPreguntarRecogida: (datos: Record<string, unknown>) => void;
+  aviso: string;
 }) {
   const [aEstado, setAEstado] = useState<string | null>(null);
   const [porQue, setPorQue] = useState('');
@@ -581,21 +623,21 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                   ✓ Disponibilidad pedida el {new Date(t.presupuesto_pedido_at).toLocaleDateString('es-ES')}
                   {t.presupuesto_pedido_a ? ` a ${t.presupuesto_pedido_a}` : ''}
                 </span>
-                <button onClick={onPedirPresupuesto} disabled={guardando}
+                <button onClick={() => onPedirPresupuesto({ ...datos, llegada })} disabled={guardando}
                         className="text-[11px] text-brand-400 underline underline-offset-2">
                   pedírselo a otra
                 </button>
               </div>
             ) : (
               <>
-                <button onClick={onPedirPresupuesto} disabled={guardando || faltaSolicitar.length > 0}
+                <button onClick={() => onPedirPresupuesto({ ...datos, llegada })} disabled={guardando || faltaSolicitar.length > 0}
                         className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40">
                   Solicitar disponibilidad al proveedor
                 </button>
                 <div className="text-[11px] text-brand-300 mt-1.5">
                   {faltaSolicitar.length > 0
                     ? `Antes hace falta ${faltaSolicitar.join(', ')}.`
-                    : 'Le va la dirección exacta y se le pregunta si puede, cuándo y por cuánto. Guarda antes los cambios: el correo sale con lo que hay grabado.'}
+                    : 'Le va la dirección exacta y se le pregunta si puede, cuándo y por cuánto.'}
                 </div>
               </>
             )}
@@ -688,14 +730,14 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                 <span className="text-[12px] font-bold text-emerald-700">
                   ✓ Origen avisado el {new Date(t.aviso_recogida_at).toLocaleDateString('es-ES')}
                 </span>
-                <button onClick={onAvisarAlVendedor} disabled={guardando}
+                <button onClick={() => onAvisarAlVendedor({ ...datos, llegada })} disabled={guardando}
                         className="text-[11px] text-brand-400 underline underline-offset-2">
                   volver a avisarle
                 </button>
               </div>
             ) : (
               <>
-                <button onClick={onAvisarAlVendedor} disabled={guardando || faltaAvisar.length > 0}
+                <button onClick={() => onAvisarAlVendedor({ ...datos, llegada })} disabled={guardando || faltaAvisar.length > 0}
                         className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
                   Avisar al origen de la llegada del transportista
                 </button>
@@ -703,8 +745,8 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                   {faltaAvisar.length > 0
                     ? `Antes hace falta ${faltaAvisar.join(', ')}.`
                     : alVendedor
-                      ? 'El día, la empresa, quién le va a llamar y qué tiene que darle al conductor. Guarda antes los cambios: el correo sale con lo que hay grabado.'
-                      : 'Va a nuestra persona del origen, en castellano, y el correo suyo se escribe en el cuadro: no lo tenemos guardado. Guarda antes los cambios.'}
+                      ? 'El día, la empresa, quién le va a llamar y qué tiene que darle al conductor.'
+                      : 'Va a nuestra persona del origen, en castellano. Su correo se escribe en el cuadro: no lo tenemos guardado.'}
                 </div>
               </>
             )}
@@ -809,21 +851,21 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
                   ✓ Confirmado el {new Date(t.orden_enviada_at).toLocaleDateString('es-ES')}
                   {t.orden_enviada_a ? ` a ${t.orden_enviada_a}` : ''}
                 </span>
-                <button onClick={onMandarOrden} disabled={guardando}
+                <button onClick={() => onMandarOrden({ ...datos, llegada })} disabled={guardando}
                         className="text-[11px] text-brand-400 underline underline-offset-2">
                   mandarlo otra vez
                 </button>
               </div>
             ) : (
               <>
-                <button onClick={onMandarOrden} disabled={guardando || faltaConfirmar.length > 0}
+                <button onClick={() => onMandarOrden({ ...datos, llegada })} disabled={guardando || faltaConfirmar.length > 0}
                         className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-40">
                   Confirmar transportista
                 </button>
                 <div className="text-[11px] text-brand-300 mt-1.5">
                   {faltaConfirmar.length > 0
                     ? `Antes hace falta ${faltaConfirmar.join(', ')}.`
-                    : 'Se le manda la orden con todo esto dentro, y con ella queda contratado. Guarda antes los cambios: sale con lo que hay grabado.'}
+                    : 'Se le manda la orden con todo esto dentro, y con ella queda contratado. Se manda con lo que hay en pantalla.'}
                 </div>
               </>
             )}
