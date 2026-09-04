@@ -661,10 +661,23 @@ onEncargarALaGestoria, aviso }: PanelProps) {
   /** La etapa a la que se va a pasar, mientras se escribe por qué. */
   const [aEtapa, setAEtapa] = useState<string | null>(null);
   const [porQue, setPorQue] = useState("");
+  /*
+   * La cita de entrega, con lo que ya sabemos propuesto.
+   *
+   * El día y el sitio no hay que teclearlos: el día lo dio el transportista al
+   * aceptar el segundo viaje, y el sitio es la dirección del cliente, escrita
+   * en ese mismo tramo. Se **proponen**, no se guardan: quedar con alguien es
+   * un acto, y sigue haciendo falta pulsar el botón.
+   *
+   * La hora no se propone porque no la sabemos: la pone el conductor el mismo
+   * día, cuando llama antes de llegar.
+   */
   const [cita, setCita] = useState({
-    dia: x.meta?.appointment_date ?? "",
+    dia: x.meta?.appointment_date
+      ?? x.meta?.tramo_al_cliente?.fecha_entrega?.slice(0, 10)
+      ?? x.meta?.delivery_estimate?.slice(0, 10) ?? "",
     hora: x.meta?.appointment_time ?? "",
-    donde: x.meta?.appointment_address ?? "",
+    donde: x.meta?.appointment_address || x.meta?.tramo_al_cliente?.hasta || "",
     quien: x.meta?.appointment_contact ?? "",
   });
   const [historial, setHistorial] = useState<Apunte[] | null>(null);
@@ -1416,15 +1429,28 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                   resumen={x.meta?.appointment_date ? dia(x.meta.appointment_date) : 'sin fecha'}>
         <div>
           <p className="text-[11px] text-brand-400 mb-2">
-            Si quedas con él, se lo recordamos la víspera y el mismo día.
+            Con el día basta: se lo recordamos la víspera y el mismo día.
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" value={cita.dia}
-                   onChange={(e) => setCita((c) => ({ ...c, dia: e.target.value }))}
-                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
-            <input type="time" value={cita.hora}
-                   onChange={(e) => setCita((c) => ({ ...c, hora: e.target.value }))}
-                   className="px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            <label className="text-[11px] text-brand-400">
+              Día
+              <input type="date" value={cita.dia}
+                     onChange={(e) => setCita((c) => ({ ...c, dia: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
+            {/*
+              * La hora, si se sabe. Muchas veces no: en una entrega a domicilio
+              * la pone el conductor el mismo día, cuando llama antes de llegar.
+              * Un campo que parece obligatorio y no se puede rellenar se acaba
+              * rellenando con una hora inventada, y esa es la que el cliente se
+              * apunta.
+              */}
+            <label className="text-[11px] text-brand-400">
+              Hora, si se sabe
+              <input type="time" value={cita.hora}
+                     onChange={(e) => setCita((c) => ({ ...c, hora: e.target.value }))}
+                     className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+            </label>
             <input type="text" value={cita.donde} placeholder="Dónde"
                    onChange={(e) => setCita((c) => ({ ...c, donde: e.target.value }))}
                    className="col-span-2 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
@@ -1444,6 +1470,12 @@ onEncargarALaGestoria, aviso }: PanelProps) {
           >
             Guardar el día de la entrega
           </button>
+          {cita.dia && !cita.hora && (
+            <div className="text-[10px] text-brand-300 mt-1.5">
+              Sin hora se le avisa igual, diciéndole que el transportista le llama
+              antes de llegar. Es lo que va a pasar: la hora la pone el conductor.
+            </div>
+          )}
         </div>
         </Plegable>
         )}
