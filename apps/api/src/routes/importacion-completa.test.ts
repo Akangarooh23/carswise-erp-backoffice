@@ -125,16 +125,22 @@ before(async () => {
      * con los cuatro desactivados, que es lo mismo que no probarlos.
      */
 
-    // Etapas que se han quedado atrás respecto a su tramo.
-    if (/JOIN erp_transportes t ON t\.lead_id = l\.id AND t\.tramo = 1/i.test(t)) {
-      return responde(tablas.leads.filter((l) => {
-        if (l.lead_type !== 'import') return false;
-        const tramo = tablas.transportes.find((x) => x.lead_id === l.id && Number(x.tramo) === 1);
-        if (!tramo) return false;
-        if (l.status === 'Verificado y pagado') return Boolean(tramo.fecha_recogida);
-        if (l.status === 'En transporte') return Boolean(tramo.fecha_entrega);
-        return false;
-      }).map((l) => ({ id: l.id, status: l.status })));
+    // Etapas que se han quedado atrás respecto a sus dos viajes.
+    if (/JOIN erp_transportes t1 ON t1\.lead_id = l\.id AND t1\.tramo = 1/i.test(t)) {
+      return responde(tablas.leads.filter((l) =>
+        l.lead_type === 'import'
+        && ['Verificado y pagado', 'En transporte', 'En trámites'].includes(String(l.status))
+        && tablas.transportes.some((x) => x.lead_id === l.id && Number(x.tramo) === 1)
+      ).map((l) => {
+        const t1 = tablas.transportes.find((x) => x.lead_id === l.id && Number(x.tramo) === 1) ?? {};
+        return {
+          id: l.id, status: l.status,
+          salio: Boolean(t1.fecha_recogida),
+          llego: Boolean(t1.fecha_entrega),
+          salio_al_cliente: tablas.transportes.some((x) =>
+            x.lead_id === l.id && Number(x.tramo) > 1 && Boolean(x.fecha_recogida)),
+        };
+      }));
     }
 
     // Coches con papeleos que abrir.
@@ -519,8 +525,33 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     await api('/leads?limit=50');
     assert.ok(tablas.transportes.some((x) => Number(x.tramo) === 2),
       'matriculado el coche, toca llevárselo al cliente');
+
+    /*
+     * Y cuando ese segundo camión carga, el coche vuelve a estar en transporte.
+     *
+     * Le pasó a Ana: pasó el tramo a «Recogido», el expediente se movió bien y
+     * un segundo después volvía a poner «En trámites». Lo devolvía esta misma
+     * función, que miraba solo el primer viaje: veía el primer tramo entregado y
+     * leía «En transporte» como una etapa atrasada. Quien lo mira ve el tramo en
+     * «Recogido» y el expediente en trámites, sin nada que explique la
+     * diferencia.
+     *
+     * Con el coche ya en la carretera, «En trámites» cuenta lo de antes: los
+     * papeleos están hechos.
+     */
+    const segundo = tablas.transportes.find((x) => Number(x.tramo) === 2) as Fila;
+    segundo.fecha_recogida = '2026-09-21T09:00:00Z';
+    tablas.leads[0].status = 'En trámites';
+    await api('/transportes');
+    assert.equal(tablas.leads[0].status, 'En transporte',
+      'cargado el segundo camión, el coche vuelve a estar de camino');
+    await api('/transportes');
+    assert.equal(tablas.leads[0].status, 'En transporte',
+      'y no lo devuelve a trámites la pasada siguiente, con el primer tramo entregado');
+
     tablas.transportes = tablas.transportes.filter((x) => Number(x.tramo) !== 2);
     for (const tr of tablas.tramites) tr.estado = 'Pendiente';
+    tablas.leads[0].status = 'En trámites';
 
     /*
      * Y se recoge lo que estos cuatro han movido.

@@ -1147,24 +1147,64 @@ export async function abreLosTramosQueFalten(): Promise<number> {
  */
 export async function ponAlDiaLasEtapas(): Promise<number> {
   await prepara();
+  /*
+   * Los tres saltos que puede haberse perdido un expediente, en una consulta.
+   *
+   * Se pregunta por hechos y no por estados: si el primer tramo tiene fecha de
+   * recogida, el coche salió; si tiene fecha de entrega, llegó; y si hay un
+   * segundo tramo recogido, va camino del cliente. Los hechos siguen ahí
+   * mañana; el momento en que ocurrieron, no.
+   */
   const atrasados = await query<{
-    id: string; status: string; recogido: string | null; entregado: string | null;
+    id: string; status: string;
+    salio: boolean; llego: boolean; salio_al_cliente: boolean;
   }>(
     `SELECT l.id, l.status,
-            t.fecha_recogida::text AS recogido, t.fecha_entrega::text AS entregado
+            t1.fecha_recogida IS NOT NULL AS salio,
+            t1.fecha_entrega  IS NOT NULL AS llego,
+            EXISTS (SELECT 1 FROM erp_transportes t2
+                     WHERE t2.lead_id = l.id AND t2.tramo > 1
+                       AND t2.fecha_recogida IS NOT NULL) AS salio_al_cliente
        FROM moveadvisor_market_leads l
-       JOIN erp_transportes t ON t.lead_id = l.id AND t.tramo = 1
+       JOIN erp_transportes t1 ON t1.lead_id = l.id AND t1.tramo = 1
       WHERE l.lead_type = 'import'
-        AND ((l.status = 'Verificado y pagado' AND t.fecha_recogida IS NOT NULL)
-          OR (l.status = 'En transporte'       AND t.fecha_entrega  IS NOT NULL))
+        AND l.status IN ('Verificado y pagado', 'En transporte', 'En trámites')
       LIMIT 50`
-  ).catch(() => ({ rows: [] as { id: string; status: string; recogido: string | null; entregado: string | null }[] }));
+  ).catch(() => ({ rows: [] as {
+    id: string; status: string; salio: boolean; llego: boolean; salio_al_cliente: boolean;
+  }[] }));
 
   let movidos = 0;
   for (const l of atrasados.rows) {
-    const etapaNueva = l.status === 'Verificado y pagado' ? 'En transporte' : 'En trámites';
+    /*
+     * Y a dónde le toca estar, mirando los dos viajes.
+     *
+     * El tercer caso faltaba, y el segundo se lo llevaba por delante: al salir
+     * el coche hacia el cliente, la pantalla lo pasaba a «En transporte» y esta
+     * función lo devolvía a «En trámites» un segundo después, porque el primer
+     * tramo estaba entregado y eso lo leía como una etapa atrasada. Quien lo
+     * miraba veía el tramo en «Recogido» y el expediente en trámites, sin nada
+     * que explicara la diferencia.
+     *
+     * Con el coche ya camino del cliente, «En trámites» cuenta lo de antes: los
+     * papeleos están hechos y el coche está en la carretera.
+     */
+    let etapaNueva: string | null = null;
+    let porque = '';
+    if (l.status === 'Verificado y pagado' && l.salio) {
+      etapaNueva = 'En transporte';
+      porque = 'El coche ya había salido de Alemania';
+    } else if (l.status === 'En transporte' && l.llego && !l.salio_al_cliente) {
+      etapaNueva = 'En trámites';
+      porque = 'El coche ya había llegado a Zaragoza';
+    } else if (l.status === 'En trámites' && l.salio_al_cliente) {
+      etapaNueva = 'En transporte';
+      porque = 'El coche ya iba camino del cliente';
+    }
+    if (!etapaNueva) continue;
+
     const cuando = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-    const linea = `[${cuando} · ${l.status} → ${etapaNueva}] El coche ya ${etapaNueva === 'En transporte' ? 'había salido' : 'había llegado'}: la etapa se había quedado atrás.`;
+    const linea = `[${cuando} · ${l.status} → ${etapaNueva}] ${porque}: la etapa se había quedado atrás.`;
     const r = await query(
       `UPDATE moveadvisor_market_leads
           SET status = $3::text,
@@ -1180,7 +1220,6 @@ export async function ponAlDiaLasEtapas(): Promise<number> {
   }
   return movidos;
 }
-
 export async function abreElTramoAlCliente(): Promise<number> {
   await prepara();
   const faltan = await query<{
