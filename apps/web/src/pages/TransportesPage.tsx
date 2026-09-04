@@ -26,6 +26,7 @@ import {
 import {
   faltaPorMirarAlLlegar, queHacerAlLlegar, type LlegoComoSalio,
 } from '../lib/llego-como-salio.js';
+import { noCuadra, TIPOS_DE_IVA } from '../lib/dinero.js';
 
 const ESTADOS = ['Por organizar', 'Contratado', 'Recogido', 'En tránsito', 'Entregado'] as const;
 type Estado = (typeof ESTADOS)[number];
@@ -59,6 +60,14 @@ interface Transporte {
   vehiculo_titulo: string;
   matricula: string;
   coste: string | number | null;
+  /**
+   * Y cómo se parte, que no es lo mismo 890 € de una empresa alemana que de
+   * una española: la alemana viene sin IVA y la española lleva 154,46 €
+   * deducibles dentro. El coste del coche es la base en los dos casos.
+   */
+  base?: string | number | null;
+  iva?: string | number | null;
+  regimen?: 'nacional' | 'intracomunitario' | 'exento' | null;
   recogida_prevista: string | null;
   /** Lo que contestó el vendedor: por quién pregunta el conductor y cuándo. */
   contacto_origen?: string | null;
@@ -436,6 +445,9 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
   const [porQue, setPorQue] = useState('');
   const [datos, setDatos] = useState({
     transportista: t.transportista ?? '', coste: String(t.coste ?? ''),
+    base: t.base != null ? String(t.base) : '',
+    iva: t.iva != null ? String(Number(t.iva)) : '',
+    regimen: t.regimen ?? 'nacional',
     desde: t.desde ?? '', hasta: t.hasta ?? '',
     recogida_prevista: t.recogida_prevista ?? '', entrega_prevista: t.entrega_prevista ?? '',
     contacto_origen: t.contacto_origen ?? '', telefono_origen: t.telefono_origen ?? '',
@@ -698,13 +710,58 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
               {pistaDelCampo('entrega_prevista', t.tramo) || 'La que te dé el transportista al aceptar.'}
             </span>
           </label>
+          {/*
+            * El precio, partido como viene en la factura.
+            *
+            * El total es lo que se paga y la base lo que cuesta de verdad,
+            * porque el IVA se deduce. Y el régimen es lo que distingue 890 €
+            * de una empresa alemana —sin IVA dentro, autoliquidado aquí— de
+            * 890 € de una española. Guardados como un número los dos, el
+            * coste del coche sale mal.
+            */}
+          <label className="text-[11px] text-brand-400">
+            Precio sin IVA
+            <input value={datos.base} inputMode="decimal" placeholder="—"
+                   onChange={(e) => setDatos((d) => ({ ...d, base: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="text-[11px] text-brand-400">
+            IVA
+            <select value={datos.iva}
+                    onChange={(e) => setDatos((d) => ({ ...d, iva: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+              <option value="">Todavía no se sabe</option>
+              {TIPOS_DE_IVA.map((n) => <option key={n} value={n}>{n}%</option>)}
+            </select>
+          </label>
           <label className="col-span-2 text-[11px] text-brand-400">
-            Precio del transporte
+            Precio total, que es lo que se paga
             <input value={datos.coste} inputMode="decimal" placeholder="890"
                    onChange={(e) => setDatos((d) => ({ ...d, coste: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
             <span className="text-[10px] text-brand-300">{PISTAS.coste}</span>
           </label>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            De dónde viene la factura
+            <select value={datos.regimen}
+                    onChange={(e) => setDatos((d) => ({ ...d, regimen: e.target.value as NonNullable<Transporte['regimen']> }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+              <option value="nacional">Española, con IVA dentro</option>
+              <option value="intracomunitario">De la UE con ROI, sin IVA</option>
+              <option value="exento">Sin IVA y sin autoliquidar</option>
+            </select>
+            {datos.regimen === 'intracomunitario' && (
+              <span className="text-[10px] text-brand-300">
+                Su factura no lleva IVA: el total es la base, y la cuota se
+                autoliquida aquí. Entra y sale.
+              </span>
+            )}
+          </label>
+          {noCuadra({ base: datos.base, iva: datos.iva, total: datos.coste, regimen: datos.regimen }) && (
+            <div className="col-span-2 text-[10px] text-amber-700 -mt-1">
+              {noCuadra({ base: datos.base, iva: datos.iva, total: datos.coste, regimen: datos.regimen })}
+            </div>
+          )}
 
           {/*
             * Y quién lo transporta, que no es la empresa.

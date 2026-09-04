@@ -367,3 +367,45 @@ describe('la fecha que le hemos dicho', () => {
     }
   });
 });
+
+/**
+ * El precio de un transporte, con su base y su régimen.
+ *
+ * 890 € de una empresa alemana y 890 € de una española no son lo mismo: la
+ * alemana con ROI factura sin IVA y la cuota se autoliquida aquí; la española
+ * lleva 154,46 € deducibles dentro. Guardadas las dos como «890», el coste del
+ * coche sale mal y el trimestre no cuadra.
+ *
+ * Y lo que ya sabemos viaja a la factura esperada: lo acordado con el
+ * transportista trae su base y su tipo, así que la esperada se puede cuadrar
+ * con la que llegue sin volver a teclear nada.
+ */
+describe('el precio del transporte se parte', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('las tres columnas existen', () => {
+    assert.match(FUENTE, /ADD COLUMN IF NOT EXISTS base NUMERIC\(12,2\)/);
+    assert.match(FUENTE, /ADD COLUMN IF NOT EXISTS iva NUMERIC\(5,2\)/);
+    assert.match(FUENTE, /ADD COLUMN IF NOT EXISTS regimen TEXT NOT NULL DEFAULT 'nacional'/);
+  });
+
+  test('y se leen', () => {
+    assert.match(FUENTE, /base::numeric AS base, iva::numeric AS iva, regimen/);
+  });
+
+  test('un régimen inventado no se guarda', () => {
+    // Es un enum de tres valores. Uno tecleado a mano acabaría en un modelo 349.
+    assert.match(FUENTE, /\['nacional', 'intracomunitario', 'exento'\]\.includes\(r\)/);
+  });
+
+  test('y el desglose viaja a la factura esperada', () => {
+    const bloque = FUENTE.slice(
+      FUENTE.indexOf('await apuntaFacturaEsperada({'),
+      FUENTE.indexOf('.catch(() => null);', FUENTE.indexOf('await apuntaFacturaEsperada({'))
+    );
+    assert.match(bloque, /base: t\.base/);
+    assert.match(bloque, /iva: t\.iva/);
+    assert.match(bloque, /regimen: t\.regimen/);
+  });
+});

@@ -150,6 +150,17 @@ export async function apuntaFacturaEsperada(datos: {
   proveedor: string;
   concepto: string;
   importe: number | string | null;
+  /**
+   * Cómo se parte, si ya se sabe.
+   *
+   * Se sabe antes de que llegue la factura: lo acordado con el transportista
+   * ya lleva su base y su tipo, y el régimen sale de su NIF. Guardarlo aquí
+   * hace que la esperada se pueda cuadrar con la que llegue sin volver a
+   * teclear nada.
+   */
+  base?: number | string | null;
+  iva?: number | string | null;
+  regimen?: string | null;
   vehiculo?: string | null;
   /** Desde cuándo se espera: el día que el servicio quedó hecho. */
   desde?: string | null;
@@ -189,9 +200,14 @@ export async function apuntaFacturaEsperada(datos: {
     await query(
       `INSERT INTO moveadvisor_provider_invoices
          (id, type, direction, provider_name, vehicle_title,
-          invoice_amount, notes, status, issued_at)
-       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW()))`,
-      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe), concepto,
+          invoice_amount, base_amount, iva_rate, regimen, notes, status, issued_at)
+       VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, $9,
+               COALESCE($10::timestamptz, NOW()))`,
+      [nuevoId, proveedor, datos.vehiculo || null, Number(datos.importe),
+       datos.base != null && datos.base !== '' ? Number(datos.base) : null,
+       // El tipo, en tanto por uno: es como estaba ya la columna.
+       datos.iva != null && datos.iva !== '' ? Number(datos.iva) / 100 : null,
+       datos.regimen || 'nacional', concepto,
        ESPERADA, datos.desde || null]
     );
   });

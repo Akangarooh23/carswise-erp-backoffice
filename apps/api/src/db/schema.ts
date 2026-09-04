@@ -331,6 +331,19 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS cw_paid_at        TIMESTAMPTZ
   `);
 
+  /*
+   * De dónde viene una factura recibida, que cambia quién paga el IVA.
+   *
+   * Una de 890 € de una empresa alemana con ROI viene sin IVA y la cuota se
+   * autoliquida aquí; la misma de una española lleva 154,46 € deducibles
+   * dentro. Guardadas las dos como «890» parecen iguales, y con ellas el coste
+   * del coche sale mal y el trimestre no cuadra.
+   */
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS regimen VARCHAR(20) NOT NULL DEFAULT 'nacional'
+  `);
+
   // ── Rectificativas support ───────────────────────────────────────────────────
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_provider_invoices

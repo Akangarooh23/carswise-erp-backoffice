@@ -109,6 +109,15 @@ const ENSURE_ORDEN = `
     -- lleva ocho y sale a un tercio por coche, así que decidirlo a ciegas
     -- cambia el precio del viaje.
     ADD COLUMN IF NOT EXISTS portacoches BOOLEAN,
+    -- Cómo se parte el precio: la base, el tipo y de dónde viene la factura.
+    --
+    -- El coste es la **base**, porque el IVA se deduce. Y el régimen es lo que
+    -- distingue 890 € de una empresa alemana —sin IVA dentro, autoliquidado
+    -- aquí— de 890 € de una española, que llevan 154,46 € deducibles dentro.
+    -- Guardados como un número los dos, el coste del coche sale mal.
+    ADD COLUMN IF NOT EXISTS base NUMERIC(12,2),
+    ADD COLUMN IF NOT EXISTS iva NUMERIC(5,2),
+    ADD COLUMN IF NOT EXISTS regimen TEXT NOT NULL DEFAULT 'nacional',
     -- Cuándo se le pidió su factura, y a qué correo. Sin esto no se sabe si
     -- se pidió, y una factura de 890 € que nadie reclama no aparece en el
     -- coste del coche: el margen sale mejor de lo que es.
@@ -154,6 +163,7 @@ const CAMPOS = `id, pedido_id, lead_id, tramo, estado, transportista, desde, has
                 fecha_recogida, fecha_entrega, notas, creado_por, created_at, updated_at,
                 orden_enviada_at, orden_enviada_a,
                 factura_pedida_at, factura_pedida_a,
+                base::numeric AS base, iva::numeric AS iva, regimen,
                 recogida_preguntada_at, recogida_preguntada_a,
                 contacto_origen, telefono_origen, horario_origen,
                 portacoches, presupuesto_pedido_at, presupuesto_pedido_a,
@@ -1041,6 +1051,24 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       const v = String(req.body.portacoches ?? '').trim();
       pon('portacoches', v === 'si' ? true : v === 'no' ? false : null);
     }
+    /*
+     * El desglose del precio, con lo que se puede saber solo.
+     *
+     * El régimen sale del NIF del proveedor —un DE… es intracomunitario— y no
+     * hay que teclearlo. Se puede corregir: hay empresas alemanas sin ROI que
+     * facturan con su IVA, y entonces no es intracomunitario.
+     */
+    for (const campo of ['base', 'iva'] as const) {
+      if (req.body?.[campo] !== undefined) {
+        const n = nt(req.body[campo]);
+        pon(campo, n === '' ? null : Number(String(n).replace(',', '.')));
+      }
+    }
+    if (req.body?.regimen !== undefined) {
+      const r = nt(req.body.regimen);
+      pon('regimen', ['nacional', 'intracomunitario', 'exento'].includes(r) ? r : 'nacional');
+    }
+
     for (const fecha of ['recogida_prevista', 'entrega_prevista'] as const) {
       if (req.body?.[fecha] !== undefined) pon(fecha, nt(req.body[fecha]) || null);
     }
@@ -1188,6 +1216,10 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
         proveedor: String(t.transportista ?? ''),
         concepto: `Transporte · tramo ${t.tramo ?? ''}`,
         importe: t.coste as string | null,
+        // Lo que ya sabemos de cómo se parte: la factura llegará así.
+        base: t.base as string | null,
+        iva: t.iva as string | null,
+        regimen: t.regimen as string | null,
         vehiculo: String(t.vehiculo_titulo ?? ''),
       }).catch(() => null);
     }
