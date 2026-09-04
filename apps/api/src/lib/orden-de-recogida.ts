@@ -7,9 +7,14 @@
  * no se ve hasta que el camión está en la puerta equivocada.
  *
  * Lo que lleva es lo que hace falta para ir a por un coche y nada más: qué
- * recoge, dónde, a quién pregunta al llegar, adónde lo lleva y desde cuándo se
- * puede. Un correo con quince datos se lee como un formulario y se contesta
- * preguntando.
+ * recoge, dónde, a quién pregunta al llegar, adónde lo lleva y qué día. Un
+ * correo con quince datos se lee como un formulario y se contesta preguntando.
+ *
+ * **Y confirma, no pregunta.** Este correo es el contrato: sale después de que
+ * ellos hayan dicho que pueden, qué día y por cuánto, y con él queda cerrado.
+ * Terminaba con «decidnos qué día podéis y os confirmamos», que es lo que se
+ * les escribió la primera vez, y deja la orden pareciendo otra pregunta: nadie
+ * prepara un camión para un correo que todavía está negociando.
  *
  * **En tres idiomas, y lo elige quien la manda.** El castellano es el de la
  * lista de Proveedores, que hoy son de aquí; pero un tramo que sale de Múnich
@@ -130,7 +135,7 @@ const TEXTOS: Record<Idioma, {
 }> = {
   es: {
     asunto: 'Recogida', vehiculo: 'Vehículo', sinMatricula: 'sin matricular todavía',
-    recogerEn: 'Recoger en', entregarEn: 'Entregar en', aPartirDel: 'A partir del',
+    recogerEn: 'Recoger en', entregarEn: 'Entregar en', aPartirDel: 'Día de recogida',
     horario: 'Horario de recogida',
     portacoches: '¿Entra un portacoches?',
     portacochesSi: 'Sí, llega hasta el coche',
@@ -138,13 +143,13 @@ const TEXTOS: Record<Idioma, {
     conductor: 'Conductor',
     precio: 'Precio acordado', referencia: 'Nuestra referencia',
     saludo: 'Hola,', entradilla: 'Os pasamos un coche para recoger:',
-    conFecha: 'Decidnos qué día podéis y os confirmamos.',
-    sinFecha: 'Todavía no tenemos fecha de salida. En cuanto la tengamos os la decimos; si necesitáis avisar con antelación, contadnos cuánta.',
+    conFecha: 'Queda confirmado para ese día. Si surge cualquier cosa, decídnoslo cuanto antes.',
+    sinFecha: 'Nos falta cerrar el día. Decidnos cuándo podéis ir y os lo confirmamos.',
     cierre: 'Cualquier cosa, respondiendo a este correo.',
   },
   de: {
     asunto: 'Abholung', vehiculo: 'Fahrzeug', sinMatricula: 'noch nicht zugelassen',
-    recogerEn: 'Abholort', entregarEn: 'Lieferort', aPartirDel: 'Ab dem',
+    recogerEn: 'Abholort', entregarEn: 'Lieferort', aPartirDel: 'Abholtermin',
     horario: 'Abholzeiten',
     portacoches: 'Autotransporter möglich?',
     portacochesSi: 'Ja, direkt bis zum Fahrzeug',
@@ -152,13 +157,13 @@ const TEXTOS: Record<Idioma, {
     conductor: 'Fahrer',
     precio: 'Vereinbarter Preis', referencia: 'Unsere Referenz',
     saludo: 'Guten Tag,', entradilla: 'hiermit beauftragen wir Sie mit der Abholung dieses Fahrzeugs:',
-    conFecha: 'Bitte teilen Sie uns mit, an welchem Tag Sie abholen, und wir bestätigen es Ihnen.',
-    sinFecha: 'Ein Abholtermin steht noch nicht fest. Sobald wir ihn haben, melden wir uns; falls Sie Vorlaufzeit brauchen, sagen Sie uns bitte wie viel.',
+    conFecha: 'Hiermit ist der Termin bestätigt. Sollte etwas dazwischenkommen, sagen Sie uns bitte so früh wie möglich Bescheid.',
+    sinFecha: 'Der Abholtermin steht noch nicht fest. Sagen Sie uns bitte, wann Sie können, und wir bestätigen es Ihnen.',
     cierre: 'Bei Rückfragen antworten Sie einfach auf diese E-Mail.',
   },
   en: {
     asunto: 'Pick-up', vehiculo: 'Vehicle', sinMatricula: 'not registered yet',
-    recogerEn: 'Collect at', entregarEn: 'Deliver to', aPartirDel: 'From',
+    recogerEn: 'Collect at', entregarEn: 'Deliver to', aPartirDel: 'Pick-up date',
     horario: 'Pick-up hours',
     portacoches: 'Can a car carrier reach the car?',
     portacochesSi: 'Yes, right up to the car',
@@ -166,8 +171,8 @@ const TEXTOS: Record<Idioma, {
     conductor: 'Driver',
     precio: 'Agreed price', referencia: 'Our reference',
     saludo: 'Hello,', entradilla: 'here is a car for you to collect:',
-    conFecha: 'Tell us which day works for you and we will confirm it.',
-    sinFecha: 'We do not have a departure date yet. We will tell you as soon as we do; if you need notice, tell us how much.',
+    conFecha: 'This confirms the pick-up for that day. If anything comes up, let us know as early as you can.',
+    sinFecha: 'The pick-up date is still open. Tell us which day works for you and we will confirm it.',
     cierre: 'Any questions, just reply to this email.',
   },
 };
@@ -214,6 +219,9 @@ export function correoDeOrdenDeRecogida(d: DatosDeLaOrden, idioma: Idioma = 'es'
     p(t.saludo) +
     p(t.entradilla) +
     tabla +
+    // Confirma si hay día, y solo pregunta si no lo hay. Sin día no debería
+    // salir —la pantalla lo exige y la ruta también—, pero el correo se escribe
+    // aquí y esta es su última palabra.
     p(cuando ? t.conFecha : t.sinFecha) +
     String(d.nota ?? '') +
     p(t.cierre);

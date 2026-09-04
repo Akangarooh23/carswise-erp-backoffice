@@ -79,11 +79,26 @@ describe('lo que lleva la orden', () => {
     assert.ok(!correoDeOrdenDeRecogida({ ...TRAMO, coste: null }).html.includes('Precio acordado'));
   });
 
-  test('sin fecha, se dice que no la hay en vez de callarlo', () => {
-    // Un correo que no menciona la fecha se contesta preguntando por la fecha.
+  test('con fecha, confirma; sin fecha, pide cerrarla', () => {
+    // Este correo es el contrato: sale cuando ellos ya han dicho que pueden, qué
+    // día y por cuánto. Terminaba con «decidnos qué día podéis», que es lo que se
+    // les escribió la primera vez, y deja la orden pareciendo otra pregunta:
+    // nadie prepara un camión para un correo que sigue negociando.
+    assert.match(correoDeOrdenDeRecogida(TRAMO).html, /Queda confirmado para ese día/);
+    assert.doesNotMatch(correoDeOrdenDeRecogida(TRAMO).html, /Decidnos qué día podéis/);
+    // Y el día es el día, no un suelo: «a partir del» es cómo se pregunta, y
+    // deja al conductor eligiendo cuándo va.
+    assert.match(correoDeOrdenDeRecogida(TRAMO).html, /Día de recogida/);
+    assert.doesNotMatch(correoDeOrdenDeRecogida(TRAMO).html, /A partir del/);
+    assert.match(correoDeOrdenDeRecogida(TRAMO, 'de').html, /Abholtermin/);
+    assert.match(correoDeOrdenDeRecogida(TRAMO, 'en').html, /Pick-up date/);
+
+    // Y sin fecha sí pregunta, que es lo único que se puede hacer. No debería
+    // salir así —la pantalla lo exige y la ruta también—, pero callar la fecha
+    // es peor: un correo que no la menciona se contesta preguntando por ella.
     const { html } = correoDeOrdenDeRecogida({ ...TRAMO, recogidaPrevista: null });
-    assert.match(html, /Todavía no tenemos fecha de salida/);
-    assert.ok(!html.includes('A partir del'));
+    assert.match(html, /Nos falta cerrar el día/);
+    assert.ok(!html.includes('Día de recogida'));
   });
 
   test('lo que venga de fuera no se cuela como HTML', () => {
