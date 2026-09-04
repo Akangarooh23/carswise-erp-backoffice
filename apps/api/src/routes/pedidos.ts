@@ -1012,7 +1012,17 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
     let cuenta = null;
     if (pedido.origen === 'importacion' && pedido.lead_id) {
       const l = await query<Record<string, unknown>>(
-        `SELECT escrow_coche, escrow_fee, escrow_impuesto, escrow_garantia, deposit_quoted
+        `SELECT escrow_coche, escrow_fee, escrow_impuesto, escrow_garantia, deposit_quoted,
+                liquidacion_como,
+                -- Lo que ha costado de verdad, de la partida de la gestoría.
+                (SELECT p->>'importe'
+                   FROM erp_tramites tr, LATERAL jsonb_array_elements(tr.partidas) p
+                  WHERE (tr.lead_id = moveadvisor_market_leads.id
+                     OR tr.pedido_id IN (SELECT pe.id FROM erp_pedidos pe
+                                          WHERE pe.lead_id = moveadvisor_market_leads.id))
+                    AND lower(btrim(p->>'concepto')) LIKE 'impuesto de matriculaci%'
+                    AND COALESCE(p->>'importe', '') <> ''
+                  ORDER BY tr.created_at DESC LIMIT 1) AS impuesto_real
            FROM moveadvisor_market_leads WHERE id = $1`,
         [pedido.lead_id]
       ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
@@ -1051,7 +1061,8 @@ pedidosRouter.get('/pedidos/:id/coste', requireRole(['admin', 'operations', 'sal
             total: e.deposit_quoted,
           },
           precioProveedor: pedido.importe,
-          impuestoReal: null,
+          impuestoReal: e.impuesto_real,
+          liquidacionComo: e.liquidacion_como as 'asumida' | null,
           costes,
         });
       }

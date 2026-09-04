@@ -344,6 +344,20 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS regimen VARCHAR(20) NOT NULL DEFAULT 'nacional'
   `);
 
+  /*
+   * Cómo se liquidó el impuesto, no solo que se liquidó.
+   *
+   * El cliente pone una provisión y el impuesto real sale otro. Esa
+   * diferencia se puede cobrar, devolver o **asumir**, y no es lo mismo: si
+   * la asumimos, es coste nuestro y tiene que bajar el margen de ese coche.
+   * Con solo una fecha, un coche cuyo impuesto nos comimos parece igual de
+   * rentable que otro que cuadró.
+   */
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_market_leads
+      ADD COLUMN IF NOT EXISTS liquidacion_como VARCHAR(20)
+  `);
+
   // ── Rectificativas support ───────────────────────────────────────────────────
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_provider_invoices

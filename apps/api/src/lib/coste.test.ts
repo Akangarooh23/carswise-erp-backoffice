@@ -197,3 +197,66 @@ describe('la cuenta de una importación', () => {
     assert.equal(c.porcentaje, null);
   });
 });
+
+/**
+ * Y la diferencia del impuesto que asumimos nosotros.
+ *
+ * El cliente puso una provisión y el impuesto real salió otro. Cobrarle mil euros
+ * más a alguien que ya cerró un precio queda mal, así que a veces se asume — y
+ * eso es una decisión legítima que **cuesta dinero de este coche**.
+ *
+ * Sin contarlo, un coche cuyo impuesto nos comimos parece igual de rentable que
+ * otro que cuadró, y el margen medio de la empresa sale de ahí. Peor: la
+ * diferencia se quedaba como un descuadre de la cuenta del cliente, que es
+ * justamente la que sí cuadra —él puso lo que le pedimos—.
+ */
+describe('la diferencia del impuesto, cuando la ponemos nosotros', () => {
+  const KIA = {
+    escrow: { coche: 16890, fee: 3000, impuesto: 1420, garantia: 190 },
+    costes: [
+      { total: 289, iva: 21, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
+      { total: 890, iva: 21, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
+      { total: 484, iva: 21, que: 'nuestro' as const, regimen: 'nacional' as const },
+      { total: 119.07, iva: 21, que: 'nuestro' as const, regimen: 'nacional' as const },
+    ],
+    impuestoReal: 2491,
+  };
+
+  test('sin decir cómo se liquidó, es un descuadre de su cuenta', () => {
+    // Es lo que hay antes de decidir: falta dinero de su depósito y todavía no
+    // se sabe quién lo pone.
+    const c = cuentaDeUnaImportacion(KIA);
+    assert.equal(c.descuadre, -1071);
+    assert.equal(c.asumido, 0);
+    assert.equal(c.margen, 1322.6);
+  });
+
+  test('asumida, pasa a ser coste nuestro y baja el margen', () => {
+    const c = cuentaDeUnaImportacion({ ...KIA, liquidacionComo: 'asumida' });
+    assert.equal(c.asumido, 1071);
+    assert.equal(c.coste, 2748.4, 'los 1.677,40 de siempre más los 1.071');
+    assert.equal(c.margen, 251.6);
+    assert.equal(c.porcentaje, 8.4);
+  });
+
+  test('y entonces la cuenta del cliente cuadra, que es la verdad', () => {
+    // Él puso lo que le pedimos y no le falta nada: lo que no cuadra es la
+    // nuestra, y ahí es donde tiene que verse.
+    assert.equal(cuentaDeUnaImportacion({ ...KIA, liquidacionComo: 'asumida' }).descuadre, 0);
+  });
+
+  test('cobrada no nos cuesta nada: la pone él', () => {
+    const c = cuentaDeUnaImportacion({ ...KIA, liquidacionComo: 'cobrada' });
+    assert.equal(c.asumido, 0);
+    assert.equal(c.margen, 1322.6);
+  });
+
+  test('y si sobró y se le devolvió, tampoco', () => {
+    // «Asumir» algo que sobra no significa nada: no nos ha costado.
+    const c = cuentaDeUnaImportacion({
+      ...KIA, impuestoReal: 1180, liquidacionComo: 'asumida',
+    });
+    assert.equal(c.asumido, 0);
+    assert.equal(c.margen, 1322.6);
+  });
+});

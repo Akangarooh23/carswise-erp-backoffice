@@ -666,6 +666,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       FROM erp_tramites t
                      WHERE t.lead_id = moveadvisor_market_leads.id
                   ),
+                  'liquidacion_como', liquidacion_como,
                   'impuesto_real', (
                     -- El impuesto es una **partida** del expediente de gestoría, no un trámite
                     -- suyo: los tres papeleos se juntaron en uno. Buscarlo por un tipo que ya no
@@ -890,6 +891,17 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
    */
   if (liquidacion_hecha !== undefined) {
     sets.push(`liquidacion_at = ${liquidacion_hecha ? "NOW()" : "NULL"}`);
+    /*
+     * Y cómo se liquidó, que es lo que decide de quién es la diferencia.
+     *
+     * «Asumida» quiere decir que la pagamos nosotros: entonces es coste de
+     * ese coche y baja su margen. Sin distinguirlo, un coche cuyo impuesto
+     * nos comimos parece igual de rentable que otro que cuadró, y el margen
+     * medio de la empresa sale de ahí.
+     */
+    const como = String(req.body?.liquidacion_como ?? '').trim();
+    values.push(liquidacion_hecha && ['cobrada', 'devuelta', 'asumida'].includes(como) ? como : null);
+    sets.push(`liquidacion_como = ${values.length}`);
   }
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien

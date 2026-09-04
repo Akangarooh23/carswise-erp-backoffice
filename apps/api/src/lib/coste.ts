@@ -136,8 +136,10 @@ export interface CuentaDeImportacion {
   ingreso: number;
   /** Lo que sobra o falta de su depósito. Cero es lo que tiene que salir. */
   descuadre: number;
-  /** Lo que nos cuesta de verdad, en base. */
+  /** Lo que nos cuesta de verdad, en base, con lo asumido dentro. */
   coste: number;
+  /** De ese coste, la diferencia del impuesto que hemos puesto nosotros. */
+  asumido: number;
   /** Ingreso menos coste. */
   margen: number;
   /** Sobre el ingreso, que es lo que se mira en un servicio. */
@@ -171,6 +173,16 @@ export function cuentaDeUnaImportacion(datos: {
   precioProveedor?: unknown;
   /** Lo que ha costado el impuesto de verdad, si ya se sabe. */
   impuestoReal?: unknown;
+  /**
+   * Cómo se liquidó la diferencia del impuesto.
+   *
+   * `asumida` quiere decir que la pagamos nosotros para no cobrarle de más a
+   * alguien que ya había cerrado un precio. Es una decisión legítima y es
+   * **coste de este coche**: sin contarlo, un coche cuyo impuesto nos comimos
+   * parece igual de rentable que otro que cuadró, y el margen medio de la
+   * empresa sale de ahí.
+   */
+  liquidacionComo?: 'cobrada' | 'devuelta' | 'asumida' | null;
   /** Nuestros costes, cada uno con su base, su tipo y su régimen. */
   costes: LineaDeDinero[];
 }): CuentaDeImportacion {
@@ -194,13 +206,33 @@ export function cuentaDeUnaImportacion(datos: {
 
   const c = cuentaDelDinero(datos.costes);
 
-  const margen = dosDecimales(ingreso - c.nuestro);
+  /*
+   * Y la diferencia del impuesto, si la asumimos nosotros.
+   *
+   * Solo la asumida, y solo cuando falta: si sobró y se le devolvió, no nos
+   * ha costado nada. El impuesto no lleva IVA, así que entra entera — no hay
+   * base que separar.
+   */
+  const asumido = datos.liquidacionComo === 'asumida'
+    ? dosDecimales(Math.max(0, impuesto - leeImporte(e.impuesto)))
+    : 0;
+  const coste = dosDecimales(c.nuestro + asumido);
+
+  const margen = dosDecimales(ingreso - coste);
   return {
     deposito: dosDecimales(deposito),
     aTerceros,
     ingreso: dosDecimales(ingreso),
-    descuadre: dosDecimales(deposito - aTerceros - ingreso),
-    coste: c.nuestro,
+    /*
+     * El descuadre, con lo asumido ya puesto.
+     *
+     * Si la diferencia la pagamos nosotros, la cuenta del cliente cuadra: él
+     * puso lo que le pedimos y no le falta nada. Lo que no cuadra es la
+     * nuestra, y ahí es donde tiene que verse.
+     */
+    descuadre: dosDecimales(deposito - aTerceros - ingreso + asumido),
+    asumido,
+    coste,
     margen,
     porcentaje: ingreso > 0 ? Math.round((margen / ingreso) * 1000) / 10 : null,
     ivaSoportado: c.ivaSoportado,

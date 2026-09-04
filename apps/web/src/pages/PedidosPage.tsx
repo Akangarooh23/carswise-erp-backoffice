@@ -1090,7 +1090,7 @@ function LoQueCuesta({ id }: { id: string }) {
     /** Y, si es una importación, sus dos cuentas: la del cliente y la nuestra. */
     cuenta: {
       deposito: number; aTerceros: number; ingreso: number; descuadre: number;
-      coste: number; margen: number; porcentaje: number | null;
+      coste: number; asumido: number; margen: number; porcentaje: number | null;
       ivaSoportado: number; sinDesglosar: number;
     } | null;
   } | null>(null);
@@ -1175,6 +1175,19 @@ function LoQueCuesta({ id }: { id: string }) {
                 <td className="py-0.5 text-brand-500">Peritación, transportes, honorarios y taller</td>
                 <td className="py-0.5 text-right tabular-nums text-brand-600">−{eur(coste.cuenta.coste)}</td>
               </tr>
+              {/*
+                * Y la diferencia del impuesto, si la pusimos nosotros.
+                *
+                * En su propia línea y no sumada a la de arriba: es una decisión
+                * que se tomó un día —no cobrarle de más a alguien que ya cerró
+                * un precio— y tiene que poder verse cuánto costó.
+                */}
+              {coste.cuenta.asumido > 0 && (
+                <tr>
+                  <td className="py-0.5 text-brand-500">Diferencia del impuesto que pusimos nosotros</td>
+                  <td className="py-0.5 text-right tabular-nums text-brand-600">−{eur(coste.cuenta.asumido)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
           <div className={`mt-1.5 px-3 py-2 rounded-lg text-[12px] ${coste.cuenta.margen >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>

@@ -99,6 +99,14 @@ export interface MetaImportacion {
   // Lo que costó de verdad, del trámite de la gestoría.
   impuesto_real?: number | string | null;
   liquidacion_at?: string | null;
+  /**
+   * Cómo se liquidó la diferencia: cobrada, devuelta o **asumida**.
+   *
+   * Asumida quiere decir que la pusimos nosotros, y entonces es coste de este
+   * coche. Sin distinguirlo, uno cuyo impuesto nos comimos parece igual de
+   * rentable que otro que cuadró.
+   */
+  liquidacion_como?: 'cobrada' | 'devuelta' | 'asumida' | null;
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.

@@ -833,11 +833,57 @@ onEncargarALaGestoria, aviso }: PanelProps) {
               </div>
               <div className="mt-3 pt-3 border-t border-brand-200/70">
                 {liq.hecha ? (
-                  <span className="text-[13px] font-bold text-emerald-700">✓ Liquidado</span>
+                  <span className="text-[13px] font-bold text-emerald-700">
+                    ✓ Liquidado{x.meta?.liquidacion_como === 'asumida' ? ' · lo pusimos nosotros'
+                      : x.meta?.liquidacion_como === 'cobrada' ? ' · se lo cobramos'
+                      : x.meta?.liquidacion_como === 'devuelta' ? ' · se lo devolvimos' : ''}
+                  </span>
+                ) : hayQueMover ? (
+                  <>
+                    {/*
+                      * Tres botones y no uno, porque no es lo mismo.
+                      *
+                      * Cobrarle la diferencia y ponerla nosotros acaban las dos en
+                      * «liquidado», pero una no cuesta nada y la otra sale del
+                      * margen de este coche. Con un solo botón, un coche cuyo
+                      * impuesto nos comimos parece igual de rentable que otro que
+                      * cuadró, y el margen medio de la empresa sale de ahí.
+                      */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {liq.quien === 'cobrar' ? (
+                        <>
+                          <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'cobrada' })}
+                                  disabled={guardando}
+                                  className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
+                            Se lo he cobrado
+                          </button>
+                          <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'asumida' })}
+                                  disabled={guardando}
+                                  className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-300 rounded-lg hover:bg-brand-50 disabled:opacity-50">
+                            Lo ponemos nosotros
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'devuelta' })}
+                                disabled={guardando}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
+                          Se lo he devuelto
+                        </button>
+                      )}
+                    </div>
+                    {liq.quien === 'cobrar' && (
+                      <div className="text-[10px] text-brand-400 mt-1.5">
+                        Si lo ponemos nosotros, esos {eur(Math.abs(liq.diferencia))} salen
+                        del margen de este coche y así se ven en el pedido. No es lo
+                        mismo que cobrárselo.
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <button onClick={() => onCambiar({ liquidacion_hecha: true })} disabled={guardando}
+                  <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'cobrada' })}
+                          disabled={guardando}
                           className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
-                    {hayQueMover ? 'Ya lo he liquidado' : 'Dar por liquidado'}
+                    Dar por liquidado
                   </button>
                 )}
               </div>
