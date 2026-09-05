@@ -19,7 +19,8 @@ completa hecha con datos reales de proveedores reales, pero el cliente somos
 nosotros. Estamos a tiempo de cambiar cualquier cosa sin rectificar nada.
 
 > Escrito el 5 de septiembre de 2026, al terminar la primera importación de
-> punta a punta.
+> punta a punta. Los apartados 4.1, 4.2 y 4.3 se añadieron el mismo día, al
+> corregir la estimación del impuesto: son dudas que salieron de ahí.
 
 ---
 
@@ -219,10 +220,59 @@ devuelto» y «lo ponemos nosotros»— porque no sabíamos cuál era el correct
   ser ingreso nuestro con IVA, aunque los gastemos íntegros en un impuesto?
 - **La provisión en sí**: mientras el dinero está cobrado y el impuesto sin
   pagar, ¿eso es un pasivo nuestro en el balance? ¿Con qué cuenta?
-- La estimación se ha corregido esta semana —antes se quedaba corta en todos los
-  todocaminos grandes— y ahora se pasa un poco a propósito. Si nos vamos a
-  quedar el sobrante, esa decisión técnica se vuelve una decisión fiscal. Nos
-  gustaría que lo supieras antes de contestar lo anterior.
+### 4.1 · Y ahora la estimación se pasa a propósito
+
+Esto es de después de escribir lo de arriba, y cambia el matiz de la pregunta
+del sobrante.
+
+La estimación estaba mal por dos sitios y se ha corregido: aplicábamos siempre
+la banda más baja de las cuatro, y sobre el precio de un usado comparable en
+España en vez de sobre el valor fiscal. Al Sorento se le estimaban 1.420 € y
+costó 2.491. **Con la corrección se le estimarían 2.646 €**: nos pasamos un 6 %,
+y el sentido del error es deliberado — pasarse se devuelve, quedarse corto sale
+del margen.
+
+Así que ya no preguntamos «¿y si algún día sobra?». Vamos a cobrar de más casi
+siempre, a sabiendas, y a retener más dinero del cliente durante más tiempo.
+
+- ¿Cambia eso alguna de tus respuestas del apartado 4? Nos parece que cobrar de
+  más **a propósito** y cobrar de más por error no se miran igual, aunque el
+  dinero se devuelva en los dos casos.
+- ¿Hay un límite razonable? Un 6 % nos parece prudente; un 30 % ya sería otra
+  cosa aunque se liquide después.
+
+### 4.2 · Si Hacienda revisa el valor un año después
+
+Esta no se nos había ocurrido y es la que más nos inquieta de las tres.
+
+El impuesto se calcula sobre un valor, y ese valor lo puede comprobar Hacienda
+más tarde. Si llega una liquidación complementaria pasados unos meses, para
+entonces el coche está entregado, el depósito cerrado y el expediente terminado.
+
+- ¿Cuánto tiempo puede pasar hasta que eso ya no puede llegar?
+- **¿Quién responde?** El sujeto pasivo es el cliente, pero quien puso el número
+  fuimos nosotros y quien presentó el 576 fue nuestra gestoría.
+- Si el cliente no aparece o no paga, ¿nos puede venir a nosotros?
+- ¿Hay algo que debamos **hacer firmar** al cliente para que esto quede claro
+  antes de entregarle el coche? Hoy no hay nada.
+- ¿Y hay algo que debamos **guardar** de cada coche, y cuántos años, para poder
+  defender el valor que se declaró?
+
+### 4.3 · Los coches viejos no tienen cifra WLTP
+
+La banda del impuesto va por CO₂, y el CO₂ oficial se mide con dos escalas
+distintas: WLTP en los coches homologados desde 2018, y NEDC en los anteriores.
+La diferencia entre las dos es de un 20 a un 25 %, que es **una banda entera**.
+
+Nos ha salido con un SEAT Alhambra de 2010: su anuncio da 155 g y son NEDC,
+porque en 2010 el WLTP no existía.
+
+- ¿Qué cifra coge Hacienda en un coche así, y de dónde la saca la gestoría?
+- En un coche de 2018, que es el año de la transición, ¿cuál manda si el COC
+  trae las dos?
+- Nos importa porque **el precio que publicamos sale de la cifra que leemos
+  nosotros del anuncio alemán**. Si publicamos con una escala y Hacienda cobra
+  con la otra, el error es de una banda y lo paga alguien.
 
 ---
 
@@ -494,13 +544,16 @@ Si hay que priorizar, este es el orden por el que a nosotros nos duele:
 
 1. **El escrow** (5). Si eso necesita licencia, lo demás da igual.
 2. **Nombre propio o ajeno** (1). De ahí cuelga todo el modelo de facturación.
-3. **El fee con IVA o sin IVA** (2). Es el precio de la web y cambia el signo
+3. **Si Hacienda revisa el valor un año después** (4.2). No por probable, sino
+   porque si hay que hacerle firmar algo al cliente, tiene que estar antes de
+   que entre el primero de verdad. Después ya no se puede.
+4. **El fee con IVA o sin IVA** (2). Es el precio de la web y cambia el signo
    del margen.
-4. **La garantía** (3.3). Sabemos que está mal hoy y queremos arreglarlo antes
+5. **La garantía** (3.3). Sabemos que está mal hoy y queremos arreglarlo antes
    de que haya un cliente de verdad.
-5. **El impuesto: sobrante y faltante** (4). Es la decisión que más se va a
-   repetir.
-6. Lo demás.
+6. **El impuesto: sobrante y faltante** (4 y 4.1). Es la decisión que más se va
+   a repetir.
+7. Lo demás.
 
 Y una cosa que agradeceríamos aunque no la preguntemos: si al leer esto ves algo
 que no hemos preguntado porque ni se nos ha ocurrido, dínoslo. Estamos a tiempo
