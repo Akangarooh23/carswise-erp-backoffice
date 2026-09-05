@@ -135,13 +135,30 @@ haga tiene que verlo ahí, no calcularlo.
 liquida al matricular, cuando ya se sabe cuánto es de verdad.
 
 Eso no es un detalle contable: **es lo que protege nuestro fee**. Si el impuesto
-fuera un precio cerrado y el real saliera por encima —pasa en los coches de más
-de 160 g/km, que pagan el doble del tramo que estimamos— esa diferencia saldría
-de nuestro margen. Así la paga siempre el cliente, que es de quien es.
+fuera un precio cerrado y el real saliera por encima, esa diferencia saldría de
+nuestro margen. Así la paga siempre el cliente, que es de quien es.
+
+La diferencia debería ser pequeña, y con las reglas de ahora casi cero: la base la
+sabemos desde el principio —es la factura de compra— y la banda también, en cuanto
+llega el COC. Antes no: con un tipo fijo del 4,75 %, al primer coche le faltaron
+1.071 €.
 
 Y va dentro y no aparte porque la alternativa es peor: con el coche ya pagado al
 alemán y de camino, pedirle mil cuatrocientos euros más es un cobro que se puede
 caer, y el coche está a su nombre desde el principio.
+
+### Dónde está ese dinero — **pendiente**
+
+Hoy entra por la pasarela a la cuenta de la empresa, y «retenido» quiere decir que
+no lo movemos, no que esté en otro sitio.
+
+Según el asesor eso tiene que cambiar: **el dinero del cliente no puede pasar por
+nuestra cuenta**. Va a una cuenta escrow que custodia un tercero, y desde ahí se
+paga al concesionario, a nosotros el fee y a Hacienda el impuesto. Contablemente
+no figura en nuestros libros.
+
+Falta contratar al depositario, así que todo lo que cuenta este apartado describe
+cómo funciona hoy y no cómo va a funcionar. Está en los pendientes de Ana, 11.1.
 
 ### Es el que se le dijo, no el que saldría hoy
 
@@ -210,16 +227,28 @@ En el expediente sale un bloque debajo del depósito:
 ```
 Liquidación del impuesto
   Puso a cuenta          1.420 €
-  Ha salido              2.100 €
+  Ha salido              2.491 €
   ─────────────────────────────
-  Hay que cobrarle         680 €
+  Hay que cobrarle       1.071 €
 
-  [ Ya lo he liquidado ]
+  [ Se lo he cobrado ]
 ```
 
 Si sale al revés dice **«Hay que devolverle»**, y si cuadra, que no hay que mover
 nada. **No aparece hasta que hay coste en el trámite**: un bloque diciendo
 «pendiente» durante seis semanas es ruido.
+
+**Un botón y no dos.** Hubo un tercer camino, «lo ponemos nosotros», de cuando al
+primer coche se le comieron 1.071 € contra el margen. El asesor lo zanjó: el
+impuesto es del cliente y se le cobra entero, así que ese botón ya no está — ni en
+la pantalla ni en el servidor, porque un valor que no se puede pulsar pero sí
+mandar no está cerrado.
+
+Y debajo, si la estimación se desvió mucho, lo dice: **no es lo mismo que decidir
+qué hacer con el dinero de este coche**. Que la banda se estimara mal es un
+problema de todos los que vengan detrás, y avisa a partir de 200 € y un 10 %. Por
+debajo es el ruido normal de una aproximación, y una alarma en todos los coches es
+como no tener ninguna.
 
 **El botón no mueve dinero, deja constancia.** Cobrar o devolver la diferencia se
 hace por el mismo sitio que el depósito. Se puede desmarcar: si se marcó por
@@ -255,22 +284,45 @@ este negocio y lo que la ficha deja claro:
 | Línea | Qué es | Va a |
 |---|---|---|
 | **Precio del coche** | Lo que cuesta en Alemania, sin nada encima | El vendedor alemán |
-| **Servicio PopCar** | 3.000 €, siempre el mismo, **con el IVA dentro** | Nosotros |
-| **Impuesto de matriculación** | Una estimación | Hacienda |
-| **Garantía mecánica** | La de por defecto; se puede quitar | La aseguradora |
+| **Servicio PopCar** | 3.000 € **más IVA**: 3.630 € | Nosotros |
+| **Impuesto de matriculación** | La banda que le toque sobre el precio de compra | Hacienda |
+| **Garantía mecánica** | La de por defecto; se puede quitar | Su proveedor |
 
-**El IVA va dentro de los 3.000.** A un particular los precios se le dicen con el
-impuesto dentro, así que eso es lo que paga. Por dentro son **2.479,34 de base y
-520,66 de IVA**, y eso es lo que sale desglosado en su factura. Lo que ganamos se
-cuenta sobre la base: contar los 3.000 enteros sería creerse 521 € por coche que
-no existen.
+**El IVA va encima de los 3.000, no dentro.** Es la base del servicio, y los 630
+del IVA los cobramos y los ingresamos: no son nuestros ni un solo día. Al cliente
+se le enseña el total, 3.630 €, porque a un particular los precios se le dicen
+con el impuesto puesto.
 
-**Y en la factura, los suplidos.** El coche es del vendedor alemán y el impuesto
-de Hacienda: los dos pasan por nuestra cuenta y ninguno es ingreso nuestro, así
-que van en un bloque aparte, **fuera de la base de IVA**, con su explicación y con
-el total de lo que transfirió. Sin ese bloque, la factura diría 3.000 € al lado de
-una transferencia de 21.500 y esa diferencia no tendría explicación en ningún
-papel.
+> Esto estuvo al revés durante un tiempo: se dividía por 1,21 y salía una base de
+> 2.479,34. Con eso, el primer coche importado **parecía perder dinero**. Lo
+> zanjó el asesor: 3.000 más IVA.
+
+Lo que ganamos se cuenta sobre la base, nunca sobre los 3.630, y contra costes
+que también van sin IVA: el IVA soportado se deduce y no es coste. Mezclar los
+dos —ingreso bruto contra costes netos— infla el margen en 630 € por coche.
+
+**Y en la factura, los suplidos.** El coche es del vendedor alemán, el impuesto de
+Hacienda y la garantía de su proveedor: los tres pasan por nuestra cuenta y
+ninguno es ingreso nuestro, así que van en un bloque aparte, **fuera de la base de
+IVA**, con su explicación y con el total de lo que transfirió. Sin ese bloque, la
+factura diría 3.630 € al lado de una transferencia de 22.130 y esa diferencia no
+tendría explicación en ningún papel.
+
+### Lo que va dentro del fee y no se le cobra aparte
+
+Todo lo demás. Las tasas de la DGT, el impuesto municipal, las placas, la ITV de
+homologación, los honorarios de la gestoría, el perito que va a verlo a Alemania,
+los dos transportes y la preparación del coche: **eso lo pagamos nosotros con los
+3.000 €** y el cliente no ve ninguna de esas líneas.
+
+El único que se le cobra aparte es el impuesto de matriculación, y por una razón
+que se puede señalar: es lo que no depende de nosotros.
+
+> Cuidado con una trampa que ya cayó una vez. Que una tasa vaya **a nombre del
+> cliente** no la convierte en un suplido suyo: si no se la repercutimos, la
+> pagamos nosotros y es coste del coche. Contarlas como de terceros las borraba de
+> la cuenta —ni iban a terceros, porque él no las paga, ni a nuestro coste— y eran
+> 137 € de margen que no existían.
 
 El fee va suelto y con su nombre, al revés que el margen de antes, que iba
 escondido dentro del precio del coche. Cuando vendes un coche, lo que ganas no se
@@ -293,14 +345,61 @@ coche de 5.000 sale por 8.000 antes del impuesto, y la diferencia con comprarlo
 aquí no da para pagarlo. Está medido: por debajo de 10.000 € la brecha mediana
 con España son 2.050 €, y el fee más el impuesto se la comen entera.
 
-### El impuesto sigue siendo una estimación
+### El impuesto: la banda sobre el precio de compra
 
-Se aproxima con la banda de 121–159 g/km sobre el precio español de coches
-comparables. No se puede calcular bien todavía: **ninguna oferta alemana trae el
-CO₂**. Se equivoca hacia arriba a propósito — en un precio público, pasarse es
-recuperable y quedarse corto es una promesa que no se puede cumplir.
+Dos cosas, y las dos se supieron por las malas.
 
-Es el número que más va a mejorar cuando entre Eurotax.
+**La base es el precio de la factura**, no el de un usado comparable en España ni
+un valor fiscal aproximado. Lo confirmó el asesor y lo confirma el primer coche
+al céntimo: 16.890 × 14,75 % = 2.491,28, y la gestoría cobró 2.491.
+
+**Y el tipo es la banda de CO₂ que le toque**: 0 hasta 120 g/km, 4,75 hasta 159,
+9,75 hasta 199 y 14,75 por encima. Antes se aplicaba siempre el 4,75 %, la
+segunda más baja de cuatro, y con eso **todos los SUV grandes salían cortos**: al
+primer coche se le estimaron 1.420 € y costó 2.491.
+
+| | Estimado | Real |
+|---|---|---|
+| Con la regla vieja | 1.420 € | 2.491 € |
+| Con la de ahora | 2.491 € | 2.491 € |
+
+Lo único que se estima es la banda, y solo mientras no sepamos el CO₂. Cuando el
+anuncio lo trae —o cuando llega el COC, que siempre lo lleva— el número es exacto
+y en la ficha deja de decir «estimado».
+
+Sin CO₂ se estima con lo que sí viene: combustible, potencia, cilindrada,
+carrocería y si lleva tracción total. Medido contra los cinco coches publicados a
+los que se les buscó el CO₂ oficial a mano, las cinco bandas salen bien.
+
+> La carrocería hizo falta porque el título no basta. El Kia Sorento de 2021 se
+> llama «1.Hand LED Keyless Ahk Navi Finanzierung» y es un SUV de dos toneladas:
+> se le estimaban 151 g y son 177, una banda entera y 810 € de impuesto. El
+> título lo escribe quien vende, y no está para eso.
+
+### Y se le cobra entero, siempre
+
+Si al matricular sale más caro de lo estimado, **la diferencia se le cobra al
+cliente**. No hay opción de asumirla, y el botón que la ofrecía se quitó: el
+impuesto es suyo, y el primero que se comió el margen fueron 1.071 €.
+
+Si sale más barato, se le devuelve. Las dos cosas se hacen desde el bloque de
+liquidación del expediente, que aparece en cuanto la gestoría escribe el importe
+real en su partida.
+
+> Con las reglas de ahora esa diferencia casi no debería existir: la base la
+> sabemos desde el principio, y la banda también en cuanto llega el COC. Si
+> aparece una desviación grande, el expediente lo avisa —a partir de 200 € y un
+> 10 %— porque quiere decir que la banda se estimó mal, y eso le va a pasar
+> también a los coches que vengan detrás.
+
+### Un coche que Hacienda considere nuevo no se publica
+
+**Menos de seis meses o menos de 6.000 km**, y basta con una de las dos. Ese coche
+se compra sin IVA en Alemania y el cliente liquida aquí el 21 % con el modelo 309:
+sobre un SEAT Leon de 24.370 € son 5.118 € que el precio publicado no lleva.
+
+En el catálogo alemán hay 4.759 así, muchos con cero kilómetros. No es que no se
+puedan traer: es **otra operación**, y ese flujo no existe todavía.
 
 ---
 ## La peritación
@@ -414,9 +513,22 @@ porque nadie la ha emitido. Por eso va en su propio bloque y **no suma en lo
 pendiente de pagar**: mezcladas, un día alguien paga contra una línea que no
 existe, y la cifra de lo que debemos incluye lo que nadie nos ha reclamado.
 
-Cuando llega, **la misma línea se convierte**: se le pone número, fecha e
-importe y pasa a pendiente de pagar. No se crea otra, así que no quedan dos
-filas —una esperando para siempre y otra por pagar—.
+Cuando llega, **se pincha la espera**: se abre el formulario con el proveedor, el
+coche, el importe y el concepto ya puestos, y solo hay que teclear lo que trae la
+factura de verdad —su número, su fecha— y adjuntar el PDF. La misma línea se
+convierte y pasa a pendiente de pagar.
+
+> Esto no siempre fue así. Registrar la factura desde el botón de arriba creaba
+> una fila nueva y la espera se quedaba: salían las dos, los 400 € de un
+> transporte contados dos veces, y «esperando factura» no bajaba nunca.
+
+Pinchar la espera dice **cuál** se cierra, y eso a veces es lo único que se puede
+saber: un coche puede llevar dos tramos del mismo transportista. Quien entre por
+el botón de arriba sin haber pinchado tiene red —se busca la del mismo proveedor
+y coche, y si hay varias la del importe más parecido, que la factura casi nunca
+viene por el euro que se presupuestó— pero si no hay ninguna clara entra como
+nueva: cuadrar con la espera equivocada da por facturado un servicio que sigue
+sin factura.
 
 Y **vencen**: a los diez días sin llegar se pintan en rojo pidiendo que se
 reclamen. Sin eso, en tres meses la lista serían cuarenta líneas de coches ya
@@ -620,8 +732,40 @@ Cada garantía **cuelga de un proveedor** de Proveedores, del tipo *Garantías*.
 se puede guardar una apuntando a alguien que no esté dado de alta: el día que
 haya que reclamarla, lo primero que se busca es a quién.
 
+### Somos comisionistas, no la compramos para revenderla
+
+El proveedor le pone el precio, **se lo cobra al cliente** y nos paga una comisión
+por habérsela vendido. Nosotros no adquirimos nada y no provisionamos nada.
+
+Se guardaba al revés —precio 190 y coste 120— que es el modelo de comprar para
+revender. Con eso, la línea de la garantía en la factura del cliente llevaba 70 €
+de margen nuestro dentro de un concepto que dice «pagado en tu nombre», y **un
+suplido con margen dentro no es un suplido**. Ahora el producto guarda su
+`comisión`, que es lo que nos paga él.
+
+Eso son **dos facturas y solo una es nuestra**:
+
+| Factura | Quién la emite | A quién | Dónde va |
+|---|---|---|---|
+| Los 190 € de la garantía | El proveedor | Al cliente | Se sube al expediente como «Factura de la garantía» y llega sola a su IdCar |
+| La comisión | **Nosotros** | Al proveedor | Facturación proveedores → Emitidas |
+
+La nuestra **no llega nunca al garaje del cliente**: es un papel de nuestra
+operación, como la factura del perito, y ponerla ahí sería darle a leer lo que
+ganamos con su garantía.
+
+Las garantías vendidas salen en «Emitidas a proveedores» como pendientes de
+facturar comisión, igual que las ventas de portal. Aparecen cuando el coche está
+**entregado**, que es cuando la garantía empieza: facturar la comisión de una
+venta que puede caerse es cobrar por lo que no ha pasado. El importe se propone
+con lo que dice el catálogo y se puede cambiar.
+
 > **Pendiente:** los tres productos que hay cargados tienen precios inventados
-> para poder ver la pantalla. Hacen falta los de la aseguradora.
+> para poder ver la pantalla, y sus comisiones se trajeron como «precio menos
+> coste» para no dejarlas a cero. Hacen falta los de verdad, y sobre todo **quién
+> da las garantías, con su NIF y cuánta comisión paga**: hoy el proveedor está
+> dado de alta como «PopCar (garantía propia)», que es justo el modelo que esto
+> deja de asumir.
 >
 > Y una cosa más, ahora que la de por defecto entra en el precio: **la de doce
 > meses no tiene topes**, así que hoy se le ofrece a cualquier coche, tenga la
@@ -977,6 +1121,17 @@ Y ahí vive un paso del camino: **apuntar el número de la factura del vendedor*
 **y la fecha del pago**. Los 16.890 € ya han salido del banco; sin esos dos
 datos queda un cargo de dieciséis mil euros sin concepto, y aparece al cuadrar
 el mes. No mueve el coche, así que va aparte — pero cuenta en el número rojo.
+
+### Las facturas que faltan salen en el expediente y en el menú
+
+Un expediente cerrado no está terminado si tres proveedores no han facturado. Al
+entregar el primer coche ponía «nada pendiente» con 1.543 € sin facturar, así que
+ahora el expediente dice **qué facturas le faltan**, con quién y cuánto, aunque
+esté entregado. Va aparte: no mueve el coche y no vuelve a poner «ahora toca».
+
+Y **Facturación proveedores lleva su número** en el menú con las que no han
+llegado. Un gasto sin factura no se deduce, y eso no puede depender de que
+alguien pase por esa pantalla.
 
 ### El número rojo del menú
 

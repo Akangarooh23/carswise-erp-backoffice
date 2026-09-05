@@ -758,6 +758,47 @@ En el pedido, abajo:
 - [ ] Como no está vendido, dice **«esto es lo que llevamos puesto»**, no una
       pérdida.
 
+**Y mira de quién es cada euro**, que es donde se equivocaba la cuenta:
+
+- [ ] En el expediente de gestoría, el **impuesto** sale como suplido y todo lo
+      demás —tasas, placas, honorarios— como **coste nuestro**. El impuesto es lo
+      único que se le cobra aparte al cliente; el resto sale del fee.
+- [ ] Las facturas de los proveedores **alemanes** están marcadas como
+      **intracomunitarias y sin IVA dentro**. Guardadas como nacionales al 21 %,
+      el coste del coche sale un 21 % más bajo de lo que es.
+
+---
+
+## 9b · Liquidar el impuesto · **en el ERP**
+
+En el expediente de **Importaciones**, cuando la gestoría ha escrito el importe
+real en su partida:
+
+- [ ] Sale el bloque **«Liquidación del impuesto»** con lo que puso a cuenta, lo
+      que ha salido y la diferencia.
+- [ ] Hay **un solo botón**: «se lo he cobrado» o «se lo he devuelto». El de «lo
+      ponemos nosotros» ya no existe — el impuesto es del cliente.
+- [ ] Si la desviación pasa de 200 € y del 10 %, debajo avisa de que **la
+      estimación se quedó corta o larga**. Eso no es lo mismo que la liquidación:
+      es un problema de los coches que vengan detrás.
+- [ ] Pulsa el botón. **El expediente se cierra solo** y crea el IdCar.
+
+---
+
+## 9c · Las facturas que faltan · **en el ERP**
+
+En **Facturación proveedores → Recibidas**:
+
+- [ ] Arriba, en ámbar, están las que **esperamos y no han llegado**, con lo que
+      va a costar cada una.
+- [ ] **Pincha una.** Se abre el formulario con el proveedor, el coche, el importe
+      y el concepto ya puestos: solo hay que teclear el número y la fecha de la
+      factura y adjuntar el PDF.
+- [ ] Al guardarla, **esa misma línea se convierte**. No aparece una fila nueva ni
+      se queda la espera: si salen las dos, el importe está contado dos veces.
+- [ ] Mientras falte alguna, **Facturación proveedores lleva su número** en el
+      menú, y el expediente —aunque esté cerrado— dice cuáles faltan.
+
 ---
 
 ## 10 · La entrega · **en el ERP**
@@ -766,10 +807,9 @@ En el expediente de **Importaciones**, en «La entrega»:
 
 - [ ] Marca lo que le das: permiso, ficha, llaves, factura.
 - [ ] Intenta cerrarla sin kilómetros. **Te lo impide.**
-- [ ] **Antes de cerrarla, desmarca la liquidación del impuesto** y prueba a
-      cerrar. Te lo impide y te dice cuánto hay que cobrar o devolver: si se
-      entrega el coche sin ajustar, ese dinero no se recupera.
-- [ ] Vuelve a marcarla como liquidada.
+- [ ] **Con el impuesto sin liquidar, no se cierra.** Si salió más caro y se
+      entrega sin cobrar la diferencia, ese dinero no se recupera: el cliente ya
+      tiene su coche. El paso 9b es el que abre esta puerta.
 - [ ] Pon los kilómetros de salida y pulsa **Firmado y entregado**.
 - [ ] **La garantía dice de quién es.** Si no contrataste ninguna, pone que la
       legal de dos años la debe el vendedor alemán —**no sale ninguna fecha de
@@ -790,6 +830,27 @@ Vuelve a PopCar, a su panel:
 - [ ] Ha ido cambiando de paso a lo largo de toda la prueba.
 - [ ] Sus facturas están en Facturación.
 - [ ] **No ve nada** del proveedor, ni del coste, ni de las notas internas.
+
+**Y su coche está en su garaje**, en IDCars:
+
+- [ ] Sale **con su propietario**, no en blanco.
+- [ ] Y con su ficha llena: año, combustible, cambio, potencia, color,
+      carrocería y CO₂. Todo eso viene del anuncio del que salió el coche.
+- [ ] Con sus papeles: permiso, ficha técnica, COC y las facturas que son suyas.
+- [ ] **La factura del perito no está**, ni el presupuesto del transportista, ni
+      nuestra comisión de la garantía. Son papeles de nuestra operación.
+
+---
+
+## 11b · La comisión de la garantía · **en el ERP**
+
+Solo si contrataste una. En **Facturación proveedores → Emitidas**:
+
+- [ ] La garantía vendida sale como **pendiente de facturar comisión**, con lo que
+      le cobró al cliente y lo que nos comisiona.
+- [ ] La vendemos por cuenta de quien la da: **él le factura los 190 € al cliente**
+      y nosotros le facturamos a él la comisión. Son dos facturas y solo una es
+      nuestra.
 
 ---
 
