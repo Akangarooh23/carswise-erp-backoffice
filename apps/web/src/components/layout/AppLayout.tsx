@@ -25,6 +25,14 @@ export default function AppLayout() {
    * y lo que dice el expediente dejarían de coincidir.
    */
   const [pendientes, setPendientes] = useState<Record<string, number>>({});
+  /*
+   * Las facturas de proveedor que aún no han llegado.
+   *
+   * Van aparte y no dentro de «pendientes» a propósito: ese lo calcula
+   * «pendientesPorPantalla» de una vez y se sustituye entero, así que meter
+   * aquí otra fuente haría que la última en contestar borrara a la otra.
+   */
+  const [facturasSinLlegar, setFacturasSinLlegar] = useState(0);
   const [toast, setToast]               = useState<string | null>(null);
 
   // Los atajos. El hook se llama siempre, tambien sin sesion: React exige que
@@ -51,6 +59,12 @@ export default function AppLayout() {
       // Los expedientes de importación, para saber qué espera algo nuestro.
       // Solo lo que depende de nosotros suma: un contador que incluye esperas
       // no baja nunca, y un número que no baja se deja de mirar.
+      // Y las facturas de proveedor que faltan. Un gasto sin factura no se
+      // puede deducir, y hasta ahora solo se veía entrando en la pantalla.
+      api.get<{ recibidas?: { esperando_n?: number } }>('/provider-billing/summary')
+        .then((v) => { if (v.ok) setFacturasSinLlegar(Number(v.data?.recibidas?.esperando_n) || 0); })
+        .catch(() => {});
+
       api.get<Expediente[]>('/leads?type=import&limit=100')
         .then((v) => {
           if (!v.ok || !Array.isArray(v.data)) return;
@@ -95,7 +109,11 @@ export default function AppLayout() {
       )}
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} pendingLeads={pendingLeads}
-               visitasPorConfirmar={visitasPorConfirmar} pendientes={pendientes} />
+               visitasPorConfirmar={visitasPorConfirmar}
+               pendientes={{
+                 ...pendientes,
+                 ...(facturasSinLlegar ? { '/provider-billing': facturasSinLlegar } : {}),
+               }} />
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Mobile top bar */}

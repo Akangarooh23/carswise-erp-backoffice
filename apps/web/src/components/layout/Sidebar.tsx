@@ -156,7 +156,9 @@ export default function Sidebar({
               * coches pasan por ahí.
               */}
             {(pendientes[item.to] ?? 0) > 0 && (
-              <span title={`${pendientes[item.to]} cosa${pendientes[item.to] > 1 ? 's' : ''} por hacer`}
+              <span title={item.to === '/provider-billing'
+                ? `${pendientes[item.to]} factura${pendientes[item.to] > 1 ? 's' : ''} de proveedor sin llegar`
+                : `${pendientes[item.to]} cosa${pendientes[item.to] > 1 ? 's' : ''} por hacer`}
                     className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
                 {pendientes[item.to] > 99 ? '99+' : pendientes[item.to]}
               </span>
