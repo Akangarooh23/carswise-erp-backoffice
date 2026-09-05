@@ -31,7 +31,7 @@ interface Muestra {
   meses: number;
   km_cubiertos: number | null;
   precio: number;
-  coste: number;
+  comision: number;
   antiguedad_max_anios: number | null;
   km_max_vehiculo: number | null;
   cubre: string[];
@@ -76,7 +76,7 @@ const MUESTRAS: Muestra[] = [
     meses: 12,
     km_cubiertos: null,
     precio: 180,
-    coste: 95,
+    comision: 85,
     antiguedad_max_anios: 15,
     km_max_vehiculo: 250000,
     cubre: ['Motor y transmisión', 'Caja de cambios', 'Sistema de refrigeración'],
@@ -91,7 +91,7 @@ const MUESTRAS: Muestra[] = [
     meses: 24,
     km_cubiertos: 200000,
     precio: 420,
-    coste: 260,
+    comision: 160,
     antiguedad_max_anios: 12,
     km_max_vehiculo: 200000,
     cubre: [
@@ -111,7 +111,7 @@ const MUESTRAS: Muestra[] = [
     meses: 36,
     km_cubiertos: 150000,
     precio: 890,
-    coste: 590,
+    comision: 300,
     antiguedad_max_anios: 8,
     km_max_vehiculo: 150000,
     cubre: [
@@ -150,13 +150,13 @@ async function pon(): Promise<void> {
   for (const m of MUESTRAS) {
     await query(
       `INSERT INTO market_garantias
-         (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, coste,
+         (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, comision,
           proveedor_id, antiguedad_max_anios, km_max_vehiculo, notas, creado_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'muestra')
        ON CONFLICT (id) DO NOTHING`,
       [
         m.id, m.nombre, m.nivel, m.es_base, m.renunciable, m.meses, m.km_cubiertos,
-        m.precio, m.coste, PROVEEDOR.id, m.antiguedad_max_anios, m.km_max_vehiculo,
+        m.precio, m.comision, PROVEEDOR.id, m.antiguedad_max_anios, m.km_max_vehiculo,
         'INVENTADA, para ver cómo queda la oferta. Quitar con: npm run garantias:muestra -- --quitar',
       ]
     );

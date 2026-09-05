@@ -63,7 +63,7 @@ const PRODUCTOS = [
     renunciable: false,
     meses: 12, km_cubiertos: null as number | null,
     // Al cliente, cero: va en el precio del coche. A nosotros nos cuesta.
-    precio: 0, coste: 120,
+    precio: 0, comision: 0,
     antiguedad_max_anios: null as number | null, km_max_vehiculo: null as number | null,
     cubre: [
       'Averías por defectos que el coche ya tenía al entregártelo',
@@ -79,7 +79,7 @@ const PRODUCTOS = [
   {
     nombre: 'Ampliada a 24 meses', nivel: 2, es_base: false, renunciable: true,
     meses: 24, km_cubiertos: 200000,
-    precio: 290, coste: 165,
+    precio: 290, comision: 125,
     antiguedad_max_anios: 12, km_max_vehiculo: 180000,
     cubre: [
       'Todo lo de la garantía incluida, doce meses más',
@@ -96,7 +96,7 @@ const PRODUCTOS = [
   {
     nombre: 'Ampliada a 36 meses', nivel: 3, es_base: false, renunciable: true,
     meses: 36, km_cubiertos: 160000,
-    precio: 690, coste: 410,
+    precio: 690, comision: 280,
     antiguedad_max_anios: 8, km_max_vehiculo: 140000,
     cubre: [
       'Todo lo de la ampliada a 24 meses, un año más',
@@ -156,12 +156,12 @@ async function altaProducto(proveedorId: string, x: (typeof PRODUCTOS)[number]):
     async (nuevoId) => {
       await query(
         `INSERT INTO market_garantias
-           (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, coste,
+           (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, comision,
             proveedor_id, antiguedad_max_anios, km_max_vehiculo, notas, creado_por)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'alta provisional')`,
         [
           nuevoId, x.nombre, x.nivel, x.es_base, x.renunciable, x.meses, x.km_cubiertos,
-          x.precio, x.coste, proveedorId, x.antiguedad_max_anios, x.km_max_vehiculo,
+          x.precio, x.comision, proveedorId, x.antiguedad_max_anios, x.km_max_vehiculo,
           'PROVISIONAL: plazos, precio y coberturas puestos para probar el flujo.',
         ]
       );

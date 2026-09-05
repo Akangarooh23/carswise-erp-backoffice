@@ -99,6 +99,39 @@ const ENSURE_UNA_BASE = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_garantias_una_base
     ON market_garantias ((TRUE)) WHERE es_base AND activo`;
 
+/**
+ * La garantía no la compramos: la vendemos por cuenta de quien la da.
+ *
+ * Lo aclaró el asesor: **somos comisionistas**. El proveedor pone el precio y
+ * se lo cobra al cliente; nosotros no adquirimos nada y no provisionamos nada,
+ * y lo que ganamos es la comisión que él nos paga por habérsela vendido.
+ *
+ * Por eso `coste` era la columna equivocada. Decía que comprábamos algo a 120 €
+ * para revenderlo a 190, y con eso la línea de la garantía en la factura del
+ * cliente llevaba 70 € de margen nuestro dentro de un concepto que dice
+ * «pagado en tu nombre». Un suplido con margen dentro no es un suplido.
+ *
+ * `coste` se queda en la tabla y sin usar: borrar una columna con datos es de
+ * las cosas que no se deshacen, y a cambio no estorba. Lo que se lee es
+ * `comision`.
+ */
+const ENSURE_COMISION = `
+  ALTER TABLE market_garantias
+    ADD COLUMN IF NOT EXISTS comision NUMERIC(10,2)`;
+
+/**
+ * Y las que ya estaban conservan lo que dejaban.
+ *
+ * Las tres del catálogo son provisionales —lo dice su propia nota— y lo que
+ * dejaban era `precio - coste`. Traerlo como comisión no afirma que el
+ * proveedor pague eso: mantiene el número que había hasta que haya contrato,
+ * que es mejor que dejarlo a cero y creerse que la garantía no deja nada.
+ */
+const COMISION_DE_LAS_VIEJAS = `
+  UPDATE market_garantias
+     SET comision = GREATEST(0, precio - coste)
+   WHERE comision IS NULL AND coste IS NOT NULL`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
@@ -106,6 +139,8 @@ async function prepara() {
   await query(ENSURE_COBERTURAS, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   await query(ENSURE_UNA_BASE, []).catch(() => {});
+  await query(ENSURE_COMISION, []).catch(() => {});
+  await query(COMISION_DE_LAS_VIEJAS, []).catch(() => {});
   preparado = true;
 }
 
@@ -115,7 +150,7 @@ export async function preparaGarantias(): Promise<void> {
 }
 
 const CAMPOS = `id, nombre, nivel, es_base, renunciable, meses, km_cubiertos,
-                precio::numeric AS precio, coste::numeric AS coste, proveedor_id,
+                precio::numeric AS precio, comision::numeric AS comision, proveedor_id,
                 antiguedad_max_anios, km_max_vehiculo, activo, notas, created_at`;
 
 function nt(v: unknown): string {
@@ -189,14 +224,14 @@ garantiasRouter.post('/garantias', requireRole(['admin', 'operations']), async (
       async (nuevoId) => {
         await query(
           `INSERT INTO market_garantias
-             (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, coste,
+             (id, nombre, nivel, es_base, renunciable, meses, km_cubiertos, precio, comision,
               proveedor_id, antiguedad_max_anios, km_max_vehiculo, notas, creado_por)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
           [
             nuevoId, nombre, entero(req.body?.nivel) ?? 1,
             req.body?.es_base === true, req.body?.renunciable !== false,
             entero(req.body?.meses), entero(req.body?.km_cubiertos),
-            precio, importe(req.body?.coste), proveedorId || null,
+            precio, importe(req.body?.comision), proveedorId || null,
             entero(req.body?.antiguedad_max_anios), entero(req.body?.km_max_vehiculo),
             nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '',
           ]
@@ -232,7 +267,7 @@ garantiasRouter.patch('/garantias/:id', requireRole(['admin', 'operations']), as
   for (const campo of ['nivel', 'meses', 'km_cubiertos', 'antiguedad_max_anios', 'km_max_vehiculo'] as const) {
     if (req.body?.[campo] !== undefined) pon(campo, entero(req.body[campo]));
   }
-  for (const campo of ['precio', 'coste'] as const) {
+  for (const campo of ['precio', 'comision'] as const) {
     if (req.body?.[campo] !== undefined) pon(campo, importe(req.body[campo]));
   }
   for (const campo of ['es_base', 'renunciable', 'activo'] as const) {

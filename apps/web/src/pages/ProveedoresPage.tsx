@@ -939,7 +939,7 @@ function GarantiasDelProveedor({ proveedorId }: { proveedorId: string }) {
       <div className="space-y-1.5">
         {(lista ?? []).map((g) => {
           const precio = Number(g.precio) || 0;
-          const coste = g.coste == null ? null : Number(g.coste);
+          const comision = g.comision == null ? null : Number(g.comision);
           return (
             <div key={g.id}
                  className={`px-3 py-2 rounded-lg border bg-white ${g.activo ? "border-brand-200" : "border-brand-100 opacity-60"}`}>
@@ -966,9 +966,11 @@ function GarantiasDelProveedor({ proveedorId }: { proveedorId: string }) {
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xs font-bold text-brand-600">{eur(precio)}</div>
-                  {coste != null && (
+                  {/* No la compramos: la vendemos por cuenta de quien la da,
+                      y lo que ganamos es su comisión. */}
+                  {comision != null && (
                     <div className="text-[10px] text-brand-400">
-                      nos cuesta {eur(coste)} · deja {eur(precio - coste)}
+                      nos comisiona {eur(comision)}
                     </div>
                   )}
                 </div>
@@ -1004,7 +1006,7 @@ interface GarantiaFila {
   meses: number | null;
   km_cubiertos: number | null;
   precio: number | string;
-  coste: number | string | null;
+  comision: number | string | null;
   antiguedad_max_anios: number | null;
   km_max_vehiculo: number | null;
   activo: boolean;
