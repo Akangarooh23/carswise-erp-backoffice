@@ -624,11 +624,13 @@ providerBillingRouter.get('/provider-billing/pending-warranty-commissions', requ
              l.garantia_precio::numeric AS precio,
              g.nombre AS garantia, g.comision::numeric AS comision,
              COALESCE(p.nombre, 'Proveedor de garantías') AS proveedor,
-             COALESCE(vo.sold_at, l.updated_at) AS date
+             -- El día que se entregó, que es cuando empieza la garantía. Si no
+             -- consta, el día que se pidió el coche: una fecha vieja se ve rara
+             -- y se mira, y una vacía deja la fila descolocada al ordenar.
+             COALESCE(NULLIF(l.entrega->>'fecha', '')::date, l.created_at::date) AS date
         FROM moveadvisor_market_leads l
         JOIN market_garantias g ON g.id = l.garantia_id
         LEFT JOIN erp_proveedores p ON p.id = g.proveedor_id
-        LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
        WHERE l.status = 'Entregado'
          AND l.garantia_id IS NOT NULL
          AND l.id NOT IN (
