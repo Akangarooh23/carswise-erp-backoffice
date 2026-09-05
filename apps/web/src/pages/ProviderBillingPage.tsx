@@ -167,6 +167,15 @@ export default function ProviderBillingPage() {
   const [recvDate, setRecvDate]         = useState('');
   const [recvNotes, setRecvNotes]       = useState('');
   const [recvPdfFile, setRecvPdfFile]   = useState<File | null>(null);
+  /*
+   * Y qué espera se está cerrando, si se ha entrado pinchando una.
+   *
+   * Sin esto, registrar la factura creaba una fila nueva y la espera se
+   * quedaba ahí: salían las dos y «esperando factura» no bajaba nunca.
+   * Decir cuál se cierra es mejor que adivinarlo por el importe, que es lo
+   * único que se puede hacer desde el botón de arriba.
+   */
+  const [recvEsperada, setRecvEsperada] = useState<string | null>(null);
   const [savingRecv, setSavingRecv]     = useState(false);
   const [recvIva, setRecvIva]           = useState<number>(0.21);
 
@@ -261,12 +270,13 @@ export default function ProviderBillingPage() {
       pdf_base64,
       pdf_filename: recvPdfFile?.name,
       iva_rate: recvIva,
+      esperada_id: recvEsperada || undefined,
     };
     const r = await api.post('/provider-billing/received', body);
     if (r.ok) {
       setRecvModal(false);
       setRecvProvider(''); setRecvVehicle(''); setRecvAmount('');
-      setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null);
+      setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null); setRecvEsperada(null);
       await load(1);
     }
     setSavingRecv(false);
@@ -568,7 +578,17 @@ export default function ProviderBillingPage() {
         ) : (
           /* ── Recibidas de proveedores ── */
           <>
-          <FacturasEsperadas lista={esperadas} />
+          <FacturasEsperadas lista={esperadas} onCerrar={(x) => {
+            // Todo lo que ya se sabe, puesto. Lo que falta es lo que solo
+            // trae la factura: su número, su fecha y el PDF.
+            setRecvEsperada(x.id);
+            setRecvProvider(x.provider_name ?? '');
+            setRecvVehicle(x.vehicle_title ?? '');
+            setRecvAmount(String(Number(x.invoice_amount) || ''));
+            setRecvNotes(x.notes ?? '');
+            setRecvNumero(''); setRecvDate(''); setRecvPdfFile(null);
+            setRecvModal(true);
+          }} />
           {received.length === 0 ? (
             <div className="py-16 flex flex-col items-center gap-3 text-brand-300">
               <p className="text-sm">No hay facturas recibidas registradas</p>
@@ -961,7 +981,22 @@ export default function ProviderBillingPage() {
  * espera y piden que se reclamen — si no vencieran, en tres meses esto sería
  * una lista de cuarenta líneas de coches ya entregados.
  */
-function FacturasEsperadas({ lista }: { lista: FacturaEsperada[] }) {
+/**
+ * Y se pinchan.
+ *
+ * Registrar la factura desde el botón de arriba creaba una fila nueva y la
+ * espera se quedaba: salían las dos y el total no bajaba. Pinchando la
+ * espera se dice **cuál** se cierra, que es lo único que no se puede
+ * adivinar cuando un coche lleva dos tramos del mismo transportista.
+ *
+ * Y llega con el proveedor, el coche, el importe y el concepto ya puestos:
+ * lo que hay que teclear es lo que solo trae la factura —su número y su
+ * fecha— y adjuntar el PDF.
+ */
+function FacturasEsperadas({ lista, onCerrar }: {
+  lista: FacturaEsperada[];
+  onCerrar: (x: FacturaEsperada) => void;
+}) {
   if (lista.length === 0) return null;
 
   const dias = (desde: string | null) => {
@@ -988,7 +1023,9 @@ function FacturasEsperadas({ lista }: { lista: FacturaEsperada[] }) {
           const d = dias(x.issued_at);
           const tarde = d > 10;
           return (
-            <div key={x.id} className="flex items-center gap-3 px-4 py-2">
+            <button key={x.id} type="button" onClick={() => onCerrar(x)}
+                    title="Registrar la factura que se esperaba de este servicio"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-amber-100/70 transition-colors">
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-semibold text-brand-600 truncate">
                   {x.provider_name || '—'}
@@ -1003,7 +1040,10 @@ function FacturasEsperadas({ lista }: { lista: FacturaEsperada[] }) {
               <div className="text-[13px] font-bold text-brand-600 whitespace-nowrap tabular-nums">
                 {fmtEur(Number(x.invoice_amount))}
               </div>
-            </div>
+              <span className="text-[11px] font-semibold text-amber-800 whitespace-nowrap">
+                adjuntar →
+              </span>
+            </button>
           );
         })}
       </div>

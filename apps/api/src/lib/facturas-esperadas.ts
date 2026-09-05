@@ -93,3 +93,38 @@ export function comoSeCuenta(importe: unknown, desde: unknown, hoy: Date = new D
   if (dias === 0) return `${eur} € · esperando desde hoy`;
   return `${eur} € · esperando desde hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
+
+/**
+ * Cuál de las esperas cierra la factura que acaba de llegar.
+ *
+ * Registrar una factura recibida creaba siempre una fila nueva, así que la
+ * espera se quedaba ahí: en la pantalla salían las dos, la que esperábamos y la
+ * que había llegado, y «esperando factura» nunca bajaba. Se vio con el
+ * transporte de Becker, con los 400 € contados dos veces.
+ *
+ * La regla es del mismo proveedor y del mismo coche, y de las que queden, **la
+ * del importe más parecido**. Lo del importe hace falta porque un coche puede
+ * llevar dos tramos del mismo transportista, y porque la factura casi nunca
+ * viene por el euro exacto que se presupuestó.
+ *
+ * Y si no hay ninguna del mismo proveedor y coche, no se fuerza: se devuelve
+ * nulo y la factura entra como nueva. Cuadrar con la espera equivocada es dar
+ * por facturado un servicio que sigue sin factura, y eso es peor que una fila
+ * de más.
+ */
+export function cualEsperaCierra(
+  candidatas: readonly { id: string; invoice_amount?: unknown }[],
+  importe: unknown
+): string | null {
+  if (!candidatas.length) return null;
+  if (candidatas.length === 1) return candidatas[0].id;
+  const llega = Number(importe);
+  if (!Number.isFinite(llega)) return candidatas[0].id;
+  const distancia = (c: { invoice_amount?: unknown }) => {
+    const n = Number(c.invoice_amount);
+    return Number.isFinite(n) ? Math.abs(n - llega) : Number.POSITIVE_INFINITY;
+  };
+  // La más parecida. Con dos igual de parecidas gana la primera, que por el
+  // orden de la consulta es la más antigua: la que lleva más tiempo esperando.
+  return candidatas.reduce((a, b) => (distancia(b) < distancia(a) ? b : a)).id;
+}

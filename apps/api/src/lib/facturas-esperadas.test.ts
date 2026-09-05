@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   seEsperaFactura, diasEsperando, hayQueReclamarla, comoSeCuenta,
   DIAS_PARA_RECLAMAR, ESPERADA,
+  cualEsperaCierra,
 } from './facturas-esperadas.js';
 
 const HOY = new Date('2026-09-20T12:00:00Z');
@@ -77,5 +78,48 @@ describe('cómo se cuenta', () => {
     // línea que nadie ha emitido.
     assert.equal(ESPERADA, 'esperada');
     assert.ok(!['pending', 'sent', 'pending_payment', 'paid', 'cancelled'].includes(ESPERADA));
+  });
+});
+
+/**
+ * Cuál de las esperas cierra la factura que llega.
+ *
+ * Registrar una factura recibida creaba siempre una fila nueva, así que la
+ * espera se quedaba: en la pantalla salían las dos —los 400 € del transporte de
+ * Becker contados dos veces— y «esperando factura» no bajaba nunca.
+ */
+describe('cuál espera cierra la factura que llega', () => {
+  test('con una sola candidata, esa', () => {
+    assert.equal(cualEsperaCierra([{ id: 'A', invoice_amount: 400 }], 412), 'A');
+  });
+
+  test('sin ninguna, no se fuerza', () => {
+    // Entra como factura nueva. Cuadrar con la espera equivocada da por
+    // facturado un servicio que sigue sin factura, y eso es peor.
+    assert.equal(cualEsperaCierra([], 400), null);
+  });
+
+  test('con varias, la del importe más parecido', () => {
+    // Un coche puede llevar dos tramos del mismo transportista.
+    const dos = [{ id: 'tramo1', invoice_amount: 890 }, { id: 'tramo2', invoice_amount: 400 }];
+    assert.equal(cualEsperaCierra(dos, 412), 'tramo2');
+    assert.equal(cualEsperaCierra(dos, 900), 'tramo1');
+  });
+
+  test('y la factura casi nunca viene por el euro exacto', () => {
+    // Por eso «la más parecida» y no «la que coincide»: con igualdad exacta,
+    // una factura de 412 € sobre una espera de 400 no cuadraría con nada.
+    assert.equal(cualEsperaCierra([{ id: 'A', invoice_amount: 400 }, { id: 'B', invoice_amount: 1200 }], 412), 'A');
+  });
+
+  test('con dos igual de parecidas gana la que lleva más esperando', () => {
+    // Las candidatas llegan ordenadas por antigüedad.
+    const iguales = [{ id: 'vieja', invoice_amount: 400 }, { id: 'nueva', invoice_amount: 400 }];
+    assert.equal(cualEsperaCierra(iguales, 400), 'vieja');
+  });
+
+  test('y un importe que no es un número no rompe el cuadre', () => {
+    assert.equal(cualEsperaCierra([{ id: 'A' }, { id: 'B' }], 'lo que sea'), 'A');
+    assert.equal(cualEsperaCierra([{ id: 'A', invoice_amount: 400 }, { id: 'B' }], 400), 'A');
   });
 });

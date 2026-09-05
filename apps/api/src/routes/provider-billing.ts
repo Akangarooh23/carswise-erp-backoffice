@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
+import { cualEsperaCierra } from '../lib/facturas-esperadas.js';
 import { seEsperaFactura, ESPERADA } from '../lib/facturas-esperadas.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
@@ -315,7 +316,7 @@ export async function apuntaFacturaRecibida(datos: {
 providerBillingRouter.post('/provider-billing/received', requireRole(['admin', 'operations']), async (req, res) => {
   const {
     provider_name, vehicle_title, amount, invoice_date, notes, contract_id,
-    invoice_number, pdf_base64, pdf_filename,
+    invoice_number, pdf_base64, pdf_filename, esperada_id,
   } = req.body ?? {};
   if (!provider_name || !amount) {
     res.status(400).json({ ok: false, error: 'missing_fields', detail: 'provider_name and amount are required' });
@@ -326,6 +327,56 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
     // identificador. Una gana y la otra vuelve a pedir, en vez de llevarse un
     // error de base de datos.
     let pdf_url: string | null = null;
+
+    /*
+     * Si esta factura cierra una espera, se rellena esa fila.
+     *
+     * Antes se creaba siempre una nueva y la espera se quedaba ahí: en la
+     * pantalla salían las dos —los 400 € de Becker contados dos veces— y
+     * «esperando factura» no bajaba nunca.
+     *
+     * Cuál se cierra lo dice quien registra, pinchando la espera. Y si ha
+     * entrado por el botón de arriba sin decirlo, se busca la del mismo
+     * proveedor y el mismo coche: si no hay ninguna, entra como nueva. No
+     * se fuerza el cuadre, porque cuadrar con la espera equivocada da por
+     * facturado un servicio que sigue sin factura.
+     */
+    const candidatas = esperada_id
+      ? await query<{ id: string; invoice_amount: unknown }>(
+          `SELECT id, invoice_amount FROM moveadvisor_provider_invoices
+            WHERE id = $1 AND direction = 'received' AND status = $2`,
+          [String(esperada_id), ESPERADA]
+        ).catch(() => ({ rows: [] }))
+      : await query<{ id: string; invoice_amount: unknown }>(
+          `SELECT id, invoice_amount FROM moveadvisor_provider_invoices
+            WHERE direction = 'received' AND status = $1 AND provider_name = $2
+              AND COALESCE(vehicle_title, '') = COALESCE($3, '')
+            ORDER BY created_at`,
+          [ESPERADA, provider_name, vehicle_title || null]
+        ).catch(() => ({ rows: [] }));
+
+    const cierra = cualEsperaCierra(candidatas.rows, amount);
+    if (cierra) {
+      const url = pdf_base64 && pdf_filename
+        ? await uploadPdfToSupabase(pdf_base64, pdf_filename, cierra)
+        : null;
+      await query(
+        `UPDATE moveadvisor_provider_invoices
+            SET invoice_number = COALESCE($2, invoice_number),
+                invoice_amount = $3,
+                invoice_date   = COALESCE($4, invoice_date),
+                notes          = COALESCE($5, notes),
+                pdf_url        = COALESCE($6, pdf_url),
+                status         = CASE WHEN $6 IS NOT NULL THEN 'pending_payment' ELSE 'pending' END,
+                updated_at     = NOW()
+          WHERE id = $1`,
+        [cierra, String(invoice_number ?? '').trim() || null, Number(amount),
+         invoice_date || null, notes || null, url]
+      );
+      res.status(201).json({ ok: true, data: { id: cierra, pdf_url: url, cuadrada: true } });
+      return;
+    }
+
     const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (id) => {
       // El PDF se guarda con el identificador en la ruta, así que va aquí
       // dentro: si hay que reintentar, el identificador cambia.
