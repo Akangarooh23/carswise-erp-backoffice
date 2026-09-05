@@ -386,3 +386,34 @@ describe('cómo se liquida la diferencia del impuesto', () => {
       'el impuesto es del cliente: ponerlo nosotros no es una opción del sistema');
   });
 });
+
+/**
+ * Y que la consulta sea una consulta.
+ *
+ * El botón «se lo he cobrado» no funcionó la primera vez que se usó: al
+ * parámetro le faltaba el `$`, así que se escribía `liquidacion_como = 12` —el
+ * número del parámetro, no el parámetro— y Postgres rechazaba la consulta
+ * entera porque la columna es de texto. En la pantalla salía «lead_update_failed»
+ * y nada más.
+ *
+ * Llevaba ahí desde que se escribió, y no había fallado nunca porque hasta ese
+ * día nadie había liquidado un impuesto. Esto lo vigila para todos los campos,
+ * no solo para ese: es un fallo que no se ve leyendo y que solo aparece al
+ * usarlo.
+ */
+describe('los parámetros de la consulta llevan su dólar', () => {
+  const FUENTE = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8');
+
+  test('ningún campo se asigna al número del parámetro', () => {
+    const sospechosos = FUENTE.split('\n')
+      .filter((l) => /sets\.push\(/.test(l))
+      // `= ${algo}` sin el dólar delante. Con él sería `= $${algo}`.
+      .filter((l) => /[^$]\$\{(values|params)\.length\}/.test(l));
+    assert.deepEqual(sospechosos, [],
+      'ese campo se escribe como un número y Postgres rechaza la consulta entera');
+  });
+
+  test('y el de la liquidación en concreto, que es el que falló', () => {
+    assert.match(FUENTE, /liquidacion_como = \$\$\{values\.length\}/);
+  });
+});

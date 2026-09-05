@@ -894,22 +894,26 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     /*
      * Y cómo se liquidó, que es lo que decide de quién es la diferencia.
      *
-     * «Asumida» quiere decir que la pagamos nosotros: entonces es coste de
-     * ese coche y baja su margen. Sin distinguirlo, un coche cuyo impuesto
-     * nos comimos parece igual de rentable que otro que cuadró, y el margen
-     * medio de la empresa sale de ahí.
-     */
-    /*
-     * Y «asumida» ya no se acepta.
+     * «Asumida» ya no se acepta: el impuesto es del cliente y se le cobra
+     * entero, y lo zanjó el asesor después de que al primer coche se le
+     * comieran 1.071 € contra el margen. La pantalla ya no ofrece el botón, y
+     * esto es la puerta de atrás — un valor que no se puede pulsar pero sí
+     * mandar no está cerrado.
      *
-     * El impuesto es del cliente y se le cobra entero: lo zanjó el asesor
-     * después de que al primer coche se le comieran 1.071 € contra el margen.
-     * La pantalla ya no ofrece el botón, y esto es la puerta de atrás: un
-     * valor que no se puede pulsar pero sí mandar no está cerrado.
+     * El `$` del parámetro faltaba, y con él toda la liquidación.
+     *
+     * Sin el dólar, esto escribía `liquidacion_como = 12` —el número del
+     * parámetro, no el parámetro— y Postgres rechazaba la consulta entera
+     * porque la columna es de texto. El botón «se lo he cobrado» no hacía
+     * nada y en la pantalla salía «lead_update_failed» sin más.
+     *
+     * Llevaba ahí desde que se escribió y nunca había fallado, porque hasta
+     * hoy nadie había liquidado un impuesto: la primera vez que se usó, no
+     * funcionó.
      */
     const como = String(req.body?.liquidacion_como ?? '').trim();
     values.push(liquidacion_hecha && ['cobrada', 'devuelta'].includes(como) ? como : null);
-    sets.push(`liquidacion_como = ${values.length}`);
+    sets.push(`liquidacion_como = $${values.length}`);
   }
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }
   // Cobrar la fianza mueve el expediente solo: es el paso que separa a alguien
