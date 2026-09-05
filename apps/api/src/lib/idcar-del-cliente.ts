@@ -49,6 +49,17 @@ export const PAPELES_DEL_CLIENTE: Record<string, { donde: DondeVa; tipo: string 
   'Justificante del impuesto de matriculación': { donde: 'fichero',  tipo: 'document' },
   'Factura del vendedor alemán':               { donde: 'fichero',   tipo: 'document' },
   'Factura de nuestro servicio':               { donde: 'fichero',   tipo: 'document' },
+  /*
+   * La de la garantía: la que le emite el proveedor **a él**.
+   *
+   * Es la que tiene que enseñar el día que se le rompa algo, así que su sitio
+   * es su garaje y no nuestro expediente.
+   *
+   * Y no está la nuestra al proveedor por la comisión, que es un papel de
+   * nuestra operación como el presupuesto del transportista o la factura del
+   * perito: meterla aquí sería darle a leer lo que ganamos con su garantía.
+   */
+  'Factura de la garantía':                    { donde: 'fichero',   tipo: 'document' },
 };
 
 /**

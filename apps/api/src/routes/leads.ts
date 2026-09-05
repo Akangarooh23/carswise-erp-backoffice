@@ -326,12 +326,21 @@ export async function daleSuIdCar(leadId: string): Promise<string | null> {
   const r = await query<{
     user_email: string; vehicle_title: string; matricula: string | null;
     km: string | null; pedido_id: string | null; proveedor: string | null;
+    anio: string | null; fuel: string | null; transmission: string | null;
+    color: string | null; body_type: string | null; cv: string | null;
+    co2: string | null; puertas: string | null; plazas: string | null;
   }>(
     `SELECT l.user_email, l.vehicle_title,
             pe.matricula, pe.id AS pedido_id, pe.proveedor,
-            pe.recepcion->>'km' AS km
+            pe.recepcion->>'km' AS km,
+            -- El año, del anuncio del que salió. Del título casi nunca se
+            -- puede sacar: «Kia Sorento 2.4 GDI AWD Automatik Kamera LED» no
+            -- lo lleva, y el coche se quedaba en su panel sin año.
+            o.year::text AS anio, o.fuel, o.transmission, o.color, o.body_type,
+            o.power_cv::text AS cv, o.co2, o.doors::text AS puertas, o.seats::text AS plazas
        FROM moveadvisor_market_leads l
        LEFT JOIN erp_pedidos pe ON pe.lead_id = l.id
+       LEFT JOIN moveadvisor_market_offers o ON o.id = l.vehicle_id
       WHERE l.id = $1
       ORDER BY pe.created_at DESC LIMIT 1`,
     [leadId]
@@ -345,27 +354,64 @@ export async function daleSuIdCar(leadId: string): Promise<string | null> {
     return null;
   }
 
-  // Si ya lo tiene, no se le da otro.
+  /*
+   * Si ya lo tiene no se le da otro, pero **se sigue**.
+   *
+   * Antes se volvía aquí, y con eso un papel subido después de entregar el
+   * coche no llegaba nunca a su garaje: la factura de la garantía la emite el
+   * proveedor cuando le parece, y para entonces el expediente está cerrado.
+   *
+   * Lo de abajo no duplica nada: cada fichero se mira contra los que el coche
+   * ya tiene, por su dirección.
+   */
   const ya = await query<{ id: string }>(
     `SELECT id FROM moveadvisor_user_vehicles WHERE source_lead_id = $1 LIMIT 1`,
     [leadId]
   ).catch(() => ({ rows: [] as { id: string }[] }));
-  if (ya.rows.length) return ya.rows[0].id;
 
   const { brand, model, version } = marcaYModelo(x.vehicle_title);
-  const id = `idcar-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const id = ya.rows[0]?.id ?? `idcar-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const km = String(x.km ?? '').trim();
 
-  await query(
-    `INSERT INTO moveadvisor_user_vehicles
-       (id, user_email, title, brand, model, version, plate, mileage, mileage_km,
-        purchased_from, source_lead_id, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
-    [id, x.user_email, x.vehicle_title, brand, model, version,
-     String(x.matricula ?? '').trim(), km,
-     Number.isFinite(Number(km)) && km ? Number(km) : null,
-     String(x.proveedor ?? '').trim(), leadId]
-  );
+  if (!ya.rows.length) {
+    /*
+     * Con todo lo que el anuncio sabe del coche, no solo con el nombre.
+     *
+     * El primer IdCar salió con marca, modelo y matrícula, y **veintiocho
+     * columnas vacías**: sin año, sin combustible, sin cambio, sin potencia,
+     * sin color, sin carrocería y sin CO₂. Todo eso está en el anuncio del que
+     * salió el coche desde el primer día, y el cliente abría su garaje y veía
+     * una ficha coja de un coche que acababa de costarle veinte mil euros.
+     *
+     * Los pares —`year` y `year_int`, `cv` y `horsepower`, `co2` y `co2_g_km`—
+     * se rellenan los dos: son la misma cosa guardada dos veces, de cuando la
+     * tabla cambió de tipo, y según por dónde se lea se usa uno u otro.
+     */
+    const numero = (v: unknown) => {
+      const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    await query(
+      `INSERT INTO moveadvisor_user_vehicles
+         (id, user_email, title, brand, model, version, plate, mileage, mileage_km,
+          purchased_from, source_lead_id,
+          year, year_int, fuel, transmission_type, color, body_type,
+          cv, horsepower, co2, co2_g_km, doors, seats,
+          created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+               $12,$13,$14,$15,$16,$17,$18,$18,$19,$20,$21,$22,NOW(),NOW())`,
+      [id, x.user_email, x.vehicle_title, brand, model, version,
+       String(x.matricula ?? '').trim(), km,
+       Number.isFinite(Number(km)) && km ? Number(km) : null,
+       String(x.proveedor ?? '').trim(), leadId,
+       String(x.anio ?? '').trim(), numero(x.anio),
+       String(x.fuel ?? '').trim(), String(x.transmission ?? '').trim(),
+       String(x.color ?? '').trim(), String(x.body_type ?? '').trim(),
+       String(x.cv ?? '').trim(),
+       String(x.co2 ?? '').trim(), numero(x.co2),
+       String(x.puertas ?? '').trim(), String(x.plazas ?? '').trim()]
+    );
+  }
 
   /*
    * Y sus papeles, apuntados donde su panel los busca.
@@ -390,7 +436,21 @@ export async function daleSuIdCar(leadId: string): Promise<string | null> {
   ).catch(() => ({ rows: [] as { papel: string; nombre: string; tipo: string; ruta: string; tamano: string | null }[] }));
 
   const base = config.SUPABASE_URL ?? '';
+
+  /*
+   * Lo que ya está en su garaje, para no ponerlo dos veces.
+   *
+   * Esto se ejecuta cada vez que se cierra o se recarga el expediente, así que
+   * sin mirar antes, un coche entregado hace un mes tendría treinta copias de
+   * su permiso de circulación.
+   */
   const puestos = new Set<string>();
+  for (const tabla of ['moveadvisor_user_vehicle_documents', 'moveadvisor_user_vehicle_files']) {
+    const tiene = await query<{ file_url: string | null }>(
+      `SELECT file_url FROM ${tabla} WHERE vehicle_id = $1`, [id]
+    ).catch(() => ({ rows: [] as { file_url: string | null }[] }));
+    for (const f of tiene.rows) if (f.file_url) puestos.add(f.file_url);
+  }
   for (const d of papeles.rows) {
     const sitio = dondeVaEnSuPanel(d.papel);
     if (!sitio) continue;

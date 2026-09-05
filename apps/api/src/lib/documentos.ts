@@ -47,6 +47,7 @@ export const PAPELES_POR_ORIGEN: Record<string, PapelEsperado[]> = {
     { papel: 'Contrato de compraventa', porQue: 'Entre el vendedor alemán y el cliente. Es a lo que se agarra una reclamación', imprescindible: false },
     { papel: 'Justificante de baja en Alemania', porQue: 'Que allí ya no está matriculado', imprescindible: false },
     { papel: 'Libro de mantenimiento', porQue: 'Se le entrega al cliente, y es lo que hace que el coche valga más el día que lo venda', imprescindible: false },
+    { papel: 'Factura de la garantía', porQue: 'La emite el proveedor a nombre del cliente. Es la que tiene que enseñar el día que se le rompa algo', imprescindible: false },
   ],
   concesionario: [
     { papel: 'Factura', porQue: 'La compra, con su IVA', imprescindible: true },

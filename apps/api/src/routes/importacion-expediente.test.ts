@@ -242,9 +242,39 @@ describe('el coche entregado entra en su garaje', () => {
     assert.match(bloque, /daleSuIdCar\(req\.params\.id\)/);
   });
 
-  test('y una sola vez: source_lead_id es la marca', () => {
+  test('y un solo coche: source_lead_id es la marca', () => {
     assert.match(ALTA, /SELECT id FROM moveadvisor_user_vehicles WHERE source_lead_id = \$1/);
-    assert.match(ALTA, /if \(ya\.rows\.length\) return ya\.rows\[0\]\.id;/);
+    assert.match(ALTA, /if \(!ya\.rows\.length\) \{/, 'el alta tiene que ser la que se salte, no todo');
+  });
+
+  test('pero los papeles se siguen copiando después de entregar', () => {
+    /*
+     * Antes se volvía aquí en cuanto el coche existía, y con eso un papel
+     * subido después de la entrega no llegaba nunca a su garaje. La factura de
+     * la garantía la emite el proveedor cuando le parece, y para entonces el
+     * expediente lleva semanas cerrado.
+     */
+    assert.ok(!/if \(ya\.rows\.length\) return/.test(ALTA),
+      'volver aquí deja fuera todo lo que se suba después de entregar');
+  });
+
+  test('y no se duplican los que ya tiene', () => {
+    // Esto corre cada vez que se recarga el expediente: sin mirar antes, un
+    // coche entregado hace un mes tendría treinta copias de su permiso.
+    assert.match(ALTA, /SELECT file_url FROM \$\{tabla\} WHERE vehicle_id = \$1/);
+    assert.match(ALTA, /puestos\.add\(f\.file_url\)/);
+  });
+
+  test('con lo que el anuncio sabe del coche, no solo con su nombre', () => {
+    // El primer IdCar salió con veintiocho columnas vacías: sin año, sin
+    // combustible, sin potencia, sin color, sin carrocería y sin CO₂. Todo eso
+    // estaba en el anuncio desde el primer día.
+    for (const campo of ['year', 'year_int', 'fuel', 'transmission_type', 'color',
+      'body_type', 'cv', 'horsepower', 'co2', 'co2_g_km', 'doors', 'seats']) {
+      assert.ok(new RegExp(`\\b${campo}\\b`).test(ALTA), `el IdCar no recibe ${campo}`);
+    }
+    assert.match(ALTA, /LEFT JOIN moveadvisor_market_offers o ON o\.id = l\.vehicle_id/,
+      'sin el anuncio no se puede saber nada de esto');
   });
 
   test('con los papeles de los tres cajones del coche', () => {
