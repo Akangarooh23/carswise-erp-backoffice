@@ -496,6 +496,82 @@ Y una red que ya tenemos: **el COC lleva el CO₂ exacto** y se compra siempre c
 
 ---
 
+## 11 · Lo que sale de las respuestas de Juan — **cinco cosas tuyas**
+
+De la revisión del asesor salieron unos cuantos cambios, y estos cinco no los
+puedo hacer yo: son datos que no tengo o cosas que hay que contratar. Están por
+orden de lo que bloquea.
+
+### 11.1 · El depositario del escrow
+
+Juan es tajante: **el dinero del cliente no pasa por nuestra cuenta**. Va a una
+cuenta escrow que custodia un tercero, y desde ahí se paga al concesionario, a
+nosotros el fee y a Hacienda el impuesto. Contablemente no figura en nuestros
+libros.
+
+Hoy el sistema está montado al revés: el dinero entra por la pasarela a la
+cuenta de la empresa y «retenido» quiere decir que no lo movemos.
+
+**Lo que hace falta de ti**: contratar al depositario. Cuando lo tengas, dime
+quién es y si tiene API; si no la tiene, se monta con órdenes manuales.
+
+Y **decide antes el orden del pago** (apartado 3.1 de sus respuestas): hoy el
+perito va después de que el cliente pague todo, y él apunta que tendría más
+sentido al revés, con un primer pago pequeño. Eso cambia lo que el depositario
+tiene que soportar —un depósito o dos—, así que decidirlo antes de ir a buscar
+proveedor te ahorra una renegociación.
+
+### 11.2 · La sociedad y el ROI
+
+**PopCar no está constituida ni dada de alta en el ROI.** Las dos facturas
+intracomunitarias de la primera importación están recibidas por algo que
+todavía no existe fiscalmente, y sin ROI la inversión del sujeto pasivo no se
+sostiene.
+
+### 11.3 · El proveedor de garantías, de verdad
+
+Ya no las compramos para revender: **somos comisionistas**. El proveedor le
+factura al cliente y nos paga una comisión. El código ya está así.
+
+Falta el dato real: **quién las da, con su NIF, y cuánta comisión paga**. Hoy el
+proveedor está dado de alta como «PopCar (garantía propia)», que es justo el
+modelo que hemos dejado de asumir. Y las comisiones del catálogo son
+provisionales: se trajeron como «precio menos coste» para no dejarlas a cero.
+
+### 11.4 · El coste de preparar el coche
+
+La campa de Zaragoza y el lavado. Juan dice que el fee lo cubre y no está en el
+modelo de coste. Con lo que hay hoy —perito, transporte y papeleo— el margen
+sale del 46 %; con la preparación se acerca al 30-40 % que él espera, así que
+el número importa. Un importe, o el proveedor y su tarifa.
+
+### 11.5 · Dos NIF que faltan
+
+checkdenwagen Automobile DE y Gestoría Bernal están en Proveedores sin NIF.
+
+---
+
+## 12 · Y tres cosas que quedan a medias en el sistema
+
+No bloquean nada, pero conviene que estén escritas y no solo en una
+conversación.
+
+**El NIF-IVA de una empresa de la UE no se puede ni pedir ni comprobar.** La
+regla está programada —una empresa de otro estado con NIF-IVA va sin IVA— pero
+hacen falta dos cosas que no existen: la pantalla donde pedirlo al contratar, y
+la comprobación en el censo europeo (VIES). Hasta que estén, a todo el mundo se
+le repercute el 21 %, que es el lado seguro: si la exención no se sostiene, ese
+IVA lo debemos nosotros.
+
+**La factura de nuestra comisión al proveedor de garantías** no se emite. Espera
+al contrato del 11.3.
+
+**Verifactu y la facturación electrónica.** Juan lo devuelve a una gestoría: hay
+que preguntarle a quien nos lo lleve si nuestro generador de PDF cumple y desde
+cuándo obliga.
+
+---
+
 ## Lo que ya se decidió y no hay que volver a mirar
 
 **Avisar al vendedor automáticamente: no.** No tenemos su correo, y el
