@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { StatCard } from '../components/ui/Card.js';
 import Atencion from '../components/ui/Atencion.js';
+import CochesEnMarcha from '../components/dashboard/CochesEnMarcha.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge.js';
 import type { DashboardStats } from '../types/index.js';
@@ -45,16 +46,47 @@ export default function DashboardPage() {
         { etiqueta: 'leads por reagendar', valor: stats.leads?.reschedule ?? 0,     a: '/leads',        icono: 'historial' },
         { etiqueta: 'citas en 7 días',    valor: stats.appointments?.upcoming_7d ?? 0, a: '/appointments', icono: 'calendario' },
         { etiqueta: 'usuarios en riesgo', valor: stats.users?.at_risk ?? 0,        a: '/users',        icono: 'usuarios',   tono: 'urgente' },
+        // Las dos de importación cuestan dinero mientras siguen ahí: un gasto sin
+        // factura no se deduce, y un coche sin depósito lo estamos financiando.
+        { etiqueta: 'facturas de proveedor sin llegar', valor: stats.importacion?.facturas_sin_llegar ?? 0, a: '/provider-billing', icono: 'documento', tono: 'urgente' },
+        { etiqueta: 'importaciones sin depósito', valor: stats.importacion?.sin_deposito ?? 0, a: '/importaciones', icono: 'euro' },
       ]} />
+
+      {/*
+        * La importación primero, que es el negocio que está corriendo.
+        *
+        * Antes esto abría con «total usuarios» y «plan premium», y de lo que
+        * pasa cada día —coches viniendo de Alemania, dinero de clientes
+        * retenido, facturas que no llegan— no decía nada.
+        */}
+      {stats.importacion && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Importación</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Coches en marcha" value={fmt(stats.importacion.en_marcha)}
+                      sub={`${fmt(stats.importacion.entregados)} entregados`}
+                      icon="coche" color="neutro" a="/importaciones" />
+            <StatCard label="Depósitos retenidos" value={fmtPrice(Number(stats.importacion.retenido))}
+                      sub="dinero de clientes sin entregar" icon="euro" color="espera" a="/importaciones" />
+            <StatCard label="Facturas sin llegar" value={fmt(stats.importacion.facturas_sin_llegar)}
+                      sub={`${fmtPrice(Number(stats.importacion.facturas_sin_llegar_importe))} sin facturar`}
+                      icon="documento" color={stats.importacion.facturas_sin_llegar ? "espera" : "neutro"}
+                      a="/provider-billing" />
+            <StatCard label="Coches publicados" value={fmt(stats.importacion.publicados)}
+                      sub={`${fmt(stats.importacion.vivos)} siguen a la venta`}
+                      icon="ojo" color="neutro" a="/marketplace" />
+          </div>
+        </section>
+      )}
 
       {/* Users */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Usuarios</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total usuarios"    value={fmt(stats.users?.total)}   sub={`+${fmt(stats.users?.new_30d)} este mes`} icon="usuarios" color="neutro" />
-          <StatCard label="Activos"           value={fmt(stats.users?.active)}  icon="comprobado" color="bien" />
-          <StatCard label="Plan Plus"         value={fmt(stats.users?.plus)}    icon="estrella" color="neutro" />
-          <StatCard label="Plan Premium"      value={fmt(stats.users?.premium)} icon="diamante" color="neutro" />
+          <StatCard label="Total usuarios"    value={fmt(stats.users?.total)}   sub={`+${fmt(stats.users?.new_30d)} este mes`} icon="usuarios" color="neutro" a="/users" />
+          <StatCard label="Activos"           value={fmt(stats.users?.active)}  icon="comprobado" color="bien" a="/users" />
+          <StatCard label="Plan Plus"         value={fmt(stats.users?.plus)}    icon="estrella" color="neutro" a="/users" />
+          <StatCard label="Plan Premium"      value={fmt(stats.users?.premium)} icon="diamante" color="neutro" a="/users" />
         </div>
       </section>
 
@@ -62,10 +94,10 @@ export default function DashboardPage() {
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Tickets de soporte</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Abiertos"     value={fmt(stats.tickets?.open)}        icon="ticket" color="neutro" />
-          <StatCard label="En curso"     value={fmt(stats.tickets?.in_progress)} icon="historial" color="neutro" />
-          <StatCard label="Urgentes"     value={fmt(stats.tickets?.urgent)}      icon="aviso" color="urgente" />
-          <StatCard label="Resueltos"    value={fmt(stats.tickets?.resolved)}    sub={`${fmt(stats.tickets?.new_7d)} nuevos esta semana`} icon="comprobado" color="bien" />
+          <StatCard label="Abiertos"     value={fmt(stats.tickets?.open)}        icon="ticket" color="neutro" a="/tickets" />
+          <StatCard label="En curso"     value={fmt(stats.tickets?.in_progress)} icon="historial" color="neutro" a="/tickets" />
+          <StatCard label="Urgentes"     value={fmt(stats.tickets?.urgent)}      icon="aviso" color="urgente" a="/tickets" />
+          <StatCard label="Resueltos"    value={fmt(stats.tickets?.resolved)}    sub={`${fmt(stats.tickets?.new_7d)} nuevos esta semana`} icon="comprobado" color="bien" a="/tickets" />
         </div>
       </section>
 
@@ -74,15 +106,15 @@ export default function DashboardPage() {
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Citas</h2>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard label="Programadas"  value={fmt(stats.appointments?.scheduled)}  icon="calendario" color="neutro" />
-            <StatCard label="Próximos 7d"  value={fmt(stats.appointments?.upcoming_7d)} icon="reloj" color="espera" />
+            <StatCard label="Programadas"  value={fmt(stats.appointments?.scheduled)}  icon="calendario" color="neutro" a="/appointments" />
+            <StatCard label="Próximos 7d"  value={fmt(stats.appointments?.upcoming_7d)} icon="reloj" color="espera" a="/appointments" />
           </div>
         </section>
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Marketplace VO</h2>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard label="Activos"      value={fmt(stats.marketplace?.active)}    icon="coche" color="neutro" />
-            <StatCard label="Precio medio" value={fmtPrice(stats.marketplace?.avg_price ?? 0)} icon="euro" color="bien" />
+            <StatCard label="Activos"      value={fmt(stats.marketplace?.active)}    icon="coche" color="neutro" a="/marketplace" />
+            <StatCard label="Precio medio" value={fmtPrice(stats.marketplace?.avg_price ?? 0)} icon="euro" color="bien" a="/marketplace" />
           </div>
         </section>
       </div>
@@ -92,14 +124,17 @@ export default function DashboardPage() {
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Solicitudes (Leads)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            <StatCard label="Total"        value={fmt(stats.leads.total)}      sub={`+${fmt(stats.leads.new_7d)} esta semana`} icon="bandeja" color="neutro" />
-            <StatCard label="Pendientes"   value={fmt(stats.leads.pending)}    icon="reloj" color="espera" />
-            <StatCard label="Contactados"  value={fmt(stats.leads.contacted)}  icon="megafono" color="neutro" />
-            <StatCard label="Reagendar"    value={fmt(stats.leads.reschedule)} icon="historial" color="neutro" />
-            <StatCard label="Resueltos"    value={fmt(stats.leads.resolved)}   icon="comprobado" color="bien" />
+            <StatCard label="Total"        value={fmt(stats.leads.total)}      sub={`+${fmt(stats.leads.new_7d)} esta semana`} icon="bandeja" color="neutro" a="/leads" />
+            <StatCard label="Pendientes"   value={fmt(stats.leads.pending)}    icon="reloj" color="espera" a="/leads" />
+            <StatCard label="Contactados"  value={fmt(stats.leads.contacted)}  icon="megafono" color="neutro" a="/leads" />
+            <StatCard label="Reagendar"    value={fmt(stats.leads.reschedule)} icon="historial" color="neutro" a="/leads" />
+            <StatCard label="Resueltos"    value={fmt(stats.leads.resolved)}   icon="comprobado" color="bien" a="/leads" />
           </div>
         </section>
       )}
+
+      {/* Y lo que hay que hacer con cada coche, no solo cuántos hay. */}
+      <CochesEnMarcha />
 
       {/* Recent tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

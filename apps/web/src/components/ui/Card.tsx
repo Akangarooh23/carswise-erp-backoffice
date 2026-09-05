@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Icono, { type NombreIcono } from './Icono.js';
 interface CardProps {
   children: React.ReactNode;
@@ -20,6 +21,13 @@ interface StatCardProps {
   icon?: NombreIcono;
   /** Solo se colorea lo que significa algo. El resto, neutro. */
   color?: 'neutro' | 'bien' | 'espera' | 'urgente' | 'acento';
+  /**
+   * A dónde lleva, si lleva a algún sitio.
+   *
+   * Un número en un panel sin sitio al que ir obliga a buscar la pantalla en
+   * el menú, y para entonces ya no sabes de dónde venía el número.
+   */
+  a?: string;
 }
 
 const iconBg: Record<string, string> = {
@@ -30,9 +38,9 @@ const iconBg: Record<string, string> = {
   acento:  'bg-acento-tenue text-acento-texto',
 };
 
-export function StatCard({ label, value, sub, icon, color = 'neutro' }: StatCardProps) {
+export function StatCard({ label, value, sub, icon, color = 'neutro', a }: StatCardProps) {
   const esCero = value === 0 || value === '0' || value === '–';
-  return (
+  const dentro = (
     <Card>
       <div className="flex items-start justify-between">
         <div>
@@ -51,4 +59,10 @@ export function StatCard({ label, value, sub, icon, color = 'neutro' }: StatCard
       </div>
     </Card>
   );
+
+  // Se envuelve en vez de meterle el enlace dentro: así se pincha la tarjeta
+  // entera y no solo el número, que es lo que se intenta pinchar.
+  return a
+    ? <Link to={a} className="block rounded-xl transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-acento">{dentro}</Link>
+    : dentro;
 }

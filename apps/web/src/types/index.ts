@@ -266,6 +266,19 @@ export interface DashboardStats {
   leads: {
     total: number; pending: number; contacted: number; resolved: number; reschedule: number; new_7d: number;
   };
+  /**
+   * La importación, que es el negocio que está corriendo.
+   *
+   * Solo lo accionable: coches en marcha, dinero de clientes retenido que
+   * todavía no es de nadie, facturas que no llegan —y un gasto sin factura no
+   * se deduce— y lo que hay publicado.
+   */
+  importacion?: {
+    en_marcha: number; entregados: number; sin_deposito: number;
+    retenido: number | string;
+    facturas_sin_llegar: number; facturas_sin_llegar_importe: number | string;
+    publicados: number; vivos: number;
+  };
   recentTickets: Ticket[];
   upcomingAppointments: Appointment[];
 }

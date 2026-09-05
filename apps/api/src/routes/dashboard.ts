@@ -7,7 +7,8 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
-    const [users, tickets, appointments, marketplace, leads, recentTickets, recentAppointments] = await Promise.all([
+    const [users, tickets, appointments, marketplace, leads, recentTickets, recentAppointments,
+           importacion, sinFacturar, escaparate] = await Promise.all([
       // User stats — base from moveadvisor_users, status from erp_users
       query(`
         SELECT
@@ -88,6 +89,46 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         ORDER BY a.scheduled_at ASC
         LIMIT 5
       `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [] }; }),
+
+      /*
+       * La importación, que es el negocio que está corriendo.
+       *
+       * El panel enseñaba usuarios, tickets y precios medios del marketplace, y
+       * de lo que de verdad pasa cada día —coches viniendo de Alemania, dinero
+       * de clientes retenido, facturas que no llegan— no decía nada.
+       *
+       * Solo lo accionable. «Depósitos retenidos» es dinero de clientes que
+       * todavía no es de nadie, y «facturas sin llegar» son gastos que hoy no
+       * se pueden deducir.
+       */
+      query(`
+        SELECT
+          COUNT(*) FILTER (WHERE l.status <> 'Entregado')::int                       AS en_marcha,
+          COUNT(*) FILTER (WHERE l.status = 'Entregado')::int                        AS entregados,
+          COUNT(*) FILTER (WHERE l.deposit_paid_at IS NULL AND l.status <> 'Entregado')::int AS sin_deposito,
+          COALESCE(SUM(l.deposit_quoted) FILTER (
+            WHERE l.deposit_paid_at IS NOT NULL AND l.status <> 'Entregado'
+          ), 0)::numeric                                                             AS retenido
+        FROM moveadvisor_market_leads l
+         WHERE l.lead_type = 'import'
+      `).catch((e) => { console.error('[dashboard] consulta fallida:', (e as Error).message); return { rows: [{ en_marcha: 0, entregados: 0, sin_deposito: 0, retenido: 0 }] }; }),
+
+      // Las facturas de proveedor que no han llegado: un gasto sin factura no
+      // se deduce, y hasta ahora solo se veía entrando en su pantalla.
+      query(`
+        SELECT COUNT(*)::int AS n,
+               COALESCE(SUM(invoice_amount), 0)::numeric AS importe
+          FROM moveadvisor_provider_invoices
+         WHERE direction = 'received' AND status = 'esperada'
+      `).catch((e) => { console.error('[dashboard] consulta fallida:', (e as Error).message); return { rows: [{ n: 0, importe: 0 }] }; }),
+
+      // Y los coches alemanes publicados, que es el escaparate de importación.
+      query(`
+        SELECT COUNT(*)::int AS publicados,
+               COUNT(*) FILTER (WHERE COALESCE(is_active, TRUE))::int AS vivos
+          FROM moveadvisor_market_offers
+         WHERE country = 'DE' AND import_published
+      `).catch((e) => { console.error('[dashboard] consulta fallida:', (e as Error).message); return { rows: [{ publicados: 0, vivos: 0 }] }; }),
     ]);
 
     res.json({
@@ -98,6 +139,13 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         appointments: appointments.rows[0],
         marketplace: marketplace.rows[0],
         leads: leads.rows[0],
+        importacion: {
+          ...importacion.rows[0],
+          facturas_sin_llegar: sinFacturar.rows[0]?.n ?? 0,
+          facturas_sin_llegar_importe: sinFacturar.rows[0]?.importe ?? 0,
+          publicados: escaparate.rows[0]?.publicados ?? 0,
+          vivos: escaparate.rows[0]?.vivos ?? 0,
+        },
         recentTickets: recentTickets.rows,
         upcomingAppointments: recentAppointments.rows,
       },

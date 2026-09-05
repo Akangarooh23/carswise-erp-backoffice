@@ -1761,8 +1761,7 @@ leadsRouter.post('/leads/:id/respuesta-vendedor', requireRole(['admin', 'operati
             SET iban = COALESCE(NULLIF($2, ''), iban),
                 notas = CASE WHEN $3 <> '' AND notas NOT LIKE '%' || $3 || '%'
                              THEN TRIM(BOTH E'\n' FROM COALESCE(notas, '') || E'\nTitular de la cuenta: ' || $3)
-                             ELSE notas END,
-                updated_at = NOW()
+                             ELSE notas END
           WHERE clave = $1`,
         [nombreComparable(nombre), iban, titular]
       ).catch(() => ({ rowCount: 0 }));

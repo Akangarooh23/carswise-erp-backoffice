@@ -37,7 +37,11 @@ function inserts(src) {
 function updates(src) {
   const out = [];
   for (const m of src.matchAll(/UPDATE\s+([a-z_][a-z0-9_]*)\s+SET\s+([\s\S]*?)(?:WHERE|RETURNING|`)/gi)) {
-    const columnas = [...m[2].matchAll(/([a-z_][a-z0-9_]*)\s*=/gi)]
+    // El (?<!:) descarta los casts: en `CASE WHEN $1::text = 'paid'`, lo que
+    // hay antes del `=` es un tipo, no una columna. Salía «text no existe» en
+    // cada barrido, y un comprobador que siempre pinta una línea en rojo
+    // enseña a no mirar ninguna.
+    const columnas = [...m[2].matchAll(/(?<!:)\b([a-z_][a-z0-9_]*)\s*=/gi)]
       .map((c) => c[1])
       // `updated_at = NOW()` es una columna; `COALESCE(x, y)` no.
       .filter((c) => !['coalesce', 'case', 'when', 'then', 'else', 'end'].includes(c.toLowerCase()));
