@@ -48,6 +48,26 @@ interface ProviderInvoice {
   notes: string | null;
 }
 
+/**
+ * Una garantía vendida cuya comisión no hemos facturado.
+ *
+ * La garantía se vende por cuenta de quien la da: el proveedor le pone el
+ * precio y se lo cobra al cliente, y lo que ganamos es la comisión que nos
+ * paga él. Al entregar el primer coche con garantía, los 190 € quedaron
+ * cobrados y sin papel por ninguna de las dos partes.
+ */
+interface ComisionDeGarantia {
+  id: string;
+  contact_name: string | null;
+  user_email: string | null;
+  vehicle_title: string | null;
+  garantia: string | null;
+  proveedor: string | null;
+  precio: number | string | null;
+  comision: number | string | null;
+  date: string | null;
+}
+
 interface PendingCommission {
   id: string;
   contact_name: string;
@@ -149,6 +169,10 @@ export default function ProviderBillingPage() {
   const [statusFilter, setStatus]   = useState('');
   const [loading, setLoading]       = useState(false);
   const [pending, setPending]       = useState<PendingCommission[]>([]);
+  const [garantias, setGarantias]   = useState<ComisionDeGarantia[]>([]);
+  const [garModal, setGarModal]     = useState<ComisionDeGarantia | null>(null);
+  const [garImporte, setGarImporte] = useState('');
+  const [guardandoGar, setGuardandoGar] = useState(false);
 
   // Commission modal
   const [commModal, setCommModal]   = useState<PendingCommission | null>(null);
@@ -206,6 +230,8 @@ export default function ProviderBillingPage() {
   useEffect(() => {
     api.get<Summary>('/provider-billing/summary').then(r => { if (r.ok) setSummary(r.data); });
     api.get<PendingCommission[]>('/provider-billing/pending-commissions').then(r => { if (r.ok) setPending(r.data); });
+    api.get<ComisionDeGarantia[]>('/provider-billing/pending-warranty-commissions')
+      .then(r => { if (r.ok) setGarantias(r.data); });
   }, []);
 
   useEffect(() => { setPage(1); }, [tab, typeFilter, statusFilter]);
@@ -280,6 +306,28 @@ export default function ProviderBillingPage() {
       await load(1);
     }
     setSavingRecv(false);
+  }
+
+  /**
+   * Emitir la comisión de una garantía.
+   *
+   * El importe se propone con lo que dice el catálogo y se puede cambiar: la
+   * comisión la fija el contrato con el proveedor, y hasta que haya uno la
+   * cifra del catálogo es provisional.
+   */
+  async function emiteComisionDeGarantia() {
+    if (!garModal) return;
+    setGuardandoGar(true);
+    const r = await api.post('/provider-billing/warranty-commissions', {
+      lead_id: garModal.id, amount: Number(garImporte),
+    });
+    if (r.ok) {
+      setGarModal(null); setGarImporte('');
+      await load(page);
+      api.get<ComisionDeGarantia[]>('/provider-billing/pending-warranty-commissions')
+        .then((v) => { if (v.ok) setGarantias(v.data); });
+    }
+    setGuardandoGar(false);
   }
 
   async function attachPdf() {
@@ -464,6 +512,62 @@ export default function ProviderBillingPage() {
                       <td>
                         <button
                           onClick={() => { setCommModal(p); setCommMode('percent'); setCommPct(''); setCommFixed(''); }}
+                          className="text-xs font-medium text-acento-texto hover:text-acento-texto border border-acento rounded px-3 py-1 hover:bg-acento-tenue whitespace-nowrap">
+                          Crear factura
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Y las comisiones de garantía, que son una factura nuestra al
+              proveedor y no se emitía ninguna. */}
+          {garantias.length > 0 && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-amber-200">
+                <p className="text-sm font-semibold text-amber-800">
+                  {garantias.length} garantía{garantias.length > 1 ? 's' : ''} vendida{garantias.length > 1 ? 's' : ''} pendiente{garantias.length > 1 ? 's' : ''} de facturar comisión
+                </p>
+                <p className="text-[11px] text-amber-800/80">
+                  La vendemos por cuenta de quien la da: él se la cobra al cliente y nos
+                  paga una comisión. Esta es la factura que le emitimos nosotros.
+                </p>
+              </div>
+              <table className="erp-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Vehículo</th>
+                    <th>Garantía</th>
+                    <th>Cliente</th>
+                    <th>Le cobró</th>
+                    <th>Nos comisiona</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {garantias.map(g => (
+                    <tr key={g.id}>
+                      <td className="text-xs text-brand-400 whitespace-nowrap">{fmtDate(g.date)}</td>
+                      <td className="text-sm text-brand-500">{g.vehicle_title}</td>
+                      <td>
+                        <p className="text-sm text-brand-500">{g.garantia}</p>
+                        <p className="text-xs text-brand-300">{g.proveedor}</p>
+                      </td>
+                      <td>
+                        <p className="text-sm text-brand-500">{g.contact_name}</p>
+                        <p className="text-xs text-brand-300">{g.user_email}</p>
+                      </td>
+                      <td className="text-sm text-brand-500">{fmtEur(Number(g.precio) || 0)}</td>
+                      <td className="text-sm font-semibold text-brand-500">
+                        {g.comision ? fmtEur(Number(g.comision)) : <span className="text-brand-300">sin contrato</span>}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => { setGarModal(g); setGarImporte(g.comision ? String(Number(g.comision)) : ''); }}
                           className="text-xs font-medium text-acento-texto hover:text-acento-texto border border-acento rounded px-3 py-1 hover:bg-acento-tenue whitespace-nowrap">
                           Crear factura
                         </button>
@@ -779,6 +883,38 @@ export default function ProviderBillingPage() {
       </Modal>
 
       {/* Create received invoice modal */}
+      <Modal open={Boolean(garModal)} onClose={() => setGarModal(null)}
+             title="Facturarle la comisión al proveedor de la garantía">
+        {garModal && (
+          <div className="space-y-3">
+            <p className="text-[13px] text-brand-500">
+              <strong>{garModal.garantia}</strong> de <strong>{garModal.proveedor}</strong>,
+              vendida con el {garModal.vehicle_title}. Él le cobró
+              {' '}{fmtEur(Number(garModal.precio) || 0)} al cliente.
+            </p>
+            <label className="block">
+              <span className="text-xs font-semibold text-brand-500">Comisión que nos paga</span>
+              <input type="number" step="0.01" value={garImporte}
+                     onChange={(e) => setGarImporte(e.target.value)}
+                     className="mt-1 w-full px-3 py-2 border border-brand-200 rounded-lg text-sm" />
+              <span className="text-[11px] text-brand-400">
+                Propuesta con lo que dice el catálogo. La de verdad la fija el contrato,
+                y ese todavía no existe.
+              </span>
+            </label>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setGarModal(null)}
+                      className="px-3 py-1.5 text-xs font-semibold text-brand-500">Cancelar</button>
+              <button onClick={emiteComisionDeGarantia}
+                      disabled={guardandoGar || !(Number(garImporte) > 0)}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-50">
+                Emitir la factura
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <Modal open={recvModal} onClose={() => setRecvModal(false)} title="Registrar factura recibida de proveedor">
         <div className="space-y-3">
           <div>

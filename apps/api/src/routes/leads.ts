@@ -393,12 +393,12 @@ export async function daleSuIdCar(leadId: string): Promise<string | null> {
     };
     await query(
       `INSERT INTO moveadvisor_user_vehicles
-         (id, user_email, title, brand, model, version, plate, mileage, mileage_km,
+         (id, user_email, user_id, title, brand, model, version, plate, mileage, mileage_km,
           purchased_from, source_lead_id,
           year, year_int, fuel, transmission_type, color, body_type,
           cv, horsepower, co2, co2_g_km, doors, seats,
           created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+       VALUES ($1,$2,(SELECT id::text FROM moveadvisor_users WHERE lower(email) = lower($2) LIMIT 1),$3,$4,$5,$6,$7,$8,$9,$10,$11,
                $12,$13,$14,$15,$16,$17,$18,$18,$19,$20,$21,$22,NOW(),NOW())`,
       [id, x.user_email, x.vehicle_title, brand, model, version,
        String(x.matricula ?? '').trim(), km,

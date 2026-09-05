@@ -74,9 +74,23 @@ idcarsRouter.get('/idcars', requireRole(['admin', 'support', 'operations', 'sale
   try {
     const [rows, total] = await Promise.all([
       query(
+        /*
+         * El dueño, por su identificador y si no por su correo.
+         *
+         * Un coche puede tener solo el correo: los que entran solos al
+         * entregar una importación se dan de alta con lo que trae el
+         * expediente, y ahí el cliente es una dirección. Sin la segunda
+         * condición, ese coche sale en la lista sin propietario, que es como
+         * decir que no es de nadie.
+         *
+         * La segunda solo entra cuando no hay identificador, así que no puede
+         * traer dos filas.
+         */
         `SELECT v.*, u.name AS owner_name, u.email AS owner_email
          FROM moveadvisor_user_vehicles v
-         LEFT JOIN moveadvisor_users u ON u.id::text = v.user_id
+         LEFT JOIN moveadvisor_users u
+           ON u.id::text = v.user_id
+           OR (v.user_id IS NULL AND lower(u.email) = lower(v.user_email))
          ${where}
          ORDER BY v.created_at DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,

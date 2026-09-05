@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
+import { preparaGarantias } from './garantias.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
@@ -592,6 +593,96 @@ providerBillingRouter.post('/provider-billing/commissions', requireRole(['admin'
     });
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: invoiceAmount, provider_name: providerName } });
+  } catch (err) {
+    falloInterno(res, 'create_failed', err);
+  }
+});
+
+/**
+ * Las garantías vendidas cuya comisión no hemos facturado.
+ *
+ * Vendemos la garantía **por cuenta de quien la da**: el proveedor le pone el
+ * precio y se lo cobra al cliente, y lo que ganamos es una comisión que nos
+ * paga él. Esa comisión es una factura nuestra, y no la emitía nadie.
+ *
+ * Al entregar el primer coche con garantía, los 190 € quedaron cobrados y sin
+ * papel por ninguna de las dos partes: ni el proveedor le había facturado al
+ * cliente ni nosotros le habíamos facturado a él. Esto es la mitad que nos toca.
+ *
+ * Sale cuando el coche está **entregado**, que es cuando la garantía empieza:
+ * facturar la comisión de una garantía que no ha llegado a existir sería cobrar
+ * por una venta que puede caerse.
+ */
+providerBillingRouter.get('/provider-billing/pending-warranty-commissions', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    // La columna de la comisión se crea la primera vez que se abre Garantías,
+    // y aquí se puede llegar antes: sin esto la consulta revienta el día que
+    // alguien mire esta pantalla primero.
+    await preparaGarantias().catch(() => {});
+    const r = await query(`
+      SELECT l.id, l.contact_name, l.user_email, l.vehicle_title,
+             l.garantia_precio::numeric AS precio,
+             g.nombre AS garantia, g.comision::numeric AS comision,
+             COALESCE(p.nombre, 'Proveedor de garantías') AS proveedor,
+             COALESCE(vo.sold_at, l.updated_at) AS date
+        FROM moveadvisor_market_leads l
+        JOIN market_garantias g ON g.id = l.garantia_id
+        LEFT JOIN erp_proveedores p ON p.id = g.proveedor_id
+        LEFT JOIN moveadvisor_marketplace_vo_offers vo ON vo.id = l.vehicle_id
+       WHERE l.status = 'Entregado'
+         AND l.garantia_id IS NOT NULL
+         AND l.id NOT IN (
+           SELECT contract_id FROM moveadvisor_provider_invoices
+            WHERE type = 'warranty_commission' AND contract_id IS NOT NULL
+         )
+       ORDER BY date DESC
+    `);
+    res.json({ ok: true, data: r.rows });
+  } catch (err) {
+    falloInterno(res, 'pending_warranty_failed', err);
+  }
+});
+
+/**
+ * Y emitirla.
+ *
+ * El importe llega de fuera y no se calcula aquí: la comisión la fija el
+ * contrato con el proveedor, y hasta que haya uno lo que hay en el catálogo es
+ * una cifra provisional. Se propone, no se impone.
+ */
+providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole(['admin', 'operations']), async (req, res) => {
+  const { lead_id, amount } = req.body ?? {};
+  const importe = Number(amount);
+  if (!lead_id || !Number.isFinite(importe) || importe <= 0) {
+    res.status(400).json({ ok: false, error: 'missing_fields', detail: 'lead_id y amount son obligatorios' });
+    return;
+  }
+  try {
+    const lr = await query<Record<string, string>>(`
+      SELECT l.id, l.contact_name, l.user_email, l.vehicle_title,
+             l.garantia_precio::numeric AS precio,
+             g.nombre AS garantia,
+             COALESCE(p.nombre, 'Proveedor de garantías') AS proveedor
+        FROM moveadvisor_market_leads l
+        JOIN market_garantias g ON g.id = l.garantia_id
+        LEFT JOIN erp_proveedores p ON p.id = g.proveedor_id
+       WHERE l.id = $1
+    `, [lead_id]);
+    if (!lr.rows.length) { res.status(404).json({ ok: false, error: 'sin_garantia' }); return; }
+    const x = lr.rows[0];
+
+    const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevo) => {
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email,
+            base_amount, invoice_amount, notes)
+         VALUES ($1, 'warranty_commission', $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [nuevo, x.proveedor, lead_id, x.vehicle_title, x.contact_name, x.user_email,
+         Number(x.precio) || null, importe, `Comisión · ${x.garantia}`]
+      );
+    });
+
+    res.status(201).json({ ok: true, data: { id, invoice_amount: importe, provider_name: x.proveedor } });
   } catch (err) {
     falloInterno(res, 'create_failed', err);
   }
