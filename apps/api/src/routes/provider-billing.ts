@@ -4,8 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
-import { cualEsperaCierra } from '../lib/facturas-esperadas.js';
-import { seEsperaFactura, ESPERADA } from '../lib/facturas-esperadas.js';
+import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 
 async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
@@ -443,15 +442,15 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
                 invoice_amount, invoice_date, status, pdf_url, notes,
                 issued_at, paid_at, updated_at
          FROM moveadvisor_provider_invoices
-         WHERE direction = 'received' AND status <> $3
+         WHERE direction = 'received' AND status NOT IN ($3, $4)
          ORDER BY COALESCE(invoice_date::timestamptz, issued_at) DESC
          LIMIT $1 OFFSET $2`,
-        [limit, offset, ESPERADA]
+        [limit, offset, ESPERADA, CUADRADA]
       ),
       query(
         `SELECT COUNT(*)::int AS total FROM moveadvisor_provider_invoices
-          WHERE direction = 'received' AND status <> $1`,
-        [ESPERADA]
+          WHERE direction = 'received' AND status NOT IN ($1, $2)`,
+        [ESPERADA, CUADRADA]
       ),
     ]);
     res.json({

@@ -469,3 +469,35 @@ describe('el expediente lleva lo que la pantalla lee', () => {
     assert.match(API, /'liquidacion_at', liquidacion_at,/);
   });
 });
+
+/**
+ * Una espera cuadrada no es una factura, así que no sale en la lista.
+ *
+ * Al registrar la factura del transporte de Becker se creó una fila nueva y la
+ * espera se quedó. Se cerró marcándola «cuadrada» para dejar el rastro… y con
+ * eso volvió a salir, ahora como una factura recibida más: los 400 € contados
+ * dos veces otra vez, por el otro lado.
+ *
+ * Nadie emitió esa fila. No es una factura recibida y no puede aparecer donde
+ * se cuentan y se pagan las que sí lo son.
+ */
+describe('las esperas cuadradas no salen como facturas', () => {
+  const FUENTE = readFileSync(new URL('./provider-billing.ts', import.meta.url), 'utf8');
+
+  test('ninguna consulta excluye solo las que esperan', () => {
+    /*
+     * `status <> ESPERADA` es exactamente el fallo: deja fuera la espera y deja
+     * dentro la cuadrada, que tampoco es una factura. Se comprueba la forma y
+     * no las dos consultas concretas, porque el fallo volvería igual escrito en
+     * una tercera.
+     */
+    const soloUna = FUENTE.split('\n').filter((l) => /status\s*<>\s*\$\d/.test(l));
+    assert.deepEqual(soloUna, [],
+      'esa consulta excluye un estado y deja pasar el otro');
+  });
+
+  test('y se excluyen las dos: la que espera y la que ya no', () => {
+    assert.match(FUENTE, /\[limit, offset, ESPERADA, CUADRADA\]/);
+    assert.match(FUENTE, /\[ESPERADA, CUADRADA\]/);
+  });
+});

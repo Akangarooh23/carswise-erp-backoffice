@@ -38,6 +38,16 @@
 /** El estado de una línea que espera factura. */
 export const ESPERADA = 'esperada';
 
+/**
+ * Y una espera que ya no espera nada, porque su factura llegó por otro lado.
+ *
+ * No se borra: deja el rastro de que se esperaba algo y de con qué se cerró.
+ * Pero tampoco es una factura —nadie la emitió— así que no sale en la lista
+ * de recibidas ni cuenta en ningún total. Es el estado de un papel que dejó
+ * de hacer falta.
+ */
+export const CUADRADA = 'cuadrada';
+
 /** Lo que se aguanta esperando una factura antes de reclamarla. */
 export const DIAS_PARA_RECLAMAR = 10;
 
