@@ -13,6 +13,8 @@ import {
   verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
   facturaDelVendedorPedida, encargoALaGestoriaEnviado, reservaPreguntada,
   liquidacionDelImpuesto,
+  laDesviacion,
+  comoVamosEstimando,
   agrupaPorEtapa, fueraDelCamino, resumen, diasDesde, notaDelCambio, loQueSeEscribio,
   type Etapa, type Columna, type Expediente,
 } from '../lib/expedientes-importacion.js';
@@ -155,6 +157,9 @@ export default function ImportacionesPage() {
   const porEtapa = useMemo(() => agrupaPorEtapa(expedientes), [expedientes]);
   const cerrados = useMemo(() => fueraDelCamino(expedientes), [expedientes]);
   const cuentas = useMemo(() => resumen(expedientes), [expedientes]);
+  // Cómo va la estimación del impuesto, que es una pregunta del conjunto y no
+  // de cada coche: un desviado puede ser raro, varios seguidos son el modelo.
+  const estimando = useMemo(() => comoVamosEstimando(expedientes), [expedientes]);
 
   /**
    * Pedirle al vendedor la factura del coche.
@@ -327,6 +332,58 @@ export default function ImportacionesPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Qué tal estamos estimando el impuesto ──
+
+          Un coche desviado puede ser un coche raro. Varios en la misma
+          dirección son un modelo mal puesto, y eso no se ve mirando
+          expedientes de uno en uno: el primer coche se estimó 1.071 € por
+          debajo y se supo porque alguien miró la factura de la gestoría.
+
+          No sale hasta que hay dos coches con coste real. Con uno, una media
+          es el mismo dato dicho dos veces. */}
+      {estimando.cuantos >= 2 && (
+        <div className="rounded-xl border border-brand-200 bg-white p-4 mb-6">
+          <div className="flex items-baseline justify-between gap-3 mb-2">
+            <div className="text-xs font-semibold text-brand-600">
+              Qué tal estimamos el impuesto
+            </div>
+            <div className="text-[11px] text-brand-400">
+              {estimando.cuantos} coches matriculados
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-2 text-[12px]">
+            <div>
+              <span className={`text-lg font-bold tabular-nums ${
+                estimando.desviacionMedia > 0 ? 'text-amber-700' : 'text-brand-600'
+              }`}>
+                {estimando.desviacionMedia > 0 ? '+' : ''}{eur(estimando.desviacionMedia)}
+              </span>
+              <span className="text-brand-400 ml-2">
+                de media {estimando.desviacionMedia > 0 ? 'por debajo' : 'por encima'} del real
+              </span>
+            </div>
+            <div className="text-brand-500">
+              <span className="tabular-nums font-bold">{estimando.cortas}</span> se quedaron cortas
+              {' · '}
+              <span className="tabular-nums font-bold">{estimando.largas}</span> se pasaron
+            </div>
+            {estimando.sumaAsumida > 0 && (
+              <div className="text-brand-500">
+                <span className="tabular-nums font-bold text-amber-700">{eur(estimando.sumaAsumida)}</span>
+                {' '}puestos de nuestro margen
+              </div>
+            )}
+          </div>
+          {estimando.cortas > estimando.largas && (
+            <div className="text-[11px] text-brand-400 mt-2 pt-2 border-t border-brand-100">
+              Nos quedamos cortos más veces de las que nos pasamos. Si se mantiene, el
+              impuesto que llevan los anuncios está bajo y la diferencia acaba saliendo
+              del margen.
+            </div>
+          )}
+        </div>
+      )}
 
       {cargando ? (
         <div className="text-sm text-brand-400 py-8 text-center">Cargando expedientes…</div>
@@ -887,6 +944,30 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                   </button>
                 )}
               </div>
+              {/* ── Y si la estimación se fue, decirlo ──
+
+                  Esto no es lo mismo que el bloque de arriba. Arriba se decide
+                  qué hacer con el dinero de este coche; aquí se dice que **la
+                  estimación estuvo mal**, que es un problema de todos los
+                  coches que vengan detrás. El primero se estimó 1.071 € por
+                  debajo y se supo porque alguien miró la factura de la
+                  gestoría. */}
+              {(() => {
+                const d = laDesviacion(x);
+                if (!d || !d.avisa) return null;
+                return (
+                  <div className="mt-3 pt-3 border-t border-brand-200/70 text-[11px] text-brand-500">
+                    <span className="font-bold text-brand-600">
+                      La estimación se quedó {d.como === 'corta' ? 'corta' : 'larga'} un
+                      {' '}{Math.abs(Math.round(d.pct * 100))} %
+                    </span>
+                    {' — '}
+                    {d.como === 'corta'
+                      ? 'a este coche se le puso menos impuesto del que salió. Si se repite, el precio de los anuncios está bajo.'
+                      : 'a este coche se le puso más impuesto del que salió. Si se repite, los anuncios salen caros y no se abren.'}
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}

@@ -14,8 +14,10 @@ import {
   puedeLiberar, repartoDelDeposito,
   bloquesDelExpediente,
   type Expediente,
-  COLUMNAS, COLUMNA_SEGUNDO_VIAJE, QUE_TOCA_COLUMNA, columnaDelExpediente,
+  COLUMNAS, COLUMNA_SEGUNDO_VIAJE, QUE_TOCA_COLUMNA, columnaDelExpediente,
   liquidacionDelImpuesto,
+  laDesviacion,
+  comoVamosEstimando,
 } from './expedientes-importacion.js';
 
 function exp(parcial: Partial<Expediente> & { status: string }): Expediente {
@@ -436,5 +438,102 @@ describe('la liquidación entiende lo que llega de la gestoría', () => {
 
   test('y una provisión con formato raro tampoco se pierde', () => {
     assert.equal(conImpuesto('1.420,00', '1.420,00 €')?.quien, 'cuadra');
+  });
+});
+
+/**
+ * Estimado contra real.
+ *
+ * Los dos números llevaban meses guardados en sitios distintos —lo cobrado en
+ * el depósito, lo real en una partida de la gestoría— y nadie los juntaba. El
+ * primer coche se estimó 1.071 € por debajo y se supo porque alguien miró la
+ * factura de la gestoría, no porque el sistema lo dijera.
+ */
+describe('qué tal estimamos el impuesto', () => {
+  const coche = (escrow: unknown, real: unknown, como?: string) => ({
+    meta: { escrow_impuesto: escrow, impuesto_real: real, liquidacion_como: como },
+  }) as unknown as Expediente;
+
+  test('sin coste real todavía no hay nada que comparar', () => {
+    // La gestoría escribe el importe al matricular, y eso son semanas.
+    assert.equal(laDesviacion(coche(1420, null)), null);
+    assert.equal(laDesviacion(coche(1420, '')), null);
+  });
+
+  test('el caso que lo destapó: mil euros corto', () => {
+    const d = laDesviacion(coche(1420, 2491))!;
+    assert.equal(d.diferencia, 1071);
+    assert.equal(d.como, 'corta');
+    assert.equal(d.avisa, true);
+  });
+
+  test('y si sobró, va marcado como largo y también avisa', () => {
+    const d = laDesviacion(coche(2646, 2000))!;
+    assert.equal(d.diferencia, -646);
+    assert.equal(d.como, 'larga');
+    assert.equal(d.avisa, true);
+  });
+
+  test('unas decenas de euros no son un aviso: es el ruido del valor fiscal', () => {
+    // 155 € sobre 2.646 es un 6 %: la aproximación del 60 % ya se va por ahí.
+    // Avisar de esto sería poner una alarma en todos los coches.
+    const d = laDesviacion(coche(2646, 2491))!;
+    assert.equal(d.avisa, false);
+  });
+
+  test('hacen falta las dos cosas, los euros y el porcentaje', () => {
+    // 300 € sobre 12.000 es un 2,5 %: mucho dinero, pero el modelo no está mal.
+    assert.equal(laDesviacion(coche(12000, 12300))!.avisa, false);
+    // Y un 50 % de 100 € son 50 €: el modelo estará mal, pero no cuesta nada.
+    assert.equal(laDesviacion(coche(100, 150))!.avisa, false);
+    // Las dos a la vez, sí.
+    assert.equal(laDesviacion(coche(1420, 2491))!.avisa, true);
+  });
+
+  test('los importes llegan pegados de un Excel y hay que leerlos igual', () => {
+    // «1.420,00 €» con Number() es NaN, y un NaN aquí apaga la comparación sin
+    // decir nada. Es de donde salen: de una partida del expediente de gestoría.
+    const d = laDesviacion(coche('1.420,00 €', '2.491,00 €'))!;
+    assert.equal(d.diferencia, 1071);
+  });
+});
+
+describe('y qué tal estimamos en general', () => {
+  const coche = (escrow: number, real: number, como?: string) => ({
+    meta: { escrow_impuesto: escrow, impuesto_real: real, liquidacion_como: como },
+  }) as unknown as Expediente;
+
+  test('sin coches cerrados no se inventa una media', () => {
+    const r = comoVamosEstimando([coche(1420, 0 as unknown as number)].slice(0, 0));
+    assert.equal(r.cuantos, 0);
+    assert.equal(r.desviacionMedia, 0);
+  });
+
+  test('la media va con signo: importa hacia dónde nos equivocamos', () => {
+    // Dos cortos y uno largo. En valor absoluto parecería que vamos finos; con
+    // signo se ve que nos quedamos cortos, que es lo que cuesta dinero.
+    const r = comoVamosEstimando([coche(1000, 1400), coche(1000, 1300), coche(1000, 900)]);
+    assert.equal(r.cuantos, 3);
+    assert.equal(r.cortas, 2);
+    assert.equal(r.largas, 1);
+    assert.equal(r.desviacionMedia, 200);
+  });
+
+  test('solo cuesta dinero lo que asumimos nosotros', () => {
+    // Una diferencia cobrada al cliente no sale de nuestro margen. Sumarlas
+    // todas diría que perdimos dinero donde no lo perdimos.
+    const r = comoVamosEstimando([
+      coche(1420, 2491, 'asumida'),
+      coche(1000, 1500, 'cobrada'),
+      coche(1000, 800, 'devuelta'),
+    ]);
+    assert.equal(r.cuantos, 3);
+    assert.equal(r.sumaAsumida, 1071);
+  });
+
+  test('los que no tienen coste real todavía no cuentan', () => {
+    const sinReal = { meta: { escrow_impuesto: 1420 } } as unknown as Expediente;
+    const r = comoVamosEstimando([coche(1420, 2491, 'asumida'), sinReal]);
+    assert.equal(r.cuantos, 1);
   });
 });

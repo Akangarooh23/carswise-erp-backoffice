@@ -535,3 +535,89 @@ export function loQueSeEscribio(antes: string | null, despues: string | null): s
   if (viejo && nuevo.startsWith(viejo)) return nuevo.slice(viejo.length).trim();
   return nuevo;
 }
+
+/**
+ * Cuánta desviación es demasiada.
+ *
+ * Por debajo de esto es el ruido de la aproximación: el impuesto se calcula
+ * sobre el valor fiscal —tablas del BOE por el coeficiente de antigüedad— y
+ * nosotros lo aproximamos con el 60 % del precio de un usado comparable. Esa
+ * aproximación sola ya se va unas decenas de euros, y avisar de eso sería
+ * enseñar una alarma en todos los coches, que es como no tener ninguna.
+ *
+ * Lo que sí hay que ver es una **banda equivocada**, que es donde está el
+ * dinero: la banda más baja y la más alta se llevan un factor de tres, y en el
+ * primer coche que importamos fueron 1.071 € que salieron del margen.
+ */
+export const DESVIACION_QUE_AVISA_EUROS = 200;
+export const DESVIACION_QUE_AVISA_PCT = 0.1;
+
+/**
+ * Qué tal estimamos el impuesto de este coche.
+ *
+ * Los dos números ya estaban guardados, pero en sitios distintos y sin que
+ * nadie los juntara: lo que se le cobró vive en el depósito del cliente y lo
+ * que costó, en una partida del expediente de la gestoría. Que descubriéramos
+ * que el primer coche se había estimado mil euros por debajo fue porque alguien
+ * miró la factura y le chocó el número.
+ *
+ * Esto no calcula nada nuevo. Solo pone los dos al lado y dice si la diferencia
+ * es de las que hay que mirar. La de este coche, y —sumadas— la de si nos
+ * estamos quedando cortos siempre.
+ */
+export function laDesviacion(x: Expediente): {
+  provision: number; real: number; diferencia: number;
+  /** En tanto por uno sobre lo estimado. Negativo si nos quedamos cortos. */
+  pct: number;
+  /** Si la estimación merece una mirada, no si hay que mover dinero. */
+  avisa: boolean;
+  /** `corta` si el impuesto salió más caro de lo estimado. */
+  como: 'corta' | 'larga' | 'clavada';
+} | null {
+  const l = liquidacionDelImpuesto(x);
+  if (!l) return null;
+  const pct = l.provision > 0 ? l.diferencia / l.provision : 0;
+  return {
+    provision: l.provision,
+    real: l.real,
+    diferencia: l.diferencia,
+    pct,
+    avisa: Math.abs(l.diferencia) >= DESVIACION_QUE_AVISA_EUROS
+      && Math.abs(pct) >= DESVIACION_QUE_AVISA_PCT,
+    como: l.diferencia > 0 ? 'corta' : l.diferencia < 0 ? 'larga' : 'clavada',
+  };
+}
+
+/**
+ * Y qué tal estimamos en general, que es la pregunta que hoy no se puede hacer.
+ *
+ * Un coche desviado puede ser un coche raro. Veinte desviados en la misma
+ * dirección son un modelo mal puesto, y eso no se ve mirando expedientes de uno
+ * en uno. La media va con signo a propósito: lo que importa no es cuánto nos
+ * equivocamos, sino **hacia dónde**.
+ */
+export function comoVamosEstimando(expedientes: Expediente[]): {
+  cuantos: number; cortas: number; largas: number;
+  desviacionMedia: number; sumaAsumida: number;
+} {
+  const con = expedientes
+    .map((x) => ({ x, d: laDesviacion(x) }))
+    .filter((r): r is { x: Expediente; d: NonNullable<ReturnType<typeof laDesviacion>> } => r.d != null);
+
+  const suma = con.reduce((s, r) => s + r.d.diferencia, 0);
+  return {
+    cuantos: con.length,
+    cortas: con.filter((r) => r.d.como === 'corta').length,
+    largas: con.filter((r) => r.d.como === 'larga').length,
+    desviacionMedia: con.length ? Math.round(suma / con.length) : 0,
+    /*
+     * Lo que nos ha costado de verdad: solo las diferencias que asumimos.
+     *
+     * Una que se le cobró al cliente no nos costó nada, y una que se le
+     * devolvió tampoco. Sumarlas todas diría que perdimos dinero donde no.
+     */
+    sumaAsumida: con
+      .filter((r) => r.x.meta?.liquidacion_como === 'asumida')
+      .reduce((s, r) => s + Math.max(0, r.d.diferencia), 0),
+  };
+}
