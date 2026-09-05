@@ -17,3 +17,7 @@ capturas-erp/
 
 # Cache del compilador: cambia en cada compilacion y ensucia el git status.
 *.tsbuildinfo
+
+# El Word de las dudas para el asesor: se genera del .md y se manda por correo.
+# En el repositorio manda el Markdown; el .docx es una copia que envejece.
+Pendientes de Juan.docx
