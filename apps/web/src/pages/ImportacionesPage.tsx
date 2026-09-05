@@ -921,9 +921,9 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                     </div>
                     {liq.quien === 'cobrar' && (
                       <div className="text-[10px] text-brand-400 mt-1.5">
-                        El impuesto es suyo y se le cobra entero. Ponerlo nosotros no es
-                        una opción: es su impuesto, y lo que aquí se ahorra el cliente
-                        sale del margen de este coche.
+                        El impuesto es suyo y se le cobra entero. Si se le perdonaran,
+                        esos {eur(Math.abs(liq.diferencia))} saldrían del margen de este
+                        coche: por eso ya no hay un botón para hacerlo.
                       </div>
                     )}
                   </>
