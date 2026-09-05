@@ -417,3 +417,38 @@ describe('los parámetros de la consulta llevan su dólar', () => {
     assert.match(FUENTE, /liquidacion_como = \$\$\{values\.length\}/);
   });
 });
+
+/**
+ * Y que el expediente lleve todo lo que la pantalla mira.
+ *
+ * El bloque de la liquidación se quedó pidiendo cobrar una diferencia que ya
+ * estaba cobrada: en la base constaba `liquidacion_at` y en el `meta` que se
+ * manda a la pantalla no iba. La pantalla decide qué enseñar mirando ese campo,
+ * así que sin él el botón no se apaga nunca.
+ *
+ * Se vio el día que se liquidó el primer impuesto, que fue también la primera
+ * vez que se usó ese bloque. Y no era el único: faltaban otros tres.
+ *
+ * Es un fallo que no se ve leyendo ninguno de los dos lados por separado —el
+ * servidor guarda bien y la pantalla lee bien— y que solo aparece al usarlo.
+ * Por eso se comprueba aquí, cruzando los dos.
+ */
+describe('el expediente lleva lo que la pantalla lee', () => {
+  const API = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8');
+  const WEB = [
+    '../../../web/src/lib/expedientes-importacion.ts',
+    '../../../web/src/pages/ImportacionesPage.tsx',
+  ].map((p) => readFileSync(new URL(p, import.meta.url), 'utf8')).join('\n');
+
+  test('ningún campo del meta se queda sin mandar', () => {
+    const pide = new Set([...WEB.matchAll(/meta\?\.([a-z_]+)/g)].map((m) => m[1]));
+    const manda = new Set([...API.matchAll(/'([a-z_]+)',\s*(?:[a-z_]+|\()/g)].map((m) => m[1]));
+    const faltan = [...pide].filter((k) => !manda.has(k)).sort();
+    assert.deepEqual(faltan, [],
+      'la pantalla mira estos campos y el servidor no los manda: siempre valdrán nulo');
+  });
+
+  test('y la fecha de la liquidación va, que es la que apaga el botón', () => {
+    assert.match(API, /'liquidacion_at', liquidacion_at,/);
+  });
+});

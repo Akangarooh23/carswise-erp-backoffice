@@ -576,6 +576,11 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'reserva_preguntada_at',       reserva_preguntada_at,
                   'reserva_preguntada_a',        reserva_preguntada_a,
                   'factura_vendedor_pedida_at',  factura_vendedor_pedida_at,
+                  -- Y a quién se le pidió, que es lo que la pantalla enseña
+                  -- debajo del «✓ pedida»: sin esto sale la fecha y un hueco.
+                  'factura_vendedor_pedida_a',   factura_vendedor_pedida_a,
+                  'encargo_gestoria_enviado_at', encargo_gestoria_enviado_at,
+                  'encargo_gestoria_enviado_a',  encargo_gestoria_enviado_a,
                   -- Si el papel ya está subido, en cualquiera de los cajones
                   -- del coche. Pedirla y tenerla no son lo mismo, y es esta
                   -- la que hace falta para matricular.
@@ -666,6 +671,18 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                       FROM erp_tramites t
                      WHERE t.lead_id = moveadvisor_market_leads.id
                   ),
+                  /*
+                   * Si ya se liquidó, y cómo. **Las dos.**
+                   *
+                   * Iba solo el «cómo». La pantalla decide si enseñar el botón
+                   * o el «✓ liquidado» mirando la **fecha**, así que sin ella
+                   * el bloque se quedaba pidiendo cobrar una diferencia que ya
+                   * estaba cobrada: en la base constaba y en la pantalla no.
+                   *
+                   * Se vio el día que se liquidó el primer impuesto, que fue
+                   * también la primera vez que se usó este bloque.
+                   */
+                  'liquidacion_at', liquidacion_at,
                   'liquidacion_como', liquidacion_como,
                   'impuesto_real', (
                     -- El impuesto es una **partida** del expediente de gestoría, no un trámite
