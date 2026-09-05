@@ -440,9 +440,26 @@ describe('el expediente lleva lo que la pantalla lee', () => {
     '../../../web/src/pages/ImportacionesPage.tsx',
   ].map((p) => readFileSync(new URL(p, import.meta.url), 'utf8')).join('\n');
 
+  /*
+   * Y el que lee el meta por un alias, que es donde estaba el hueco.
+   *
+   * `pasos-de-la-importacion` hace `const m = x.meta ?? {}` y luego lee
+   * `m.loQueSea`. Buscando solo por `meta` con interrogante se escapaban esos
+   * dieciséis campos: renombrar uno en el servidor no rompía ninguna prueba y
+   * el paso se quedaba mudo. Se vio saboteando esta misma comprobación.
+   */
+  const PASOS = readFileSync(
+    new URL('../../../web/src/lib/pasos-de-la-importacion.ts', import.meta.url), 'utf8'
+  );
+
   test('ningún campo del meta se queda sin mandar', () => {
-    const pide = new Set([...WEB.matchAll(/meta\?\.([a-z_]+)/g)].map((m) => m[1]));
-    const manda = new Set([...API.matchAll(/'([a-z_]+)',\s*(?:[a-z_]+|\()/g)].map((m) => m[1]));
+    const pide = new Set([
+      ...[...WEB.matchAll(/meta\?\.([a-z_]+)/g)].map((m) => m[1]),
+      ...[...PASOS.matchAll(/\bm\.([a-z_]+)/g)].map((m) => m[1]),
+    ]);
+    // El valor puede ser una columna, un EXISTS o una subconsulta: vale
+    // cualquier cosa que empiece por letra o por paréntesis.
+    const manda = new Set([...API.matchAll(/'([a-z_]+)',\s*(?:[A-Za-z_]|\()/g)].map((m) => m[1]));
     const faltan = [...pide].filter((k) => !manda.has(k)).sort();
     assert.deepEqual(faltan, [],
       'la pantalla mira estos campos y el servidor no los manda: siempre valdrán nulo');

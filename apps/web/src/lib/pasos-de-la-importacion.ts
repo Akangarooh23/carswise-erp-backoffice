@@ -604,6 +604,34 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
     donde: '/importaciones',
   });
 
+  /*
+   * 11 · Y las facturas que faltan, aunque el coche ya esté entregado.
+   *
+   * Un expediente cerrado no está terminado si tres proveedores no han
+   * facturado: un gasto sin factura no se deduce, y cerrar el expediente no
+   * hace que deje de faltar. Lo dijo el asesor con estas palabras: «puede ser
+   * interesante indicar el estado y lo que hay pendiente».
+   *
+   * Va **aparte**, que es lo honesto: no mueve el coche y no puede volver a
+   * abrir un expediente entregado. Solo hace que, al abrirlo, se vea.
+   */
+  const sinLlegar = Array.isArray(m.facturas_sin_llegar) ? m.facturas_sin_llegar : [];
+  if (sinLlegar.length) {
+    pasos.push({
+      clave: 'facturasProveedor',
+      titulo: sinLlegar.length === 1
+        ? 'Falta una factura de proveedor'
+        : `Faltan ${sinLlegar.length} facturas de proveedor`,
+      // Quién y cuánto, para no tener que ir a buscarlo a otra pantalla.
+      detalle: sinLlegar
+        .map((f) => `${f.proveedor}${f.importe ? ` · ${Math.round(Number(f.importe))} €` : ''}`)
+        .join(' · '),
+      estado: 'esperando',
+      donde: '/provider-billing',
+      via: 'aparte',
+    });
+  }
+
   return pasos;
 }
 

@@ -107,6 +107,13 @@ export interface MetaImportacion {
    * rentable que otro que cuadró.
    */
   liquidacion_como?: 'cobrada' | 'devuelta' | 'asumida' | null;
+  /**
+   * Las facturas de proveedor de este coche que aún no han llegado.
+   *
+   * Van en el expediente aunque esté cerrado: un gasto sin factura no se
+   * deduce, y cerrar el expediente no hace que deje de faltar.
+   */
+  facturas_sin_llegar?: { proveedor?: string | null; concepto?: string | null; importe?: number | string | null }[] | null;
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.

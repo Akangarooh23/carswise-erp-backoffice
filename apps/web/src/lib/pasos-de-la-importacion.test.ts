@@ -749,3 +749,58 @@ describe('mirarlo al bajarlo del camión', () => {
     assert.ok(loQueFaltaAparte(pasos).some((p) => p.clave === 'recepcion'));
   });
 });
+
+/**
+ * Un expediente cerrado no está terminado si faltan facturas.
+ *
+ * Al entregar el coche, el expediente decía «nada pendiente · el expediente
+ * está cerrado» con 1.543 € en tres servicios ya hechos y sin facturar. Un
+ * gasto sin factura no se deduce, y cerrar el expediente no hace que deje de
+ * faltar.
+ *
+ * Lo pidió el asesor con estas palabras: «puede ser interesante indicar el
+ * estado y lo que hay pendiente».
+ */
+describe('las facturas de proveedor que no han llegado', () => {
+  const entregado = (facturas: unknown[]) => ({
+    status: 'Entregado',
+    meta: { facturas_sin_llegar: facturas },
+  }) as unknown as Expediente;
+
+  test('salen en el expediente aunque esté entregado', () => {
+    const pasos = pasosDeLaImportacion(entregado([
+      { proveedor: 'Business Ontime GmbH', importe: 890 },
+      { proveedor: 'Gestoría Bernal', importe: 259.94 },
+    ]));
+    const p = pasos.find((x) => x.clave === 'facturasProveedor');
+    assert.ok(p, 'un expediente cerrado con facturas sin llegar no dice nada');
+    assert.equal(p.titulo, 'Faltan 2 facturas de proveedor');
+    assert.match(p.detalle ?? '', /Business Ontime GmbH · 890 €/);
+    assert.match(p.detalle ?? '', /Gestoría Bernal · 260 €/);
+  });
+
+  test('y llevan a donde se adjuntan', () => {
+    const pasos = pasosDeLaImportacion(entregado([{ proveedor: 'Uno', importe: 100 }]));
+    const p = pasos.find((x) => x.clave === 'facturasProveedor');
+    assert.equal(p?.donde, '/provider-billing');
+    assert.equal(p?.titulo, 'Falta una factura de proveedor');
+  });
+
+  test('pero no vuelven a abrir un coche entregado', () => {
+    /*
+     * Van **aparte**: no mueven el coche y no pueden convertirse en «ahora
+     * toca». Si contaran como paso del camino, un expediente entregado
+     * volvería a parecer a medias por una factura que no depende de nosotros.
+     */
+    const pasos = pasosDeLaImportacion(entregado([{ proveedor: 'Uno', importe: 100 }]));
+    const p = pasos.find((x) => x.clave === 'facturasProveedor');
+    assert.equal(p?.via, 'aparte');
+    assert.equal(p?.estado, 'esperando');
+  });
+
+  test('y sin facturas pendientes no se inventa el aviso', () => {
+    assert.equal(pasosDeLaImportacion(entregado([])).find((x) => x.clave === 'facturasProveedor'), undefined);
+    const sinMeta = { status: 'Entregado', meta: {} } as unknown as Expediente;
+    assert.equal(pasosDeLaImportacion(sinMeta).find((x) => x.clave === 'facturasProveedor'), undefined);
+  });
+});

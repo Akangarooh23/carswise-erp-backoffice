@@ -682,6 +682,19 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                    * Se vio el día que se liquidó el primer impuesto, que fue
                    * también la primera vez que se usó este bloque.
                    */
+                  -- Las facturas de proveedor de este coche que aún no han
+                  -- llegado. Van en el expediente aunque esté cerrado: un
+                  -- gasto sin factura no se deduce, y cerrar el expediente
+                  -- no hace que deje de faltar.
+                  'facturas_sin_llegar', (
+                    SELECT COALESCE(json_agg(json_build_object(
+                             'proveedor', f.provider_name,
+                             'concepto',  f.notes,
+                             'importe',   f.invoice_amount)), '[]'::json)
+                      FROM moveadvisor_provider_invoices f
+                     WHERE f.direction = 'received' AND f.status = 'esperada'
+                       AND f.vehicle_title = moveadvisor_market_leads.vehicle_title
+                  ),
                   'liquidacion_at', liquidacion_at,
                   'liquidacion_como', liquidacion_como,
                   'impuesto_real', (
