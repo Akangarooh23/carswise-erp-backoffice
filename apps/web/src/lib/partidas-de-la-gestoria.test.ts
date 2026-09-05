@@ -56,19 +56,21 @@ describe('las dos mitades', () => {
 });
 
 describe('la cuenta que importa', () => {
-  test('lo de terceros no cuenta como coste nuestro', () => {
-    // Es la razón de que esto exista: 1.664 € del impuesto y las tasas no son
-    // gasto de PopCar, y metidos en el coste el margen sale mal en todos.
+  test('el impuesto no cuenta como coste nuestro; lo demás sí', () => {
+    // Es la razón de que esto exista, y desde que lo aclaró el asesor la raya
+    // está en otro sitio: el impuesto es lo único que se le cobra aparte al
+    // cliente. Las tasas y la ITV las pagamos nosotros con el fee, así que son
+    // coste del coche por mucho que el recibo lleve el nombre del cliente.
     const r = resumenDeLaGestoria([
       { concepto: 'Impuesto de matriculación', importe: 1420 },
       { concepto: 'Tasa DGT', importe: 99.77 },
       { concepto: 'ITV de homologación', importe: 145 },
       { concepto: 'Honorarios de la gestoría', importe: 90, que: 'nuestro' },
     ]);
-    assert.equal(r.suplidos, 1664.77);
-    // Los 90 € de honorarios son la base; con su IVA, 108,90.
-    assert.equal(r.honorariosBase, 90);
-    assert.equal(r.honorarios, 108.9);
-    assert.equal(r.total, 1773.67);
+    assert.equal(r.suplidos, 1420);
+    // 99,77 exentos + 145 y 90 de base: 334,77 de coste, 49,35 de IVA.
+    assert.equal(r.honorariosBase, 334.77);
+    assert.equal(r.iva, 49.35);
+    assert.equal(r.total, 1804.12);
   });
 });

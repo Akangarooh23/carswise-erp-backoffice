@@ -65,25 +65,55 @@ export interface Partida {
  *
  * Con lo que es cada una: el que las rellena no tiene por qué saber de suplidos,
  * y equivocarse aquí es equivocarse en el margen de todos los coches.
+ *
+ * **Suplido es solo el impuesto de matriculación.** Lo demás —tasas, ITV,
+ * placas, honorarios— lo pagamos nosotros con el fee y no se le repercute al
+ * cliente, así que es coste nuestro por mucho que el recibo de la DGT lleve su
+ * nombre. Lo zanjó el asesor: «todo lo pagamos nosotros a través del ingreso
+ * recibido en el fee de 3k + IVA».
+ *
+ * Aquí estaban casi todas como suplido, y con eso desaparecían de la cuenta:
+ * ni entraban en lo que va a terceros —porque el cliente no las paga— ni en lo
+ * que nos cuesta. En el primer coche eran 137 € de margen que no existían.
+ *
+ * El impuesto sí lo es de verdad, y por una razón que se puede señalar: es lo
+ * único que se le cobra aparte, a cuenta, y se liquida al matricular.
  */
-export const PARTIDAS_HABITUALES: { concepto: string; que: QueEs }[] = [
-  { concepto: 'Impuesto de matriculación', que: 'suplido' },
-  { concepto: 'Tasa DGT', que: 'suplido' },
-  { concepto: 'ITV de homologación', que: 'suplido' },
-  { concepto: 'Ficha técnica reducida', que: 'suplido' },
-  { concepto: 'Placas de matrícula', que: 'suplido' },
-  { concepto: 'Impuesto de transmisiones', que: 'suplido' },
-  { concepto: 'Transferencia en la DGT', que: 'suplido' },
-  { concepto: 'Honorarios de la gestoría', que: 'nuestro' },
+export const PARTIDAS_HABITUALES: { concepto: string; que: QueEs; regimen?: Regimen }[] = [
+  { concepto: 'Impuesto de matriculación', que: 'suplido', regimen: 'exento' },
+  { concepto: 'Tasa DGT', que: 'nuestro', regimen: 'exento' },
+  { concepto: 'ITV de homologación', que: 'nuestro', regimen: 'nacional' },
+  { concepto: 'Ficha técnica reducida', que: 'nuestro', regimen: 'nacional' },
+  { concepto: 'Placas de matrícula', que: 'nuestro', regimen: 'nacional' },
+  { concepto: 'Impuesto de transmisiones', que: 'suplido', regimen: 'exento' },
+  { concepto: 'Transferencia en la DGT', que: 'nuestro', regimen: 'exento' },
+  { concepto: 'Honorarios de la gestoría', que: 'nuestro', regimen: 'nacional' },
 ];
 
-/** Lo que se sabe de una partida por su nombre, si es de las habituales. */
+/**
+ * Lo que se sabe de una partida por su nombre.
+ *
+ * Y lo que no se sabe se da por **nuestro**, que es al revés de como estaba.
+ * Darlo por suplido escondía el gasto: una partida que nadie clasifica no le
+ * llega al cliente, así que la pagamos nosotros, y contarla como de terceros
+ * la borraba del coste del coche.
+ */
 export function queEsPorDefecto(concepto: string): QueEs {
   const limpio = String(concepto ?? '').trim().toLowerCase();
   const conocida = PARTIDAS_HABITUALES.find((p) => p.concepto.toLowerCase() === limpio);
   if (conocida) return conocida.que;
-  // Honorarios, minuta, gestión: lo que suena a su trabajo es suyo.
-  return /honorario|minuta|gesti[oó]n|tramitaci[oó]n|servicio/i.test(limpio) ? 'nuestro' : 'suplido';
+  // Lo único que se le cobra aparte, y por eso lo único que es suyo.
+  return /impuesto de matriculaci|matriculaci[oó]n/i.test(limpio) ? 'suplido' : 'nuestro';
+}
+
+/** Y si lleva IVA o no, cuando la partida no lo dice. */
+export function regimenPorDefecto(concepto: string, que: QueEs): Regimen {
+  const limpio = String(concepto ?? '').trim().toLowerCase();
+  const conocida = PARTIDAS_HABITUALES.find((p) => p.concepto.toLowerCase() === limpio);
+  if (conocida?.regimen) return conocida.regimen;
+  // Una tasa o un impuesto no llevan IVA; el trabajo de alguien, sí.
+  if (/tasa|impuesto|dgt|tr[aá]fico|colegio/i.test(limpio)) return 'exento';
+  return que === 'suplido' ? 'exento' : 'nacional';
 }
 
 /**
@@ -148,34 +178,51 @@ export function resumenDeLaGestoria(
   const c = cuenta(lista.map((p) => {
     const que = p.que ?? queEsPorDefecto(p.concepto);
     /*
-     * Un honorario llega **sin IVA**, y un suplido llega tal cual.
+     * Lo que lleva IVA llega **sin él**, y lo exento llega tal cual.
      *
      * Lo confirmó el asesor: en el desglose de una gestoría los honorarios van
-     * netos y el IVA se suma al final. Así que en un honorario el importe de la
-     * línea es la **base**, no el total — que es justo al revés de lo que se
-     * suponía aquí, y hace que la factura llegue más alta que la suma de sus
-     * líneas: 253 € de líneas son 273,66 € de factura.
+     * netos y el IVA se suma al final. Así que en una línea con IVA el importe
+     * es la **base**, no el total, y la factura llega más alta que la suma de
+     * sus líneas.
      *
-     * En un suplido no hay nada que sumar: una tasa de la DGT o el impuesto de
-     * matriculación no llevan IVA, y si lo llevaran no serían un suplido.
+     * Y lo que decide no es de quién es el dinero sino su régimen: una tasa de
+     * la DGT no lleva IVA aunque la paguemos nosotros, y los honorarios sí
+     * aunque el recibo vaya a nombre del cliente.
      */
     const importe = p.importe;
-    const esHonorario = que !== 'suplido';
+    const regimen = p.regimen ?? regimenPorDefecto(p.concepto, que);
+    /*
+     * Y un suplido nunca crece: se repercute por el importe exacto.
+     *
+     * Aunque su régimen sea nacional y lleve IVA dentro, ese IVA es del
+     * tercero que lo cobró y del cliente que lo paga: nosotros no lo
+     * deducimos ni lo sumamos. Sumárselo encima convertiría 145 € de ITV en
+     * 175,45 que nadie ha pagado.
+     */
+    const llevaIva = regimen === 'nacional' && que !== 'suplido';
     return {
-      base: p.base ?? (esHonorario ? importe : undefined),
-      iva: p.iva ?? (esHonorario ? IVA_GENERAL : 0),
-      total: esHonorario ? undefined : importe,
+      base: p.base ?? (llevaIva ? importe : undefined),
+      iva: p.iva ?? (llevaIva ? IVA_GENERAL : 0),
+      total: llevaIva ? undefined : importe,
       que,
-      regimen: p.regimen ?? (esHonorario ? 'nacional' as const : 'exento' as const),
+      regimen,
     };
   }));
   // Lo suyo con el IVA puesto: la base de cada honorario por su tipo. Es lo
   // que va a poner el total de su factura, y no la suma de las líneas.
   const conIva = lista
     .filter((p) => (p.que ?? queEsPorDefecto(p.concepto)) !== 'suplido')
-    .reduce((s, p) => s + desglosa({
-      base: p.base ?? p.importe, iva: p.iva ?? IVA_GENERAL, regimen: p.regimen,
-    }).total, 0);
+    .reduce((s, p) => {
+      const que = p.que ?? queEsPorDefecto(p.concepto);
+      const regimen = p.regimen ?? regimenPorDefecto(p.concepto, que);
+      const llevaIva = regimen === 'nacional' && que !== 'suplido';
+      return s + desglosa({
+        base: p.base ?? (llevaIva ? p.importe : undefined),
+        iva: p.iva ?? (llevaIva ? IVA_GENERAL : 0),
+        total: llevaIva ? undefined : p.importe,
+        regimen,
+      }).total;
+    }, 0);
   const redondea = (n: number) => Math.round(n * 100) / 100;
   return {
     cuantas: lista.length,
@@ -281,7 +328,10 @@ export function leeLoPegado(texto: string): { partidas: Partida[]; malas: string
       importe: total,
       ...(base !== null ? { base, iva } : {}),
       que,
-      ...(que === 'suplido' ? { regimen: 'exento' as const } : {}),
+      // El régimen sale del concepto: una tasa no lleva IVA aunque la
+      // paguemos nosotros, y el trabajo de la gestoría sí aunque el recibo
+      // vaya a nombre del cliente.
+      regimen: regimenPorDefecto(concepto, que),
     });
   }
 

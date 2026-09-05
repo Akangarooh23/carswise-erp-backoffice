@@ -10,7 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  PARTIDAS_HABITUALES, queEsPorDefecto, importeQueVale,
+  PARTIDAS_HABITUALES, queEsPorDefecto, regimenPorDefecto, importeQueVale,
   resumenDeLaGestoria, comoSeCuenta, leeLoPegado, type Partida,
 } from './partidas-de-la-gestoria.js';
 
@@ -102,17 +102,34 @@ describe('lo que es de terceros y lo que es suyo', () => {
   test('y los céntimos no se van en decimales de más', () => {
     // Sumar en coma flotante deja 1754.7700000000002, y eso acaba impreso.
     const r = resumenDeLaGestoria([
-      { concepto: 'Uno', importe: 0.1 }, { concepto: 'Dos', importe: 0.2 },
+      { concepto: 'Tasa uno', importe: 0.1, regimen: 'exento' as const },
+      { concepto: 'Tasa dos', importe: 0.2, regimen: 'exento' as const },
     ]);
     assert.equal(r.total, 0.3);
   });
 });
 
 describe('de quién es cada partida', () => {
-  test('las habituales lo saben solas', () => {
+  test('el impuesto es del cliente; las tasas y el trabajo, coste nuestro', () => {
+    /*
+     * El impuesto es lo único que se le cobra aparte, a cuenta, y se liquida al
+     * matricular: por eso es suplido. Las tasas llevan su nombre en el recibo,
+     * pero las pagamos nosotros con el fee y no se le repercuten, así que son
+     * coste nuestro. Lo zanjó el asesor: «todo lo pagamos nosotros a través del
+     * ingreso recibido en el fee».
+     */
     assert.equal(queEsPorDefecto('Impuesto de matriculación'), 'suplido');
-    assert.equal(queEsPorDefecto('Tasa DGT'), 'suplido');
+    assert.equal(queEsPorDefecto('Tasa DGT'), 'nuestro');
+    assert.equal(queEsPorDefecto('ITV de homologación'), 'nuestro');
     assert.equal(queEsPorDefecto('Honorarios de la gestoría'), 'nuestro');
+  });
+
+  test('y una tasa no lleva IVA aunque la paguemos nosotros', () => {
+    // Lo que decide el IVA es el régimen, no de quién sea el dinero.
+    assert.equal(regimenPorDefecto('Tasa DGT', 'nuestro'), 'exento');
+    assert.equal(regimenPorDefecto('Impuesto Municipal', 'nuestro'), 'exento');
+    assert.equal(regimenPorDefecto('Honorarios de la gestoría', 'nuestro'), 'nacional');
+    assert.equal(regimenPorDefecto('ITV de homologación', 'nuestro'), 'nacional');
   });
 
   test('lo que suena a su trabajo es suyo', () => {
@@ -121,9 +138,11 @@ describe('de quién es cada partida', () => {
     assert.equal(queEsPorDefecto('Tramitación'), 'nuestro');
   });
 
-  test('y lo que no se reconoce se supone suplido', () => {
-    // Es lo que más hay, y equivocarse al revés infla el coste del coche.
-    assert.equal(queEsPorDefecto('Sello del ayuntamiento'), 'suplido');
+  test('y lo que no se reconoce se supone nuestro', () => {
+    // Al revés de como estaba. Darlo por suplido escondía el gasto: una partida
+    // que nadie clasifica no se le cobra al cliente, así que la pagamos
+    // nosotros, y contarla como de terceros la borraba del coste del coche.
+    assert.equal(queEsPorDefecto('Sello del ayuntamiento'), 'nuestro');
   });
 
   test('la lista trae lo que sale casi siempre', () => {
@@ -258,9 +277,9 @@ describe('lo pegado con base e IVA', () => {
     assert.equal(partidas[0].iva, undefined);
   });
 
-  test('un suplido pegado sale exento, que es lo que es', () => {
+  test('una tasa pegada sale exenta, y como coste nuestro', () => {
     const { partidas } = leeLoPegado('Tasa DGT\t99,77');
-    assert.equal(partidas[0].que, 'suplido');
+    assert.equal(partidas[0].que, 'nuestro');
     assert.equal(partidas[0].regimen, 'exento');
   });
 
@@ -274,14 +293,15 @@ describe('lo pegado con base e IVA', () => {
 
   test('una factura entera, con sus dos formas de línea', () => {
     const { partidas } = leeLoPegado([
+      'Impuesto de matriculación\t1420,00',
       'Tasa DGT\t99,77',
       'Honorarios\t74,38\t21\t90,00',
     ].join('\n'));
     const r = resumenDeLaGestoria(partidas);
-    assert.equal(r.total, 189.77);
-    assert.equal(r.suplidos, 99.77);
-    assert.equal(r.honorarios, 90);
-    assert.equal(r.honorariosBase, 74.38);
+    assert.equal(r.total, 1609.77);
+    assert.equal(r.suplidos, 1420, 'solo el impuesto es del cliente');
+    assert.equal(r.honorarios, 189.77, 'la tasa también la pagamos nosotros');
+    assert.equal(r.honorariosBase, 174.15);
     assert.equal(r.sinDesglosar, 0);
   });
 });
@@ -300,9 +320,11 @@ describe('lo que llegue de la base', () => {
   });
 
   test('el mismo array como texto', () => {
-    const r = resumenDeLaGestoria(JSON.stringify([{ concepto: 'Tasa DGT', importe: 99.77 }]));
-    assert.equal(r.total, 99.77);
-    assert.equal(r.suplidos, 99.77);
+    const r = resumenDeLaGestoria(JSON.stringify([
+      { concepto: 'Impuesto de matriculación', importe: 1420 },
+    ]));
+    assert.equal(r.total, 1420);
+    assert.equal(r.suplidos, 1420);
   });
 
   test('un texto que no es JSON no revienta', () => {
