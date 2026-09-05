@@ -898,41 +898,32 @@ onEncargarALaGestoria, aviso }: PanelProps) {
                 ) : hayQueMover ? (
                   <>
                     {/*
-                      * Tres botones y no uno, porque no es lo mismo.
+                      * Un botón, y ya no tres.
                       *
-                      * Cobrarle la diferencia y ponerla nosotros acaban las dos en
-                      * «liquidado», pero una no cuesta nada y la otra sale del
-                      * margen de este coche. Con un solo botón, un coche cuyo
-                      * impuesto nos comimos parece igual de rentable que otro que
-                      * cuadró, y el margen medio de la empresa sale de ahí.
+                      * Hubo un tercero, «lo ponemos nosotros», de cuando al primer
+                      * coche se le comieron 1.071 € de impuesto contra el margen. El
+                      * asesor lo zanjó: el impuesto es del cliente y se le cobra
+                      * entero. Un botón que ofrece asumirlo se acaba pulsando la
+                      * primera vez que a alguien le dé apuro pedir la diferencia.
+                      *
+                      * Que sobre o que falte queda en «cobrada» o «devuelta», que es
+                      * lo único que puede pasar.
                       */}
                     <div className="flex flex-wrap gap-1.5">
-                      {liq.quien === 'cobrar' ? (
-                        <>
-                          <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'cobrada' })}
-                                  disabled={guardando}
-                                  className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
-                            Se lo he cobrado
-                          </button>
-                          <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'asumida' })}
-                                  disabled={guardando}
-                                  className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-300 rounded-lg hover:bg-brand-50 disabled:opacity-50">
-                            Lo ponemos nosotros
-                          </button>
-                        </>
-                      ) : (
-                        <button onClick={() => onCambiar({ liquidacion_hecha: true, liquidacion_como: 'devuelta' })}
-                                disabled={guardando}
-                                className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
-                          Se lo he devuelto
-                        </button>
-                      )}
+                      <button onClick={() => onCambiar({
+                                liquidacion_hecha: true,
+                                liquidacion_como: liq.quien === 'cobrar' ? 'cobrada' : 'devuelta',
+                              })}
+                              disabled={guardando}
+                              className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50">
+                        {liq.quien === 'cobrar' ? 'Se lo he cobrado' : 'Se lo he devuelto'}
+                      </button>
                     </div>
                     {liq.quien === 'cobrar' && (
                       <div className="text-[10px] text-brand-400 mt-1.5">
-                        Si lo ponemos nosotros, esos {eur(Math.abs(liq.diferencia))} salen
-                        del margen de este coche y así se ven en el pedido. No es lo
-                        mismo que cobrárselo.
+                        El impuesto es suyo y se le cobra entero. Ponerlo nosotros no es
+                        una opción: es su impuesto, y lo que aquí se ahorra el cliente
+                        sale del margen de este coche.
                       </div>
                     )}
                   </>

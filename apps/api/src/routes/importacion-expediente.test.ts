@@ -360,3 +360,29 @@ describe('el expediente se cierra cuando llega el coche', () => {
     assert.match(FUENTE, /await daloPorEntregadoSiYaLlego\(\)\.catch/);
   });
 });
+
+/**
+ * La diferencia del impuesto: cobrada o devuelta, y nada más.
+ *
+ * Hubo un tercer camino, «asumida», de cuando al primer coche se le comieron
+ * 1.071 € de impuesto contra el margen. El asesor lo zanjó: el impuesto es del
+ * cliente y se le cobra entero.
+ *
+ * Se comprueba en el servidor y no en la pantalla porque quitar un botón no
+ * cierra nada: el valor se puede mandar igual.
+ */
+describe('cómo se liquida la diferencia del impuesto', () => {
+  const FUENTE = readFileSync(new URL('./leads.ts', import.meta.url), 'utf8');
+  const QUE_SE_ACEPTA = FUENTE.split('\n').find((l) => l.includes('.includes(como)')) ?? '';
+
+  test('el servidor solo acepta cobrada o devuelta', () => {
+    assert.ok(QUE_SE_ACEPTA, 'no encuentro dónde se validan los valores');
+    assert.match(QUE_SE_ACEPTA, /'cobrada'/);
+    assert.match(QUE_SE_ACEPTA, /'devuelta'/);
+  });
+
+  test('y «asumida» ya no entra ni mandándola a mano', () => {
+    assert.ok(!QUE_SE_ACEPTA.includes('asumida'),
+      'el impuesto es del cliente: ponerlo nosotros no es una opción del sistema');
+  });
+});

@@ -722,7 +722,9 @@ describe('una importación de punta a punta', { concurrency: 1 }, () => {
     const coste = await api(`/pedidos/${pedido.id}/coste`);
     assert.equal(coste.codigo, 200);
     const partidas = (coste.cuerpo.data as { partidas: { concepto: string; importe: number }[]; total: number });
-    assert.equal(partidas.total, 9000 + 620 + 400 + 480,
+    // Los 400 € de honorarios llegan netos, así que la gestoría factura 484:
+    // en su desglose el IVA no está dentro de las líneas, se suma al final.
+    assert.equal(partidas.total, 9000 + 620 + 484 + 480,
       'proveedor, transporte, el expediente de gestoría y los neumáticos');
     assert.equal(partidas.partidas.length, 4);
 

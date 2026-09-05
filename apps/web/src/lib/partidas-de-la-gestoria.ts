@@ -17,7 +17,7 @@
  * es perder la única distinción que Hacienda mira.
  */
 
-import { desglosa, cuenta, comoSeCuenta as comoSeCuentaElDinero, type Regimen } from './dinero.js';
+import { desglosa, cuenta, comoSeCuenta as comoSeCuentaElDinero, IVA_GENERAL, type Regimen } from './dinero.js';
 
 /** Si el dinero es de un tercero o es nuestro. */
 export type QueEs = 'suplido' | 'nuestro';
@@ -147,24 +147,35 @@ export function resumenDeLaGestoria(
     .filter((p) => p && String(p.concepto ?? '').trim());
   const c = cuenta(lista.map((p) => {
     const que = p.que ?? queEsPorDefecto(p.concepto);
-    return {
-    base: p.base,
     /*
-     * Un suplido sin tipo escrito va al 0 %, y eso no es suponer nada.
+     * Un honorario llega **sin IVA**, y un suplido llega tal cual.
      *
-     * Una tasa de la DGT o el impuesto de matriculación no llevan IVA: si lo
-     * llevaran no serían un suplido. Dejarlo «sin desglosar» diría que falta un
-     * dato que no existe, y ensuciaría el aviso de las que sí faltan.
+     * Lo confirmó el asesor: en el desglose de una gestoría los honorarios van
+     * netos y el IVA se suma al final. Así que en un honorario el importe de la
+     * línea es la **base**, no el total — que es justo al revés de lo que se
+     * suponía aquí, y hace que la factura llegue más alta que la suma de sus
+     * líneas: 253 € de líneas son 273,66 € de factura.
+     *
+     * En un suplido no hay nada que sumar: una tasa de la DGT o el impuesto de
+     * matriculación no llevan IVA, y si lo llevaran no serían un suplido.
      */
-    iva: p.iva ?? (que === 'suplido' ? 0 : undefined),
-    total: p.importe,
-    que,
-    regimen: p.regimen ?? (que === 'suplido' ? 'exento' as const : 'nacional' as const),
+    const importe = p.importe;
+    const esHonorario = que !== 'suplido';
+    return {
+      base: p.base ?? (esHonorario ? importe : undefined),
+      iva: p.iva ?? (esHonorario ? IVA_GENERAL : 0),
+      total: esHonorario ? undefined : importe,
+      que,
+      regimen: p.regimen ?? (esHonorario ? 'nacional' as const : 'exento' as const),
     };
   }));
+  // Lo suyo con el IVA puesto: la base de cada honorario por su tipo. Es lo
+  // que va a poner el total de su factura, y no la suma de las líneas.
   const conIva = lista
     .filter((p) => (p.que ?? queEsPorDefecto(p.concepto)) !== 'suplido')
-    .reduce((s, p) => s + desglosa({ base: p.base, iva: p.iva, total: p.importe, regimen: p.regimen }).total, 0);
+    .reduce((s, p) => s + desglosa({
+      base: p.base ?? p.importe, iva: p.iva ?? IVA_GENERAL, regimen: p.regimen,
+    }).total, 0);
   const redondea = (n: number) => Math.round(n * 100) / 100;
   return {
     cuantas: lista.length,

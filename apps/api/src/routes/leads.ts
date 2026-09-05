@@ -899,8 +899,16 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
      * nos comimos parece igual de rentable que otro que cuadró, y el margen
      * medio de la empresa sale de ahí.
      */
+    /*
+     * Y «asumida» ya no se acepta.
+     *
+     * El impuesto es del cliente y se le cobra entero: lo zanjó el asesor
+     * después de que al primer coche se le comieran 1.071 € contra el margen.
+     * La pantalla ya no ofrece el botón, y esto es la puerta de atrás: un
+     * valor que no se puede pulsar pero sí mandar no está cerrado.
+     */
     const como = String(req.body?.liquidacion_como ?? '').trim();
-    values.push(liquidacion_hecha && ['cobrada', 'devuelta', 'asumida'].includes(como) ? como : null);
+    values.push(liquidacion_hecha && ['cobrada', 'devuelta'].includes(como) ? como : null);
     sets.push(`liquidacion_como = ${values.length}`);
   }
   if (delivery_estimate !== undefined) { values.push(delivery_estimate || null); sets.push(`delivery_estimate = $${values.length}`); }

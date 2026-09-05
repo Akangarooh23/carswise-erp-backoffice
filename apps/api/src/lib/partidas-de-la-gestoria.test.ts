@@ -25,9 +25,11 @@ describe('lo que es de terceros y lo que es suyo', () => {
   test('se separan, que es para lo que existe esto', () => {
     const r = resumenDeLaGestoria(FACTURA);
     assert.equal(r.cuantas, 4);
-    assert.equal(r.total, 1754.77);
     assert.equal(r.suplidos, 1664.77);
-    assert.equal(r.honorarios, 90);
+    // Los 90 € de honorarios son la base: la factura pone 108,90.
+    assert.equal(r.honorariosBase, 90);
+    assert.equal(r.honorarios, 108.9);
+    assert.equal(r.total, 1773.67, "el total es lo que se paga, con el IVA de lo suyo");
   });
 
   /*
@@ -49,16 +51,33 @@ describe('lo que es de terceros y lo que es suyo', () => {
     assert.equal(r.sinDesglosar, 0, 'los suplidos exentos sí se saben: van al 0 %');
   });
 
-  test('y sin desglose se dice, en vez de suponerle un 21 %', () => {
-    // Un 21 % encima de unos honorarios que ya lo llevaban dentro no da un
-    // error visible: da una cifra plausible y equivocada.
+  test('un honorario a secas es la base, y el IVA va encima', () => {
+    /*
+     * Aquí se suponía lo contrario —que el importe ya llevaba el IVA dentro— y
+     * la partida se marcaba «sin desglosar» para no inventarse nada. Lo aclaró
+     * el asesor: en el desglose de una gestoría los honorarios van netos.
+     *
+     * El riesgo se ha dado la vuelta, y conviene saberlo: si una gestoría
+     * mandara los suyos con el IVA dentro, aquí saldrían un 21 % más caros. Se
+     * arregla escribiéndole su base y su tipo a la partida, que mandan sobre
+     * esto.
+     */
     const r = resumenDeLaGestoria([
       { concepto: 'Honorarios de la gestoría', importe: 90, que: 'nuestro' as const },
     ]);
-    assert.equal(r.honorariosBase, 90, 'sin saber el IVA, cuenta entera como base');
-    assert.equal(r.iva, 0);
-    assert.equal(r.sinDesglosar, 1);
-    assert.match(comoSeCuenta(r), /no dice su IVA/);
+    assert.equal(r.honorariosBase, 90, 'el importe de la línea es la base');
+    assert.equal(r.iva, 18.9);
+    assert.equal(r.honorarios, 108.9);
+    assert.equal(r.sinDesglosar, 0, "ya no hay nada que no se sepa partir");
+  });
+
+  test('y si la partida trae su base y su tipo, mandan ellos', () => {
+    // La salida para una gestoría que sí facture con el IVA dentro.
+    const r = resumenDeLaGestoria([
+      { concepto: 'Honorarios de la gestoría', importe: 90, base: 74.38, iva: 21, que: 'nuestro' as const },
+    ]);
+    assert.equal(r.honorariosBase, 74.38);
+    assert.equal(r.honorarios, 90);
   });
 
   test('y se dice, porque un total suelto parece coste nuestro', () => {

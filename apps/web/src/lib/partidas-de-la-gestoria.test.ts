@@ -65,8 +65,10 @@ describe('la cuenta que importa', () => {
       { concepto: 'ITV de homologación', importe: 145 },
       { concepto: 'Honorarios de la gestoría', importe: 90, que: 'nuestro' },
     ]);
-    assert.equal(r.total, 1754.77);
     assert.equal(r.suplidos, 1664.77);
-    assert.equal(r.honorarios, 90);
+    // Los 90 € de honorarios son la base; con su IVA, 108,90.
+    assert.equal(r.honorariosBase, 90);
+    assert.equal(r.honorarios, 108.9);
+    assert.equal(r.total, 1773.67);
   });
 });
