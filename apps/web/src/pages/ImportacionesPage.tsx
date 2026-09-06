@@ -11,7 +11,7 @@ import Plegable from '../components/Plegable.js';
 import {
   ETAPAS, COLUMNAS, QUE_TOCA, QUE_TOCA_COLUMNA, COLUMNA_SEGUNDO_VIAJE,
   siguienteEtapa, fianzaPagada, puedeDarFecha, bloquesDelExpediente,
-  verificadoEnAlemania, depositoLiberado, puedeLiberar, repartoDelDeposito,
+  verificadoEnAlemania, depositoLiberado, depositoTransferido, puedeLiberar, repartoDelDeposito,
   facturaDelVendedorPedida, encargoALaGestoriaEnviado, reservaPreguntada,
   liquidacionDelImpuesto,
   laDesviacion,
@@ -1172,10 +1172,29 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             )}
 
             <div className="mt-3 pt-3 border-t border-emerald-200/70">
-              {depositoLiberado(x) ? (
+              {depositoTransferido(x) ? (
                 <span className="text-[13px] font-bold text-emerald-700">
-                  ✓ Pago liberado al vendedor el {dia(x.meta?.escrow_liberado_at)}
+                  ✓ El vendedor cobró el {dia(x.meta?.escrow_transferido_at)}
                 </span>
+              ) : depositoLiberado(x) ? (
+                /*
+                  * Liberado y transferido son dos cosas.
+                  *
+                  * Liberar quita la retención; el dinero sigue en la cuenta
+                  * hasta que el depositario lo manda. Ese día alguien puede
+                  * preguntar «¿le hemos pagado?» y la respuesta honesta es
+                  * «hemos dicho que sí» — y es el último día en el que todavía
+                  * se puede parar.
+                  */
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] font-bold text-acento-texto">
+                    Liberado el {dia(x.meta?.escrow_liberado_at)} · el dinero sigue en la cuenta
+                  </span>
+                  <button onClick={() => onCambiar({ marca_transferido: true })} disabled={guardando}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 disabled:opacity-50">
+                    El vendedor ya ha cobrado
+                  </button>
+                </div>
               ) : (
                 <>
                   <button onClick={() => onCambiar({ libera_deposito: true })}

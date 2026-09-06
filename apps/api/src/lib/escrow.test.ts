@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import {
   ESTADOS_DEPOSITO, TRANSICIONES,
   sePuedeLiberar, PORQUE_NO_SE_LIBERA, transicionValida, liquidacionDelImpuesto,
-  escritoEnLista, faltanDatosDelVendedor,
+  escritoEnLista, faltanDatosDelVendedor, sePuedeTransferir, PORQUE_NO_SE_TRANSFIERE,
 } from './escrow.js';
 
 describe('liberar el dinero', () => {
@@ -70,8 +70,9 @@ describe('liberar el dinero', () => {
 });
 
 describe('los estados del depósito', () => {
-  test('son cuatro y no hay más', () => {
-    assert.deepEqual([...ESTADOS_DEPOSITO], ['pendiente', 'retenido', 'liberado', 'devuelto']);
+  test('son cinco y no hay más', () => {
+    assert.deepEqual([...ESTADOS_DEPOSITO],
+      ['pendiente', 'retenido', 'liberado', 'transferido', 'devuelto']);
   });
 
   test('se deposita antes de retener', () => {
@@ -85,11 +86,23 @@ describe('los estados del depósito', () => {
     assert.equal(transicionValida('retenido', 'devuelto'), true);
   });
 
-  test('liberado y devuelto son finales', () => {
-    // El dinero ya se movió. Cambiar el estado después no lo trae de vuelta, y
+  test('transferido y devuelto son finales', () => {
+    // El dinero ya salió. Cambiar el estado después no lo trae de vuelta, y
     // dejarlo cambiar esconde lo que pasó de verdad.
-    assert.deepEqual([...TRANSICIONES.liberado], []);
+    assert.deepEqual([...TRANSICIONES.transferido], []);
     assert.deepEqual([...TRANSICIONES.devuelto], []);
+  });
+
+  test('pero de liberado todavía se puede devolver', () => {
+    /*
+     * Esa es la mitad del motivo de haber partido el paso: liberar quita la
+     * retención y el dinero sigue en la cuenta. Ese día se puede parar, y con
+     * un solo estado ese día no existía.
+     */
+    assert.equal(transicionValida('liberado', 'devuelto'), true);
+    assert.equal(transicionValida('liberado', 'transferido'), true);
+    assert.equal(transicionValida('transferido', 'devuelto'), false,
+      'lo que ya salió no vuelve por cambiar un estado en una pantalla');
   });
 
   test('un estado inventado no vale', () => {
@@ -324,5 +337,38 @@ describe('cómo se escribe lo que falta', () => {
 
   test('ninguno, nada', () => {
     assert.equal(escritoEnLista([]), '');
+  });
+});
+
+describe('dar por transferido', () => {
+  test('solo desde liberado', () => {
+    // Dar por pagado un depósito que sigue retenido es escribir que el vendedor
+    // tiene un dinero que no ha salido de la cuenta, y con eso se cierra un
+    // expediente y se le entrega un coche a alguien.
+    assert.equal(sePuedeTransferir('liberado').puede, true);
+    assert.equal(sePuedeTransferir('retenido').puede, false);
+    assert.equal(sePuedeTransferir('retenido').motivo, 'sin_liberar');
+    assert.equal(sePuedeTransferir('pendiente').motivo, 'sin_liberar');
+  });
+
+  test('y no dos veces', () => {
+    assert.equal(sePuedeTransferir('transferido').motivo, 'ya_transferido');
+    assert.equal(sePuedeTransferir('devuelto').motivo, 'ya_devuelto');
+  });
+
+  test('sin estado se supone pendiente, que es lo prudente', () => {
+    assert.equal(sePuedeTransferir(null).puede, false);
+    assert.equal(sePuedeTransferir(undefined).motivo, 'sin_liberar');
+  });
+
+  test('cada motivo tiene una frase, no un código', () => {
+    // «sin_liberar» delante de alguien que acaba de pulsar no dice nada.
+    for (const m of ['sin_liberar', 'ya_transferido', 'ya_devuelto'] as const) {
+      assert.ok(PORQUE_NO_SE_TRANSFIERE[m]?.length > 10, m);
+    }
+  });
+
+  test('y liberar dos veces sigue estando prohibido, ahora también desde transferido', () => {
+    assert.equal(sePuedeLiberar({ estado: 'transferido' }).motivo, 'ya_liberado');
   });
 });

@@ -120,6 +120,9 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS escrow_impuesto        NUMERIC(10,2),
       ADD COLUMN IF NOT EXISTS liquidacion_at         TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_estado          VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+      -- Cuándo salió de verdad, que no es cuándo se autorizó a que saliera.
+      -- Entre las dos hay un día en el que el dinero no es de nadie.
+      ADD COLUMN IF NOT EXISTS escrow_transferido_at  TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_pagado_at       TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_liberado_at     TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS escrow_devuelto_at     TIMESTAMPTZ,

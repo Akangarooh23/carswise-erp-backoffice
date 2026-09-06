@@ -281,14 +281,38 @@ export function pasosDeLaImportacion(x: Expediente, hoy: Date = new Date()): Pas
           }
   );
 
-  // 9 · El dinero sale.
+  /*
+   * 9 · El dinero sale, en dos pasos.
+   *
+   * Liberar quita la retención; transferir es que el vendedor lo tiene. Entre
+   * los dos hay un día en el que el dinero no es de nadie, y el camino decía
+   * «Pagado al vendedor» desde el primero: quien lo leía daba por hecho que el
+   * dinero había salido cuando solo se había autorizado a que saliera.
+   */
   const liberado = Boolean(m.escrow_liberado_at);
+  const transferido = Boolean(m.escrow_transferido_at);
   pasos.push({
     clave: 'liberar',
-    titulo: liberado ? 'Pagado al vendedor' : 'Liberar el pago al vendedor',
+    titulo: liberado ? 'Liberado el pago al vendedor' : 'Liberar el pago al vendedor',
     estado: liberado ? 'hecho' : visto ? 'toca' : 'porVenir',
     cuando: m.escrow_liberado_at ?? null,
     donde: '/importaciones',
+  });
+  pasos.push({
+    clave: 'transferir',
+    titulo: transferido ? 'El vendedor ha cobrado' : 'Confirmar que el vendedor ha cobrado',
+    estado: transferido ? 'hecho' : liberado ? 'toca' : 'porVenir',
+    cuando: m.escrow_transferido_at ?? null,
+    donde: '/importaciones',
+    /*
+     * Va por su cuenta: el coche no lo espera.
+     *
+     * Una vez liberado, el transporte se organiza y el coche viaja tenga o no
+     * confirmado el ingreso el vendedor. Puesto en la vía principal, un
+     * expediente en trámites diría «ahora toca confirmar que el vendedor ha
+     * cobrado» y parecería parado cuando no lo está.
+     */
+    via: 'aparte',
   });
 
   /*

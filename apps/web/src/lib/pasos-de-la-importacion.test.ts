@@ -177,6 +177,8 @@ describe('el final del camino', () => {
     reserva_preguntada_at: '2026-09-02T10:00:00Z',
     verificado_alemania_at: '2026-09-07T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
     peritacion: {
       id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
@@ -332,6 +334,8 @@ describe('el número rojo del menú', () => {
       reserva_preguntada_at: '2026-09-02T10:00:00Z',
       verificado_alemania_at: '2026-09-07T10:00:00Z',
       escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
       factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
       peritacion: {
         id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
@@ -353,6 +357,8 @@ describe('el número rojo del menú', () => {
     const listo = kia({
       deposit_paid_at: '2026-09-01T10:00:00Z',
       escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
       encargo_gestoria_enviado_at: '2026-09-20T10:00:00Z',
       tramites: [
         { tipo: 'Impuesto de matriculación', estado: 'Resuelto' },
@@ -371,6 +377,8 @@ describe('el número rojo del menú', () => {
     const aMedias = kia({
       deposit_paid_at: '2026-09-01T10:00:00Z',
       escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
       encargo_gestoria_enviado_at: '2026-09-20T10:00:00Z',
       tramites: [
         { tipo: 'Impuesto de matriculación', estado: 'Resuelto' },
@@ -461,6 +469,8 @@ describe('lo que mueve el coche y lo que va por su cuenta', () => {
     reserva_preguntada_at: '2026-09-02T10:00:00Z',
     verificado_alemania_at: '2026-09-07T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
     peritacion: {
       id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
@@ -508,6 +518,8 @@ describe('la factura del vendedor: pedirla, esperarla y tenerla', () => {
     reserva_preguntada_at: '2026-09-02T10:00:00Z',
     verificado_alemania_at: '2026-09-07T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     peritacion: {
       id: 'PER-2026-001', estado: 'Hecha', veredicto: 'es_el_que_se_anuncio',
       perito: 'checkdenwagen', fecha_hecha: '2026-09-07T10:00:00Z',
@@ -559,6 +571,8 @@ describe('lo que vive en Pedidos', () => {
     reserva_preguntada_at: '2026-09-02T10:00:00Z',
     verificado_alemania_at: '2026-09-07T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     factura_vendedor_pedida_at: '2026-09-08T11:00:00Z',
     factura_vendedor_subida: true,
     recogida_preguntada_at: '2026-09-09T10:00:00Z',
@@ -602,6 +616,8 @@ describe('el segundo viaje: de Zaragoza a casa del cliente', () => {
   const EN_TRAMITES = {
     deposit_paid_at: '2026-09-01T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     recogida_preguntada_at: '2026-09-09T10:00:00Z',
     tramo: { recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z' },
   };
@@ -654,6 +670,8 @@ describe('llegar es que lo descarguen, no que cambie la etapa', () => {
   const DESCARGADO = {
     deposit_paid_at: '2026-09-01T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     recogida_preguntada_at: '2026-09-09T10:00:00Z',
     tramo: {
       recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
@@ -692,6 +710,8 @@ describe('mirarlo al bajarlo del camión', () => {
   const AQUI = {
     deposit_paid_at: '2026-09-01T10:00:00Z',
     escrow_liberado_at: '2026-09-08T10:00:00Z',
+    // Liberar quita la retención; esto es que el vendedor ya lo tiene.
+    escrow_transferido_at: '2026-09-08T18:00:00Z',
     recogida_preguntada_at: '2026-09-09T10:00:00Z',
     tramo: {
       recogida_prevista: '2026-09-15', orden_enviada_at: '2026-09-10T09:00:00Z',
@@ -802,5 +822,51 @@ describe('las facturas de proveedor que no han llegado', () => {
     assert.equal(pasosDeLaImportacion(entregado([])).find((x) => x.clave === 'facturasProveedor'), undefined);
     const sinMeta = { status: 'Entregado', meta: {} } as unknown as Expediente;
     assert.equal(pasosDeLaImportacion(sinMeta).find((x) => x.clave === 'facturasProveedor'), undefined);
+  });
+});
+
+describe('liberar y que el vendedor cobre son dos pasos', () => {
+  /*
+   * Eran uno, y el camino decía «Pagado al vendedor» desde que se quitaba la
+   * retención: quien lo leía daba por hecho que el dinero había salido cuando
+   * solo se había autorizado a que saliera.
+   */
+  const LIBERADO = {
+    deposit_paid_at: '2026-09-01T10:00:00Z',
+    reserva_preguntada_at: '2026-09-02T10:00:00Z',
+    verificado_alemania_at: '2026-09-07T10:00:00Z',
+    escrow_liberado_at: '2026-09-08T10:00:00Z',
+  };
+
+  test('liberado no es cobrado', () => {
+    const x = kia(LIBERADO);
+    assert.equal(paso(x, 'liberar').estado, 'hecho');
+    assert.equal(paso(x, 'transferir').estado, 'toca');
+    assert.match(paso(x, 'liberar').titulo, /Liberado/);
+  });
+
+  test('y con el dinero fuera, los dos hechos', () => {
+    const x = kia({ ...LIBERADO, escrow_transferido_at: '2026-09-08T18:00:00Z' });
+    assert.equal(paso(x, 'transferir').estado, 'hecho');
+    assert.match(paso(x, 'transferir').titulo, /ha cobrado/);
+  });
+
+  test('antes de liberar no toca confirmar nada', () => {
+    const x = kia({ deposit_paid_at: '2026-09-01T10:00:00Z' });
+    assert.equal(paso(x, 'transferir').estado, 'porVenir');
+  });
+
+  test('confirmar el cobro no para el coche', () => {
+    /*
+     * Una vez liberado, el transporte se organiza y el coche viaja tenga o no
+     * confirmado el ingreso el vendedor. En la vía principal, un expediente en
+     * trámites diría «ahora toca confirmar que el vendedor ha cobrado» y
+     * parecería parado cuando no lo está.
+     */
+    const x = kia(LIBERADO);
+    assert.equal(paso(x, 'transferir').via, 'aparte');
+    assert.notEqual(loQueToca(pasosDeLaImportacion(x, HOY))?.clave, 'transferir');
+    assert.ok(loQueFaltaAparte(pasosDeLaImportacion(x, HOY)).some((p) => p.clave === 'transferir'),
+      'pero sigue contando como tarea nuestra');
   });
 });

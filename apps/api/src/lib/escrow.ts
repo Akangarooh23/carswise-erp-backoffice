@@ -20,29 +20,75 @@
 /**
  * Los estados por los que pasa el dinero. No hay más, y no se saltan.
  *
- * - `pendiente` — se le ha dicho cuánto, no ha transferido.
- * - `retenido`  — está en la cuenta de depósito. Nadie puede tocarlo.
- * - `liberado`  — se confirmó el coche y el vendedor ha cobrado.
- * - `devuelto`  — el coche no era lo que decía, o se echó atrás a tiempo.
+ * - `pendiente`   — se le ha dicho cuánto, no ha transferido.
+ * - `retenido`    — está en la cuenta de depósito. Nadie puede tocarlo.
+ * - `liberado`    — se confirmó el coche y se quita la retención. **El dinero
+ *   sigue en la cuenta**: el depositario ya puede mandarlo y no lo ha mandado.
+ * - `transferido` — ha salido y el vendedor lo tiene.
+ * - `devuelto`    — el coche no era lo que decía, o se echó atrás a tiempo.
+ *
+ * ## Por qué liberar y transferir son dos
+ *
+ * Eran un solo clic, y entre los dos hay un día entero en el que el dinero no
+ * es de nadie: ya no está retenido y el vendedor todavía no lo tiene. Con un
+ * estado solo ese día no existe, y es justo el día en el que alguien pregunta
+ * «¿le hemos pagado ya?» y la respuesta honesta es «hemos dicho que sí».
+ *
+ * Y es un día en el que **todavía se puede parar**. Por eso se puede devolver
+ * desde `liberado` y no desde `transferido`: lo que ya salió no vuelve por
+ * cambiar un estado en una pantalla.
  */
-export const ESTADOS_DEPOSITO = ['pendiente', 'retenido', 'liberado', 'devuelto'] as const;
+export const ESTADOS_DEPOSITO = ['pendiente', 'retenido', 'liberado', 'transferido', 'devuelto'] as const;
 export type EstadoDeposito = (typeof ESTADOS_DEPOSITO)[number];
 
 /**
  * Desde cada estado, a dónde se puede ir.
  *
- * `liberado` y `devuelto` son finales: el dinero ya se movió. Dejar cambiar el
- * estado después no lo trae de vuelta y esconde lo que pasó de verdad.
+ * `transferido` y `devuelto` son finales: el dinero ya se movió. Dejar cambiar
+ * el estado después no lo trae de vuelta y esconde lo que pasó de verdad.
+ *
+ * De `liberado` todavía se puede devolver: se ha quitado la retención pero el
+ * dinero sigue en la cuenta, y esa es la mitad del motivo de haberlo partido.
  */
 export const TRANSICIONES: Record<EstadoDeposito, readonly EstadoDeposito[]> = {
   pendiente: ['retenido'],
   retenido: ['liberado', 'devuelto'],
-  liberado: [],
+  liberado: ['transferido', 'devuelto'],
+  transferido: [],
   devuelto: [],
 };
 
 export type MotivoNoLiberar = 'sin_pagar' | 'sin_verificar' | 'ya_liberado' | 'ya_devuelto'
   | 'sin_datos_del_vendedor';
+
+/** Y por qué no se puede dar por transferido. */
+export type MotivoNoTransferir = 'sin_liberar' | 'ya_transferido' | 'ya_devuelto';
+
+export const PORQUE_NO_SE_TRANSFIERE: Record<MotivoNoTransferir, string> = {
+  sin_liberar: 'Todavía no se ha liberado: el dinero sigue retenido y nadie puede mandarlo.',
+  ya_transferido: 'Ya está transferido.',
+  ya_devuelto: 'Este depósito se devolvió.',
+};
+
+/**
+ * Si se puede dar por transferido.
+ *
+ * Solo desde `liberado`. Dar por pagado un depósito que sigue retenido es
+ * escribir que el vendedor tiene un dinero que no ha salido de la cuenta, y con
+ * eso se cierra un expediente y se le entrega un coche a alguien.
+ */
+export function sePuedeTransferir(estado?: string | null): {
+  puede: boolean; motivo: MotivoNoTransferir | null;
+} {
+  const suyo = String(estado ?? 'pendiente');
+  if (suyo === 'liberado') return { puede: true, motivo: null };
+  return {
+    puede: false,
+    motivo: suyo === 'transferido' ? 'ya_transferido'
+      : suyo === 'devuelto' ? 'ya_devuelto'
+      : 'sin_liberar',
+  };
+}
 
 /** Lo que se le dice a quien intenta liberar y no puede. */
 export const PORQUE_NO_SE_LIBERA: Record<MotivoNoLiberar, string> = {
@@ -110,7 +156,7 @@ export function sePuedeLiberar(datos: {
   const estado = String(datos.estado ?? 'pendiente');
   if (estado !== 'retenido') {
     const motivo: MotivoNoLiberar =
-      estado === 'liberado' ? 'ya_liberado'
+      estado === 'liberado' || estado === 'transferido' ? 'ya_liberado'
       : estado === 'devuelto' ? 'ya_devuelto'
       : 'sin_pagar';
     return { puede: false, motivo };

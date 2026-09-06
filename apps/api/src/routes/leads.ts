@@ -25,7 +25,10 @@ export const leadsRouter = Router();
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
-import { sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto } from '../lib/escrow.js';
+import {
+  sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto,
+  sePuedeTransferir, PORQUE_NO_SE_TRANSFIERE,
+} from '../lib/escrow.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { correoDeFacturaAlVendedor, faltaParaPedirLaFactura } from '../lib/factura-al-vendedor.js';
 import { correoDeEncargoALaGestoria, faltaParaElEncargo } from '../lib/encargo-a-la-gestoria.js';
@@ -592,6 +595,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
                   'escrow_impuesto',       escrow_impuesto,
                   'escrow_estado',         escrow_estado,
                   'escrow_liberado_at',    escrow_liberado_at,
+                  'escrow_transferido_at', escrow_transferido_at,
                   'verificado_alemania_at', verificado_alemania_at,
                   -- La peritación de este coche, si la hay.
                   --
@@ -899,7 +903,7 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     // cuándo le hemos dicho que lo tendrá.
     deposit_paid, delivery_estimate,
     // Y los dos pasos que mueven su dinero: haber visto el coche, y soltarlo.
-    verificado_alemania, libera_deposito,
+    verificado_alemania, libera_deposito, marca_transferido,
     // Y el ajuste del impuesto, cuando ya se sabe lo que costó de verdad.
     liquidacion_hecha,
   } = req.body ?? {};
@@ -1109,6 +1113,37 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     sets.push(`escrow_estado = 'liberado'`);
     // Con el dinero soltado, el coche es suyo: el expediente avanza solo.
     if (!status) sets.push(`status = 'Verificado y pagado'`);
+  }
+
+  /**
+   * Y que el dinero ha salido de verdad.
+   *
+   * Liberar quita la retención; esto es que el depositario lo mandó y el
+   * vendedor lo tiene. Eran un solo clic, y entre los dos hay un día entero en
+   * el que la respuesta honesta a «¿le hemos pagado?» es «hemos dicho que sí».
+   *
+   * Se mira contra lo guardado, igual que al liberar: dar por pagado un
+   * depósito que sigue retenido es escribir que el vendedor tiene un dinero que
+   * no ha salido de la cuenta, y con eso se cierra un expediente y se le
+   * entrega un coche a alguien.
+   */
+  if (marca_transferido) {
+    const ahora = await query<{ escrow_estado: string | null }>(
+      `SELECT escrow_estado FROM moveadvisor_market_leads WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!ahora.rows.length) { res.status(404).json({ ok: false, error: 'lead_not_found' }); return; }
+
+    const veredicto = sePuedeTransferir(ahora.rows[0].escrow_estado);
+    if (!veredicto.puede) {
+      res.status(409).json({
+        ok: false, error: veredicto.motivo,
+        detail: veredicto.motivo ? PORQUE_NO_SE_TRANSFIERE[veredicto.motivo] : undefined,
+      });
+      return;
+    }
+    sets.push(`escrow_transferido_at = NOW()`);
+    sets.push(`escrow_estado = 'transferido'`);
   }
 
   if (!sets.length) { res.status(400).json({ ok: false, error: 'no_fields_to_update' }); return; }

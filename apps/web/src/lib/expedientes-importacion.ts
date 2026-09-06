@@ -116,6 +116,8 @@ export interface MetaImportacion {
   facturas_sin_llegar?: { proveedor?: string | null; concepto?: string | null; importe?: number | string | null }[] | null;
   escrow_estado?: string | null;
   escrow_liberado_at?: string | null;
+  /** Cuándo salió de verdad, que no es cuándo se autorizó a que saliera. */
+  escrow_transferido_at?: string | null;
   // Cuándo se le pidió al vendedor la factura del coche, y a qué correo.
   /**
    * La peritación de este coche, si la hay.
@@ -272,6 +274,17 @@ export function verificadoEnAlemania(x: Expediente): boolean {
 }
 
 /** Si el dinero ya salió hacia el vendedor. */
+/**
+ * Y si ha salido de verdad.
+ *
+ * Liberar quita la retención; transferir es que el vendedor lo tiene. Entre las
+ * dos hay un día en el que la respuesta honesta a «¿le hemos pagado?» es «hemos
+ * dicho que sí», y con un solo dato ese día no existía.
+ */
+export function depositoTransferido(x: Expediente): boolean {
+  return Boolean(x.meta?.escrow_transferido_at);
+}
+
 export function depositoLiberado(x: Expediente): boolean {
   return Boolean(x.meta?.escrow_liberado_at);
 }
