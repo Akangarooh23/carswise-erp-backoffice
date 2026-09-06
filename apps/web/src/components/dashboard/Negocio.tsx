@@ -24,14 +24,25 @@ const euros = (n: unknown) => {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 };
 
-/** Una línea de servicio: qué es, cuánto hay y a dónde lleva. */
+/**
+ * Una línea de servicio: qué es, cuánto hay y a dónde lleva.
+ *
+ * El destino es opcional. Seguros y mantenimientos del cliente todavía no
+ * tienen pantalla propia, y mandar a alguien a Usuarios porque el seguro cuelga
+ * de un usuario es peor que no mandarlo: pincha, no encuentra nada, y la
+ * próxima vez ya no pincha ninguna.
+ */
 function Servicio({ nombre, valor, pie, icono, a, vacio }: {
-  nombre: string; valor: string; pie: string; icono: NombreIcono; a: string; vacio: boolean;
+  nombre: string; valor: string; pie: string; icono: NombreIcono;
+  a?: string;
+  vacio: boolean;
 }) {
-  return (
-    <Link to={a}
-          className={'flex items-start gap-3 rounded-xl border bg-white p-4 transition-shadow hover:shadow-md ' +
-            (vacio ? 'border-dashed border-brand-200' : 'border-brand-200 shadow-sm')}>
+  const clase = 'flex items-start gap-3 rounded-xl border bg-white p-4 ' +
+    (vacio ? 'border-dashed border-brand-200 ' : 'border-brand-200 shadow-sm ') +
+    (a ? 'transition-shadow hover:shadow-md' : '');
+
+  const dentro = (
+    <>
       <span className={'mt-0.5 shrink-0 ' + (vacio ? 'text-brand-200' : 'text-brand-400')}>
         <Icono nombre={icono} tam={18} />
       </span>
@@ -41,8 +52,12 @@ function Servicio({ nombre, valor, pie, icono, a, vacio }: {
           (vacio ? 'text-brand-200' : 'text-brand-600')}>{valor}</span>
         <span className="block mt-1.5 text-[11px] text-brand-300 leading-snug">{pie}</span>
       </span>
-    </Link>
+    </>
   );
+
+  return a
+    ? <Link to={a} className={clase}>{dentro}</Link>
+    : <div className={clase}>{dentro}</div>;
 }
 
 /** Cómo se llama cada estado de visita, que en la base están en inglés. */
@@ -80,18 +95,18 @@ export default function Negocio() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <Servicio nombre="Informes de tasación" valor={num(servicios.informes.n)}
                     pie={`${euros(servicios.informes.importe)} cobrados`}
-                    icono="informe" a="/colas/informes" vacio={!Number(servicios.informes.n)} />
+                    icono="informe" a="/billing" vacio={!Number(servicios.informes.n)} />
           <Servicio nombre="Garantías" valor={num(servicios.garantias.vendidas)}
                     pie={`${euros(servicios.garantias.cobrado)} al cliente`}
-                    icono="escudo" a="/provider-billing" vacio={!Number(servicios.garantias.vendidas)} />
+                    icono="escudo" a="/comisiones" vacio={!Number(servicios.garantias.vendidas)} />
           <Servicio nombre="Mantenimientos" valor={num(servicios.mantenimientos.n)}
                     pie={Number(servicios.mantenimientos.pendientes)
                       ? `${num(servicios.mantenimientos.pendientes)} sin cerrar`
                       : 'todos cerrados'}
-                    icono="taller" a="/colas/servicios" vacio={!Number(servicios.mantenimientos.n)} />
+                    icono="taller" vacio={!Number(servicios.mantenimientos.n)} />
           <Servicio nombre="Seguros" valor={num(servicios.seguros.n)}
                     pie={`${num(servicios.seguros.activos)} en vigor`}
-                    icono="escudo" a="/users" vacio={!Number(servicios.seguros.n)} />
+                    icono="escudo" vacio={!Number(servicios.seguros.n)} />
           <Servicio nombre="Venta integral" valor={num(servicios.ventaIntegral.n)}
                     pie={Number(servicios.ventaIntegral.n)
                       ? `${num(servicios.ventaIntegral.abiertas)} abiertas`
@@ -164,7 +179,7 @@ export default function Negocio() {
         * que se comisiona sale de haber vendido una garantía o un seguro, y el
         * número solo dice algo al lado de cuántas se vendieron.
         */}
-      <Link to="/provider-billing"
+      <Link to="/comisiones"
             className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-brand-200 bg-white px-5 py-4 shadow-sm transition-shadow hover:shadow-md">
         <span className="text-[11px] font-bold uppercase tracking-wider text-brand-300">
           Comisiones de proveedores

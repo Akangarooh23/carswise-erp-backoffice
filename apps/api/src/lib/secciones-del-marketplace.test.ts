@@ -6,13 +6,13 @@ import {
 } from './secciones-del-marketplace.js';
 
 describe('las cuatro secciones', () => {
-  test('salen siempre las cuatro, aunque tres estén vacías', () => {
-    // Que Concesionario esté a cero es la respuesta a «cuánto stock propio
-    // tenemos». Escondiéndola, esa respuesta se convierte en una pregunta.
-    const s = lasSecciones([{ seccion: 'ex_renting', total: 4447, activos: 4445, precio_medio: 23435, leads: 8 }]);
+  test('salen siempre las cuatro, aunque alguna esté vacía', () => {
+    // Que una esté a cero es la respuesta a «cuánto hay de eso». Escondiéndola,
+    // esa respuesta se convierte en una pregunta.
+    const s = lasSecciones([{ seccion: 'concesionario', total: 4288, activos: 4286, precio_medio: 23435, leads: 8 }]);
     assert.equal(s.length, 4);
     assert.deepEqual(s.map((x) => x.clave), ['ex_renting', 'concesionario', 'particular', 'importacion']);
-    assert.equal(s[1].total, 0);
+    assert.equal(s[0].total, 0, 'ex-renting va primero y aquí no viene');
   });
 
   test('en el orden del negocio, no en el que llegan', () => {
@@ -31,8 +31,9 @@ describe('las cuatro secciones', () => {
 
   test('sin coches no hay precio medio: null, no cero', () => {
     // Un 0 € en la tarjeta se lee como coches regalados.
-    const s = lasSecciones([{ seccion: 'concesionario', total: 0, activos: 0, precio_medio: 0 }]);
+    const s = lasSecciones([{ seccion: 'concesionario', total: 12, activos: 0, precio_medio: 0 }]);
     assert.equal(s[1].precioMedio, null);
+    assert.equal(s[1].total, 12, 'el catálogo se ve aunque no haya nada publicado');
   });
 
   test('y con coches, redondeado a euros', () => {
@@ -60,10 +61,17 @@ describe('cómo se reconoce cada sección', () => {
     assert.ok(i >= 0 && j >= 0 && i < j, SQL_DE_LA_SECCION);
   });
 
-  test('no se parte por seller_type, que dice quién anuncia y no de qué sección es', () => {
-    // Con seller_type saldrían 4.288 coches en Concesionario, que hoy no tiene
-    // ninguno: son VO de flotas de renting anunciados por un concesionario.
-    assert.doesNotMatch(SQL_DE_LA_SECCION, /seller_type\s*=\s*'concesionario'/);
+  test('el ex-renting sale de las empresas de renting, no de todo el catálogo', () => {
+    // Astara y Leasys van como `professional` y son las de renting. Partir por
+    // «está a la venta» metía los 4.288 coches de Modrive, Gamboa y VIAN —que
+    // son concesionarios— en ex-renting, y dejaba Concesionario a cero.
+    assert.match(SQL_DE_LA_SECCION, /seller_type\s*=\s*'professional'\s*THEN\s*'ex_renting'/);
+    assert.doesNotMatch(SQL_DE_LA_SECCION, /available_for_purchase/);
+  });
+
+  test('un vendedor sin tipo cae en concesionario, que es lo que más hay', () => {
+    // Y no fuera: una sección de sobras escondería coches que existen.
+    assert.match(SQL_DE_LA_SECCION, /ELSE\s*'concesionario'\s*END/);
   });
 
   test('va en una línea: el SQL se compara con espacios normalizados', () => {

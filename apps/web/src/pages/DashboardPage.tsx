@@ -96,7 +96,13 @@ export default function DashboardPage() {
         { etiqueta: 'importaciones sin depósito', valor: stats.importacion?.sin_deposito ?? 0, a: '/importaciones', icono: 'euro' },
       ]} />
 
-      <nav className="flex gap-1 border-b border-brand-200 -mb-2" aria-label="Partes del negocio">
+      {/*
+        * La barra va en su propio bloque con hueco debajo.
+        *
+        * Con margen negativo, la línea de la barra caía justo encima del
+        * encabezado de la primera sección y lo cruzaba por la mitad.
+        */}
+      <nav className="flex gap-1 border-b border-brand-200 mb-2" aria-label="Partes del negocio">
         {PESTANAS.map((p) => (
           <button key={p.clave} type="button"
                   onClick={() => setParams(p.clave === 'financiera' ? {} : { ver: p.clave }, { replace: true })}

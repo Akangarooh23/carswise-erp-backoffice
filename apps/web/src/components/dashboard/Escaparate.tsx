@@ -47,7 +47,8 @@ export default function Escaparate() {
   if (!vo) return null;
 
   const activos = vo.secciones.reduce((n, s) => n + s.activos, 0);
-  const conCoches = vo.secciones.filter((s) => s.activos > 0);
+  const enCatalogo = vo.secciones.reduce((n, s) => n + s.total, 0);
+  const conCoches = vo.secciones.filter((s) => s.total > 0);
 
   const p = portales?.portales ?? [];
   const anuncios = p.reduce((n, x) => n + Number(x.total), 0);
@@ -70,20 +71,28 @@ export default function Escaparate() {
               <p className="mt-1.5 font-display text-[27px] leading-none font-extrabold tabular-nums text-brand-600">
                 {num(activos)}
               </p>
-              <p className="mt-1.5 text-[11px] text-brand-300">coches publicados nuestros</p>
+              <p className="mt-1.5 text-[11px] text-brand-300">publicados de {num(enCatalogo)} en catálogo</p>
             </div>
             <span className="text-[11px] font-medium text-acento-texto">Ver el análisis →</span>
           </div>
 
-          {/* Las cuatro secciones, con las vacías dichas y no escondidas: que
-              Concesionario esté a cero contesta «cuánto stock propio tenemos». */}
+          {/*
+            * Las cuatro secciones, cada una con todo lo que hay y con lo que
+            * está publicado de verdad. Un coche puede estar en el catálogo y no
+            * verlo nadie, y con un solo número no se sabe cuál se mira.
+            *
+            * Las vacías se dicen y no se esconden: que una esté a cero contesta
+            * «cuánto hay de eso».
+            */}
           <ul className="mt-4 pt-4 border-t border-brand-100 grid grid-cols-2 sm:grid-cols-4 gap-3 list-none p-0">
             {vo.secciones.map((s) => (
               <li key={s.clave}>
                 <p className={'font-display text-[17px] leading-none font-extrabold tabular-nums ' +
-                  (s.activos > 0 ? 'text-brand-500' : 'text-brand-200')}>{num(s.activos)}</p>
+                  (s.total > 0 ? 'text-brand-500' : 'text-brand-200')}>{num(s.total)}</p>
                 <p className="mt-1 text-[11px] font-semibold text-brand-400">{s.nombre}</p>
-                <p className="text-[11px] text-brand-300 tabular-nums">{euros(s.precioMedio)}</p>
+                <p className="text-[11px] text-brand-300 tabular-nums">
+                  {num(s.activos)} publicados · {euros(s.precioMedio)}
+                </p>
               </li>
             ))}
           </ul>
@@ -92,6 +101,13 @@ export default function Escaparate() {
             <p className="mt-3 text-[11px] text-brand-300">
               Todo el escaparate es {conCoches[0].nombre.toLowerCase()}: las otras tres secciones
               todavía no tienen coches.
+            </p>
+          )}
+
+          {vo.renting.total > 0 && (
+            <p className="mt-2 text-[11px] text-brand-300">
+              De esos, <strong className="tabular-nums">{num(vo.renting.total)}</strong> se ofrecen en renting
+              en vez de en venta.
             </p>
           )}
         </Link>

@@ -17,6 +17,7 @@ const UserDetailPage    = lazy(() => import('./pages/UserDetailPage.js'));
 const MarketplacePage   = lazy(() => import('./pages/MarketplacePage.js'));
 const MarketplaceAnalisisPage = lazy(() => import('./pages/MarketplaceAnalisisPage.js'));
 const PortalesPage      = lazy(() => import('./pages/PortalesPage.js'));
+const ComisionesPage    = lazy(() => import('./pages/ComisionesPage.js'));
 const AppointmentsPage  = lazy(() => import('./pages/AppointmentsPage.js'));
 const TicketsPage       = lazy(() => import('./pages/TicketsPage.js'));
 const TicketDetailPage  = lazy(() => import('./pages/TicketDetailPage.js'));
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       // un coche.
       { path: 'marketplace/analisis', element: <Suspense fallback={<Loader />}><MarketplaceAnalisisPage /></Suspense> },
       { path: 'portales',          element: <Suspense fallback={<Loader />}><PortalesPage /></Suspense> },
+      { path: 'comisiones',        element: <Suspense fallback={<Loader />}><ComisionesPage /></Suspense> },
       { path: 'appointments',      element: <Suspense fallback={<Loader />}><AppointmentsPage /></Suspense> },
       { path: 'bookings',          element: <Suspense fallback={<Loader />}><BookingsPage /></Suspense> },
       { path: 'tickets',           element: <Suspense fallback={<Loader />}><TicketsPage /></Suspense> },

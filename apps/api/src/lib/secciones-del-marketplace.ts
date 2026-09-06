@@ -7,18 +7,19 @@
  * uno se compra, se vende y se margina de otra manera. Sumados en una cifra no
  * se puede contestar ninguna pregunta útil.
  *
- * ## Lo que hoy no está en la base
+ * ## Quién vende cada coche
  *
- * Solo hay una sección con coches dentro. Las ofertas del marketplace VO son
- * **VO de empresas de renting** puestas a la venta, y `seller_type` dice
- * «concesionario» en casi todas: eso describe **quién las anuncia**, no de qué
- * sección son, y usarlo para partir el marketplace daría 4.288 coches en una
- * sección que todavía no tiene ninguno.
+ * La sección sale de `seller_type`, que es lo que de verdad separa los
+ * negocios. Mirando quién hay detrás se ve solo:
  *
- * Así que las otras tres salen a cero y se ven a cero, que es información: dice
- * que el negocio todavía es uno solo. Cuando entre stock propio de
- * concesionario habrá que marcarlo —con una columna, no adivinándolo— y esa
- * marca se añade aquí, en un sitio.
+ * - `concesionario` — Modrive, Gamboa Ocasión, VIAN. Stock de concesionario.
+ * - `professional` — Astara y Leasys, que son empresas de renting: su VO es
+ *   el ex-renting.
+ * - `particular` — un coche de un particular.
+ *
+ * Un vendedor que no diga de qué tipo es cae en concesionario, que es de lejos
+ * lo que más hay: equivocarse hacia ahí se corrige mirando la ficha, y dejarlo
+ * fuera lo escondería.
  *
  * ## Y el renting no es una sección
  *
@@ -65,14 +66,16 @@ export const ORDEN_DE_SECCIONES: readonly SeccionDelMarketplace[] =
  * constante. Partida en varias líneas o construida con `.join()`, no la
  * encuentra y esa consulta se queda sin comprobar.
  */
-export const SQL_DE_LA_SECCION = "CASE WHEN seller_type = 'particular' THEN 'particular' WHEN available_for_purchase THEN 'ex_renting' ELSE 'concesionario' END";
+export const SQL_DE_LA_SECCION = "CASE WHEN seller_type = 'particular' THEN 'particular' WHEN seller_type = 'professional' THEN 'ex_renting' ELSE 'concesionario' END";
 
 /**
  * Y el producto de renting, que se cuenta aparte.
  *
- * Un coche con renting disponible no está a la venta: `available_for_purchase`
- * y `renting_available` son excluyentes en los datos, así que esto **no** se
- * solapa con las secciones de compra —cae fuera de ellas—.
+ * Un coche con renting disponible es un coche de una sección —hoy todos son de
+ * Leasys, o sea ex-renting— que además se ofrece alquilado. Por eso **está
+ * dentro** de su sección y se dice aparte: contarlo como una quinta sección
+ * haría que la suma dejase de ser el marketplace, y dejarlo fuera de las
+ * secciones escondería veintitrés coches que existen.
  */
 export const SQL_ES_RENTING = 'renting_available';
 
@@ -85,9 +88,11 @@ export interface Seccion {
   clave: SeccionDelMarketplace;
   nombre: string;
   queEs: string;
+  /** Todo lo que hay en el catálogo, publicado o no. */
   total: number;
+  /** Y lo que está publicado de verdad, que es lo que ve un cliente. */
   activos: number;
-  /** Precio medio de los activos, o null si no hay ninguno. */
+  /** Precio medio de los publicados, o null si no hay ninguno. */
   precioMedio: number | null;
   /** Cuántas solicitudes ha traído. */
   leads: number;

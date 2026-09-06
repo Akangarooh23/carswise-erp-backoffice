@@ -79,19 +79,32 @@ export default function MarketplaceAnalisisPage() {
                  className={'rounded-xl border bg-white shadow-sm p-5 ' +
                    (s.activos > 0 ? 'border-brand-200' : 'border-dashed border-brand-200')}>
               <p className="text-[11px] font-bold uppercase tracking-wider text-brand-300">{s.nombre}</p>
+              {/*
+                * Primero todo lo que hay, y debajo lo que está publicado de
+                * verdad. Son dos cosas: un coche puede estar en el catálogo y
+                * no verlo nadie, y con un solo número no se sabe cuál de las
+                * dos se está mirando.
+                */}
               <p className={'mt-1.5 font-display text-[27px] leading-none font-extrabold tabular-nums ' +
-                   (s.activos > 0 ? 'text-brand-600' : 'text-brand-200')}>
-                {num(s.activos)}
+                   (s.total > 0 ? 'text-brand-600' : 'text-brand-200')}>
+                {num(s.total)}
               </p>
               <p className="mt-1.5 text-[11px] text-brand-300 leading-snug">{s.queEs}</p>
               <dl className="mt-3 pt-3 border-t border-brand-100 space-y-1 text-[12px]">
                 <div className="flex justify-between">
-                  <dt className="text-brand-300">Precio medio</dt>
-                  <dd className="font-semibold text-brand-500 tabular-nums">{euros(s.precioMedio)}</dd>
+                  <dt className="text-brand-300">Publicados</dt>
+                  <dd className="font-semibold text-brand-500 tabular-nums">
+                    {num(s.activos)}
+                    {s.total > s.activos && (
+                      <span className="ml-1.5 font-medium text-brand-300">
+                        · {num(s.total - s.activos)} sin publicar
+                      </span>
+                    )}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-brand-300">En total</dt>
-                  <dd className="font-semibold text-brand-500 tabular-nums">{num(s.total)}</dd>
+                  <dt className="text-brand-300">Precio medio</dt>
+                  <dd className="font-semibold text-brand-500 tabular-nums">{euros(s.precioMedio)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-brand-300">Del escaparate</dt>

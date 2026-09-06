@@ -39,6 +39,9 @@ const NAV: NavItem[] = [
   { to: '/workshops',    label: 'Talleres',     icon: 'taller', roles: ['admin','operations'] },
   { to: '/billing',          label: 'Facturación clientes',    icon: 'tarjeta', roles: ['admin','operations'] },
   { to: '/provider-billing', label: 'Facturación proveedores', icon: 'edificio', roles: ['admin','operations'] },
+  // Aparte de facturación: allí está todo lo emitido, ventas de coche
+  // incluidas, y una comisión de 70 € se pierde entre una venta de 20.190.
+  { to: '/comisiones',       label: 'Comisiones',      icon: 'euro', roles: ['admin','operations'] },
   { to: '/contabilidad',     label: 'Contabilidad',    icon: 'tabla', roles: ['admin'] },
   { to: '/consentimientos',  label: 'Consentimientos', icon: 'escudo', roles: ['admin','operations','support'] },
   { to: '/datos',        label: 'Datos',         icon: 'tabla', roles: ['admin','operations'] },

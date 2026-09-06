@@ -44,7 +44,6 @@ analisisRouter.get('/marketplace/analisis', requireRole(['admin', 'operations', 
                COUNT(*) FILTER (WHERE is_active)::int                   AS activos,
                AVG(price) FILTER (WHERE is_active AND price > 0)::numeric AS precio_medio
           FROM moveadvisor_marketplace_vo_offers
-         WHERE NOT ${SQL_ES_RENTING}
          GROUP BY 1
       `).catch(vacio),
 
@@ -155,5 +154,59 @@ analisisRouter.get('/portales/analisis', requireRole(['admin', 'operations', 'sa
     res.json({ ok: true, data: { portales: porPortal.rows, leads: leads.rows } });
   } catch (err) {
     falloInterno(res, 'portales_analisis_failed', err);
+  }
+});
+
+/**
+ * Las comisiones que nos pagan los proveedores, una a una.
+ *
+ * En el panel había un total y llevaba a Facturación proveedores, que enseña
+ * todo lo emitido —la venta de un coche de 20.190 € incluida— sin filtrar. Un
+ * número que lleva a una lista donde no está lo que buscas es peor que un
+ * número sin enlace: te hace buscarlo.
+ *
+ * Aquí solo hay comisiones: lo emitido que no es una venta de vehículo. Hoy es
+ * la de las garantías; cuando haya de seguros o de financiación entrarán aquí
+ * sin tocar nada, porque el filtro dice qué **no** es en vez de enumerar qué sí.
+ */
+analisisRouter.get('/comisiones', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    const [filas, catalogo] = await Promise.all([
+      query(`
+        SELECT i.id, i.invoice_number, i.provider_name, i.customer_name, i.customer_email,
+               i.vehicle_title, i.notes, i.status, i.contract_id,
+               i.base_amount::numeric  AS base,
+               i.invoice_amount::numeric AS total,
+               i.iva_rate::numeric     AS iva,
+               COALESCE(i.invoice_date, i.issued_at::date) AS fecha,
+               i.paid_at,
+               g.nombre                AS garantia,
+               l.garantia_precio::numeric AS pagado_por_el_cliente
+          FROM moveadvisor_provider_invoices i
+          LEFT JOIN moveadvisor_market_leads l ON l.id = i.contract_id
+          LEFT JOIN market_garantias g         ON g.id = l.garantia_id
+         WHERE i.direction = 'emitted' AND i.type <> 'vehicle_sale'
+         ORDER BY COALESCE(i.invoice_date, i.issued_at::date) DESC
+      `).catch(vacio),
+
+      /*
+       * Y lo que se podría comisionar, que es la otra mitad.
+       *
+       * Sin el catálogo al lado, la lista de arriba no dice si se está
+       * facturando todo lo vendido: solo dice lo que se facturó.
+       */
+      query(`
+        SELECT g.id, g.nombre, g.precio::numeric, g.coste::numeric, g.comision::numeric, g.activo,
+               COUNT(l.id)::int AS vendidas
+          FROM market_garantias g
+          LEFT JOIN moveadvisor_market_leads l ON l.garantia_id = g.id
+         GROUP BY g.id, g.nombre, g.precio, g.coste, g.comision, g.activo, g.nivel
+         ORDER BY g.nivel
+      `).catch(vacio),
+    ]);
+
+    res.json({ ok: true, data: { comisiones: filas.rows, catalogo: catalogo.rows } });
+  } catch (err) {
+    falloInterno(res, 'comisiones_failed', err);
   }
 });
