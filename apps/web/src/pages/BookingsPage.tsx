@@ -273,6 +273,50 @@ function NotaNueva({ valor, alEscribir, guardando, alGuardar }: {
   );
 }
 
+/**
+ * Lo que se despliega al pedir el rastro de una visita: los pasos dados, los
+ * dos botones para apuntar lo que se hizo por teléfono, y el sitio de escribir
+ * notas.
+ *
+ * Estaba escrito dos veces —una en las pendientes y otra en las confirmadas— y
+ * las dos copias se separaron: la de las confirmadas se quedó sin los botones.
+ * Nadie decidió eso, y el paso que más falta hace ahí es justo uno de los dos:
+ * «le he dicho que el cliente va» pasa **después** de confirmar.
+ *
+ * Devuelve los tres trozos sueltos y no su marco: cada sitio lo coloca con su
+ * propio espaciado, y el marco es lo único que de verdad cambia entre los dos.
+ */
+function PanelDelRastro({ b, pasos, alApuntar, nota, alEscribirNota, guardandoNota, alGuardarNota }: {
+  b: Booking;
+  pasos: Paso[];
+  alApuntar: (evento: string, texto: string) => void;
+  nota: string;
+  alEscribirNota: (t: string) => void;
+  guardandoNota: boolean;
+  alGuardarNota: () => void;
+}) {
+  const quien = comoSeLlama(b.seller_type);
+  return (
+    <>
+      <Rastro pasos={pasos} />
+      <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-brand-100">
+        {/* Lo que hace una persona por teléfono no cambia nada en la base: si
+            no se apunta, no existe para nadie más. */}
+        <Boton tam="sm" variante="secundario"
+               onClick={() => alApuntar('concesionario_contactado', `Apuntado que has hablado con ${quien}.`)}>
+          He llamado a {quien}
+        </Boton>
+        <Boton tam="sm" variante="secundario"
+               onClick={() => alApuntar('concesionario_avisado', `Apuntado que ${quien} ya sabe que el cliente va.`)}>
+          Le he dicho que el cliente va
+        </Boton>
+      </div>
+      <NotaNueva valor={nota} alEscribir={alEscribirNota}
+                 guardando={guardandoNota} alGuardar={alGuardarNota} />
+    </>
+  );
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -675,21 +719,12 @@ export default function BookingsPage() {
 
                 {rastroDe === b.id && (
                   <div className="w-full mt-1 rounded-lg border border-brand-200 bg-white px-4 py-3">
-                    <Rastro pasos={rastro} />
-                    <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-brand-100">
-                      {/* Lo que hace una persona por teléfono no cambia nada en
-                          la base: si no se apunta, no existe para nadie más. */}
-                      <Boton tam="sm" variante="secundario"
-                             onClick={() => apuntaPaso(b, 'concesionario_contactado', `Apuntado que has hablado con ${comoSeLlama(b.seller_type)}.`)}>
-                        He llamado a {comoSeLlama(b.seller_type)}
-                      </Boton>
-                      <Boton tam="sm" variante="secundario"
-                             onClick={() => apuntaPaso(b, 'concesionario_avisado', `Apuntado que ${comoSeLlama(b.seller_type)} ya sabe que el cliente va.`)}>
-                        Le he dicho que el cliente va
-                      </Boton>
-                    </div>
-                    <NotaNueva valor={notaNueva} alEscribir={setNotaNueva}
- guardando={guardandoNota} alGuardar={() => guardaNota(b)} />
+                    <PanelDelRastro
+                      b={b} pasos={rastro}
+                      alApuntar={(evento, texto) => apuntaPaso(b, evento, texto)}
+                      nota={notaNueva} alEscribirNota={setNotaNueva}
+                      guardandoNota={guardandoNota} alGuardarNota={() => guardaNota(b)}
+                    />
                   </div>
                 )}
               </li>
@@ -1316,9 +1351,12 @@ export default function BookingsPage() {
 
                               {rastroDe === b.id && (
                                 <div className="mt-3 rounded-lg border border-brand-200 bg-white px-4 py-3">
-                                  <Rastro pasos={rastro} />
-                                  <NotaNueva valor={notaNueva} alEscribir={setNotaNueva}
- guardando={guardandoNota} alGuardar={() => guardaNota(b)} />
+                                  <PanelDelRastro
+                                    b={b} pasos={rastro}
+                                    alApuntar={(evento, texto) => apuntaPaso(b, evento, texto)}
+                                    nota={notaNueva} alEscribirNota={setNotaNueva}
+                                    guardandoNota={guardandoNota} alGuardarNota={() => guardaNota(b)}
+                                  />
                                 </div>
                               )}
                             </div>
