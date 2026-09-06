@@ -949,6 +949,20 @@ visitsRouter.post('/visit-bookings/:bookingId/resultado', requireRole(ROLES), as
 visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
   const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
+  /*
+   * Y si además hay que quitar el anuncio.
+   *
+   * El motivo más común de cancelar es que el coche ya no está, y eso lo
+   * acabamos de saber por teléfono: es lo único que nos separa de que el
+   * siguiente cliente pida visita al mismo coche que no existe. Cancelar la
+   * cita no tocaba la oferta, así que había que acordarse de ir al Marketplace
+   * a despublicarla, y quien acaba de colgar el teléfono no se acuerda.
+   *
+   * Va como casilla y no solo: despublicar es una decisión sobre el escaparate
+   * y la toma quien ha hablado con el vendedor, no el sistema por su cuenta.
+   * Se deshace desde Marketplace con «Publicar».
+   */
+  const quitarElAnuncio = req.body?.quitarElAnuncio === true;
   try {
     const r = await query(
       `UPDATE vehicle_visit_bookings SET status = 'cancelled', updated_at = NOW()
@@ -959,6 +973,24 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
     if (!r.rows.length) return res.status(404).json({ ok: false, error: 'Not found' });
     await query(`UPDATE vehicle_visit_availability SET status = 'available' WHERE id = $1`, [r.rows[0].availability_id]);
     await apunta(bookingId, 'cancelada', quien(req as never), motivo ? { motivo } : {});
+
+    // No tumba la cancelación si falla: la cita ya está cancelada y el cliente
+    // tiene que enterarse igual. Pero se cuenta si salió, porque un anuncio que
+    // se creía quitado y sigue puesto trae la siguiente visita.
+    let anuncioQuitado = false;
+    if (quitarElAnuncio) {
+      // Sin `AND is_active`: lo que se contesta es «la oferta está fuera», no
+      // «la he cambiado yo». Una que ya estaba despublicada cumple lo que se
+      // pidió, y decir «no se ha podido» mandaría al Marketplace a no hacer
+      // nada. Lo que sí falla es que la oferta no exista, y eso hay que decirlo.
+      const q = await query(
+        `UPDATE moveadvisor_marketplace_vo_offers SET is_active = FALSE, updated_at = NOW()
+         WHERE id = $1`,
+        [r.rows[0].offer_id]
+      ).catch(() => null);
+      anuncioQuitado = Boolean(q?.rowCount);
+      if (anuncioQuitado) await apunta(bookingId, 'anuncio_quitado', quien(req as never), {});
+    }
 
     // El correo va después de liberar el hueco y no puede tumbar la cancelación:
     // ya está hecha. Pero sí se cuenta si salió, porque una cita cancelada de la
@@ -974,7 +1006,7 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
       console.error('[visitas] no se ha podido avisar de la cancelación:', fallo);
     }
 
-    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
+    return res.json({ ok: true, data: { avisado, anuncioQuitado, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }

@@ -57,6 +57,10 @@ interface Fila { [k: string]: unknown }
 let seccion = SECCIONES[0];
 let reserva: Fila;
 let pasos: { evento: string; actor: string; datos: Fila }[] = [];
+/** Si la oferta sigue en el escaparate. */
+let ofertaPublicada = true;
+/** Y si la fila de la oferta existe siquiera: pudo borrarse. */
+let ofertaExiste = true;
 let correos: { to: string; subject: string; conCalendario: boolean }[] = [];
 
 const queryOriginal = pg.Pool.prototype.query;
@@ -89,6 +93,8 @@ function reinicia() {
   };
   pasos = [];
   correos = [];
+  ofertaPublicada = true;
+  ofertaExiste = true;
 }
 
 before(async () => {
@@ -133,6 +139,13 @@ before(async () => {
       if (/starts_at = \$3/.test(t)) { reserva.starts_at = p[2]; reserva.ends_at = p[3]; }
       if (/availability_id = \$1/.test(t)) { reserva.starts_at = p[1]; reserva.ends_at = p[2]; }
       return responde([{ ...reserva }]);
+    }
+
+    // El escaparate: si el coche ya no esta, se quita de la vista.
+    if (/UPDATE moveadvisor_marketplace_vo_offers/i.test(t) && /is_active = FALSE/i.test(t)) {
+      if (!ofertaExiste) return Promise.resolve({ rows: [], rowCount: 0 } as never);
+      ofertaPublicada = false;
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
     }
 
     // Los huecos.
@@ -328,6 +341,45 @@ for (const s of SECCIONES) {
       const r = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'no_fue' });
       assert.equal(r.codigo, 409);
       assert.equal(reserva.resultado ?? null, null);
+    });
+
+    test('13 · cancelar no quita el anuncio si no se pide', async () => {
+      // Se cancela por mil motivos —el cliente no puede, el taller cierra ese
+      // dia— y quitar el escaparate por eso seria una decision que nadie ha
+      // tomado.
+      reserva.status = 'confirmed';
+      const r = await api(`/visit-bookings/${CITA}/cancel`, { motivo: 'El cliente no puede' });
+      assert.equal(r.codigo, 200);
+      assert.equal(r.cuerpo.data?.anuncioQuitado, false);
+      assert.equal(ofertaPublicada, true);
+      assert.ok(!nombres().includes('anuncio_quitado'));
+    });
+
+    test('14 · y si el coche ya no esta, lo quita y lo apunta', async () => {
+      reserva.status = 'confirmed';
+      const r = await api(`/visit-bookings/${CITA}/cancel`, {
+        motivo: 'El coche ya no esta', quitarElAnuncio: true,
+      });
+      assert.equal(r.codigo, 200);
+      assert.equal(r.cuerpo.data?.anuncioQuitado, true);
+      assert.equal(ofertaPublicada, false, 'el anuncio sigue publicado');
+      assert.ok(nombres().includes('anuncio_quitado'), 'no queda en el rastro');
+      // Y al cliente se le avisa igual: quitar el anuncio no es motivo para
+      // dejar de contarle que su visita se ha caido.
+      assert.ok(/cancelad/i.test(alCliente()[0].subject));
+    });
+
+    test('15 · y si la oferta ya no existe, lo dice en vez de darlo por hecho', async () => {
+      // Un anuncio que se cree quitado y sigue puesto trae la siguiente visita
+      // al mismo coche. Si no se ha podido, hay que mandar a quitarlo a mano.
+      reserva.status = 'confirmed';
+      ofertaExiste = false;
+      const r = await api(`/visit-bookings/${CITA}/cancel`, {
+        motivo: 'El coche ya no esta', quitarElAnuncio: true,
+      });
+      assert.equal(r.codigo, 200);
+      assert.equal(r.cuerpo.data?.anuncioQuitado, false);
+      assert.ok(!nombres().includes('anuncio_quitado'));
     });
   });
 }

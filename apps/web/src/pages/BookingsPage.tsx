@@ -382,6 +382,7 @@ export default function BookingsPage() {
   const [search, setSearch]         = useState('');
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cerrando, setCerrando]     = useState<string | null>(null);
+  const [quitarElAnuncio, setQuitarElAnuncio] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<Booking | null>(null);
   const [motivo, setMotivo] = useState('');
@@ -675,20 +676,28 @@ export default function BookingsPage() {
     if (!cancelar) return;
     const b = cancelar;
     setCancelling(b.id);
-    const r = await api.post<{ avisado?: boolean }>(`/visit-bookings/${b.id}/cancel`, { motivo });
+    const r = await api.post<{ avisado?: boolean; anuncioQuitado?: boolean }>(
+      `/visit-bookings/${b.id}/cancel`, { motivo, quitarElAnuncio });
+    const pedidoQuitarlo = quitarElAnuncio;
     setCancelling(null);
     setCancelar(null);
     setMotivo('');
+    setQuitarElAnuncio(false);
     if (!r.ok) { setResultado({ mal: true, texto: 'No se ha podido cancelar la visita.' }); return; }
     // Recargar y no filtrar a mano: la cancelada puede estar en las confirmadas
     // o en las pendientes, y quitarla de una sola dejaba la otra lista mintiendo.
     load();
     // Que el aviso saliera o no cambia lo que hay que hacer después, así que se
     // dice; no se da por hecho que el cliente está enterado.
+    // Y si se pidió quitar el anuncio, si se ha quitado de verdad: uno que se
+    // cree quitado y sigue puesto trae la siguiente visita al mismo coche.
+    const delAnuncio = !pedidoQuitarlo ? ''
+      : r.data?.anuncioQuitado ? ' El anuncio ya no sale en el marketplace.'
+      : ' El anuncio no se ha podido quitar: hazlo desde Marketplace.';
     setResultado(
       r.data?.avisado
-        ? { mal: false, texto: `Visita cancelada. ${b.buyer_name || 'El cliente'} ya lo sabe: le hemos escrito.` }
-        : { mal: true, texto: `Visita cancelada, pero no hemos podido avisar a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.` }
+        ? { mal: pedidoQuitarlo && !r.data?.anuncioQuitado, texto: `Visita cancelada. ${b.buyer_name || 'El cliente'} ya lo sabe: le hemos escrito.${delAnuncio}` }
+        : { mal: true, texto: `Visita cancelada, pero no hemos podido avisar a ${b.buyer_name || 'el cliente'}. Llámale al ${b.buyer_phone || 'teléfono que tengas'}.${delAnuncio}` }
     );
   }
 
@@ -796,7 +805,7 @@ export default function BookingsPage() {
                   <Boton tam="sm" variante="secundario" onClick={() => abreMover(b, true)}>
                     El cliente ha elegido hora
                   </Boton>
-                  <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); }}>
+                  <Boton tam="sm" variante="fantasma" onClick={() => { setCancelar(b); setMotivo(''); setQuitarElAnuncio(false); }}>
                     Cancelar cita
                   </Boton>
                   <button onClick={() => verRastro(b)}
@@ -1206,6 +1215,22 @@ export default function BookingsPage() {
                 Se le manda un correo avisándole, con un enlace para pedir otra hora. Si lo dejas
                 vacío se le avisa igual, solo que sin explicación.
               </p>
+
+              {/* El motivo más común es que el coche ya no está, y eso lo
+                  acabas de saber por teléfono. Sin esto había que acordarse de
+                  ir al Marketplace a quitarlo, y el siguiente cliente pedía
+                  visita al mismo coche que no existe. */}
+              <label className="flex items-start gap-2.5 text-[13px] text-brand-500 cursor-pointer pt-1">
+                <input type="checkbox" checked={quitarElAnuncio} className="mt-0.5"
+                       onChange={(e) => setQuitarElAnuncio(e.target.checked)} />
+                <span>
+                  El coche ya no está: <b>quitar también el anuncio</b>.
+                  <span className="block text-[12px] text-brand-300">
+                    Deja de salir en el marketplace. Se vuelve a poner desde Marketplace, con
+                    «Publicar».
+                  </span>
+                </span>
+              </label>
             </div>
             <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
               <Boton variante="fantasma" onClick={() => setCancelar(null)}>Volver</Boton>
@@ -1452,7 +1477,7 @@ export default function BookingsPage() {
 
                               <div className="flex gap-2">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setCancelar(b); setMotivo(''); }}
+                                  onClick={(e) => { e.stopPropagation(); setCancelar(b); setMotivo(''); setQuitarElAnuncio(false); }}
                                   disabled={cancelling === b.id}
                                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
                                 >
