@@ -320,8 +320,14 @@ Ve a **Peritaciones**. Hay una, en «Por encargar», con el coche.
 **Lo que vuelve del perito**
 
 - [ ] Cuando vuelva, anota **lo que vio**: el veredicto y sus notas.
-- [ ] Sube **su informe y sus fotos** en «Su informe y las fotos». Es el papel
-      que respalda la decisión de soltar 16.890 €.
+- [ ] Fíjate en que **debajo aparece en rojo «Sin informe»**. Es la prueba de que
+      alguien fue: con un desplegable que pone «apto» se sueltan veinte mil
+      euros, y si el cliente pregunta qué se vio hay que poder enseñarle algo.
+- [ ] Mira el panel: sale en **Pendientes**. No bloquea nada —el perito llama y
+      su PDF llega al día siguiente— pero no se olvida.
+- [ ] **Adjunta el informe.** Ahora hay un enlace para verlo y el pendiente
+      desaparece. Prueba a subir algo que no sea un documento ni una imagen:
+      lo rechaza y dice qué acepta.
 
 **Y lo que costaría dejarlo bien** · en «Los daños que vio»
 
@@ -414,6 +420,17 @@ deja hacerlo sin saber tres cosas de ella, cada una por un motivo distinto:
       «Verificado y pagado».
 - [ ] Vuelve a mirarlo: **ya no se puede liberar otra vez**. Un segundo clic con
       el dinero enviado sería un segundo pago.
+
+**Y liberar no es que el vendedor haya cobrado**
+
+- [ ] Debajo pone, en ámbar, **«el dinero sigue en la cuenta»**. Es verdad: se ha
+      quitado la retención y el depositario todavía no lo ha mandado.
+- [ ] En el camino del coche, ese paso dice **«Liberado el pago al vendedor»** y
+      aparece uno nuevo: **«Confirmar que el vendedor ha cobrado»**, marcado como
+      tarea aparte. El coche no lo espera — el transporte se organiza igual.
+- [ ] Cuando el dinero salga de verdad, pulsa **«El vendedor ya ha cobrado»**.
+      Ahora sí pone la fecha en que cobró.
+- [ ] Y no dos veces: te dirá que ya está transferido.
 
 **Avisarle del pago y pedirle la factura** · aparece al liberar
 
@@ -799,6 +816,20 @@ En **Facturación proveedores → Recibidas**:
 - [ ] Mientras falte alguna, **Facturación proveedores lleva su número** en el
       menú, y el expediente —aunque esté cerrado— dice cuáles faltan.
 
+**Y cómo se parte cada una**
+
+- [ ] En la columna **Desglose** de cada factura: dice «21 % IVA», «UE ·
+      autorrep. 21 %» o **«falta el IVA»** en rojo. Pínchala.
+- [ ] La del **perito alemán**: régimen UE, IVA de la factura 0 % —eso es lo que
+      pone el papel— y el tipo que nos autorrepercutimos aparte. Déjalo **sin
+      decidir** y comprueba que sale en **Pendientes**: no se supone el 21 %,
+      porque hay excepciones de localización según el servicio.
+- [ ] La de la **gestoría**: marca «la factura lleva varios tipos» y pon la
+      cuota. Prueba con una que no cuadre: **no guarda**, y te dice que base +
+      cuota tienen que sumar el total de la factura.
+- [ ] El **total no se puede tocar** desde ahí. Es lo que pone el papel: si está
+      mal, la factura está mal y lo que toca es una rectificativa.
+
 ---
 
 ## 10 · La entrega · **en el ERP**
@@ -878,6 +909,49 @@ Ve a **Proveedores**.
 Esa es la pregunta que justifica tener la lista: cuánto llevamos con cada uno.
 
 ---
+
+---
+
+## 13 · Y qué dice el panel · **en el ERP**
+
+Con la importación entera hecha, el panel tiene que contarla. Ve al **Dashboard**.
+
+**Pendientes** — la pestaña que abre
+
+- [ ] Ya no está la peritación sin informe ni la factura sin IVA, si las
+      arreglaste por el camino.
+- [ ] El número rojo de la pestaña **cuadra con las filas** de dentro.
+
+**Financiera**
+
+- [ ] Los ingresos son la **base**, no lo cobrado: el fee de 3.630 € entra como
+      3.000. Los 630 son de Hacienda.
+- [ ] Los 16.890 € del coche y el impuesto a cuenta salen en **«dinero de
+      terceros»**, no en ingresos. Sumarlos convertiría una operación de 3.000 €
+      en una de 21.500 sin ganar un euro más.
+- [ ] En **«de dónde viene»**, la importación aparece con su base y las facturas
+      que la componen. Nada cae en «sin clasificar».
+- [ ] En **«margen por coche»**, el Kia con su ingreso, su gasto y lo que deja.
+      Comprueba que el gasto son las bases de las facturas del coche.
+- [ ] Y que **no hay facturas sin atar**. Si sale el aviso ámbar, alguna tiene el
+      título del vehículo escrito distinto y su gasto no está bajando el margen
+      de nadie.
+
+**Gestión**
+
+- [ ] En **Tiempos**, «de solicitud a entrega» cuenta esta importación, y dice
+      **de cuántos casos sale**. Con una sola, tres días no es una ley.
+- [ ] El coche ya no sale en «coches en marcha»: está entregado.
+
+**Ofertas**
+
+- [ ] En el análisis del marketplace, el coche cuenta en la sección
+      **Importación**.
+
+**Y que se pueda enlazar**
+
+- [ ] Desde «margen por coche», pincha el nombre del coche: te lleva a **su
+      expediente**, con la dirección puesta. Recarga la página: sigue abierto.
 
 ## Al terminar
 

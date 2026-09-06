@@ -215,6 +215,30 @@ lo rechaza y contesta qué falta — el coche sin ver, o los datos del vendedor.
 Al liberarlo, el expediente pasa solo a **Verificado y pagado**. Y no se libera
 dos veces: un segundo clic con el dinero ya enviado sería un segundo pago.
 
+### Liberar no es que el vendedor haya cobrado
+
+Son dos cosas y hay **dos botones**:
+
+| | Qué quiere decir | Dónde está el dinero |
+|---|---|---|
+| **Liberado** | se quita la retención; el depositario ya puede mandarlo | en la cuenta de depósito |
+| **Transferido** | ha salido y el vendedor lo tiene | en la cuenta del vendedor |
+
+Entre los dos hay un día. Con un solo estado ese día no existía, y es justo el
+día en que alguien pregunta «¿le hemos pagado?» y la respuesta honesta es
+«hemos dicho que sí».
+
+Mientras esté liberado y sin transferir, el expediente lo dice en ámbar —«el
+dinero sigue en la cuenta»— con un botón **«El vendedor ya ha cobrado»**.
+
+Y es un día en el que **todavía se puede parar**: se puede devolver desde
+liberado y no desde transferido. Lo que ya salió no vuelve por cambiar un estado
+en una pantalla.
+
+Confirmar el cobro **no para el coche**. Una vez liberado, el transporte se
+organiza y el coche viaja tenga o no confirmado el ingreso el vendedor: en el
+camino del coche sale como tarea aparte, igual que pedirle la factura al perito.
+
 ### Liquidar el impuesto
 
 Al matricular se sabe lo que ha costado de verdad, y la gestoría lo escribe en
@@ -472,12 +496,19 @@ Del perito vuelven tres cosas y cada una tiene su sitio en la pantalla:
 
 - **Lo que vio.** El veredicto y sus notas. Es lo único que marca el coche
   como visto y abre la puerta al pago.
-- **Su informe y las fotos.** Al bloque de Documentos de la peritación, igual
-  que los papeles del coche van a los del expediente.
+- **Su informe.** Se adjunta en la propia ficha de la peritación, y desde ahí
+  se abre. Es **la prueba de que alguien fue**: con un desplegable que pone
+  «apto» se sueltan veinte mil euros, y si el cliente pregunta qué se vio hay
+  que poder enseñarle algo.
 - **Los daños, partida por partida**, con lo que estima que cuesta cada uno.
 - **Su factura.** Número, fecha, importe y el PDF. El documento va con la
-  factura, en Facturación proveedores: es contra lo que se paga. Su informe y
-  sus fotos van con el coche, que es otra cosa.
+  factura, en Facturación proveedores: es contra lo que se paga. Su informe va
+  con la peritación, que es otra cosa.
+
+El informe **no bloquea** marcar la revisión como hecha: el perito llama por
+teléfono y su PDF llega al día siguiente, y exigirlo en ese momento pararía la
+liberación del dinero por un papel ya prometido. Lo que hace es salir en
+**Pendientes**, en rojo, hasta que se adjunta.
 
 Esos 289 € van a **dos sitios**, porque son dos preguntas distintas:
 
@@ -541,6 +572,51 @@ Lo segundo llega más tarde y es a propósito: el perito cobra **antes** de que
 exista el pedido —el pedido nace al liberar el pago—, así que es el pedido el
 que recoge el gasto al nacer. Apuntar la factura dos veces la corrige; no
 duplica ni el pago ni el coste.
+
+### Cómo se parte una factura que llega
+
+En **Facturación proveedores → Recibidas**, cada factura lleva una columna
+**Desglose** que dice cómo se reparte —«21 % IVA», «UE · autorrep. 21 %»— o
+**«falta el IVA»** en rojo si está sin cerrar. Se pincha y se corrige, incluso
+después de haberla guardado.
+
+**El total no se toca desde ahí.** Es lo que pone el papel: si el total está
+mal, la factura está mal y lo que toca es pedir una rectificativa.
+
+Tres casos, y los tres se dan en una importación:
+
+**Una española normal.** Base y tipo; el total sale solo. Si no cuadra con lo
+que pone la factura, la pantalla lo dice con las dos cifras.
+
+**Una de la UE con ROI** —el perito alemán, el transporte del primer tramo—.
+Viene **sin IVA**, y ese 0 % es correcto: el servicio se localiza en España y la
+cuota nos la autorrepercutimos nosotros. Son **dos cifras distintas** y por eso
+hay dos campos:
+
+| | Qué es |
+|---|---|
+| IVA de la factura | lo que pone el papel: **0 %** |
+| Tipo que nos autorrepercutimos | el español, que no está escrito en esa factura |
+
+Se repercute y se deduce a la vez, así que en caja no mueve nada, pero **va al
+349** y sin él no cuadra. Mientras esté sin decidir sale en Pendientes: no se
+supone el 21 % porque hay excepciones de localización según el servicio, y una
+peritación hecha físicamente en un concesionario alemán es de las que hay que
+mirar antes.
+
+**Una de gestoría, que lleva varios tipos.** Trae tasas a cero y honorarios al
+21 % en el mismo papel: no tiene un tipo, tiene una cuota. Se marca **«la
+factura lleva varios tipos»** y se pone la cuota en vez del tipo. No es teclear
+un número libre: base + cuota tienen que sumar el total de la factura, con un
+céntimo de margen porque una gestoría redondea línea a línea.
+
+Ojo con adivinar por el nombre de la partida, que se equivoca en las dos
+direcciones dentro del mismo papel:
+
+- La **tasa del colegio** sí lleva IVA — es lo que cobra el colegio de gestores
+  por su trabajo, no una tasa oficial.
+- El **cambio de servicio** no lo lleva, pero los **honorarios de cambio de
+  servicio** sí: son dos líneas distintas de la misma factura.
 
 ### Lo que costaría dejarlo bien
 
