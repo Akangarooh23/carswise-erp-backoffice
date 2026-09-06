@@ -77,7 +77,14 @@ interface Paso {
   created_at: string;
 }
 
-/** Cómo se lee cada paso del rastro. La misma lista que en `lib/citas.js`. */
+/**
+ * Cómo se lee cada paso del rastro.
+ *
+ * Las claves las escribe la API: unas al hacer algo —confirmar, mover,
+ * cancelar— y otras porque alguien las apunta a mano, que son las de
+ * `PASOS_A_MANO` en `routes/visits.ts`. Una que falte aquí no desaparece: sale
+ * su clave cruda, fea pero legible, que es mejor que un hueco.
+ */
 const PASO: Record<string, string> = {
   solicitada:               'El cliente pidió la visita',
   concesionario_contactado: 'Hablado con el vendedor',

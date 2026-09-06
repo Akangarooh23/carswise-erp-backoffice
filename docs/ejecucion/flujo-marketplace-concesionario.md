@@ -202,17 +202,17 @@ coche y el nombre—. Dentro se puede escribir sin que se cierre.
 
 :::flujo
 erp: Apuntar que has hablado con el concesionario
-@ Agenda → la visita pendiente → «Ver rastro» → «He llamado a el concesionario»
+@ Agenda → la visita → «Ver rastro» → «He llamado al concesionario»
 erp: Apuntar que ya sabe que el cliente va
-@ Agenda → la visita pendiente → «Ver rastro» → «Le he dicho que el cliente va»
+@ Agenda → la visita → «Ver rastro» → «Le he dicho que el cliente va»
 erp: Y lo que no cabe en un botón, en una nota
-@ Agenda → «Ver rastro» → «Notas»
+@ Agenda → «Ver rastro» → «Añadir una nota»
 + lo que dijo, quién llamó, lo que quedó pendiente
 :::
 
-> Los dos botones **solo salen en el bloque de arriba**, en las visitas por
-> confirmar. En una confirmada se despliega «Ver rastro y notas», pero ahí solo
-> se puede escribir una nota.
+> Los dos botones salen igual en una visita **pendiente** y en una
+> **confirmada**: avisar al concesionario de que el cliente va pasa después de
+> confirmar, y ahí es donde más falta hace poder apuntarlo.
 
 Lo demás se apunta solo: quién pidió la visita, las horas propuestas, lo que se
 le mandó, y cada confirmación, cambio o cancelación. Ninguna línea se borra
