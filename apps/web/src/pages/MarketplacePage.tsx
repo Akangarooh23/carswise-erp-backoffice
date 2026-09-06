@@ -52,7 +52,15 @@ export default function MarketplacePage() {
 
   const [sortCol, setSortCol]   = useState<string>('');
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc');
-  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: '', year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
+  // La tabla arranca en "Solo compra". Esta pantalla es para el coche que se
+  // vende, y el renting tiene su propia pestaña: entrando en "Todos" se mezclaban
+  // las dos cosas sin avisar. Hoy son 23 filas de Leasys, las unicas de la tabla
+  // marcadas como no comprables, pero la mezcla confunde mas cuantas mas haya.
+  //
+  // No se quita nada: el desplegable de MODALIDAD sigue teniendo "Todos" y "Solo
+  // renting" a un clic.
+  const MODALIDAD_POR_DEFECTO = 'compra';
+  const [colF, setColF] = useState({ brand: '', model: '', version: '', fuel: '', transmission: '', modality: MODALIDAD_POR_DEFECTO, year: '', priceMin: '', priceMax: '', salePriceMin: '', salePriceMax: '', estado: '', color: '', cc: '', seller: '', units: '', noImage: '' });
   const [colFOffers,   setColFOffers]   = useState({ brand: '', marca: '', modelo: '', version: '', portal: '', sellerType: '', estado: '', publicada: '', priceMax: '', kmMax: '', year: '', fuel: '', color: '', body: '', trans: '', cvMin: '', doors: '', seats: '', ccMin: '', co2Max: '', etiq: '', trac: '', consMax: '', province: '', city: '' });
   const [colFOffersDeb, setColFOffersDeb] = useState(colFOffers);
 
@@ -237,6 +245,17 @@ export default function MarketplacePage() {
       : [...new Set(items.map(i => i.seller).filter(Boolean))].sort()),
     [voFilterOpts.sellers, items],
   );
+
+  // El `seller` de un coche de particular no es un nombre: es su correo, que es
+  // de donde el aviso de visita saca a quién escribir. Pintarlo tal cual deja la
+  // dirección de un cliente a la vista de cualquiera que abra el ERP, y en la web
+  // pública ya se oculta a propósito por lo mismo.
+  //
+  // Se cambia solo la etiqueta. El value sigue siendo el correo, porque es con lo
+  // que casa el filtro. Si algún día hay varios particulares se verán todos como
+  // "Particular" y habrá que distinguirlos de otra forma —para eso está la
+  // pestaña de Particulares—, pero eso es mejor que enseñar direcciones.
+  const etiquetaVendedor = (s: string) => (s.includes('@') ? 'Particular' : s);
   const concYearOpts   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
   const concSellerOpts = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
 
@@ -1240,7 +1259,10 @@ export default function MarketplacePage() {
               {Object.values(colF).some(Boolean) && (
                 <div className="px-4 py-2 border-b border-brand-100 flex items-center gap-2 flex-wrap bg-acento-tenue">
                   <span className="text-xs text-acento-texto font-medium">{displayItems.length} de {items.length} resultados</span>
-                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:'', year:'', priceMin:'', priceMax:'', salePriceMin:'', salePriceMax:'', estado:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
+                  {/* Limpiar devuelve la modalidad a "Solo compra", que es como
+                      arranca la tabla. Dejarla en "Todos" haría que limpiar los
+                      filtros metiera renting, que es justo lo que no se pide. */}
+                  <button onClick={() => setColF({ brand:'', model:'', version:'', fuel:'', transmission:'', modality:MODALIDAD_POR_DEFECTO, year:'', priceMin:'', priceMax:'', salePriceMin:'', salePriceMax:'', estado:'', color:'', cc:'', seller:'', units:'', noImage:'' })}
                     className="text-xs text-acento-texto hover:text-brand-600 underline">Limpiar filtros de columna</button>
                 </div>
               )}
@@ -1417,7 +1439,7 @@ export default function MarketplacePage() {
                         className="w-full text-xs border border-brand-200 rounded px-1.5 py-1 bg-white">
                         <option value="">Todos</option>
                         <option value="__empty__">(Vacío)</option>
-                        {sellerOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                        {sellerOptions.map(s => <option key={s} value={s}>{etiquetaVendedor(s)}</option>)}
                       </select>
                     </td>
                     {/* Estado */}
