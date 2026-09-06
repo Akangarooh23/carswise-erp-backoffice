@@ -54,7 +54,13 @@ export default function CochesEnMarcha() {
               const espera = loQueSeEspera(pasos);
               return (
                 <tr key={x.id}>
-                  <td className="text-sm font-medium text-brand-500">{x.title}</td>
+                  <td>
+                    {/* Al expediente de ese coche, que ahora tiene dirección propia. */}
+                    <Link to={`/importaciones?coche=${x.id}`}
+                          className="text-sm font-medium text-acento-texto hover:underline">
+                      {x.title}
+                    </Link>
+                  </td>
                   <td className="text-sm text-brand-400">{x.user_email}</td>
                   <td className="text-sm text-brand-400">{x.status}</td>
                   <td>

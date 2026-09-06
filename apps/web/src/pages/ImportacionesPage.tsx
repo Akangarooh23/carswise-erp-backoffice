@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, descargaConSesion } from '../api/client.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
@@ -67,7 +68,23 @@ export default function ImportacionesPage() {
   const [expedientes, setExpedientes] = useState<Expediente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [abierto, setAbierto] = useState<Expediente | null>(null);
+  /*
+   * Cuál está abierto va en la dirección, no en el estado.
+   *
+   * Un expediente no tenía sitio propio: para enseñarle a alguien el del Kia
+   * había que decirle «entra en Importaciones y busca el Kia», y al recargar la
+   * página se cerraba. Con `?coche=imp-…` se enlaza, se comparte y sobrevive a
+   * un F5.
+   *
+   * Y se **deriva** de la lista en vez de guardarse aparte: así, cada vez que se
+   * recarga después de guardar algo, el panel abierto se queda con lo recién
+   * traído sin que nadie tenga que acordarse de sincronizarlo.
+   */
+  const [params, setParams] = useSearchParams();
+  const cualAbierto = params.get('coche');
+  const abrir = useCallback((x: Expediente | null) => {
+    setParams(x ? { coche: x.id } : {}, { replace: true });
+  }, [setParams]);
   const [guardando, setGuardando] = useState(false);
   // Lo que se le dice a quien acaba de pulsar, donde está mirando.
   const [errorDelPanel, setErrorDelPanel] = useState('');
@@ -113,7 +130,6 @@ export default function ImportacionesPage() {
   /** Y ya revisado, se manda con lo que haya cambiado. */
   async function mandaElCorreo(cambios: { para: string; asunto: string; nota: string; adjuntos: string[] }) {
     if (!revisando) return;
-    const id = abierto?.id;
     setGuardando(true);
     try {
       const r = await api.post(revisando.ruta, cambios);
@@ -122,8 +138,9 @@ export default function ImportacionesPage() {
         return;
       }
       setRevisando(null);
-      const lista = await carga();
-      if (id) setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+      // El panel abierto se refresca solo: sale de la lista, no de un estado
+      // aparte que hubiera que sincronizar a mano.
+      await carga();
     } catch (e) {
       setErrorDelPanel((e as Error)?.message || 'No se ha podido mandar.');
     } finally {
@@ -150,6 +167,11 @@ export default function ImportacionesPage() {
   }, []);
 
   useEffect(() => { void carga(); }, [carga]);
+
+  const abierto = useMemo(
+    () => (cualAbierto ? expedientes.find((x) => x.id === cualAbierto) ?? null : null),
+    [cualAbierto, expedientes]
+  );
 
   // Al abrir uno, su fecha en el recuadro: se edita lo que hay, no un hueco.
   useEffect(() => { setFecha(abierto?.meta?.delivery_estimate ?? ''); }, [abierto]);
@@ -192,8 +214,7 @@ export default function ImportacionesPage() {
         return;
       }
       setErrorDelPanel('');
-      const lista = await carga();
-      setAbierto((previo) => (previo && previo.id === id ? (lista.find((y) => y.id === id) ?? previo) : previo));
+      await carga();
     } catch (e) {
       setErrorDelPanel((e as Error)?.message || 'No se ha podido guardar.');
     } finally {
@@ -248,15 +269,15 @@ export default function ImportacionesPage() {
       return;
     }
     setErrorDelPanel('');
-    // El panel abierto se queda con lo recién recargado.
-    //
-    // No con lo que devuelve el `PATCH`: eso es la fila cruda de la base, con
-    // `erp_notes` suelto arriba, y la pantalla lee `meta.erp_notes`. Mezclando
-    // las dos formas, una nota recién guardada seguía saliendo como sin guardar.
-    const lista = await carga();
-    setAbierto((previo) => (previo && previo.id === id
-      ? (lista.find((x) => x.id === id) ?? previo)
-      : previo));
+    /*
+     * Se recarga la lista, y el panel abierto sale de ella.
+     *
+     * No de lo que devuelve el `PATCH`: eso es la fila cruda de la base, con
+     * `erp_notes` suelto arriba, y la pantalla lee `meta.erp_notes`. Mezclando
+     * las dos formas, una nota recién guardada seguía saliendo como sin
+     * guardar.
+     */
+    await carga();
   }
 
   /**
@@ -273,7 +294,7 @@ export default function ImportacionesPage() {
     setGuardando(false);
     if (!r.ok) { setError(r.error || "No se ha podido avisar al cliente."); return; }
     await carga();
-    setAbierto(null);
+    abrir(null);
   }
 
   /** Solo las notas internas: esas no salen hacia el cliente. */
@@ -289,7 +310,7 @@ export default function ImportacionesPage() {
     setGuardando(false);
     if (!r.ok) { setError(r.error || 'No se ha podido devolver la fianza.'); return; }
     await carga();
-    setAbierto(null);
+    abrir(null);
   }
 
 
@@ -412,7 +433,7 @@ export default function ImportacionesPage() {
                     return (
                       <button
                         key={x.id}
-                        onClick={() => setAbierto(x)}
+                        onClick={() => abrir(x)}
                         className="text-left w-full px-3 py-2.5 rounded-lg bg-white border border-brand-200 hover:border-brand-400 transition"
                       >
                         <div className="text-[13px] font-semibold text-brand-600 leading-tight">{x.title || 'Sin vehículo'}</div>
@@ -454,7 +475,7 @@ export default function ImportacionesPage() {
           {verCerrados && (
             <div className="mt-2 flex flex-wrap gap-2">
               {cerrados.map((x) => (
-                <button key={x.id} onClick={() => setAbierto(x)}
+                <button key={x.id} onClick={() => abrir(x)}
                         className="px-3 py-2 rounded-lg border border-brand-200 bg-white text-left">
                   <div className="text-[12px] font-semibold text-brand-500">{x.title}</div>
                   <div className="text-[11px] text-brand-400">{x.status} · {x.user_email}</div>
@@ -472,7 +493,7 @@ export default function ImportacionesPage() {
           fecha={fecha}
           setFecha={setFecha}
           siguiente={siguienteEtapa(abierto.status)}
-          onCerrar={() => setAbierto(null)}
+          onCerrar={() => abrir(null)}
           onCambiar={(cambios) => void cambia(abierto.id, cambios)}
           onPreguntarAlVendedor={() => void preguntaAlVendedor(abierto.id)}
           onPreguntarRecogida={() => void preguntaLaRecogida(abierto)}

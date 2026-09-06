@@ -99,8 +99,11 @@ export default function MargenPorCoche() {
           <tbody>
             {conDinero.map((c) => (
               <tr key={c.id}>
-                <td className="text-sm font-medium text-brand-500 max-w-[260px] truncate" title={c.vehiculo ?? ''}>
-                  {c.vehiculo || '–'}
+                <td className="max-w-[260px] truncate" title={c.vehiculo ?? ''}>
+                  <Link to={`/importaciones?coche=${c.id}`}
+                        className="text-sm font-medium text-acento-texto hover:underline">
+                    {c.vehiculo || '–'}
+                  </Link>
                 </td>
                 <td className="text-sm text-brand-400">{c.estado || '–'}</td>
                 <td className="text-sm text-brand-500 tabular-nums">{euros(c.ingreso)}</td>
