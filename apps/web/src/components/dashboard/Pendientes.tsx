@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import Icono, { type NombreIcono } from '../ui/Icono.js';
+import type { Expediente } from '../../lib/expedientes-importacion.js';
+import { trabajoDeLosCoches } from '../../lib/trabajo-de-los-coches.js';
 
 /**
  * Todo lo que espera a alguien, en un sitio.
@@ -21,6 +23,17 @@ import Icono, { type NombreIcono } from '../ui/Icono.js';
  * cosas que hacer estando en cualquier otra. Una pestaña sin número obliga a
  * entrar para saber si hay algo, y a la tercera vez que no hay nada se deja de
  * entrar.
+ *
+ * ## Los coches primero
+ *
+ * Las tareas de los coches se calculan aquí y no en el servidor: el cálculo
+ * —`pasosDeLaImportacion`— ya vive en el navegador, de donde salen la ficha del
+ * coche y el número rojo del menú. Llevárselo a la API sería mantener setecientas
+ * líneas de reglas en dos sitios, y el día que difieran habrá que decidir cuál
+ * vale.
+ *
+ * Van **delante del papeleo** porque son el trabajo: una factura sin IVA es una
+ * tarea de cinco minutos y un coche parado es un coche parado.
  */
 
 export interface Pendiente {
@@ -49,15 +62,29 @@ const TONOS = {
 };
 
 /** Se pide una vez y lo leen los dos: la pestaña, para el número, y la lista. */
-export function usePendientes() {
-  const [lista, setLista] = useState<Pendiente[] | null>(null);
+export function usePendientes(refresco = 0) {
+  const [papeleo, setPapeleo] = useState<Pendiente[] | null>(null);
+  const [coches, setCoches] = useState<Pendiente[] | null>(null);
 
   useEffect(() => {
+    let vigente = true;
     api.get<{ pendientes: Pendiente[] }>('/dashboard/pendientes')
-      .then((r) => { if (r.ok) setLista(r.data.pendientes); })
-      .catch(() => setLista([]));
-  }, []);
+      .then((r) => { if (vigente) setPapeleo(r.ok ? r.data.pendientes : []); })
+      .catch(() => { if (vigente) setPapeleo([]); });
 
+    // Los mismos expedientes que pide el menú para su número rojo. Se piden
+    // otra vez a propósito: compartirlos obligaría a subir el estado hasta el
+    // layout, y este bloque tiene que poder vivir solo.
+    api.get<Expediente[]>('/leads?type=import&limit=100')
+      .then((r) => { if (vigente) setCoches(r.ok && Array.isArray(r.data) ? trabajoDeLosCoches(r.data) : []); })
+      .catch(() => { if (vigente) setCoches([]); });
+
+    return () => { vigente = false; };
+  }, [refresco]);
+
+  // Hasta que llegan las dos no hay lista: enseñar el papeleo y que un segundo
+  // después aparezcan tres coches por encima mueve lo que ya estabas leyendo.
+  const lista = papeleo === null || coches === null ? null : [...coches, ...papeleo];
   return { lista, total: (lista ?? []).reduce((s, p) => s + p.n, 0) };
 }
 

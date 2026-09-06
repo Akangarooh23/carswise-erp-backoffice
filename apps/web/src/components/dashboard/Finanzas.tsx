@@ -43,7 +43,7 @@ const TRAMOS: { clave: Tramo; nombre: string }[] = [
 ];
 
 /** Lo que se pide una vez y leen los dos bloques. */
-export function useFinanzas() {
+export function useFinanzas(refresco = 0) {
   /*
    * Las cuentas son solo del administrador, como el fichero del asesor.
    *
@@ -72,7 +72,7 @@ export function useFinanzas() {
       .catch(() => { if (vigente) setFallo('No se pudieron cargar las cuentas'); })
       .finally(() => { if (vigente) setCargando(false); });
     return () => { vigente = false; };
-  }, [tramo, puede]);
+  }, [tramo, puede, refresco]);
 
   return { tramo, setTramo, datos, cargando, fallo, puede };
 }

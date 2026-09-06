@@ -252,17 +252,6 @@ export interface DashboardStats {
     total: number; active: number; at_risk: number; blocked: number;
     plus: number; premium: number; new_30d: number;
   };
-  tickets: {
-    total: number; open: number; in_progress: number;
-    waiting_customer: number; resolved: number; urgent: number; new_7d: number;
-  };
-  appointments: {
-    total: number; scheduled: number; confirmed: number;
-    completed: number; cancelled: number; upcoming_7d: number;
-  };
-  marketplace: {
-    total: number; active: number; avg_price: number; min_price: number; max_price: number;
-  };
   leads: {
     total: number; pending: number; contacted: number; resolved: number; reschedule: number; new_7d: number;
   };
@@ -279,7 +268,6 @@ export interface DashboardStats {
     facturas_sin_llegar: number; facturas_sin_llegar_importe: number | string;
     publicados: number; vivos: number;
   };
-  recentTickets: Ticket[];
   upcomingAppointments: Appointment[];
 }
 

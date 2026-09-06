@@ -9,6 +9,7 @@ import Negocio from '../components/dashboard/Negocio.js';
 import Escaparate from '../components/dashboard/Escaparate.js';
 import EmbudoDeVentas from '../components/dashboard/EmbudoDeVentas.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import Icono from '../components/ui/Icono.js';
 import { StatusBadge } from '../components/ui/Badge.js';
 import type { DashboardStats } from '../types/index.js';
 
@@ -22,7 +23,9 @@ import type { DashboardStats } from '../types/index.js';
  * distinto del día.
  *
  * **Pendientes abre el panel** porque es la que se hace primero: al entrar en
- * un ERP por la mañana no se pregunta cuánto se facturó el año pasado.
+ * un ERP por la mañana no se pregunta cuánto se facturó el año pasado. Y lleva
+ * el trabajo de los coches además del papeleo, que es lo que hace que esa
+ * pestaña tenga algo que enseñar un día normal.
  *
  * Y su número va **en la pestaña**, no dentro. Un aviso escondido detrás de una
  * pestaña que no estás mirando es un aviso que no existe; con el número fuera,
@@ -63,10 +66,20 @@ export default function DashboardPage() {
   const [stats, setStats]   = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
+  /*
+   * De cuándo son los números.
+   *
+   * El panel se deja abierto. Vuelves a las tres horas, lees «19.805 €» y estás
+   * mirando lo de esta mañana sin saberlo: en una pantalla de dinero eso no es
+   * un detalle. La hora va arriba y al lado el botón que los vuelve a pedir.
+   */
+  const [refresco, setRefresco] = useState(0);
+  const [cargadoA, setCargadoA] = useState<Date | null>(null);
+
   // Un solo periodo y una sola petición para los dos bloques de dinero: con
   // dos, el reparto puede no sumar lo que dice el total de arriba.
-  const cuentas = useFinanzas();
-  const pendientes = usePendientes();
+  const cuentas = useFinanzas(refresco);
+  const pendientes = usePendientes(refresco);
 
   const [params, setParams] = useSearchParams();
   const pedida = params.get('ver');
@@ -74,10 +87,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     api.get<DashboardStats>('/dashboard/stats').then((res) => {
-      if (res.ok) setStats(res.data);
+      if (res.ok) { setStats(res.data); setCargadoA(new Date()); }
       else setError('No se pudieron cargar las estadísticas');
     }).catch(() => setError('Error de conexión')).finally(() => setLoading(false));
-  }, []);
+  }, [refresco]);
 
   if (loading) return <div className="text-brand-300 text-sm pt-4">Cargando dashboard…</div>;
   if (error)   return <div className="text-red-500 text-sm pt-4">{error}</div>;
@@ -85,7 +98,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" subtitle="Vista general del negocio" />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PageHeader title="Dashboard" subtitle="Vista general del negocio" />
+        <div className="flex items-center gap-3 pb-1">
+          {cargadoA && (
+            <span className="text-[11px] text-brand-300 tabular-nums">
+              números de las {cargadoA.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button type="button" onClick={() => setRefresco((n) => n + 1)}
+                  className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-500 hover:bg-brand-50">
+            <Icono nombre="refrescar" tam={14} />
+            Actualizar
+          </button>
+        </div>
+      </div>
 
       {/*
         * La barra va en su propio bloque con hueco debajo.

@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
 import { losApuntes } from '../lib/apuntes.js';
+import { ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
 import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado } from '../lib/el-periodo.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
@@ -12,7 +13,15 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operations', 'sales']), async (_req, res) => {
   try {
-    const [users, tickets, appointments, marketplace, leads, recentTickets, recentAppointments,
+    /*
+     * Solo lo que se pinta.
+     *
+     * Aquí se calculaban también los siete contadores de tickets, los cinco de
+     * citas, la media y los extremos del marketplace y los cinco tickets
+     * recientes: cuatro consultas en cada carga del panel que no salían por
+     * ningún sitio desde que la pantalla se repartió en pestañas.
+     */
+    const [users, leads, recentAppointments,
            importacion, sinFacturar, escaparate] = await Promise.all([
       // User stats — base from moveadvisor_users, status from erp_users
       query(`
@@ -28,42 +37,6 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
         LEFT JOIN erp_users eu ON eu.email = mu.email
       `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, active: 0, at_risk: 0, blocked: 0, new_30d: 0, plus: 0, premium: 0 }] }; }),
 
-      // Ticket stats
-      query(`
-        SELECT
-          COUNT(*)::int                                                              AS total,
-          COUNT(*) FILTER (WHERE status = 'open')::int                              AS open,
-          COUNT(*) FILTER (WHERE status = 'in_progress')::int                       AS in_progress,
-          COUNT(*) FILTER (WHERE status = 'waiting_customer')::int                  AS waiting_customer,
-          COUNT(*) FILTER (WHERE status = 'resolved')::int                          AS resolved,
-          COUNT(*) FILTER (WHERE priority = 'urgent')::int                          AS urgent,
-          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int      AS new_7d
-        FROM erp_tickets
-      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, urgent: 0, new_7d: 0 }] }; }),
-
-      // Appointment stats
-      query(`
-        SELECT
-          COUNT(*)::int                                                              AS total,
-          COUNT(*) FILTER (WHERE status = 'scheduled')::int                         AS scheduled,
-          COUNT(*) FILTER (WHERE status = 'confirmed')::int                         AS confirmed,
-          COUNT(*) FILTER (WHERE status = 'completed')::int                         AS completed,
-          COUNT(*) FILTER (WHERE status = 'cancelled')::int                         AS cancelled,
-          COUNT(*) FILTER (WHERE scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '7 days')::int AS upcoming_7d
-        FROM erp_appointments
-      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, upcoming_7d: 0 }] }; }),
-
-      // Marketplace stats
-      query(`
-        SELECT
-          COUNT(*)::int                                                              AS total,
-          COUNT(*) FILTER (WHERE is_active = TRUE)::int                             AS active,
-          ROUND(AVG(price)::numeric, 0)::int                                        AS avg_price,
-          MIN(price)::int                                                            AS min_price,
-          MAX(price)::int                                                            AS max_price
-        FROM moveadvisor_marketplace_vo_offers
-      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, active: 0, avg_price: 0, min_price: 0, max_price: 0 }] }; }),
-
       // Leads stats
       query(`
         SELECT
@@ -75,14 +48,6 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int                 AS new_7d
         FROM moveadvisor_market_leads
       `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [{ total: 0, pending: 0, contacted: 0, resolved: 0, reschedule: 0, new_7d: 0 }] }; }),
-
-      // Recent tickets
-      query(`
-        SELECT id, title, status, priority, user_id, created_at
-        FROM erp_tickets
-        ORDER BY created_at DESC
-        LIMIT 5
-      `).catch((e) => { console.error("[dashboard] consulta fallida:", (e as Error).message); return { rows: [] }; }),
 
       // Upcoming appointments
       query(`
@@ -140,9 +105,6 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
       ok: true,
       data: {
         users: users.rows[0],
-        tickets: tickets.rows[0],
-        appointments: appointments.rows[0],
-        marketplace: marketplace.rows[0],
         leads: leads.rows[0],
         importacion: {
           ...importacion.rows[0],
@@ -151,7 +113,6 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
           publicados: escaparate.rows[0]?.publicados ?? 0,
           vivos: escaparate.rows[0]?.vivos ?? 0,
         },
-        recentTickets: recentTickets.rows,
         upcomingAppointments: recentAppointments.rows,
       },
     });
@@ -412,9 +373,7 @@ dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sa
 dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   const vacio = () => ({ rows: [] as Record<string, unknown>[] });
   try {
-    const anio = elPeriodo('anio');
-
-    const [leads, citas, usuarios, facturas, importacion, comisiones, apuntes] = await Promise.all([
+    const [leads, citas, usuarios, facturas, importacion, comisiones, contabilidad] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -462,10 +421,32 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
                )::int AS comisiones_sin_emitir
       `).catch(vacio),
 
-      losApuntes(anio.desde, anio.hasta).catch(() => []),
+      /*
+       * Las dos de contabilidad, contadas y no construidas.
+       *
+       * Antes esto montaba **todos** los apuntes del año —las dos tablas de
+       * facturas, el emparejado de proveedores, los suplidos— para quedarse con
+       * dos números. Y `/dashboard/finanzas` hacía lo mismo en la misma carga
+       * del panel: la consulta cara, dos veces.
+       *
+       * Lo que hace falta aquí son dos cuentas. Una factura al cliente sale
+       * siempre de la pasarela con su 21 %, así que solo pueden faltarle a una
+       * de proveedor: mirando esa tabla se contesta igual y sin construir nada.
+       */
+      query(`
+        SELECT
+          COUNT(*) FILTER (
+            WHERE COALESCE(regimen, 'nacional') = 'nacional'
+              AND iva_rate IS NULL AND iva_amount IS NULL
+              AND COALESCE(invoice_amount, 0) > 0
+          )::int AS sin_desglosar,
+          COUNT(*) FILTER (
+            WHERE regimen = 'intracomunitario' AND autorepercusion IS NULL
+          )::int AS sin_autorepercusion
+        FROM moveadvisor_provider_invoices
+        WHERE COALESCE(status, '') NOT IN ($1, $2)
+      `, [ESPERADA, CUADRADA]).catch(vacio),
     ]);
-
-    const cuentas = cuentaDeResultados(apuntes);
 
     res.json({
       ok: true,
@@ -473,8 +454,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
         pendientes: losPendientes({
           ...leads.rows[0], ...citas.rows[0], ...usuarios.rows[0],
           ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
-          sin_desglosar: cuentas.sinDesglosar,
-          sin_autorepercusion: cuentas.sinAutorepercusion,
+          ...contabilidad.rows[0],
         }),
       },
     });
