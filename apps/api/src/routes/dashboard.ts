@@ -6,6 +6,7 @@ import { losApuntes } from '../lib/apuntes.js';
 import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
 import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado } from '../lib/el-periodo.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
+import { losPendientes } from '../lib/pendientes.js';
 
 export const dashboardRouter = Router();
 
@@ -392,5 +393,92 @@ dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sa
     });
   } catch (err) {
     falloInterno(res, 'dashboard_embudo_failed', err);
+  }
+});
+
+/**
+ * Todo lo que espera a alguien, en una sola pregunta.
+ *
+ * Estaba repartido entre las fichas de arriba del panel, dos avisos dentro de
+ * la pestaña Financiera y otros dos en pantallas de detalle. Lo que pasa
+ * repartido así es que se ve lo de la pestaña en la que estás; y las dos
+ * facturas de la UE sin decidir su tipo —que son las que no dejan salir el
+ * 349— vivían dentro de una pestaña.
+ *
+ * Las dos de contabilidad salen de `losApuntes` del **año corriente**, que es
+ * el periodo en el que alguien puede todavía arreglarlas. Del año pasado ya no
+ * se arregla nada: se declaró como se declaró.
+ */
+dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
+  const vacio = () => ({ rows: [] as Record<string, unknown>[] });
+  try {
+    const anio = elPeriodo('anio');
+
+    const [leads, citas, usuarios, facturas, importacion, comisiones, apuntes] = await Promise.all([
+      query(`
+        SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
+               COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
+          FROM moveadvisor_market_leads
+      `).catch(vacio),
+
+      query(`
+        SELECT COUNT(*) FILTER (
+                 WHERE scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '7 days'
+               )::int AS citas_7d
+          FROM erp_appointments
+      `).catch(vacio),
+
+      query(`
+        SELECT COUNT(*) FILTER (WHERE status = 'at_risk')::int AS usuarios_en_riesgo
+          FROM erp_users
+      `).catch(vacio),
+
+      query(`
+        SELECT COUNT(*) FILTER (WHERE direction = 'received' AND status = 'esperada')::int AS facturas_sin_llegar
+          FROM moveadvisor_provider_invoices
+      `).catch(vacio),
+
+      query(`
+        SELECT COUNT(*) FILTER (
+                 WHERE deposit_paid_at IS NULL AND status <> 'Entregado'
+               )::int AS sin_deposito
+          FROM moveadvisor_market_leads
+         WHERE lead_type = 'import'
+      `).catch(vacio),
+
+      /*
+       * Lo vendido menos lo facturado.
+       *
+       * Una garantía vendida sin su comisión emitida no la reclama nadie, y no
+       * hay ninguna pantalla donde eso chille: en Comisiones se ve si se entra,
+       * y a Comisiones no entra nadie a mirar si falta algo.
+       */
+      query(`
+        SELECT GREATEST(
+                 (SELECT COUNT(*)::int FROM moveadvisor_market_leads WHERE garantia_id IS NOT NULL)
+                 - (SELECT COUNT(*)::int FROM moveadvisor_provider_invoices
+                     WHERE direction = 'emitted' AND type <> 'vehicle_sale'),
+                 0
+               )::int AS comisiones_sin_emitir
+      `).catch(vacio),
+
+      losApuntes(anio.desde, anio.hasta).catch(() => []),
+    ]);
+
+    const cuentas = cuentaDeResultados(apuntes);
+
+    res.json({
+      ok: true,
+      data: {
+        pendientes: losPendientes({
+          ...leads.rows[0], ...citas.rows[0], ...usuarios.rows[0],
+          ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
+          sin_desglosar: cuentas.sinDesglosar,
+          sin_autorepercusion: cuentas.sinAutorepercusion,
+        }),
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_pendientes_failed', err);
   }
 });

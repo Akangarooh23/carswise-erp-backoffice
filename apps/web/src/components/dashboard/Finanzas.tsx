@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { useAuth } from '../../store/auth.js';
-import Icono from '../ui/Icono.js';
 import GraficoDeMeses from '../ui/GraficoDeMeses.js';
 import Reparto from '../ui/Reparto.js';
 import type { Finanzas as Datos, Tramo } from '../../types/index.js';
@@ -203,32 +202,12 @@ export default function Finanzas({ cuentas }: { cuentas: Cuentas }) {
                pie="suplidos: entra y sale, no es nuestro" />
       </div>
 
-      {datos.sinAutorepercusion > 0 && (
-        /*
-         * No mueve el margen —lo autorepercutido se deduce a la vez— pero sí
-         * el 349, y el sitio donde alguien lo va a ver es este.
-         */
-        <Link to="/provider-billing"
-              className="mt-3 flex items-center gap-2 rounded-lg border border-acento bg-acento-tenue px-3 py-2 text-[12px] font-semibold text-acento-texto hover:border-acento-oscuro">
-          <Icono nombre="aviso" tam={15} />
-          {datos.sinAutorepercusion === 1
-            ? 'Una factura de la UE no dice a qué tipo se autorepercute, y sin eso no sale el 349'
-            : `${datos.sinAutorepercusion} facturas de la UE no dicen a qué tipo se autorepercuten, y sin eso no sale el 349`}
-        </Link>
-      )}
-
-      {datos.sinDesglosar > 0 && (
-        // El número de arriba deja de ser exacto y hay que decirlo donde está
-        // el número, no en una pantalla aparte.
-        <Link to="/contabilidad"
-              className="mt-3 flex items-center gap-2 rounded-lg border border-acento bg-acento-tenue px-3 py-2 text-[12px] font-semibold text-acento-texto hover:border-acento-oscuro">
-          <Icono nombre="aviso" tam={15} />
-          {datos.sinDesglosar === 1
-            ? 'Una factura no dice su IVA, así que estas cifras son aproximadas'
-            : `${datos.sinDesglosar} facturas no dicen su IVA, así que estas cifras son aproximadas`}
-        </Link>
-      )}
-
+      {/*
+        * Los dos avisos —facturas sin IVA e intracomunitarias sin decidir su
+        * tipo— ya no están aquí: se han ido a Pendientes, arriba del panel y
+        * fuera de las pestañas. Escondidos dentro de esta, solo los veía quien
+        * entraba a mirar las cuentas, y son cosas que hay que hacer.
+        */}
       <div className="mt-4 bg-white rounded-xl border border-brand-200 shadow-sm p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-3 mb-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-brand-300">Los últimos doce meses</h3>

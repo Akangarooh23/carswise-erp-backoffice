@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { StatCard } from '../components/ui/Card.js';
-import Atencion from '../components/ui/Atencion.js';
+import Pendientes from '../components/dashboard/Pendientes.js';
 import CochesEnMarcha from '../components/dashboard/CochesEnMarcha.js';
 import Finanzas, { DeDondeViene, useFinanzas } from '../components/dashboard/Finanzas.js';
 import Negocio from '../components/dashboard/Negocio.js';
@@ -80,22 +80,16 @@ export default function DashboardPage() {
       <PageHeader title="Dashboard" subtitle="Vista general del negocio" />
 
       {/*
-        * Lo que espera a alguien, antes que nada y fuera de las pestañas.
+        * Todo lo que espera a alguien, antes que nada y fuera de las pestañas.
+        *
+        * También los dos avisos que vivían dentro de Financiera: escondidos
+        * detrás de una pestaña, las dos facturas de la UE sin decidir su tipo
+        * —que son las que no dejan salir el 349— solo se veían si entrabas.
         *
         * Los tickets de soporte no están: no hay servicio de soporte todavía y
-        * un contador siempre a cero enseña a no mirar la fila donde también
-        * viven los que sí importan.
+        * un contador siempre a cero enseña a no mirar la lista entera.
         */}
-      <Atencion avisos={[
-        { etiqueta: 'leads pendientes',   valor: stats.leads?.pending ?? 0,        a: '/leads',        icono: 'megafono' },
-        { etiqueta: 'leads por reagendar', valor: stats.leads?.reschedule ?? 0,    a: '/leads',        icono: 'historial' },
-        { etiqueta: 'citas en 7 días',    valor: stats.appointments?.upcoming_7d ?? 0, a: '/appointments', icono: 'calendario' },
-        { etiqueta: 'usuarios en riesgo', valor: stats.users?.at_risk ?? 0,        a: '/users',        icono: 'usuarios',   tono: 'urgente' },
-        // Las dos de importación cuestan dinero mientras siguen ahí: un gasto sin
-        // factura no se deduce, y un coche sin depósito lo estamos financiando.
-        { etiqueta: 'facturas de proveedor sin llegar', valor: stats.importacion?.facturas_sin_llegar ?? 0, a: '/provider-billing', icono: 'documento', tono: 'urgente' },
-        { etiqueta: 'importaciones sin depósito', valor: stats.importacion?.sin_deposito ?? 0, a: '/importaciones', icono: 'euro' },
-      ]} />
+      <Pendientes />
 
       {/*
         * La barra va en su propio bloque con hueco debajo.
