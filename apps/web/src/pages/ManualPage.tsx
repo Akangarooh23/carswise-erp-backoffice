@@ -9,8 +9,8 @@
  * Se empaquetan al construir, así que la pantalla no llama a la API y funciona
  * aunque el servidor esté caído.
  *
- * Añadir un documento es dejar un `.md` en `docs/`: aparece solo, con el título
- * que lleve dentro. En desarrollo hay que reiniciar `npm run dev` la primera
+ * Añadir un documento es dejar un `.md` en `docs/negocio/` o `docs/ejecucion/`:
+ * aparece solo, en su sección y con el título que lleve dentro. En desarrollo hay que reiniciar `npm run dev` la primera
  * vez, porque `docs/` queda fuera de lo que vigila Vite y no se entera de un
  * fichero nuevo. Al construir sí entra siempre.
  */
@@ -19,12 +19,36 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import { interpreta, tituloDe, type Bloque, type Trozo, type Paso } from '../lib/markdown.js';
 
-const FICHEROS = import.meta.glob('../../../../docs/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const FICHEROS = import.meta.glob('../../../../docs/**/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
+/**
+ * Dos secciones, y la carpeta dice cuál.
+ *
+ * **Negocio** explica cómo funciona la cosa y por qué: se lee una vez, para
+ * entender. **Ejecución** se lee con el ERP abierto al lado, haciendo el
+ * trabajo, y contesta dónde está el botón y qué hay que teclear.
+ *
+ * Mezclados, quien busca lo segundo se encuentra lo primero y acaba leyendo
+ * doce páginas para averiguar en qué pantalla se encarga una peritación.
+ *
+ * La sección sale de la carpeta —`docs/negocio/`, `docs/ejecucion/`— y no de una
+ * marca dentro del fichero: así se ve en el repositorio sin abrir nada, y mover
+ * un documento de sección es moverlo de carpeta.
+ */
+const SECCIONES = [
+  { clave: 'ejecucion', nombre: 'Manuales de ejecución', pie: 'Con el ERP abierto al lado' },
+  { clave: 'negocio',   nombre: 'Manuales de negocio',   pie: 'Cómo funciona y por qué' },
+] as const;
 
 const DOCUMENTOS = Object.entries(FICHEROS)
   .map(([ruta, fuente]) => {
-    const fichero = ruta.replace(/^.*\//, '');
-    return { fichero, titulo: tituloDe(fuente, fichero), fuente };
+    const trozos = ruta.split('/');
+    const fichero = trozos[trozos.length - 1];
+    const carpeta = trozos[trozos.length - 2];
+    // Lo que quede suelto en `docs/` cuenta como negocio: es lo que había antes
+    // de haber secciones, y desaparecer no es una opción para un manual.
+    const seccion = SECCIONES.some((s) => s.clave === carpeta) ? carpeta : 'negocio';
+    return { fichero: `${seccion}/${fichero}`, seccion, titulo: tituloDe(fuente, fichero), fuente };
   })
   .sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
 
@@ -80,7 +104,29 @@ function Flujo({ pasos }: { pasos: Paso[] }) {
               <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5 w-20 ${ACTOR[p.actor].texto}`}>
                 {ACTOR[p.actor].rotulo}
               </span>
-              <span className="text-[14px] text-brand-600 leading-snug"><Trozos trozos={p.trozos} /></span>
+              <span className="min-w-0">
+                <span className="block text-[14px] text-brand-600 leading-snug"><Trozos trozos={p.trozos} /></span>
+
+                {/*
+                  * Dónde se hace y qué se teclea, en los manuales de ejecución.
+                  *
+                  * Van dentro de la caja y no debajo: se leen con el ERP abierto
+                  * al lado, y separar el paso de su pantalla obliga a mirar dos
+                  * sitios para hacer una cosa.
+                  */}
+                {p.donde && (
+                  <span className="mt-2 flex items-start gap-1.5 text-[12.5px] text-brand-500">
+                    <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="panel" tam={13} /></span>
+                    <span><Trozos trozos={p.donde} /></span>
+                  </span>
+                )}
+                {p.mete && (
+                  <span className="mt-1 flex items-start gap-1.5 text-[12.5px] text-brand-400">
+                    <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="lapiz" tam={13} /></span>
+                    <span>Se mete: <Trozos trozos={p.mete} /></span>
+                  </span>
+                )}
+              </span>
             </div>
           )}
 
@@ -180,8 +226,15 @@ function Contenido({ bloques }: { bloques: Bloque[] }) {
 }
 
 export default function ManualPage() {
-  const [abierto, setAbierto] = useState(DOCUMENTOS[0]?.fichero ?? '');
-  const doc = DOCUMENTOS.find((d) => d.fichero === abierto) ?? DOCUMENTOS[0];
+  /*
+   * Abre por el primero de **Ejecución**.
+   *
+   * Quien entra al manual casi siempre está haciendo algo y busca dónde está el
+   * botón. Lo de negocio se lee una vez.
+   */
+  const primero = DOCUMENTOS.find((d) => d.seccion === 'ejecucion') ?? DOCUMENTOS[0];
+  const [abierto, setAbierto] = useState(primero?.fichero ?? '');
+  const doc = DOCUMENTOS.find((d) => d.fichero === abierto) ?? primero;
   const bloques = useMemo(() => (doc ? interpreta(doc.fuente) : []), [doc]);
 
   // Los títulos de segundo nivel hacen de índice: estos documentos son largos y
@@ -210,22 +263,32 @@ export default function ManualPage() {
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         <nav className="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 space-y-4">
-          {DOCUMENTOS.length > 1 && (
-            <ul className="rounded-xl border border-brand-200 bg-white overflow-hidden divide-y divide-brand-100">
-              {DOCUMENTOS.map((d) => (
-                <li key={d.fichero}>
-                  <button
-                    onClick={() => setAbierto(d.fichero)}
-                    className={`w-full text-left px-4 py-2.5 text-[13.5px] transition-colors ${
-                      d.fichero === abierto ? 'bg-acento-tenue font-semibold text-acento-texto' : 'text-brand-500 hover:bg-brand-50'
-                    }`}
-                  >
-                    {d.titulo}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {SECCIONES.map((s) => {
+            const suyos = DOCUMENTOS.filter((d) => d.seccion === s.clave);
+            if (!suyos.length) return null;
+            return (
+              <div key={s.clave} className="rounded-xl border border-brand-200 bg-white overflow-hidden">
+                <div className="px-4 py-2.5 bg-brand-50 border-b border-brand-100">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-brand-400">{s.nombre}</p>
+                  <p className="text-[11px] text-brand-300 leading-snug mt-0.5">{s.pie}</p>
+                </div>
+                <ul className="divide-y divide-brand-100">
+                  {suyos.map((d) => (
+                    <li key={d.fichero}>
+                      <button
+                        onClick={() => setAbierto(d.fichero)}
+                        className={`w-full text-left px-4 py-2.5 text-[13.5px] transition-colors ${
+                          d.fichero === abierto ? 'bg-acento-tenue font-semibold text-acento-texto' : 'text-brand-500 hover:bg-brand-50'
+                        }`}
+                      >
+                        {d.titulo}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
 
           {apartados.length > 0 && (
             <div className="rounded-xl border border-brand-200 bg-white px-4 py-3">

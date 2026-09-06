@@ -8,7 +8,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { interpreta, trozos, tituloDe } from './markdown.js';
+import { interpreta, trozos, tituloDe, type Paso } from './markdown.js';
 
 describe('el formato dentro de una línea', () => {
   test('la negrita', () => {
@@ -174,5 +174,49 @@ describe('el flujo de cajas', () => {
     const b = interpreta(':::flujo\ncliente: algo');
     assert.equal(b.length, 1);
     assert.equal(b[0].tipo, 'flujo');
+  });
+});
+
+describe('una caja que dice dónde y qué se mete', () => {
+  /*
+   * Es lo que separa un manual de negocio de uno de ejecución. «Encargar la
+   * peritación» dice qué pasa; sin decir dónde está el botón y qué hay que
+   * teclear, quien lo lee por primera vez tiene que buscarlo, y ese rato es
+   * justo lo que un manual de ejecución tiene que ahorrar.
+   */
+  const conDetalle = interpreta([
+    ':::flujo',
+    'erp: Encargar la peritación',
+    '@ Peritaciones → el coche → «Encargar»',
+    '+ perito, dónde está el coche, día y hora',
+    ':::',
+  ].join('\n'));
+
+  test('la pantalla y los datos cuelgan del paso de encima', () => {
+    const flujo = conDetalle[0] as { tipo: 'flujo'; pasos: Paso[] };
+    assert.equal(flujo.pasos.length, 1, 'no son pasos: son del paso anterior');
+    const paso = flujo.pasos[0] as Extract<Paso, { tipo: 'paso' }>;
+    assert.equal(paso.actor, 'erp');
+    assert.match(paso.donde!.map((t) => ('texto' in t ? t.texto : '')).join(''), /Peritaciones/);
+    assert.match(paso.mete!.map((t) => ('texto' in t ? t.texto : '')).join(''), /perito/);
+  });
+
+  test('sin ellos, el paso sigue igual que siempre', () => {
+    const f = interpreta(':::flujo\nerp: Encargar la peritación\n:::')[0] as { tipo: 'flujo'; pasos: Paso[] };
+    const paso = f.pasos[0] as Extract<Paso, { tipo: 'paso' }>;
+    assert.equal(paso.donde, undefined);
+    assert.equal(paso.mete, undefined);
+  });
+
+  test('una que no cuelga de nada se ignora, no pinta una caja vacía', () => {
+    const f = interpreta(':::flujo\n@ Peritaciones\nerp: Encargar\n:::')[0] as { tipo: 'flujo'; pasos: Paso[] };
+    assert.equal(f.pasos.length, 1);
+    assert.equal((f.pasos[0] as Extract<Paso, { tipo: 'paso' }>).donde, undefined);
+  });
+
+  test('y el formato de dentro se sigue leyendo', () => {
+    const f = interpreta(':::flujo\nerp: Encargar\n@ **Peritaciones** → el coche\n:::')[0] as { tipo: 'flujo'; pasos: Paso[] };
+    const paso = f.pasos[0] as Extract<Paso, { tipo: 'paso' }>;
+    assert.equal(paso.donde![0].tipo, 'fuerte');
   });
 });

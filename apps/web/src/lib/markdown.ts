@@ -21,7 +21,25 @@ export type Trozo =
 export type Actor = 'cliente' | 'sistema' | 'correo' | 'erp' | 'trabajador';
 
 export type Paso =
-  | { tipo: 'paso'; actor: Actor; trozos: Trozo[] }
+  | {
+      tipo: 'paso';
+      actor: Actor;
+      trozos: Trozo[];
+      /**
+       * En qué pantalla del ERP se hace, y qué datos se meten.
+       *
+       * Los dos son para los manuales de ejecución, que se leen con el ERP
+       * abierto al lado. «Encargar la peritación» dice qué pasa; sin decir
+       * **dónde** está el botón y **qué** hay que teclear, quien lo lee por
+       * primera vez tiene que buscarlo, y ese rato es justo lo que un manual de
+       * ejecución tiene que ahorrar.
+       *
+       * Opcionales: en los manuales de negocio no hacen falta y ensuciarían las
+       * cajas.
+       */
+      donde?: Trozo[];
+      mete?: Trozo[];
+    }
   | { tipo: 'pregunta'; trozos: Trozo[] }
   | { tipo: 'ramas'; ramas: { caso: string; accion: string; resultado: Trozo[] }[] };
 
@@ -109,6 +127,13 @@ export function interpreta(fuente: string): Bloque[] {
     //   ? ¿puede ese día?
     //   rama Sí | Confirmar | queda confirmada
     //   :::
+    //
+    // Y en los manuales de ejecución, cada caja puede decir dónde se hace y qué
+    // se teclea. Se cuelgan del paso de encima:
+    //
+    //   erp: Encargar la peritación
+    //   @ Peritaciones → el coche → «Encargar»
+    //   + perito, dónde está el coche, día y hora
     if (/^:::\s*flujo\s*$/.test(l.trim())) {
       i++;
       const pasos: Paso[] = [];
@@ -121,6 +146,24 @@ export function interpreta(fuente: string): Bloque[] {
         const linea = lineas[i].trim();
         i++;
         if (!linea) continue;
+
+        /*
+         * `@` y `+` no son pasos: son del paso de encima.
+         *
+         * Van antes que nada porque empiezan por un carácter que ninguna otra
+         * forma usa, y porque colgados de la caja anterior no pueden aparecer
+         * sueltos: si no hay caja encima, la línea se ignora en vez de pintar
+         * una pantalla sin paso.
+         */
+        const cuelga = /^([@+])\s*(.*)$/.exec(linea);
+        if (cuelga) {
+          const ultimo = pasos[pasos.length - 1];
+          if (!ramas.length && ultimo?.tipo === 'paso') {
+            if (cuelga[1] === '@') ultimo.donde = trozos(cuelga[2]);
+            else ultimo.mete = trozos(cuelga[2]);
+          }
+          continue;
+        }
 
         const rama = /^rama\s+([^|]+)\|([^|]+)\|(.*)$/.exec(linea);
         if (rama) {
