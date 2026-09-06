@@ -92,6 +92,70 @@ function Flecha() {
   );
 }
 
+/**
+ * Una caja del flujo.
+ *
+ * Si sabe **dónde se hace y qué se teclea**, se pincha y lo enseña. Plegado por
+ * defecto: el flujo se lee primero para ver la forma —ocho cajas de un vistazo—
+ * y el detalle se abre en la que estás haciendo ahora. Desplegadas todas, un
+ * flujo de sesenta cajas ocupa cinco pantallas y deja de servir para verlo de
+ * un vistazo, que es para lo que está.
+ */
+function Caja({ paso }: { paso: Extract<Paso, { tipo: 'paso' }> }) {
+  const [abierta, setAbierta] = useState(false);
+  const tieneDetalle = Boolean(paso.donde || paso.mete);
+  const piel = `w-full text-left flex items-start gap-3 rounded-xl border px-4 py-3 ${ACTOR[paso.actor].caja}`;
+
+  const cuerpo = (
+    <>
+      <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5 w-20 ${ACTOR[paso.actor].texto}`}>
+        {ACTOR[paso.actor].rotulo}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] text-brand-600 leading-snug"><Trozos trozos={paso.trozos} /></span>
+
+        {tieneDetalle && !abierta && (
+          <span className="mt-1 block text-[11.5px] text-brand-400">
+            Dónde se hace y qué se mete →
+          </span>
+        )}
+
+        {/*
+          * El detalle va dentro de la caja y no debajo: se lee con el ERP
+          * abierto al lado, y separar el paso de su pantalla obliga a mirar dos
+          * sitios para hacer una cosa.
+          */}
+        {abierta && paso.donde && (
+          <span className="mt-2 flex items-start gap-1.5 text-[12.5px] text-brand-500">
+            <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="panel" tam={13} /></span>
+            <span><Trozos trozos={paso.donde} /></span>
+          </span>
+        )}
+        {abierta && paso.mete && (
+          <span className="mt-1 flex items-start gap-1.5 text-[12.5px] text-brand-400">
+            <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="lapiz" tam={13} /></span>
+            <span>Se mete: <Trozos trozos={paso.mete} /></span>
+          </span>
+        )}
+      </span>
+      {tieneDetalle && (
+        <span className={`shrink-0 mt-0.5 opacity-50 transition-transform ${abierta ? 'rotate-180' : ''}`}
+              aria-hidden="true">
+          <Icono nombre="salir" tam={14} />
+        </span>
+      )}
+    </>
+  );
+
+  if (!tieneDetalle) return <div className={piel}>{cuerpo}</div>;
+  return (
+    <button type="button" onClick={() => setAbierta((v) => !v)} aria-expanded={abierta}
+            className={`${piel} transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-acento`}>
+      {cuerpo}
+    </button>
+  );
+}
+
 function Flujo({ pasos }: { pasos: Paso[] }) {
   return (
     <div className="my-6 max-w-3xl">
@@ -99,36 +163,7 @@ function Flujo({ pasos }: { pasos: Paso[] }) {
         <div key={i}>
           {i > 0 && <Flecha />}
 
-          {p.tipo === 'paso' && (
-            <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${ACTOR[p.actor].caja}`}>
-              <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5 w-20 ${ACTOR[p.actor].texto}`}>
-                {ACTOR[p.actor].rotulo}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[14px] text-brand-600 leading-snug"><Trozos trozos={p.trozos} /></span>
-
-                {/*
-                  * Dónde se hace y qué se teclea, en los manuales de ejecución.
-                  *
-                  * Van dentro de la caja y no debajo: se leen con el ERP abierto
-                  * al lado, y separar el paso de su pantalla obliga a mirar dos
-                  * sitios para hacer una cosa.
-                  */}
-                {p.donde && (
-                  <span className="mt-2 flex items-start gap-1.5 text-[12.5px] text-brand-500">
-                    <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="panel" tam={13} /></span>
-                    <span><Trozos trozos={p.donde} /></span>
-                  </span>
-                )}
-                {p.mete && (
-                  <span className="mt-1 flex items-start gap-1.5 text-[12.5px] text-brand-400">
-                    <span className="mt-0.5 shrink-0 opacity-60"><Icono nombre="lapiz" tam={13} /></span>
-                    <span>Se mete: <Trozos trozos={p.mete} /></span>
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
+          {p.tipo === 'paso' && <Caja paso={p} />}
 
           {p.tipo === 'pregunta' && (
             <div className="rounded-xl border border-brand-300 border-dashed bg-white px-4 py-3 text-center">

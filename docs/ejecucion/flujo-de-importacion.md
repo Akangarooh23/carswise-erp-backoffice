@@ -17,13 +17,29 @@ negocio: aquí solo está el cómo.
 
 :::flujo
 cliente: Pide el coche desde la ficha del marketplace
+@ En PopCar, no en el ERP — **Marketplace VO → Importación**
++ sus datos, la dirección de entrega y la garantía que elija
 cliente: Transfiere el depósito a la cuenta
+@ Importaciones → el coche → «El depósito»
++ nada: entra solo. Aquí solo se comprueba que está dentro
 erp: Se le pregunta al vendedor si sigue disponible
+@ Importaciones → el coche → «Preguntar al vendedor»
++ nada: el correo se escribe solo, se revisa y se manda
 erp: Se encarga la peritación y va alguien a verlo
+@ Peritaciones → el coche
++ perito y contacto al encargar · veredicto, notas, informe y daños al volver
 erp: Se libera el pago, y luego se confirma que el vendedor cobró
+@ Importaciones → el coche → debajo del depósito
++ antes, en Proveedores: el IBAN, el NIF y el correo del vendedor
 erp: Se organizan los dos tramos de transporte
+@ Transportes → «Nuevo tramo», uno a Zaragoza y otro a casa del cliente
++ transportista, origen, destino, coste y los datos de recogida
 erp: Se encarga la gestoría y se matricula
+@ Gestoría → «Nuevo trámite»
++ gestoría y tipo de trámite · al volver, las partidas y la matrícula
 erp: Se entrega al cliente y se cierra
+@ Importaciones → el coche → «La entrega»
++ fecha, dirección, lo que se le da y los kilómetros de salida
 :::
 
 Ocho pasos. Lo que sigue es cada uno con su pantalla.
