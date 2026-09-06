@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
+import { IVA_GENERAL } from '../lib/dinero.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { preparaGarantias } from './garantias.js';
 
@@ -673,14 +674,32 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
     if (!lr.rows.length) { res.status(404).json({ ok: false, error: 'sin_garantia' }); return; }
     const x = lr.rows[0];
 
+    /*
+     * La base es la comisión, no lo que pagó el cliente.
+     *
+     * Aquí ponía el precio de la garantía —190 €— en la base y la comisión
+     * —70 €— en el total, y esa factura no existe: dice que se le facturaron
+     * 190 € al proveedor y que el total es menor que la base. En el desglose
+     * salía un ingreso de 190 € donde se ganan 70.
+     *
+     * La comisión se factura al proveedor como un servicio nuestro, así que
+     * lleva IVA encima. Lo que pagó el cliente se queda escrito en el concepto,
+     * que es donde sirve para comprobar la liquidación.
+     */
+    const cuota = Math.round(importe * IVA_GENERAL) / 100;
+    const precio = Number(x.precio) || 0;
+    const concepto = precio > 0
+      ? `Comisión · ${x.garantia} · el cliente pagó ${precio.toFixed(2)} €`
+      : `Comisión · ${x.garantia}`;
+
     const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevo) => {
       await query(
         `INSERT INTO moveadvisor_provider_invoices
            (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email,
-            base_amount, invoice_amount, notes)
-         VALUES ($1, 'warranty_commission', $2, $3, $4, $5, $6, $7, $8, $9)`,
+            base_amount, invoice_amount, iva_rate, regimen, notes)
+         VALUES ($1, 'warranty_commission', $2, $3, $4, $5, $6, $7, $8, $9, 'nacional', $10)`,
         [nuevo, x.proveedor, lead_id, x.vehicle_title, x.contact_name, x.user_email,
-         Number(x.precio) || null, importe, `Comisión · ${x.garantia}`]
+         importe, Math.round((importe + cuota) * 100) / 100, IVA_GENERAL / 100, concepto]
       );
     });
 

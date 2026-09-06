@@ -283,6 +283,46 @@ export interface DashboardStats {
   upcomingAppointments: Appointment[];
 }
 
+/** De cuándo a cuándo se miran las cuentas. */
+export type Tramo = 'mes' | 'trimestre' | 'anio';
+
+/** Una línea del reparto de ingresos o de gastos. */
+export interface TrozoDelReparto {
+  clave: string;
+  nombre: string;
+  /** Sin IVA. */
+  base: number;
+  /** Cuántas facturas hay detrás. */
+  n: number;
+  porcentaje: number;
+}
+
+/**
+ * Cómo va la empresa.
+ *
+ * Todo en **bases**, sin IVA: una factura de 3.630 € son 3.000 € de ingreso y
+ * 630 € que hay que ingresar en Hacienda. Y los suplidos y las facturas
+ * esperadas van aparte, con su nombre, porque no son ni ingreso ni gasto.
+ */
+export interface Finanzas {
+  periodo: { tramo: Tramo; desde: string; hasta: string; etiqueta: string };
+  ingresos: number;
+  gastos: number;
+  margen: number;
+  /** Null cuando no hay ingresos: no es un 0 %, es que no hay de qué. */
+  margenPorcentaje: number | null;
+  porLinea: TrozoDelReparto[];
+  porConcepto: TrozoDelReparto[];
+  /** Dinero de terceros que pasa por la cuenta. */
+  suplidos: number;
+  /** Gasto ya comprometido cuya factura no ha llegado. */
+  comprometido: number;
+  comprometidoN: number;
+  /** Facturas que no dicen su IVA: las cifras son aproximadas. */
+  sinDesglosar: number;
+  meses: { mes: string; ingresos: number; gastos: number; margen: number }[];
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 export interface ApiResponse<T> {
   ok: boolean;

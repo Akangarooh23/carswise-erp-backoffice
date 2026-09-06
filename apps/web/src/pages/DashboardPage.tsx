@@ -4,6 +4,7 @@ import { api } from '../api/client.js';
 import { StatCard } from '../components/ui/Card.js';
 import Atencion from '../components/ui/Atencion.js';
 import CochesEnMarcha from '../components/dashboard/CochesEnMarcha.js';
+import Finanzas, { DeDondeViene, useFinanzas } from '../components/dashboard/Finanzas.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge.js';
 import type { DashboardStats } from '../types/index.js';
@@ -22,6 +23,9 @@ export default function DashboardPage() {
   const [stats, setStats]   = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
+  // Un solo periodo y una sola petición para los dos bloques de dinero: con
+  // dos, el reparto puede no sumar lo que dice el total de arriba.
+  const cuentas = useFinanzas();
 
   useEffect(() => {
     api.get<DashboardStats>('/dashboard/stats').then((res) => {
@@ -52,8 +56,25 @@ export default function DashboardPage() {
         { etiqueta: 'importaciones sin depósito', valor: stats.importacion?.sin_deposito ?? 0, a: '/importaciones', icono: 'euro' },
       ]} />
 
+      {/* Cómo va la empresa, que es la primera pregunta del día. */}
+      <Finanzas cuentas={cuentas} />
+
+      {/* Users */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Usuarios</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Total usuarios"    value={fmt(stats.users?.total)}   sub={`+${fmt(stats.users?.new_30d)} este mes`} icon="usuarios" color="neutro" a="/users" />
+          <StatCard label="Activos"           value={fmt(stats.users?.active)}  icon="comprobado" color="bien" a="/users" />
+          <StatCard label="Plan Plus"         value={fmt(stats.users?.plus)}    icon="estrella" color="neutro" a="/users" />
+          <StatCard label="Plan Premium"      value={fmt(stats.users?.premium)} icon="diamante" color="neutro" a="/users" />
+        </div>
+      </section>
+
+      {/* De dónde sale cada euro, ya con los usuarios vistos. */}
+      <DeDondeViene cuentas={cuentas} />
+
       {/*
-        * La importación primero, que es el negocio que está corriendo.
+        * La importación, que es el negocio que está corriendo.
         *
         * Antes esto abría con «total usuarios» y «plan premium», y de lo que
         * pasa cada día —coches viniendo de Alemania, dinero de clientes
@@ -79,16 +100,9 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Users */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-300 mb-3">Usuarios</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total usuarios"    value={fmt(stats.users?.total)}   sub={`+${fmt(stats.users?.new_30d)} este mes`} icon="usuarios" color="neutro" a="/users" />
-          <StatCard label="Activos"           value={fmt(stats.users?.active)}  icon="comprobado" color="bien" a="/users" />
-          <StatCard label="Plan Plus"         value={fmt(stats.users?.plus)}    icon="estrella" color="neutro" a="/users" />
-          <StatCard label="Plan Premium"      value={fmt(stats.users?.premium)} icon="diamante" color="neutro" a="/users" />
-        </div>
-      </section>
+      {/* Y lo que hay que hacer con cada coche, no solo cuántos hay. */}
+      <CochesEnMarcha />
+
 
       {/* Tickets */}
       <section>
@@ -132,9 +146,6 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
-
-      {/* Y lo que hay que hacer con cada coche, no solo cuántos hay. */}
-      <CochesEnMarcha />
 
       {/* Recent tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

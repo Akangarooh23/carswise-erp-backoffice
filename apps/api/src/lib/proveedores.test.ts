@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {
   TIPOS_PROVEEDOR, ETIQUETA_TIPO, esTipoProveedor, tiposLimpios,
   fallaLaMatriz, EXPLICA_FALLO_DE_MATRIZ, elYLosSuyos,
-  nombreComparable, esElMismo, agrupaNombresSueltos,
+  nombreComparable, esElMismo, agrupaNombresSueltos, elProveedorDe,
 } from './proveedores.js';
 
 describe('qué hace un proveedor', () => {
@@ -185,5 +185,36 @@ describe('con quién hay que sumar', () => {
 
   test('uno que no existe no suma nada', () => {
     assert.deepEqual(elYLosSuyos('PRV-inventado', todos), []);
+  });
+});
+
+describe('a qué proveedor se refiere un nombre escrito a mano', () => {
+  const alta = [
+    { nombre: 'Becker Solutions, S.L. (Becker Lines)', tipos: ['transportista'] },
+    { nombre: 'checkdenwagen Automobile DE', tipos: ['perito'] },
+    { nombre: 'Gómez', tipos: ['taller'] },
+  ];
+
+  test('el nombre entero, aunque cambien tildes y mayúsculas', () => {
+    assert.equal(elProveedorDe('CHECKDENWAGEN AUTOMOBILE DE', alta)?.tipos[0], 'perito');
+  });
+
+  test('y el nombre a medias, que es como se escribe de menos', () => {
+    // Sin esto, esta factura se queda sin tipo y no sale en ningún desglose.
+    assert.equal(elProveedorDe('Becker Solutions, S.L.', alta)?.tipos[0], 'transportista');
+  });
+
+  test('pero no por el medio: «Transportes Gómez» no es «Gómez»', () => {
+    assert.equal(elProveedorDe('Transportes Gómez', alta), null);
+  });
+
+  test('un nombre vacío no engancha con el primero de la lista', () => {
+    assert.equal(elProveedorDe('', alta), null);
+    assert.equal(elProveedorDe(null, alta), null);
+  });
+
+  test('y sin proveedores dados de alta no revienta', () => {
+    assert.equal(elProveedorDe('Becker', []), null);
+    assert.equal(elProveedorDe('Becker', null), null);
   });
 });

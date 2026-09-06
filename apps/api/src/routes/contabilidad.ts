@@ -16,12 +16,12 @@
  */
 
 import { Router } from 'express';
-import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import {
   resumeElPeriodo, queFaltaAntesDeMandarlo, comoFichero, comoSeLlamaElFichero,
-  delTrimestre, trimestreDe, type Apunte,
+  delTrimestre, trimestreDe,
 } from '../lib/libro-para-el-asesor.js';
+import { losApuntes } from '../lib/apuntes.js';
 
 export const contabilidadRouter = Router();
 
@@ -39,82 +39,6 @@ function elPeriodo(q: Record<string, unknown>): { desde: string; hasta: string; 
   const ahora = trimestreDe(new Date());
   const trimestre = pedido >= 1 && pedido <= 4 ? pedido : (ahora?.trimestre ?? 1);
   return { ...delTrimestre(anio, trimestre), anio, trimestre };
-}
-
-/**
- * Todas las facturas del periodo, de los dos sitios donde viven.
- *
- * Las esperadas vienen también, marcadas: no son un apunte contable —sin número
- * ni fecha no hay nada que declarar— pero quien mira el trimestre tiene que
- * saber cuántas faltan por llegar antes de darlo por cerrado.
- */
-async function losApuntes(desde: string, hasta: string): Promise<Apunte[]> {
-  const [proveedores, clientes] = await Promise.all([
-    query<Record<string, unknown>>(
-      `SELECT i.id, i.invoice_number, i.provider_name, i.customer_name, i.customer_email,
-              i.vehicle_title, i.notes, i.direction, i.status,
-              i.invoice_amount::numeric AS total, i.base_amount::numeric AS base,
-              i.iva_rate::numeric AS tipo, i.regimen,
-              COALESCE(i.invoice_date, i.issued_at::date) AS fecha,
-              p.nif
-         FROM moveadvisor_provider_invoices i
-         LEFT JOIN erp_proveedores p ON p.nombre = i.provider_name
-        WHERE COALESCE(i.invoice_date, i.issued_at::date) BETWEEN $1::date AND $2::date
-        ORDER BY 12`,
-      [desde, hasta]
-    ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
-    query<Record<string, unknown>>(
-      `SELECT number, email, date, amount::numeric AS total, description, status, suplidos
-         FROM moveadvisor_user_invoices
-        WHERE date::date BETWEEN $1::date AND $2::date
-        ORDER BY date`,
-      [desde, hasta]
-    ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
-  ]);
-
-  const apuntes: Apunte[] = [];
-
-  for (const f of proveedores.rows) {
-    const emitida = nt(f.direction) === 'emitted';
-    apuntes.push({
-      numero: nt(f.invoice_number) || nt(f.id),
-      fecha: nt(f.fecha),
-      sentido: emitida ? 'emitida' : 'recibida',
-      contraparte: emitida ? nt(f.customer_name) || nt(f.customer_email) : nt(f.provider_name),
-      nif: nt(f.nif) || null,
-      concepto: nt(f.notes) || null,
-      vehiculo: nt(f.vehicle_title) || null,
-      base: f.base,
-      // La columna guarda el tipo en tanto por uno; aquí se trabaja en tanto
-      // por ciento, que es como lo escribe una factura.
-      iva: f.tipo != null ? Number(f.tipo) * 100 : null,
-      total: f.total,
-      regimen: (nt(f.regimen) || 'nacional') as Apunte['regimen'],
-      pendiente: nt(f.status) === 'esperada',
-    });
-  }
-
-  /*
-   * Y las nuestras al cliente, que salen de la pasarela.
-   *
-   * El importe que guarda es el total cobrado, con su IVA dentro. El desglose
-   * se hace aquí con el general: son servicios nuestros, y no hay ninguno a
-   * otro tipo. Si algún día lo hay, será una columna y no una suposición.
-   */
-  for (const f of clientes.rows) {
-    apuntes.push({
-      numero: nt(f.number),
-      fecha: nt(f.date),
-      sentido: 'emitida',
-      contraparte: nt(f.email),
-      concepto: nt(f.description) || null,
-      total: f.total,
-      iva: 21,
-      regimen: 'nacional',
-    });
-  }
-
-  return apuntes;
 }
 
 /** El trimestre, resumido y con sus apuntes. */

@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
+import { losApuntes } from '../lib/apuntes.js';
+import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
+import { elPeriodo, esTramo } from '../lib/el-periodo.js';
 
 export const dashboardRouter = Router();
 
@@ -152,5 +155,43 @@ dashboardRouter.get('/dashboard/stats', requireRole(['admin', 'support', 'operat
     });
   } catch (err) {
     falloInterno(res, 'dashboard_stats_failed', err);
+  }
+});
+
+/**
+ * La situación financiera, que es con lo que abre el panel.
+ *
+ * Sale de las mismas facturas que el fichero del asesor y por el mismo camino
+ * —`losApuntes`—, a propósito: dos cuentas del mismo trimestre calculadas por
+ * separado acaban difiriendo, y el día que difieren hay que decidir cuál vale.
+ *
+ * Va aparte de `/dashboard/stats` porque se pide con un periodo y se vuelve a
+ * pedir al cambiarlo, y arrastrar los tickets y las citas en cada cambio de
+ * pestaña es tráfico por nada.
+ */
+dashboardRouter.get('/dashboard/finanzas', requireRole(['admin']), async (req, res) => {
+  try {
+    const pedido = String((req.query as Record<string, unknown>).tramo ?? '');
+    const p = elPeriodo(esTramo(pedido) ? pedido : 'anio');
+
+    // Los apuntes del gráfico contienen a los del periodo, así que se piden una
+    // vez y el periodo se recorta encima. Dos consultas traerían lo mismo dos
+    // veces y podrían no coincidir si algo entra entre medias.
+    const largo = await losApuntes(p.desdeElGrafico, p.hasta);
+    const delPeriodo = largo.filter((a) => {
+      const f = String(a.fecha ?? '').slice(0, 10);
+      return f >= p.desde && f <= p.hasta;
+    });
+
+    res.json({
+      ok: true,
+      data: {
+        periodo: { tramo: p.tramo, desde: p.desde, hasta: p.hasta, etiqueta: p.etiqueta },
+        ...cuentaDeResultados(delPeriodo),
+        meses: mesAMes(largo, p.desdeElGrafico, p.hasta),
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_finanzas_failed', err);
   }
 });

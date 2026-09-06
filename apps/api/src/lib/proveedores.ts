@@ -162,3 +162,41 @@ export function elYLosSuyos(
   const filiales = todos.filter((x) => x.matriz_id === proveedorId);
   return [el, ...filiales].map((x) => ({ id: x.id, nombre: x.nombre }));
 }
+
+/**
+ * A qué proveedor de los dados de alta se refiere un nombre escrito a mano.
+ *
+ * Las facturas guardan el nombre del proveedor como texto, no su clave, así
+ * que juntarlas con la ficha es cosa de comparar nombres. Buscarlo con un
+ * igual exacto falla en cuanto alguien escribe «Becker Solutions, S.L.» donde
+ * la ficha pone «Becker Solutions, S.L. (Becker Lines)» —y entonces esa
+ * factura se queda sin NIF y sin tipo, o sea sin salir en ningún desglose—.
+ *
+ * Primero el nombre entero; si no, que uno empiece por el otro, que es como se
+ * escribe de menos: quitando el paréntesis del final. Nunca al revés —una
+ * coincidencia por el medio juntaría «Transportes Gómez» con «Gómez»—.
+ */
+export function elProveedorDe<T extends { nombre?: string | null }>(
+  nombre: string | null | undefined,
+  proveedores: readonly T[] | null | undefined
+): T | null {
+  const buscado = nombreComparable(String(nombre ?? ''));
+  if (!buscado) return null;
+
+  const lista = proveedores ?? [];
+  const exacto = lista.find((p) => nombreComparable(String(p.nombre ?? '')) === buscado);
+  if (exacto) return exacto;
+
+  // Y de las que empiezan igual, la más larga: entre «Becker» y «Becker
+  // Solutions, S.L. (Becker Lines)», la segunda dice más y es la que la ficha
+  // tiene de verdad.
+  const parecidos = lista.filter((p) => {
+    const suyo = nombreComparable(String(p.nombre ?? ''));
+    if (!suyo) return false;
+    return suyo.startsWith(buscado) || buscado.startsWith(suyo);
+  });
+  if (!parecidos.length) return null;
+
+  return parecidos.reduce((a, b) =>
+    nombreComparable(String(b.nombre ?? '')).length > nombreComparable(String(a.nombre ?? '')).length ? b : a);
+}
