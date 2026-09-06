@@ -1109,6 +1109,22 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,
+             /*
+              * Quién dijo cómo acabó.
+              *
+              * Lo puede decir un trabajador que ha hablado con el
+              * concesionario, o el propio cliente pinchando en el correo de
+              * seguimiento. No valen lo mismo: de un «se lo quedó» sale una
+              * factura de 200 €, y quien la va a emitir tiene que saber si eso
+              * viene de una llamada o de un clic sin comprobar.
+              *
+              * Se lee del último paso del rastro y no de una columna nueva: el
+              * rastro ya lo guarda, y una columna más sería el mismo dato en
+              * dos sitios que se separan.
+              */
+             (SELECT e.actor FROM visit_booking_events e
+               WHERE e.booking_id = b.id AND e.evento = 'resultado'
+               ORDER BY e.created_at DESC LIMIT 1) AS resultado_actor,
              a.source AS slot_source,
              -- Quién vende y dónde está su teléfono.
              --

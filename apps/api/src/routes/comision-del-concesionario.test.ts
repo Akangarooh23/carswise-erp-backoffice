@@ -224,3 +224,19 @@ describe('cuándo no se emite', () => {
     assert.equal(insertadas.length, 0);
   });
 });
+
+describe('lo dijera quien lo dijera', () => {
+  test('una venta que dijo el cliente se puede facturar igual', async () => {
+    /*
+     * El cliente contesta al correo de seguimiento y cierra su visita. Eso deja
+     * la venta lista para facturar, como si la hubiera cerrado un trabajador.
+     *
+     * Lo que **no** hace es emitir nada solo: de un clic sin comprobar no puede
+     * salir una factura a un tercero. Sigue haciendo falta que una persona
+     * pulse en Comisiones, y en la Agenda ve que el dato viene del cliente.
+     */
+    const r = await emite({ booking_id: VISITA });
+    assert.equal(r.codigo, 201);
+    assert.equal(insertadas.length, 1, 'la factura la crea el botón, no el resultado');
+  });
+});

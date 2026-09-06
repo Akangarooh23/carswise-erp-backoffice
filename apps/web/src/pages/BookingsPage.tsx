@@ -42,6 +42,12 @@ type Booking = {
   // cuenta lo de antes de la visita; esto, lo de después.
   resultado: string | null;
   resultado_at: string | null;
+  /**
+   * Quién dijo cómo acabó: un trabajador o el propio cliente, desde el correo
+   * de seguimiento. No valen lo mismo — de un «se lo quedó» sale una factura —,
+   * así que se enseña.
+   */
+  resultado_actor?: string | null;
 };
 
 /**
@@ -373,6 +379,14 @@ function ComoAcabo({ b, cerrando, alCerrar }: {
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${TONO[b.resultado as keyof typeof TONO] ?? 'bg-brand-50 text-brand-500 border-brand-200'}`}>
           {comoAcabo(b.resultado)}
         </span>
+        {/* Un «se lo quedó» dicho por el cliente en un correo es un indicio; el
+            de un trabajador viene de hablar con el concesionario. Quien va a
+            emitir la factura decide si lo comprueba antes. */}
+        {b.resultado_actor === 'cliente' && (
+          <span className="text-[11px] text-brand-400" title="Contestó al correo de «¿qué tal fue la visita?»">
+            lo dijo el cliente
+          </span>
+        )}
         {/* Se puede corregir: quien lo apuntó pudo equivocarse de fila, y cada
             cambio queda en el rastro con lo que decía antes. */}
         <span className="text-[11px] text-brand-300">¿No fue así?</span>

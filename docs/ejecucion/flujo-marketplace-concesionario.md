@@ -278,6 +278,14 @@ Los tres finales contestan cosas distintas:
 > Comisiones esperando su factura, y en Pendientes. Los otros dos finales no
 > generan nada.
 
+> **A veces la cierra el cliente.** El correo de «¿qué tal fue la visita?» que
+> sale al día siguiente lleva las mismas tres respuestas, y si contesta, la
+> visita se cierra sola. Entonces la Agenda lo dice: **«lo dijo el cliente»**.
+> No es lo mismo que una llamada al concesionario, y por eso se distingue —de
+> ahí sale una factura—. Si ya la habías cerrado tú, su respuesta no la pisa.
+> El detalle está en el manual de negocio «Cómo acabó una visita: quién lo
+> escribe».
+
 > **Solo se cierra una visita que ya ha empezado.** Repasando la agenda de la
 > semana, un botón de «no fue» en una cita de pasado mañana se pulsa sin querer,
 > y ese apunte ya no se distingue de uno de verdad.
