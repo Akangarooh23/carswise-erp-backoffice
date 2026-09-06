@@ -31,6 +31,14 @@ const redondo = (n: number) => Math.round(n * 100) / 100;
 /** Un apunte ya clasificado, que es como llega desde la base. */
 export interface ApunteConLinea extends Apunte {
   linea?: LineaDeIngreso | LineaDeGasto | null;
+  /**
+   * A qué expediente pertenece, cuando se sabe.
+   *
+   * Sin esto, atar un gasto a su coche solo se puede hacer por el título del
+   * vehículo escrito a mano, y el ingreso del servicio ni eso: su factura no
+   * lleva el coche en ninguna columna.
+   */
+  contrato?: string | null;
 }
 
 /** Una línea del desglose, tal como se pinta. */

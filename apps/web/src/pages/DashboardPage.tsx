@@ -8,6 +8,7 @@ import Finanzas, { DeDondeViene, useFinanzas } from '../components/dashboard/Fin
 import Negocio from '../components/dashboard/Negocio.js';
 import Escaparate from '../components/dashboard/Escaparate.js';
 import EmbudoDeVentas from '../components/dashboard/EmbudoDeVentas.js';
+import MargenPorCoche from '../components/dashboard/MargenPorCoche.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import { StatusBadge } from '../components/ui/Badge.js';
@@ -152,6 +153,9 @@ export default function DashboardPage() {
         <>
           <Finanzas cuentas={cuentas} />
           <DeDondeViene cuentas={cuentas} />
+
+          {/* Y coche a coche, que es lo que dice si el negocio escala. */}
+          <MargenPorCoche />
         </>
       )}
 

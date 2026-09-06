@@ -5,7 +5,8 @@ import { falloInterno } from '../lib/fallos.js';
 import { losApuntes } from '../lib/apuntes.js';
 import { ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
-import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado } from '../lib/el-periodo.js';
+import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado, elDia } from '../lib/el-periodo.js';
+import { margenPorCoche } from '../lib/margen-por-coche.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
@@ -471,5 +472,48 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     });
   } catch (err) {
     falloInterno(res, 'dashboard_pendientes_failed', err);
+  }
+});
+
+/**
+ * Cuánto deja cada coche, uno a uno.
+ *
+ * El agregado dice si el mes fue bueno; esto dice si el negocio funciona. Con un
+ * coche la cuenta se hace a mano, con quince no: y un coche que pierde 400 €
+ * desaparece dentro de un total que sale en verde.
+ *
+ * Los apuntes son los mismos del resto del panel —el fichero del asesor y las
+ * cuentas salen de ahí—, así que el margen de un coche y el margen del mes no
+ * pueden decir cosas distintas. Se pide el año corriente: un expediente abierto
+ * hace catorce meses es un problema distinto y no es este.
+ */
+dashboardRouter.get('/dashboard/margenes', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    const anio = elPeriodo('anio');
+
+    const [coches, apuntes] = await Promise.all([
+      query<{ id: string; vehicle_title: string | null; status: string | null; created_at: unknown }>(`
+        SELECT id, vehicle_title, status, created_at
+          FROM moveadvisor_market_leads
+         WHERE lead_type = 'import'
+         ORDER BY created_at DESC
+      `).catch(() => ({ rows: [] as { id: string; vehicle_title: string | null; status: string | null; created_at: unknown }[] })),
+      losApuntes(anio.desde, anio.hasta).catch(() => []),
+    ]);
+
+    res.json({
+      ok: true,
+      data: {
+        periodo: anio.etiqueta,
+        ...margenPorCoche(
+          coches.rows.map((c) => ({
+            id: c.id, vehiculo: c.vehicle_title, estado: c.status, desde: elDia(c.created_at),
+          })),
+          apuntes
+        ),
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_margenes_failed', err);
   }
 });

@@ -52,6 +52,7 @@ export function elApunteDelProveedor(
     nif: ficha?.nif ?? null,
     concepto: nt(f.notes) || null,
     vehiculo: nt(f.vehicle_title) || null,
+    contrato: nt(f.contract_id) || null,
     base: f.base,
     // La columna guarda el tipo en tanto por uno; aquí se trabaja en tanto por
     // ciento, que es como lo escribe una factura. Sin convertirlo, el resumen
@@ -89,6 +90,14 @@ export function elApunteDelCliente(f: Record<string, unknown>): ApunteConLinea {
     total: f.total,
     iva: 21,
     regimen: 'nacional',
+    /*
+     * El expediente va dentro del identificador: `srv-imp-1788…`.
+     *
+     * La pasarela no guarda a qué coche corresponde una factura, así que ese
+     * prefijo es el único hilo que queda. Sin él, el ingreso de una importación
+     * no se junta con sus gastos y no hay margen por coche.
+     */
+    contrato: nt(f.id).replace(/^srv-/, '') || null,
     linea: lineaDelIngreso({ numero, delCliente: true }),
   };
 }
@@ -149,7 +158,7 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
   const [proveedores, fichas, clientes] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT i.id, i.invoice_number, i.provider_name, i.customer_name, i.customer_email,
-              i.vehicle_title, i.notes, i.direction, i.status, i.type,
+              i.vehicle_title, i.notes, i.direction, i.status, i.type, i.contract_id,
               i.invoice_amount::numeric AS total, i.base_amount::numeric AS base,
               i.iva_rate::numeric AS tipo, i.iva_amount::numeric AS cuota, i.regimen,
               i.autorepercusion::numeric AS autorepercusion,
@@ -157,7 +166,7 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
          FROM moveadvisor_provider_invoices i
         WHERE COALESCE(i.invoice_date, i.issued_at::date) BETWEEN $1::date AND $2::date
           AND COALESCE(i.status, '') <> $3
-        ORDER BY 17`,
+        ORDER BY 18`,
       [desde, hasta, CUADRADA]
     ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
@@ -168,7 +177,7 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
     ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
     query<Record<string, unknown>>(
-      `SELECT number, email, date, amount::numeric AS total, description, status, suplidos
+      `SELECT id, number, email, date, amount::numeric AS total, description, status, suplidos
          FROM moveadvisor_user_invoices
         WHERE date::date BETWEEN $1::date AND $2::date
         ORDER BY date`,
