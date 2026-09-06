@@ -14,6 +14,10 @@ const NAV: NavItem[] = [
   { to: '/dashboard',    label: 'Dashboard',    icon: 'panel',  roles: ['admin','support','operations','sales'] },
   { to: '/users',        label: 'Usuarios',     icon: 'usuarios', roles: ['admin','support','operations','sales'] },
   { to: '/marketplace',  label: 'Marketplace',  icon: 'coche', roles: ['admin','support','operations','sales'] },
+  { to: '/marketplace/analisis', label: 'Análisis VO', icon: 'grafico', roles: ['admin','operations','sales'] },
+  // Los portales son anuncios de otros, no nuestro stock: por eso tienen
+  // entrada propia y no una pestaña dentro del marketplace.
+  { to: '/portales',     label: 'Portales',     icon: 'tabla', roles: ['admin','operations','sales'] },
   { to: '/bookings',     label: 'Agenda',       icon: 'calendario', roles: ['admin','support','operations','sales'] },
   { to: '/appointments', label: 'Citas Mant.',   icon: 'llave-inglesa', roles: ['admin','support','operations','sales'] },
   { to: '/tickets',      label: 'Tickets',      icon: 'ticket', roles: ['admin','support','operations','sales'] },

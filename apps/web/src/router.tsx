@@ -15,6 +15,8 @@ const DashboardPage     = lazy(() => import('./pages/DashboardPage.js'));
 const UsersPage         = lazy(() => import('./pages/UsersPage.js'));
 const UserDetailPage    = lazy(() => import('./pages/UserDetailPage.js'));
 const MarketplacePage   = lazy(() => import('./pages/MarketplacePage.js'));
+const MarketplaceAnalisisPage = lazy(() => import('./pages/MarketplaceAnalisisPage.js'));
+const PortalesPage      = lazy(() => import('./pages/PortalesPage.js'));
 const AppointmentsPage  = lazy(() => import('./pages/AppointmentsPage.js'));
 const TicketsPage       = lazy(() => import('./pages/TicketsPage.js'));
 const TicketDetailPage  = lazy(() => import('./pages/TicketDetailPage.js'));
@@ -56,6 +58,11 @@ export const router = createBrowserRouter([
       { path: 'users',             element: <Suspense fallback={<Loader />}><UsersPage /></Suspense> },
       { path: 'users/:id',         element: <Suspense fallback={<Loader />}><UserDetailPage /></Suspense> },
       { path: 'marketplace',       element: <Suspense fallback={<Loader />}><MarketplacePage /></Suspense> },
+      // El análisis va aparte de la lista: son dos usos distintos de la misma
+      // pantalla, y meterlo arriba obliga a bajar por él cada vez que se busca
+      // un coche.
+      { path: 'marketplace/analisis', element: <Suspense fallback={<Loader />}><MarketplaceAnalisisPage /></Suspense> },
+      { path: 'portales',          element: <Suspense fallback={<Loader />}><PortalesPage /></Suspense> },
       { path: 'appointments',      element: <Suspense fallback={<Loader />}><AppointmentsPage /></Suspense> },
       { path: 'bookings',          element: <Suspense fallback={<Loader />}><BookingsPage /></Suspense> },
       { path: 'tickets',           element: <Suspense fallback={<Loader />}><TicketsPage /></Suspense> },

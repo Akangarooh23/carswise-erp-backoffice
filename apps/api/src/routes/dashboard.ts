@@ -195,3 +195,105 @@ dashboardRouter.get('/dashboard/finanzas', requireRole(['admin']), async (req, r
     falloInterno(res, 'dashboard_finanzas_failed', err);
   }
 });
+
+/**
+ * Lo que se vende y lo que se pide, que en el panel no estaba.
+ *
+ * Cuatro servicios —informes de tasación, seguros, mantenimientos y la gestión
+ * integral de venta— y las citas, que hasta ahora eran un número suelto sin
+ * decir de qué. Y las comisiones de proveedores, que es la otra pata del
+ * ingreso.
+ *
+ * Los que están a cero salen a cero **y se ven**. Que la gestión integral de
+ * venta no tenga ninguna solicitud es la respuesta a «cómo va eso»; sin la
+ * fila, la pregunta se queda sin contestar y nadie se acuerda de mirarla.
+ */
+dashboardRouter.get('/dashboard/negocio', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
+  const vacio = () => ({ rows: [] as Record<string, unknown>[] });
+  try {
+    const [informes, seguros, mantenimientos, ventaIntegral, visitas, citasCliente, taller, comisiones, garantias] =
+      await Promise.all([
+        // La tasación se cobra por la pasarela y no deja rastro en la tabla de
+        // tasaciones: lo que hay de verdad son las facturas de los informes.
+        query(`
+          SELECT COUNT(*)::int AS n, COALESCE(SUM(amount), 0)::numeric AS importe
+            FROM moveadvisor_user_invoices
+           WHERE number LIKE 'CW-%' OR number LIKE 'TAS-%'
+        `).catch(vacio),
+
+        query(`
+          SELECT COUNT(*)::int AS n,
+                 COUNT(*) FILTER (WHERE status = 'activo')::int AS activos
+            FROM moveadvisor_user_insurances
+        `).catch(vacio),
+
+        query(`
+          SELECT COUNT(*)::int AS n,
+                 COUNT(*) FILTER (WHERE LOWER(COALESCE(status, '')) LIKE 'pendiente%')::int AS pendientes,
+                 COALESCE(SUM(estimated_cost), 0)::numeric AS presupuestado
+            FROM moveadvisor_user_maintenances
+        `).catch(vacio),
+
+        query(`
+          SELECT COUNT(*)::int AS n,
+                 COUNT(*) FILTER (WHERE LOWER(COALESCE(status, '')) NOT IN ('cerrada', 'cancelada'))::int AS abiertas
+            FROM moveadvisor_service_requests
+        `).catch(vacio),
+
+        query(`
+          SELECT COALESCE(status, 'sin estado') AS estado, COUNT(*)::int AS n
+            FROM vehicle_visit_bookings
+           GROUP BY 1
+        `).catch(vacio),
+
+        query(`
+          SELECT COALESCE(appointment_type, 'sin tipo') AS tipo, COUNT(*)::int AS n
+            FROM moveadvisor_user_appointments
+           GROUP BY 1
+        `).catch(vacio),
+
+        query(`
+          SELECT COUNT(*)::int AS n,
+                 COUNT(*) FILTER (WHERE scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '7 days')::int AS proximas
+            FROM erp_appointments
+        `).catch(vacio),
+
+        // Lo emitido a proveedores que no es una venta de coche: comisiones.
+        query(`
+          SELECT COUNT(*)::int AS n,
+                 COALESCE(SUM(COALESCE(base_amount, invoice_amount)), 0)::numeric AS base,
+                 COUNT(*) FILTER (WHERE status <> 'paid')::int AS sin_cobrar
+            FROM moveadvisor_provider_invoices
+           WHERE direction = 'emitted' AND type <> 'vehicle_sale'
+        `).catch(vacio),
+
+        query(`
+          SELECT COUNT(*)::int AS vendidas,
+                 COALESCE(SUM(garantia_precio), 0)::numeric AS cobrado
+            FROM moveadvisor_market_leads
+           WHERE garantia_id IS NOT NULL
+        `).catch(vacio),
+      ]);
+
+    res.json({
+      ok: true,
+      data: {
+        servicios: {
+          informes: informes.rows[0] ?? { n: 0, importe: 0 },
+          seguros: seguros.rows[0] ?? { n: 0, activos: 0 },
+          mantenimientos: mantenimientos.rows[0] ?? { n: 0, pendientes: 0, presupuestado: 0 },
+          ventaIntegral: ventaIntegral.rows[0] ?? { n: 0, abiertas: 0 },
+          garantias: garantias.rows[0] ?? { vendidas: 0, cobrado: 0 },
+        },
+        citas: {
+          visitas: visitas.rows,
+          cliente: citasCliente.rows,
+          taller: taller.rows[0] ?? { n: 0, proximas: 0 },
+        },
+        comisiones: comisiones.rows[0] ?? { n: 0, base: 0, sin_cobrar: 0 },
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_negocio_failed', err);
+  }
+});

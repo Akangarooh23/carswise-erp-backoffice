@@ -26,6 +26,7 @@ const RAIZ = path.join(__dirname, '..');
  * comprobar desde fuera.
  */
 const FICHEROS = [
+  'apps/api/src/routes/analisis.ts',
   'apps/api/src/routes/dashboard.ts',
   'apps/api/src/lib/apuntes.ts',
 ];
@@ -34,11 +35,48 @@ const env = fs.readFileSync(path.join(RAIZ, '.env'), 'utf8');
 const url = (env.split(/\r?\n/).find((x) => x.startsWith('DATABASE_URL=')) || '').slice(13).trim();
 if (!url) { console.log('  sin DATABASE_URL en .env'); process.exit(0); }
 
+/**
+ * Los trozos de SQL que viven en una lib y se meten en las consultas.
+ *
+ * Una consulta con `${SQL_DE_LA_SECCION}` dentro no se le puede pasar a
+ * Postgres tal cual: el `$` sin número es un error de sintaxis y la consulta
+ * saldría rota siempre, que es peor que no comprobarla —un comprobador que
+ * miente se deja de mirar—. Así que se buscan las constantes de una línea en
+ * las libs y se sustituyen.
+ *
+ * Solo las de una línea a propósito. Una construida con `.join()` no se puede
+ * leer sin ejecutar el fichero, y ejecutar el código que se quiere comprobar es
+ * cómo se acaba comprobando otra cosa.
+ */
+function losTrozosDeSql() {
+  const trozos = new Map();
+  const dir = path.join(RAIZ, 'apps/api/src/lib');
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.ts') || f.endsWith('.test.ts')) continue;
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of src.matchAll(/export const ([A-Z][A-Z0-9_]*) = (['"])([^\n]*?)\2;/g)) {
+      trozos.set(m[1], m[3]);
+    }
+  }
+  return trozos;
+}
+
+const TROZOS = losTrozosDeSql();
 const consultas = [];
+const sinResolver = [];
+
 for (const fichero of FICHEROS) {
   const src = fs.readFileSync(path.join(RAIZ, fichero), 'utf8');
   for (const m of src.matchAll(/query(?:<[^(]*>)?\(\s*`([\s\S]*?)`/g)) {
-    consultas.push([fichero, m[1]]);
+    let sql = m[1];
+    let falta = null;
+    sql = sql.replace(/\$\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}/g, (todo, nombre) => {
+      if (TROZOS.has(nombre)) return TROZOS.get(nombre);
+      falta = nombre;
+      return todo;
+    });
+    if (falta) { sinResolver.push([path.basename(fichero), falta]); continue; }
+    consultas.push([fichero, sql]);
   }
 }
 
@@ -88,5 +126,10 @@ function cuantosParametros(sql) {
     process.exit(1);
   }
 
-  console.log(`\n  ${consultas.length} consultas del panel · ninguna rota\n`);
+  // Y las que no se han podido resolver se dicen. Callarse convierte «ninguna
+  // rota» en «ninguna mirada», que es la clase de tranquilidad que se paga.
+  const nota = sinResolver.length
+    ? `  ·  ${sinResolver.length} sin comprobar, no encuentro ${[...new Set(sinResolver.map((x) => x[1]))].join(', ')}`
+    : '';
+  console.log(`\n  ${consultas.length} consultas del panel · ninguna rota${nota}\n`);
 })();

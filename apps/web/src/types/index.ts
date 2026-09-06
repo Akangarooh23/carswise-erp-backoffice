@@ -332,3 +332,66 @@ export interface ApiResponse<T> {
   meta?: { total: number; page: number; limit: number };
   error?: string;
 }
+
+// ── Análisis ──────────────────────────────────────────────────────────────────
+
+/** Una sección del marketplace: de dónde viene el coche. */
+export interface SeccionDelMarketplace {
+  clave: string;
+  nombre: string;
+  /** Qué es, para quien no lleve el negocio en la cabeza. */
+  queEs: string;
+  total: number;
+  activos: number;
+  /** Null cuando no hay coches: un 0 € se lee como coches regalados. */
+  precioMedio: number | null;
+  leads: number;
+}
+
+export interface AnalisisDelMarketplace {
+  secciones: SeccionDelMarketplace[];
+  /** El renting es otro producto sobre el mismo coche, no una sección. */
+  renting: { total: number; activos: number };
+  leads: { portal: string; tipo: string; n: number }[];
+  visitas: { estado: string; n: number }[];
+  marcas: { marca: string; n: number; precio_medio: string | number | null }[];
+}
+
+export interface Portal {
+  portal: string;
+  total: number;
+  activos: number;
+  inactivos: number;
+  alemanas: number;
+  precio_medio: string | number | null;
+  /** La última vez que el rastreador comprobó algo de ese portal. */
+  ultima: string | null;
+}
+
+export interface AnalisisDePortales {
+  portales: Portal[];
+  leads: { portal: string; n: number }[];
+}
+
+/**
+ * Lo que se vende y lo que se pide.
+ *
+ * Los servicios a cero salen a cero: que la gestión integral de venta no tenga
+ * ninguna solicitud es la respuesta a «cómo va eso», y sin la fila la pregunta
+ * se queda sin contestar.
+ */
+export interface Negocio {
+  servicios: {
+    informes: { n: number; importe: number | string };
+    seguros: { n: number; activos: number };
+    mantenimientos: { n: number; pendientes: number; presupuestado: number | string };
+    ventaIntegral: { n: number; abiertas: number };
+    garantias: { vendidas: number; cobrado: number | string };
+  };
+  citas: {
+    visitas: { estado: string; n: number }[];
+    cliente: { tipo: string; n: number }[];
+    taller: { n: number; proximas: number };
+  };
+  comisiones: { n: number; base: number | string; sin_cobrar: number };
+}
