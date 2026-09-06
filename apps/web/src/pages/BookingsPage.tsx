@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import Boton from '../components/ui/Boton.js';
+import { comoSeLlama, elQueVende, alQueVende } from '../lib/quien-vende.js';
 
 type Booking = {
   id: string;
@@ -33,21 +34,6 @@ type Booking = {
   seller_phone: string | null;
   seller_contact: string | null;
 };
-
-/**
- * Cómo se llama a quien tiene el coche, según de quién sea.
- *
- * Estaba escrito «el concesionario» en todas partes, y el marketplace ya tiene
- * particulares y profesionales; vendrán importación, renting y portales. Decirle
- * concesionario a un particular no es un detalle de estilo: quien lee la Agenda
- * decide a quién llama y cómo le habla.
- */
-function comoSeLlama(tipo: string | null | undefined): string {
-  if (tipo === 'particular') return 'el particular';
-  if (tipo === 'concesionario') return 'el concesionario';
-  if (tipo === 'professional') return 'el profesional';
-  return 'el vendedor';
-}
 
 /**
  * De qué sección del marketplace es el coche.
@@ -169,7 +155,7 @@ function QuienVende({ b }: { b: Booking }) {
       ) : (
         <span className="font-semibold text-brand-500">{b.seller}</span>
       )}
-      <span className="text-brand-300">· {comoSeLlama(b.seller_type).replace(/^el /, '')}</span>
+      <span className="text-brand-300">· {comoSeLlama(b.seller_type)}</span>
       {/* El teléfono, que es lo que hace falta para llamarle. Si no está
           puesto se dice, porque el hueco vacío se lee como «no hace falta». */}
       {b.seller_phone ? (
@@ -295,7 +281,8 @@ function PanelDelRastro({ b, pasos, alApuntar, nota, alEscribirNota, guardandoNo
   guardandoNota: boolean;
   alGuardarNota: () => void;
 }) {
-  const quien = comoSeLlama(b.seller_type);
+  const quienEs = elQueVende(b.seller_type);
+  const aQuien = alQueVende(b.seller_type);
   return (
     <>
       <Rastro pasos={pasos} />
@@ -303,11 +290,11 @@ function PanelDelRastro({ b, pasos, alApuntar, nota, alEscribirNota, guardandoNo
         {/* Lo que hace una persona por teléfono no cambia nada en la base: si
             no se apunta, no existe para nadie más. */}
         <Boton tam="sm" variante="secundario"
-               onClick={() => alApuntar('concesionario_contactado', `Apuntado que has hablado con ${quien}.`)}>
-          He llamado a {quien}
+               onClick={() => alApuntar('concesionario_contactado', `Apuntado que has hablado con ${quienEs}.`)}>
+          He llamado {aQuien}
         </Boton>
         <Boton tam="sm" variante="secundario"
-               onClick={() => alApuntar('concesionario_avisado', `Apuntado que ${quien} ya sabe que el cliente va.`)}>
+               onClick={() => alApuntar('concesionario_avisado', `Apuntado que ${quienEs} ya sabe que el cliente va.`)}>
           Le he dicho que el cliente va
         </Boton>
       </div>
@@ -747,7 +734,7 @@ export default function BookingsPage() {
             <div className="px-6 py-5 space-y-4">
               <p className="text-[13px] text-brand-400">
                 Estos dos datos van en el correo del cliente y en sus recordatorios.
-                Los tienes de la llamada a {comoSeLlama(confirmar.seller_type)}.
+                Los tienes de la llamada {alQueVende(confirmar.seller_type)}.
               </p>
               <label className="block text-xs font-medium text-brand-500">
                 Dónde es
@@ -836,7 +823,7 @@ export default function BookingsPage() {
           <div className="w-full max-w-lg rounded-2xl bg-white border border-brand-200 shadow-2xl my-auto"
                onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-brand-100">
-              <h2 className="text-lg font-bold text-brand-600">Horas que propone {comoSeLlama(proponer.seller_type)}</h2>
+              <h2 className="text-lg font-bold text-brand-600">Horas que propone {elQueVende(proponer.seller_type)}</h2>
               <p className="text-[12.5px] text-brand-400 mt-0.5">
                 {proponer.buyer_name || proponer.buyer_email} · {proponer.vehicle_title || proponer.offer_id}
               </p>
@@ -983,7 +970,7 @@ export default function BookingsPage() {
                 Pidió el <b className="text-brand-600">{fmtDate(mover.starts_at)} a las {fmtTime(mover.starts_at)}</b>.
                 {mover.status === 'pending'
                   ? ' Pon la hora que ha aceptado.'
-                  : ` Pon la hora que te haya dado ${comoSeLlama(mover.seller_type)}.`}
+                  : ` Pon la hora que te haya dado ${elQueVende(mover.seller_type)}.`}
               </p>
               {propuestas.length > 0 && (
                 <div>
