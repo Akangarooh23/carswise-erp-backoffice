@@ -109,6 +109,11 @@ interface ReceivedInvoice {
   notes: string | null;
   issued_at: string;
   paid_at: string | null;
+  /** Cómo se parte. Nulo quiere decir sin decidir, que no es cero. */
+  base_amount?: number | null;
+  iva_rate?: number | null;
+  regimen?: string | null;
+  autorepercusion?: number | null;
 }
 
 function fmtDate(s: string | null) {
@@ -118,6 +123,30 @@ function fmtDate(s: string | null) {
 function fmtEur(n: number | null | undefined) {
   if (n == null) return '–';
   return Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+/**
+ * Si a la factura le falta algo para poder declararla.
+ *
+ * Dos huecos y los dos salen en Pendientes: una nacional sin tipo de IVA —no se
+ * sabe cuánto se deduce— y una de la UE sin decidir a qué tipo nos la
+ * autorrepercutimos, que es lo que no deja salir el 349.
+ */
+function faltaDesglose(r: ReceivedInvoice): boolean {
+  const regimen = r.regimen ?? 'nacional';
+  if (regimen === 'intracomunitario') return r.autorepercusion == null;
+  if (regimen === 'exento') return false;
+  return r.iva_rate == null;
+}
+
+/** Cómo se parte, en corto, para verlo sin abrir nada. */
+function comoSeParte(r: ReceivedInvoice): string {
+  const regimen = r.regimen ?? 'nacional';
+  if (regimen === 'exento') return 'exenta';
+  if (regimen === 'intracomunitario') {
+    return `UE · autorrep. ${Math.round(Number(r.autorepercusion) * 100)} %`;
+  }
+  return `${Math.round(Number(r.iva_rate) * 100)} % IVA`;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -228,6 +257,38 @@ export default function ProviderBillingPage() {
 
   // Mark received invoice paid modal
   const [recvMarkModal, setRecvMarkModal] = useState<ReceivedInvoice | null>(null);
+  const [desgModal, setDesgModal] = useState<ReceivedInvoice | null>(null);
+  const [desgRegimen, setDesgRegimen] = useState('nacional');
+  const [desgIva, setDesgIva] = useState('0.21');
+  const [desgAuto, setDesgAuto] = useState('');
+  const [desgBase, setDesgBase] = useState('');
+  const [desgGuardando, setDesgGuardando] = useState(false);
+  const [desgFallo, setDesgFallo] = useState('');
+
+  function abreDesglose(r: ReceivedInvoice) {
+    setDesgModal(r);
+    setDesgRegimen(r.regimen ?? 'nacional');
+    setDesgIva(r.iva_rate == null ? '0.21' : String(Number(r.iva_rate)));
+    setDesgAuto(r.autorepercusion == null ? '' : String(Number(r.autorepercusion)));
+    setDesgBase(r.base_amount == null ? '' : String(Number(r.base_amount)));
+    setDesgFallo('');
+  }
+
+  async function guardaDesglose() {
+    if (!desgModal) return;
+    setDesgGuardando(true);
+    setDesgFallo('');
+    const r = await api.patch(`/provider-billing/invoices/${desgModal.id}/desglose`, {
+      regimen: desgRegimen,
+      iva_rate: Number(desgIva),
+      autorepercusion: desgAuto === '' ? null : Number(desgAuto),
+      base_amount: desgBase === '' ? null : Number(desgBase),
+    });
+    setDesgGuardando(false);
+    if (!r.ok) { setDesgFallo(r.error || 'No se ha podido guardar'); return; }
+    setDesgModal(null);
+    await load(page);
+  }
   const [recvMarkFallo, setRecvMarkFallo] = useState('');
   const [recvMarkNotes, setRecvMarkNotes] = useState('');
   const [recvMarking, setRecvMarking]     = useState(false);
@@ -735,6 +796,7 @@ export default function ProviderBillingPage() {
                     <th>Vehículo</th>
                     <th>Importe</th>
                     <th>Estado</th>
+                    <th>Desglose</th>
                     <th>Factura PDF</th>
                     <th>Acción</th>
                   </tr>
@@ -762,6 +824,22 @@ export default function ProviderBillingPage() {
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
                           {STATUS_LABEL_RECV[r.status] ?? r.status}
                         </span>
+                      </td>
+                      {/*
+                        * Cómo se parte, y si le falta algo.
+                        *
+                        * Una factura sin IVA o una de la UE sin decidir su tipo
+                        * salía en Pendientes todos los días y no había ningún
+                        * botón para arreglarla: había que tocar la base a mano.
+                        */}
+                      <td>
+                        <button onClick={() => abreDesglose(r)}
+                          className={'text-xs rounded px-2 py-0.5 border whitespace-nowrap ' +
+                            (faltaDesglose(r)
+                              ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 font-semibold'
+                              : 'border-brand-200 text-brand-400 hover:bg-brand-50')}>
+                          {faltaDesglose(r) ? 'falta el IVA' : comoSeParte(r)}
+                        </button>
                       </td>
                       <td>
                         {r.pdf_url ? (
@@ -823,6 +901,110 @@ export default function ProviderBillingPage() {
           </>
         )}
       </div>
+
+      {/*
+        * Corregir cómo se parte una factura ya guardada.
+        *
+        * El total no se toca: es lo que pone el papel y no se reinterpreta
+        * desde una pantalla. Si el total está mal, la factura está mal y lo
+        * que toca es pedir una rectificativa, no cuadrarlo aquí.
+        */}
+      <Modal open={!!desgModal} onClose={() => setDesgModal(null)} title="Cómo se parte esta factura">
+        {desgModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-brand-400">
+              <strong>{desgModal.provider_name}</strong>
+              {desgModal.invoice_number && <span className="font-mono text-xs"> · {desgModal.invoice_number}</span>}
+              <br />
+              <span className="text-xs text-brand-300">
+                Total de la factura: <strong>{fmtEur(desgModal.invoice_amount)}</strong> · no se cambia desde aquí
+              </span>
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">De dónde viene</label>
+              <select value={desgRegimen}
+                onChange={e => {
+                  const v = e.target.value;
+                  setDesgRegimen(v);
+                  if (v !== 'nacional') setDesgIva('0');
+                  if (v !== 'intracomunitario') setDesgAuto('');
+                }}
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="nacional">España · con IVA dentro</option>
+                <option value="intracomunitario">UE con ROI · sin IVA, se autorrepercute</option>
+                <option value="exento">Exenta · una tasa, un impuesto</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Base sin IVA</label>
+                <input type="number" step="0.01" value={desgBase} onChange={e => setDesgBase(e.target.value)}
+                  placeholder={String(desgModal.invoice_amount)}
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">IVA de la factura</label>
+                <select value={desgIva} onChange={e => setDesgIva(e.target.value)}
+                  disabled={desgRegimen !== 'nacional'}
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-brand-50 disabled:text-brand-300">
+                  <option value="0.21">21%</option>
+                  <option value="0.10">10%</option>
+                  <option value="0.04">4%</option>
+                  <option value="0">0% (sin IVA)</option>
+                </select>
+              </div>
+            </div>
+
+            {desgRegimen === 'nacional' && Number(desgBase) > 0 && (
+              <p className="text-[12px] text-brand-400">
+                Con {fmtEur(Number(desgBase))} al {Math.round(Number(desgIva) * 100)} %, el total sale{' '}
+                <strong>{fmtEur(Number(desgBase) * (1 + Number(desgIva)))}</strong>
+                {Math.abs(Number(desgBase) * (1 + Number(desgIva)) - Number(desgModal.invoice_amount)) > 0.01 && (
+                  <span className="text-red-600"> y la factura pone {fmtEur(desgModal.invoice_amount)}.
+                    Si la diferencia son tasas o suplidos, la base es solo lo nuestro y el resto va aparte.</span>
+                )}
+              </p>
+            )}
+
+            {desgRegimen === 'intracomunitario' && (
+              <div className="rounded-lg border border-acento bg-acento-tenue p-3">
+                <label className="block text-xs font-semibold text-acento-texto mb-1">
+                  Tipo que nos autorrepercutimos
+                </label>
+                <select value={desgAuto} onChange={e => setDesgAuto(e.target.value)}
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="">Sin decidir · hay que mirarlo</option>
+                  <option value="0.21">21%</option>
+                  <option value="0.10">10%</option>
+                  <option value="0.04">4%</option>
+                  <option value="0">0%</option>
+                </select>
+                <p className="mt-2 text-[11px] text-acento-texto leading-snug">
+                  Este no es el IVA de la factura, que es 0. Es el español que se repercute y se
+                  deduce a la vez, y va al 349. Mientras esté sin decidir, sale en Pendientes.
+                </p>
+              </div>
+            )}
+
+            {desgFallo && (
+              <p className="text-sm text-red-600">{desgFallo}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setDesgModal(null)}
+                className="px-4 py-2 text-sm text-brand-400 border border-brand-200 rounded-lg hover:bg-brand-50">
+                Cancelar
+              </button>
+              <button onClick={guardaDesglose} disabled={desgGuardando}
+                className="px-4 py-2 text-sm rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-60">
+                {desgGuardando ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Commission modal */}
       <Modal open={!!commModal} onClose={() => setCommModal(null)} title="Crear factura de comisión portal">

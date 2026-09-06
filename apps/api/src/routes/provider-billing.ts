@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
-import { IVA_GENERAL, tipoDeIva, regimenPorDefecto, type Regimen } from '../lib/dinero.js';
+import { IVA_GENERAL, tipoDeIva, regimenPorDefecto, noCuadra, type Regimen } from '../lib/dinero.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { preparaGarantias } from './garantias.js';
 
@@ -484,8 +484,12 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
         // `invoice_number` es el número que puso el proveedor; `id` es el
         // nuestro. Sin pedirlo, la columna de su número salía siempre vacía
         // aunque el dato estuviera guardado.
+        // Y cómo se parte, que es lo que se corrige desde la propia lista: sin
+        // estos cuatro no se puede decir cuál está sin cerrar sin abrirlas una
+        // a una.
         `SELECT id, provider_name, vehicle_title, contract_id, invoice_number,
                 invoice_amount, invoice_date, status, pdf_url, notes,
+                base_amount, iva_rate, regimen, autorepercusion,
                 issued_at, paid_at, updated_at
          FROM moveadvisor_provider_invoices
          WHERE direction = 'received' AND status NOT IN ($3, $4)
@@ -754,5 +758,92 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
     res.status(201).json({ ok: true, data: { id, invoice_amount: importe, provider_name: x.proveedor } });
   } catch (err) {
     falloInterno(res, 'create_failed', err);
+  }
+});
+
+/**
+ * Corregir cómo se parte una factura que ya está guardada.
+ *
+ * De una recibida solo se podía cambiar el estado y las notas, así que una que
+ * entró sin decir su IVA o sin decidir su autorrepercusión se quedaba mal para
+ * siempre —y sale en Pendientes todos los días sin que haya botón para
+ * arreglarla—. Hoy eso se corrige tocando la base a mano, que es peor que no
+ * poder.
+ *
+ * Va aparte del cambio de estado a propósito: son dos cosas distintas y
+ * mezclarlas obligaría a mandar un estado válido para corregir un IVA.
+ *
+ * **No se toca el importe total.** Ese es lo que pone el papel y no se
+ * reinterpreta desde una pantalla: si el total está mal, la factura está mal y
+ * se pide una rectificativa. Lo que se corrige aquí es cómo se parte.
+ */
+providerBillingRouter.patch('/provider-billing/invoices/:id/desglose', requireRole(['admin', 'operations']), async (req, res) => {
+  const { regimen, iva_rate, autorepercusion, base_amount } = req.body ?? {};
+
+  const suRegimen: Regimen | null =
+    regimen === 'nacional' || regimen === 'intracomunitario' || regimen === 'exento' ? regimen : null;
+  if (!suRegimen) {
+    res.status(400).json({ ok: false, error: 'regimen_invalido', detail: 'nacional, intracomunitario o exento' });
+    return;
+  }
+
+  // Un tipo que no existe no se guarda: un 15 % tecleado a mano es una errata,
+  // y una errata guardada es peor que un hueco, porque parece un dato.
+  const pedido = enPorCiento(iva_rate);
+  const suIva = suRegimen === 'nacional' ? tipoDeIva(pedido) : 0;
+  if (suRegimen === 'nacional' && pedido !== null && suIva === null) {
+    res.status(400).json({ ok: false, error: 'iva_invalido', detail: 'los tipos son 0, 4, 10 y 21' });
+    return;
+  }
+
+  const pedidoAuto = enPorCiento(autorepercusion);
+  const suAuto = suRegimen === 'intracomunitario' ? tipoDeIva(pedidoAuto) : null;
+  if (suRegimen === 'intracomunitario' && pedidoAuto !== null && suAuto === null) {
+    res.status(400).json({ ok: false, error: 'autorepercusion_invalida', detail: 'los tipos son 0, 4, 10 y 21' });
+    return;
+  }
+
+  const suBase = base_amount === null || base_amount === undefined || base_amount === ''
+    ? null
+    : Number(base_amount);
+  if (suBase !== null && (!Number.isFinite(suBase) || suBase < 0)) {
+    res.status(400).json({ ok: false, error: 'base_invalida' });
+    return;
+  }
+
+  try {
+    const r = await query<Record<string, unknown>>(
+      `UPDATE moveadvisor_provider_invoices
+          SET regimen         = $2,
+              iva_rate        = $3,
+              autorepercusion = $4,
+              base_amount     = COALESCE($5, base_amount),
+              updated_at      = NOW()
+        WHERE id = $1 AND direction = 'received'
+    RETURNING id, regimen, base_amount, invoice_amount, iva_rate, autorepercusion`,
+      [String(req.params.id), suRegimen,
+       suIva === null ? null : suIva / 100,
+       suAuto === null ? null : suAuto / 100,
+       suBase]
+    );
+    if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+
+    // Y se contesta si cuadra o no, para poder decirlo en la misma pantalla en
+    // vez de que aparezca en Pendientes al día siguiente.
+    const fila = r.rows[0];
+    res.json({
+      ok: true,
+      data: {
+        ...fila,
+        aviso: noCuadra({
+          base: fila.base_amount,
+          total: fila.invoice_amount,
+          iva: fila.iva_rate == null ? null : Number(fila.iva_rate) * 100,
+          regimen: suRegimen,
+        }),
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'desglose_failed', err);
   }
 });
