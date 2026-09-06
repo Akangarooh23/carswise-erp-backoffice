@@ -119,7 +119,7 @@ export function cuentaDeResultados(apuntes: readonly ApunteConLinea[] | null | u
   let sinDesglosar = 0, sinAutorepercusion = 0;
 
   for (const a of apuntes ?? []) {
-    const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
+    const d = desglosa({ base: a.base, iva: a.iva, cuota: a.cuota, total: a.total, regimen: a.regimen });
 
     if (a.pendiente) {
       // Solo el gasto comprometido: una factura nuestra sin emitir no existe.
@@ -181,7 +181,7 @@ export function mesAMes(
     if (!cuenta(a)) continue;
     const mes = String(a.fecha ?? '').slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(mes)) continue;
-    const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
+    const d = desglosa({ base: a.base, iva: a.iva, cuota: a.cuota, total: a.total, regimen: a.regimen });
     const v = suma.get(mes) ?? { ingresos: 0, gastos: 0 };
     if (a.sentido === 'emitida') v.ingresos += d.base;
     else v.gastos += d.base;

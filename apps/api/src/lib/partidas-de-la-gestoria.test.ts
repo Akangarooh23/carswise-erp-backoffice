@@ -337,3 +337,43 @@ describe('lo que llegue de la base', () => {
     assert.equal(resumenDeLaGestoria('{}' as unknown as string).cuantas, 0);
   });
 });
+
+describe('el IVA de una factura de gestoría de verdad', () => {
+  /*
+   * Sacado de una factura real. Lo que la hace difícil es que **mezcla tipos**:
+   * hay líneas al 21 % y líneas a cero en el mismo papel, y adivinar por la
+   * palabra se equivoca en las dos direcciones.
+   */
+  test('la tasa del colegio sí lleva IVA: es lo que cobra el colegio, no una tasa oficial', () => {
+    // 5,40 € de base y 6,53 € de total. Dada por exenta, su cuota se perdía.
+    assert.equal(regimenPorDefecto('Tasa Colegio', 'nuestro'), 'nacional');
+  });
+
+  test('y la de tráfico no', () => {
+    assert.equal(regimenPorDefecto('Tasa Tráfico', 'nuestro'), 'exento');
+    assert.equal(regimenPorDefecto('Impuesto Municipal', 'nuestro'), 'exento');
+  });
+
+  test('el cambio de servicio no lleva IVA, pero sus honorarios sí', () => {
+    // Son dos líneas de la misma factura: 50 € a cero y 6 € al 21 %.
+    assert.equal(regimenPorDefecto('Cambio Servicio', 'nuestro'), 'exento');
+    assert.equal(regimenPorDefecto('Honorarios Cambio Servicio', 'nuestro'), 'nacional');
+  });
+
+  test('cualquier cosa que empiece por honorarios lleva IVA', () => {
+    // Aunque el resto del concepto sea el nombre de una tasa.
+    assert.equal(regimenPorDefecto('Honorarios Exencion 06', 'nuestro'), 'nacional');
+    assert.equal(regimenPorDefecto('Honorarios Cambio Domicilio', 'nuestro'), 'nacional');
+    assert.equal(regimenPorDefecto('Honorarios tasa DGT', 'nuestro'), 'nacional');
+  });
+
+  test('las placas y los distintivos son un producto, y lo llevan', () => {
+    assert.equal(regimenPorDefecto('Placas', 'nuestro'), 'nacional');
+    assert.equal(regimenPorDefecto('Distintivos', 'nuestro'), 'nacional');
+  });
+
+  test('y el impuesto de matriculación sigue siendo del cliente y exento', () => {
+    assert.equal(queEsPorDefecto('Impuesto de matriculación'), 'suplido');
+    assert.equal(regimenPorDefecto('Impuesto de matriculación', 'suplido'), 'exento');
+  });
+});

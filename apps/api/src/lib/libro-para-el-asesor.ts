@@ -39,6 +39,8 @@ export interface Apunte {
   vehiculo?: string | null;
   base?: unknown;
   iva?: unknown;
+  /** La cuota, cuando la factura lleva varios tipos y no hay uno solo. */
+  cuota?: unknown;
   total?: unknown;
   regimen?: Regimen | null;
   /**
@@ -112,7 +114,7 @@ export function resumeElPeriodo(apuntes: Apunte[] | null | undefined): Resumen {
 
   for (const a of apuntes ?? []) {
     if (a.pendiente) { r.pendientes += 1; continue; }
-    const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
+    const d = desglosa({ base: a.base, iva: a.iva, cuota: a.cuota, total: a.total, regimen: a.regimen });
 
     if ((a.que ?? 'nuestro') === 'suplido') { r.suplidos += d.total; continue; }
     if (!d.desglosada && d.total > 0) r.sinDesglosar += 1;
@@ -226,7 +228,7 @@ export function comoFichero(apuntes: Apunte[] | null | undefined): string {
   const filas = [CABECERA.join(';')];
   for (const a of apuntes ?? []) {
     if (a.pendiente) continue;
-    const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
+    const d = desglosa({ base: a.base, iva: a.iva, cuota: a.cuota, total: a.total, regimen: a.regimen });
     const auto = laAutorepercusion({
       base: a.base, iva: a.iva, total: a.total,
       regimen: a.regimen, autorepercusion: a.autorepercusion,

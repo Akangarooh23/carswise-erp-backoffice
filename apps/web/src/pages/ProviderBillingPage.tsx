@@ -112,6 +112,8 @@ interface ReceivedInvoice {
   /** Cómo se parte. Nulo quiere decir sin decidir, que no es cero. */
   base_amount?: number | null;
   iva_rate?: number | null;
+  /** La cuota, cuando la factura lleva varios tipos y no hay uno solo. */
+  iva_amount?: number | null;
   regimen?: string | null;
   autorepercusion?: number | null;
 }
@@ -136,7 +138,8 @@ function faltaDesglose(r: ReceivedInvoice): boolean {
   const regimen = r.regimen ?? 'nacional';
   if (regimen === 'intracomunitario') return r.autorepercusion == null;
   if (regimen === 'exento') return false;
-  return r.iva_rate == null;
+  // Con cuota dada, la factura está cerrada aunque no tenga un tipo único.
+  return r.iva_amount == null && r.iva_rate == null;
 }
 
 /** Cómo se parte, en corto, para verlo sin abrir nada. */
@@ -146,6 +149,7 @@ function comoSeParte(r: ReceivedInvoice): string {
   if (regimen === 'intracomunitario') {
     return `UE · autorrep. ${Math.round(Number(r.autorepercusion) * 100)} %`;
   }
+  if (r.iva_amount != null) return `varios tipos · ${Number(r.iva_amount).toFixed(2)} €`;
   return `${Math.round(Number(r.iva_rate) * 100)} % IVA`;
 }
 
@@ -262,6 +266,8 @@ export default function ProviderBillingPage() {
   const [desgIva, setDesgIva] = useState('0.21');
   const [desgAuto, setDesgAuto] = useState('');
   const [desgBase, setDesgBase] = useState('');
+  const [desgCuota, setDesgCuota] = useState('');
+  const [desgVarios, setDesgVarios] = useState(false);
   const [desgGuardando, setDesgGuardando] = useState(false);
   const [desgFallo, setDesgFallo] = useState('');
 
@@ -271,6 +277,8 @@ export default function ProviderBillingPage() {
     setDesgIva(r.iva_rate == null ? '0.21' : String(Number(r.iva_rate)));
     setDesgAuto(r.autorepercusion == null ? '' : String(Number(r.autorepercusion)));
     setDesgBase(r.base_amount == null ? '' : String(Number(r.base_amount)));
+    setDesgCuota(r.iva_amount == null ? '' : String(Number(r.iva_amount)));
+    setDesgVarios(r.iva_amount != null);
     setDesgFallo('');
   }
 
@@ -283,6 +291,7 @@ export default function ProviderBillingPage() {
       iva_rate: Number(desgIva),
       autorepercusion: desgAuto === '' ? null : Number(desgAuto),
       base_amount: desgBase === '' ? null : Number(desgBase),
+      iva_amount: desgVarios && desgCuota !== '' ? Number(desgCuota) : null,
     });
     setDesgGuardando(false);
     if (!r.ok) { setDesgFallo(r.error || 'No se ha podido guardar'); return; }
@@ -957,7 +966,46 @@ export default function ProviderBillingPage() {
               </div>
             </div>
 
-            {desgRegimen === 'nacional' && Number(desgBase) > 0 && (
+            {/*
+              * Una factura de gestoría lleva tasas a cero y honorarios al 21 %
+              * en el mismo papel: no tiene un tipo, tiene una cuota. Sin esto
+              * había que elegir entre dos mentiras —el 21 % entero, que deduce
+              * IVA de unas tasas que no lo llevan, o dejarla sin desglosar, que
+              * pierde la cuota que sí existe—.
+              */}
+            {desgRegimen === 'nacional' && (
+              <label className="flex items-start gap-2.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 cursor-pointer">
+                <input type="checkbox" checked={desgVarios} className="mt-0.5"
+                  onChange={e => { setDesgVarios(e.target.checked); if (!e.target.checked) setDesgCuota(''); }} />
+                <span>
+                  <span className="block text-[13px] font-semibold text-brand-600">
+                    La factura lleva varios tipos
+                  </span>
+                  <span className="block text-[11px] text-brand-400 leading-snug mt-0.5">
+                    Como las de gestoría: tasas sin IVA y honorarios al 21 % en el mismo papel.
+                    Entonces se pone la cuota, no el tipo.
+                  </span>
+                </span>
+              </label>
+            )}
+
+            {desgRegimen === 'nacional' && desgVarios && (
+              <div>
+                <label className="block text-xs font-semibold text-brand-400 mb-1">Cuota de IVA de la factura</label>
+                <input type="number" step="0.01" value={desgCuota} onChange={e => setDesgCuota(e.target.value)}
+                  className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                <p className={'mt-1.5 text-[12px] ' +
+                  (Math.abs(Number(desgBase) + Number(desgCuota) - Number(desgModal.invoice_amount)) <= 0.02
+                    ? 'text-emerald-700' : 'text-red-600')}>
+                  {fmtEur(Number(desgBase))} + {fmtEur(Number(desgCuota))} = {fmtEur(Number(desgBase) + Number(desgCuota))}
+                  {' · '}la factura pone {fmtEur(desgModal.invoice_amount)}
+                  {Math.abs(Number(desgBase) + Number(desgCuota) - Number(desgModal.invoice_amount)) > 0.02
+                    && ' — tienen que sumar lo mismo'}
+                </p>
+              </div>
+            )}
+
+            {desgRegimen === 'nacional' && !desgVarios && Number(desgBase) > 0 && (
               <p className="text-[12px] text-brand-400">
                 Con {fmtEur(Number(desgBase))} al {Math.round(Number(desgIva) * 100)} %, el total sale{' '}
                 <strong>{fmtEur(Number(desgBase) * (1 + Number(desgIva)))}</strong>

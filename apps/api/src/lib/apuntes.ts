@@ -57,6 +57,8 @@ export function elApunteDelProveedor(
     // ciento, que es como lo escribe una factura. Sin convertirlo, el resumen
     // daría un IVA del 0,21 % y nadie lo miraría dos veces.
     iva: f.tipo != null ? Number(f.tipo) * 100 : null,
+    // Y la cuota, cuando la factura lleva varios tipos y no tiene uno solo.
+    cuota: f.cuota ?? null,
     total: f.total,
     regimen: (nt(f.regimen) || 'nacional') as ApunteConLinea['regimen'],
     // También en tanto por uno en la columna, y también en por ciento aquí.
@@ -149,13 +151,13 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
       `SELECT i.id, i.invoice_number, i.provider_name, i.customer_name, i.customer_email,
               i.vehicle_title, i.notes, i.direction, i.status, i.type,
               i.invoice_amount::numeric AS total, i.base_amount::numeric AS base,
-              i.iva_rate::numeric AS tipo, i.regimen,
+              i.iva_rate::numeric AS tipo, i.iva_amount::numeric AS cuota, i.regimen,
               i.autorepercusion::numeric AS autorepercusion,
               COALESCE(i.invoice_date, i.issued_at::date) AS fecha
          FROM moveadvisor_provider_invoices i
         WHERE COALESCE(i.invoice_date, i.issued_at::date) BETWEEN $1::date AND $2::date
           AND COALESCE(i.status, '') <> $3
-        ORDER BY 16`,
+        ORDER BY 17`,
       [desde, hasta, CUADRADA]
     ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 

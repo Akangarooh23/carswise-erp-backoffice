@@ -88,6 +88,27 @@ export const PARTIDAS_HABITUALES: { concepto: string; que: QueEs; regimen?: Regi
   { concepto: 'Impuesto de transmisiones', que: 'suplido', regimen: 'exento' },
   { concepto: 'Transferencia en la DGT', que: 'nuestro', regimen: 'exento' },
   { concepto: 'Honorarios de la gestoría', que: 'nuestro', regimen: 'nacional' },
+
+  /*
+   * Las de una factura de gestoría de verdad, con el IVA que lleva cada una.
+   *
+   * Llevan nombre propio y no una regla porque la regla se equivoca en las dos
+   * direcciones, y las dos se han visto en la misma factura:
+   *
+   * - **La tasa del colegio lleva IVA.** Es lo que cobra el colegio de gestores
+   *   por su trabajo, no una tasa oficial: 5,40 € de base y 6,53 € de total.
+   *   Adivinándola por la palabra «tasa» salía exenta y se perdía su cuota.
+   * - **El cambio de servicio no lo lleva.** Ese es el coste que se adelanta;
+   *   lo que lleva IVA son los «Honorarios cambio de servicio», que van en su
+   *   propia línea. Adivinándolo por «no es una tasa» salía al 21 % y se
+   *   deducían 10,50 € que nadie soportó.
+   */
+  { concepto: 'Tasa Colegio', que: 'nuestro', regimen: 'nacional' },
+  { concepto: 'Tasa Tráfico', que: 'nuestro', regimen: 'exento' },
+  { concepto: 'Impuesto Municipal', que: 'nuestro', regimen: 'exento' },
+  { concepto: 'Cambio Servicio', que: 'nuestro', regimen: 'exento' },
+  { concepto: 'Placas', que: 'nuestro', regimen: 'nacional' },
+  { concepto: 'Distintivos', que: 'nuestro', regimen: 'nacional' },
 ];
 
 /**
@@ -111,8 +132,21 @@ export function regimenPorDefecto(concepto: string, que: QueEs): Regimen {
   const limpio = String(concepto ?? '').trim().toLowerCase();
   const conocida = PARTIDAS_HABITUALES.find((p) => p.concepto.toLowerCase() === limpio);
   if (conocida?.regimen) return conocida.regimen;
-  // Una tasa o un impuesto no llevan IVA; el trabajo de alguien, sí.
-  if (/tasa|impuesto|dgt|tr[aá]fico|colegio/i.test(limpio)) return 'exento';
+
+  /*
+   * Lo que empieza por «honorarios» es trabajo de alguien y lleva IVA, aunque
+   * el concepto siga con el nombre de una tasa.
+   *
+   * «Honorarios cambio de servicio» y «Cambio de servicio» son dos líneas de la
+   * misma factura: la primera es lo que cobra la gestoría y lleva su 21 %, la
+   * segunda es el coste que adelanta y no lleva ninguno. Sin esta regla, la
+   * palabra «servicio» las mandaba a las dos al mismo sitio.
+   */
+  if (/^honorarios/i.test(limpio)) return 'nacional';
+
+  // Una tasa oficial o un impuesto no llevan IVA; el trabajo de alguien, sí.
+  // «Colegio» no está aquí: la del colegio de gestores sí lo lleva.
+  if (/tasa|impuesto|dgt|tr[aá]fico/i.test(limpio)) return 'exento';
   return que === 'suplido' ? 'exento' : 'nacional';
 }
 

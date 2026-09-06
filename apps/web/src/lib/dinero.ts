@@ -48,6 +48,20 @@ export interface LineaDeDinero {
   base?: unknown;
   /** El tipo, en tanto por ciento. Nulo o vacío = todavía no se sabe. */
   iva?: unknown;
+  /**
+   * La cuota, cuando la línea lleva **varios tipos** y no hay uno solo.
+   *
+   * Una factura de gestoría trae tasas a cero y honorarios al 21 % en el
+   * mismo papel: no tiene un tipo, tiene una cuota. Sin esto solo caben dos
+   * salidas y las dos son falsas —ponerle el 21 % entero, que deduce IVA de
+   * unas tasas que no lo llevan, o dejarla sin desglosar, que pierde la
+   * cuota que sí existe—.
+   *
+   * **Solo se usa si se da.** Con un tipo, la cuota se sigue calculando: una
+   * cuota escrita a mano que no cuadre con su base es lo que hace que un
+   * trimestre no cierre por catorce céntimos.
+   */
+  cuota?: unknown;
   /** Base más cuota. Es lo que pone el total de la factura. */
   total?: unknown;
   que?: QueEs | null;
@@ -144,6 +158,18 @@ export function desglosa(l: LineaDeDinero): Desglose {
      * `laAutorepercusion`, con su propio tipo.
      */
     return { base: suyo, tipo, cuota: 0, total: suyo, desglosada: tipo !== null };
+  }
+
+  /*
+   * Con varios tipos, la cuota viene dada y el tipo no existe.
+   *
+   * Va antes que el cálculo por tipo a propósito: si alguien pone las dos
+   * cosas, manda lo que dice la factura sobre lo que se deduciría de un
+   * tipo que esa factura no tiene.
+   */
+  const dada = importe(l.cuota);
+  if (dada > 0 && base > 0) {
+    return { base: redondo(base), tipo, cuota: redondo(dada), total: redondo(base + dada), desglosada: true };
   }
 
   if (tipo !== null && base > 0) {

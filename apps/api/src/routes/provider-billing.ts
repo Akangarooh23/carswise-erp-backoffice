@@ -489,7 +489,7 @@ providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'o
         // a una.
         `SELECT id, provider_name, vehicle_title, contract_id, invoice_number,
                 invoice_amount, invoice_date, status, pdf_url, notes,
-                base_amount, iva_rate, regimen, autorepercusion,
+                base_amount, iva_rate, iva_amount, regimen, autorepercusion,
                 issued_at, paid_at, updated_at
          FROM moveadvisor_provider_invoices
          WHERE direction = 'received' AND status NOT IN ($3, $4)
@@ -778,7 +778,7 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
  * se pide una rectificativa. Lo que se corrige aquí es cómo se parte.
  */
 providerBillingRouter.patch('/provider-billing/invoices/:id/desglose', requireRole(['admin', 'operations']), async (req, res) => {
-  const { regimen, iva_rate, autorepercusion, base_amount } = req.body ?? {};
+  const { regimen, iva_rate, autorepercusion, base_amount, iva_amount } = req.body ?? {};
 
   const suRegimen: Regimen | null =
     regimen === 'nacional' || regimen === 'intracomunitario' || regimen === 'exento' ? regimen : null;
@@ -811,6 +811,21 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/desglose', requireRo
     return;
   }
 
+  /*
+   * La cuota, para las facturas que llevan varios tipos.
+   *
+   * No se teclea libre: el propio UPDATE exige que base + cuota sumen el total
+   * de la factura. Esa comprobación es lo que la distingue de inventarse un
+   * número, y es la que evita que el trimestre no cierre por catorce céntimos.
+   */
+  const suCuota = iva_amount === null || iva_amount === undefined || iva_amount === ''
+    ? null
+    : Number(iva_amount);
+  if (suCuota !== null && (!Number.isFinite(suCuota) || suCuota < 0)) {
+    res.status(400).json({ ok: false, error: 'cuota_invalida' });
+    return;
+  }
+
   try {
     const r = await query<Record<string, unknown>>(
       `UPDATE moveadvisor_provider_invoices
@@ -818,15 +833,41 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/desglose', requireRo
               iva_rate        = $3,
               autorepercusion = $4,
               base_amount     = COALESCE($5, base_amount),
+              iva_amount      = $6,
               updated_at      = NOW()
         WHERE id = $1 AND direction = 'received'
-    RETURNING id, regimen, base_amount, invoice_amount, iva_rate, autorepercusion`,
+          AND (
+            $6::numeric IS NULL
+            OR ABS(COALESCE($5::numeric, base_amount) + $6::numeric - invoice_amount) <= 0.02
+          )
+    RETURNING id, regimen, base_amount, invoice_amount, iva_rate, iva_amount, autorepercusion`,
       [String(req.params.id), suRegimen,
        suIva === null ? null : suIva / 100,
        suAuto === null ? null : suAuto / 100,
-       suBase]
+       suBase,
+       suRegimen === 'nacional' ? suCuota : null]
     );
-    if (!r.rows.length) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+    if (!r.rows.length) {
+      /*
+       * O no existe, o la cuota no cuadra. Se dice cuál de las dos.
+       *
+       * «No encontrada» delante de una factura que se está viendo en pantalla
+       * es el mensaje que hace perder media hora buscando dónde se ha ido.
+       */
+      const existe = await query<Record<string, unknown>>(
+        `SELECT invoice_amount FROM moveadvisor_provider_invoices WHERE id = $1`,
+        [String(req.params.id)]
+      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+      if (existe.rows.length) {
+        res.status(400).json({
+          ok: false, error: 'no_cuadra',
+          detail: `La base y la cuota tienen que sumar el total de la factura, ${existe.rows[0].invoice_amount} €.`,
+        });
+        return;
+      }
+      res.status(404).json({ ok: false, error: 'not_found' });
+      return;
+    }
 
     // Y se contesta si cuadra o no, para poder decirlo en la misma pantalla en
     // vez de que aparezca en Pendientes al día siguiente.
@@ -835,7 +876,9 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/desglose', requireRo
       ok: true,
       data: {
         ...fila,
-        aviso: noCuadra({
+        // Con cuota dada no hay nada que contradecir: la comprobación la hizo
+        // el propio UPDATE, que no habría guardado si no sumara.
+        aviso: fila.iva_amount != null ? null : noCuadra({
           base: fila.base_amount,
           total: fila.invoice_amount,
           iva: fila.iva_rate == null ? null : Number(fila.iva_rate) * 100,

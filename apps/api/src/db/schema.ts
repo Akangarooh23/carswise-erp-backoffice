@@ -369,6 +369,24 @@ export async function ensureSchema() {
   `);
 
   /*
+   * Y la cuota, para las facturas que llevan **varios tipos**.
+   *
+   * Una de gestoría trae tasas a cero y honorarios al 21 % en el mismo papel:
+   * no tiene un tipo, tiene una cuota. Con solo `iva_rate` había que elegir
+   * entre dos mentiras —ponerle el 21 % entero, que deduce IVA de unas tasas
+   * que no lo llevan, o dejarla sin desglosar, que pierde la cuota que sí
+   * existe—.
+   *
+   * Nula en las normales: ahí la cuota se calcula del tipo y no se teclea. Una
+   * cuota escrita a mano que no cuadre con su base es lo que hace que un
+   * trimestre no cierre por catorce céntimos.
+   */
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS iva_amount NUMERIC(12,2)
+  `);
+
+  /*
    * Cómo se liquidó el impuesto, no solo que se liquidó.
    *
    * El cliente pone una provisión y el impuesto real sale otro. Esa

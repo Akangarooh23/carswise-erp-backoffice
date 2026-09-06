@@ -286,3 +286,47 @@ describe('la inversión del sujeto pasivo', () => {
     assert.equal(a.hayQueDecidirlo, true);
   });
 });
+
+describe('una factura con varios tipos dentro', () => {
+  /*
+   * La de la gestoría: tasas a cero y honorarios al 21 % en el mismo papel.
+   *
+   *   Tasa Tráfico        99,77   sin IVA
+   *   Tasa Colegio         5,40   al 21 %
+   *   Placas              16,50   al 21 %
+   *   Honorarios          25,00   al 21 %
+   *   Cambio de servicio  50,00   sin IVA
+   *
+   * No tiene un tipo: tiene una cuota.
+   */
+  test('se guarda la cuota y no se le supone un tipo', () => {
+    const d = desglosa({ base: 235.09, cuota: 24.85, regimen: 'nacional' });
+    assert.equal(d.base, 235.09);
+    assert.equal(d.cuota, 24.85);
+    assert.equal(d.total, 259.94);
+    assert.equal(d.desglosada, true, 'se sabe cómo se parte, aunque no haya un tipo único');
+  });
+
+  test('sin ella habría que elegir entre dos mentiras', () => {
+    // Ponerle el 21 % entero deduce IVA de unas tasas que no lo llevan…
+    assert.equal(desglosa({ base: 235.09, iva: 21 }).cuota, 49.37);
+    // …y dejarla sin tipo pierde los 24,85 € de cuota que sí existen.
+    assert.equal(desglosa({ base: 235.09, total: 259.94 }).cuota, 0);
+  });
+
+  test('la cuota dada manda sobre el tipo, que es lo que dice el papel', () => {
+    const d = desglosa({ base: 235.09, iva: 21, cuota: 24.85, regimen: 'nacional' });
+    assert.equal(d.cuota, 24.85);
+    assert.equal(d.total, 259.94);
+  });
+
+  test('y sin cuota todo sigue como estaba', () => {
+    assert.equal(desglosa({ base: 400, iva: 21 }).cuota, 84);
+    assert.equal(desglosa({ base: 400, iva: 21, cuota: 0 }).cuota, 84);
+    assert.equal(desglosa({ base: 400, iva: 21, cuota: null }).cuota, 84);
+  });
+
+  test('una cuota sin base no vale: no se sabe de qué es', () => {
+    assert.equal(desglosa({ total: 259.94, cuota: 24.85 }).cuota, 0);
+  });
+});
