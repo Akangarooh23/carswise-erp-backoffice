@@ -10,26 +10,43 @@
  *
  * Esto no lo puede comprobar el intérprete de markdown, que hace bien su
  * trabajo con lo que le den. Es una regla del documento, y por eso se comprueba
- * sobre los documentos de verdad.
+ * sobre los documentos de verdad —todos los que haya, no una lista escrita a
+ * mano que se queda corta en cuanto se añade el siguiente—.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { interpreta, type Paso } from './markdown.js';
+import { interpreta, type Paso, type Bloque } from './markdown.js';
 
-const CARPETA = new URL('../../../../docs/ejecucion/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const desdeAqui = (rel: string) =>
+  new URL(rel, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+
+const CARPETA = desdeAqui('../../../../docs/ejecucion/');
+const SIDEBAR = desdeAqui('../components/layout/Sidebar.tsx');
 
 const losManuales = readdirSync(CARPETA).filter((f) => f.endsWith('.md'));
+
+/**
+ * Las pantallas que hay, sacadas del menú.
+ *
+ * Escritas a mano se quedan viejas: se renombra «Agenda» y el manual sigue
+ * mandando a un sitio que ya no se llama así, con la prueba en verde. El menú
+ * es la lista de verdad, así que es la que se usa.
+ */
+const PANTALLAS = [...readFileSync(SIDEBAR, 'utf8').matchAll(/label:\s*'([^']+)'/g)]
+  .map((m) => m[1]);
 
 const enTexto = (trozos: { texto: string }[] | undefined) =>
   (trozos ?? []).map((t) => t.texto).join('');
 
-/** Todas las cajas de todos los flujos de un documento. */
-function lasCajas(fuente: string): Extract<Paso, { tipo: 'paso' }>[] {
+const esCaja = (p: Paso): p is Extract<Paso, { tipo: 'paso' }> => p.tipo === 'paso';
+
+/** Los flujos de un documento, cada uno con sus cajas. */
+function losFlujos(fuente: string): Extract<Paso, { tipo: 'paso' }>[][] {
   return interpreta(fuente)
-    .flatMap((b) => (b.tipo === 'flujo' ? b.pasos : []))
-    .filter((p): p is Extract<Paso, { tipo: 'paso' }> => p.tipo === 'paso');
+    .filter((b: Bloque): b is Extract<Bloque, { tipo: 'flujo' }> => b.tipo === 'flujo')
+    .map((b) => b.pasos.filter(esCaja));
 }
 
 describe('los manuales de ejecución', () => {
@@ -37,9 +54,17 @@ describe('los manuales de ejecución', () => {
     assert.ok(losManuales.length > 0, 'docs/ejecucion está vacío');
   });
 
+  test('el menú tiene pantallas que nombrar', () => {
+    // Si el menú cambiara de forma, PANTALLAS quedaría vacío y la comprobación
+    // de abajo pasaría siempre sin mirar nada.
+    assert.ok(PANTALLAS.length > 10, `solo ${PANTALLAS.length} pantallas leídas del menú`);
+    assert.ok(PANTALLAS.includes('Agenda'));
+  });
+
   for (const fichero of losManuales) {
     const fuente = readFileSync(join(CARPETA, fichero), 'utf8');
-    const cajas = lasCajas(fuente);
+    const flujos = losFlujos(fuente);
+    const cajas = flujos.flat();
 
     describe(fichero, () => {
       test('tiene cajas', () => {
@@ -73,31 +98,26 @@ describe('los manuales de ejecución', () => {
           `solo ${conDatos} de ${delErp.length} cajas del ERP dicen qué se mete`,
         );
       });
+
+      /*
+       * El primer flujo es el resumen, y es lo primero que se ve. Si sus cajas
+       * no se abren, nadie descubre que las demás lo hacen: el resumen es donde
+       * se aprende que esto se pincha.
+       */
+      test('el resumen de arriba se puede pinchar entero', () => {
+        const sinAbrir = flujos[0]
+          .filter((c) => !c.donde)
+          .map((c) => enTexto(c.trozos));
+        assert.deepEqual(sinAbrir, [], `cajas del resumen que no se abren:\n  ${sinAbrir.join('\n  ')}`);
+      });
+
+      test('las pantallas que nombra existen en el menú', () => {
+        const raras = cajas
+          .filter((c) => c.donde)
+          .map((c) => enTexto(c.donde))
+          .filter((d) => !PANTALLAS.some((p) => d.includes(p)));
+        assert.deepEqual(raras, [], `«@» que no nombra ninguna pantalla del menú:\n  ${raras.join('\n  ')}`);
+      });
     });
   }
-});
-
-describe('el flujo de importación, que es el primero', () => {
-  const fuente = readFileSync(join(CARPETA, 'flujo-de-importacion.md'), 'utf8');
-  const cajas = lasCajas(fuente);
-
-  test('el resumen de arriba también se puede pinchar', () => {
-    // Es la primera pantalla que se ve, y la que enseña que las cajas se
-    // abren. Si el resumen es de adorno, nadie descubre que las demás lo hacen.
-    const primeras = cajas.slice(0, 8);
-    const conPantalla = primeras.filter((c) => c.donde).length;
-    assert.equal(conPantalla, 8, 'el resumen tiene cajas que no se abren');
-  });
-
-  test('las pantallas que nombra son pantallas del ERP', () => {
-    const PANTALLAS = [
-      'Importaciones', 'Peritaciones', 'Transportes', 'Gestoría', 'Proveedores',
-      'Facturación proveedores', 'Comisiones', 'Dashboard', 'Marketplace VO',
-    ];
-    const raras = cajas
-      .filter((c) => c.donde)
-      .map((c) => enTexto(c.donde))
-      .filter((d) => !PANTALLAS.some((p) => d.includes(p)));
-    assert.deepEqual(raras, [], `«@» que no nombra ninguna pantalla conocida:\n  ${raras.join('\n  ')}`);
-  });
 });
