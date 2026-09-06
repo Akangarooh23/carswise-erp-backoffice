@@ -4,7 +4,7 @@ import { api } from '../../api/client.js';
 import Icono, { type NombreIcono } from '../ui/Icono.js';
 
 /**
- * Todo lo que espera a alguien, en un sitio y arriba del todo.
+ * Todo lo que espera a alguien, en un sitio.
  *
  * Estaba repartido: unas fichas amarillas aquí arriba, dos avisos dentro de la
  * pestaña Financiera, otro en Portales y otro en Comisiones. Repartido así se
@@ -16,9 +16,14 @@ import Icono, { type NombreIcono } from '../ui/Icono.js';
  * va a una segunda fila que ya no se mira; y en una ficha no cabe decir por qué
  * importa, que es lo que evita tener que preguntarlo. En lista caben nueve, se
  * leen de arriba abajo en el orden que importa, y cada una lleva a su pantalla.
+ *
+ * Vive en su pestaña, y el número va **en la pestaña**: así se ve que hay cinco
+ * cosas que hacer estando en cualquier otra. Una pestaña sin número obliga a
+ * entrar para saber si hay algo, y a la tercera vez que no hay nada se deja de
+ * entrar.
  */
 
-interface Pendiente {
+export interface Pendiente {
   clave: string;
   etiqueta: string;
   /** En singular: «1 facturas» se lee mal. */
@@ -43,7 +48,8 @@ const TONOS = {
   },
 };
 
-export default function Pendientes() {
+/** Se pide una vez y lo leen los dos: la pestaña, para el número, y la lista. */
+export function usePendientes() {
   const [lista, setLista] = useState<Pendiente[] | null>(null);
 
   useEffect(() => {
@@ -52,14 +58,15 @@ export default function Pendientes() {
       .catch(() => setLista([]));
   }, []);
 
-  if (!lista) return null;
+  return { lista, total: (lista ?? []).reduce((s, p) => s + p.n, 0) };
+}
 
-  const total = lista.reduce((s, p) => s + p.n, 0);
+export default function Pendientes({ lista }: { lista: Pendiente[] | null }) {
+  if (!lista) return <p className="text-sm text-brand-300">Mirando qué hay pendiente…</p>;
 
   if (!lista.length) {
     return (
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-brand-300 mb-2.5">Pendientes</h2>
         <div className="flex items-center gap-2.5 rounded-xl border border-brand-100 bg-white px-4 py-3">
           <span className="text-emerald-600"><Icono nombre="comprobado" tam={18} /></span>
           <p className="text-sm text-brand-400">
@@ -72,13 +79,6 @@ export default function Pendientes() {
 
   return (
     <section>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-brand-300 mb-2.5">
-        Pendientes
-        <span className="ml-2 normal-case font-semibold text-brand-400">
-          · {total === 1 ? '1 cosa que hacer' : `${total.toLocaleString('es-ES')} cosas que hacer`}
-        </span>
-      </h2>
-
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 list-none p-0 m-0">
         {lista.map((p) => {
           const t = TONOS[p.tono] ?? TONOS.espera;

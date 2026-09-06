@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { StatCard } from '../components/ui/Card.js';
-import Pendientes from '../components/dashboard/Pendientes.js';
+import Pendientes, { usePendientes } from '../components/dashboard/Pendientes.js';
 import CochesEnMarcha from '../components/dashboard/CochesEnMarcha.js';
 import Finanzas, { DeDondeViene, useFinanzas } from '../components/dashboard/Finanzas.js';
 import Negocio from '../components/dashboard/Negocio.js';
@@ -16,13 +16,17 @@ import type { DashboardStats } from '../types/index.js';
  * El panel, por partes del negocio.
  *
  * Con todo en una columna había que bajar tres pantallas para llegar al
- * escaparate, y para entonces ya no te acordabas de las cuentas. Son cuatro
- * preguntas distintas —cómo va el dinero, qué hay que hacer hoy, qué hay
- * publicado y quién lo usa— y cada una se hace en un momento distinto del día.
+ * escaparate, y para entonces ya no te acordabas de las cuentas. Son cinco
+ * preguntas distintas —qué hay que hacer, cómo va el dinero, cómo va la
+ * operación, qué hay publicado y quién lo usa— y cada una se hace en un momento
+ * distinto del día.
  *
- * **Lo que necesita a alguien se queda fuera de las pestañas**, arriba y
- * siempre visible: un aviso escondido detrás de una pestaña que no estás
- * mirando es un aviso que no existe.
+ * **Pendientes abre el panel** porque es la que se hace primero: al entrar en
+ * un ERP por la mañana no se pregunta cuánto se facturó el año pasado.
+ *
+ * Y su número va **en la pestaña**, no dentro. Un aviso escondido detrás de una
+ * pestaña que no estás mirando es un aviso que no existe; con el número fuera,
+ * se ve que hay cinco cosas que hacer estando en Ofertas.
  *
  * La pestaña va en la dirección (`?ver=gestion`), así que se puede enlazar y
  * sobrevive a recargar la página. Sin eso, cada vuelta al panel empieza otra
@@ -40,6 +44,9 @@ function fmtDate(s: string) {
 }
 
 const PESTANAS = [
+  // Pendientes primero y por defecto: lo primero que se pregunta al abrir el
+  // ERP es qué hay que hacer, no cuánto se facturó el año pasado.
+  { clave: 'pendientes', nombre: 'Pendientes' },
   { clave: 'financiera', nombre: 'Financiera' },
   { clave: 'gestion',    nombre: 'Gestión' },
   { clave: 'ofertas',    nombre: 'Ofertas' },
@@ -59,10 +66,11 @@ export default function DashboardPage() {
   // Un solo periodo y una sola petición para los dos bloques de dinero: con
   // dos, el reparto puede no sumar lo que dice el total de arriba.
   const cuentas = useFinanzas();
+  const pendientes = usePendientes();
 
   const [params, setParams] = useSearchParams();
   const pedida = params.get('ver');
-  const ver: Pestana = esPestana(pedida) ? pedida : 'financiera';
+  const ver: Pestana = esPestana(pedida) ? pedida : 'pendientes';
 
   useEffect(() => {
     api.get<DashboardStats>('/dashboard/stats').then((res) => {
@@ -80,18 +88,6 @@ export default function DashboardPage() {
       <PageHeader title="Dashboard" subtitle="Vista general del negocio" />
 
       {/*
-        * Todo lo que espera a alguien, antes que nada y fuera de las pestañas.
-        *
-        * También los dos avisos que vivían dentro de Financiera: escondidos
-        * detrás de una pestaña, las dos facturas de la UE sin decidir su tipo
-        * —que son las que no dejan salir el 349— solo se veían si entrabas.
-        *
-        * Los tickets de soporte no están: no hay servicio de soporte todavía y
-        * un contador siempre a cero enseña a no mirar la lista entera.
-        */}
-      <Pendientes />
-
-      {/*
         * La barra va en su propio bloque con hueco debajo.
         *
         * Con margen negativo, la línea de la barra caía justo encima del
@@ -100,16 +96,30 @@ export default function DashboardPage() {
       <nav className="flex gap-1 border-b border-brand-200 mb-2" aria-label="Partes del negocio">
         {PESTANAS.map((p) => (
           <button key={p.clave} type="button"
-                  onClick={() => setParams(p.clave === 'financiera' ? {} : { ver: p.clave }, { replace: true })}
+                  onClick={() => setParams(p.clave === 'pendientes' ? {} : { ver: p.clave }, { replace: true })}
                   aria-current={ver === p.clave ? 'page' : undefined}
                   className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ' +
                     (ver === p.clave
                       ? 'border-acento text-brand-600'
                       : 'border-transparent text-brand-300 hover:text-brand-500')}>
             {p.nombre}
+            {/*
+              * El número va en la pestaña, no dentro.
+              *
+              * Así se ve que hay cinco cosas que hacer estando en Ofertas. Sin
+              * él hay que entrar para saber si hay algo, y a la tercera vez que
+              * no hay nada se deja de entrar: el aviso deja de existir.
+              */}
+            {p.clave === 'pendientes' && pendientes.total > 0 && (
+              <span className="ml-2 inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white tabular-nums align-middle">
+                {pendientes.total}
+              </span>
+            )}
           </button>
         ))}
       </nav>
+
+      {ver === 'pendientes' && <Pendientes lista={pendientes.lista} />}
 
       {ver === 'financiera' && (
         <>
