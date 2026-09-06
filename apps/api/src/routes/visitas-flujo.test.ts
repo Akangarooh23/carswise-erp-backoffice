@@ -48,6 +48,8 @@ const SECCIONES = [
 const CITA = '3f1a6f5e-9c2b-4d7a-8e10-5b6c7d8e9f01';
 const CLIENTE = 'cliente@example.com';
 const HORA_PEDIDA = '2026-09-15T08:00:00.000Z';
+/** Una hora que ya paso, para las visitas que se cierran. */
+const AYER = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
 const OTRAS_HORAS = ['2026-09-17T08:00:00.000Z', '2026-09-18T14:00:00.000Z'];
 
 // ── El estado que va guardando la base simulada ─────────────────────────────
@@ -83,6 +85,7 @@ function reinicia() {
     source_url: seccion.origen,
     seller_phone: '910000000',
     seller_contact: 'Sergio',
+    resultado: null,
   };
   pasos = [];
   correos = [];
@@ -126,6 +129,7 @@ before(async () => {
       if (/status = 'confirmed'/i.test(t)) reserva.status = 'confirmed';
       if (/status = 'cancelled'/i.test(t)) reserva.status = 'cancelled';
       if (/meeting_place = \$2/.test(t)) { reserva.meeting_place = p[1]; reserva.meeting_contact = p[2]; }
+      if (/resultado = \$2/.test(t)) reserva.resultado = p[1];
       if (/starts_at = \$3/.test(t)) { reserva.starts_at = p[2]; reserva.ends_at = p[3]; }
       if (/availability_id = \$1/.test(t)) { reserva.starts_at = p[1]; reserva.ends_at = p[2]; }
       return responde([{ ...reserva }]);
@@ -275,6 +279,55 @@ for (const s of SECCIONES) {
       for (const c of fuera) {
         assert.ok(!new RegExp(s.vende, 'i').test(c.to), `se le ha escrito a ${s.vende}, y a quien vende se le llama a mano`);
       }
+    });
+
+    test('9 · una visita que todavia no ha pasado no se puede cerrar', async () => {
+      // El boton no sale en pantalla, pero la regla la tiene que cumplir el
+      // servidor: nadie deja escrito que alguien no fue a una cita que aun no
+      // ha llegado.
+      reserva.status = 'confirmed';
+      const r = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'no_fue' });
+      assert.equal(r.codigo, 409);
+      assert.match(String(r.cuerpo.error), /todavia no ha empezado|todavía no ha empezado/);
+      assert.equal(reserva.resultado ?? null, null);
+    });
+
+    test('10 · cuando ya ha pasado se cierra, y se puede corregir', async () => {
+      reserva.status = 'confirmed';
+      reserva.starts_at = AYER;
+
+      const fue = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'fue' });
+      assert.equal(fue.codigo, 200);
+      assert.equal(reserva.resultado, 'fue');
+
+      // Corregirlo deja las dos cosas en el rastro: lo que se dice ahora y lo
+      // que decia antes. Si solo quedara lo nuevo, dos lineas seguidas se leen
+      // como dos visitas distintas.
+      const compro = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'compro' });
+      assert.equal(compro.codigo, 200);
+      assert.equal(reserva.resultado, 'compro');
+
+      const cierres = pasos.filter((x) => x.evento === 'resultado');
+      assert.equal(cierres.length, 2);
+      assert.equal(cierres[0].datos.resultado, 'fue');
+      assert.equal(cierres[1].datos.resultado, 'compro');
+      assert.equal(cierres[1].datos.antes, 'fue');
+    });
+
+    test('11 · un final inventado no entra', async () => {
+      reserva.status = 'confirmed';
+      reserva.starts_at = AYER;
+      const r = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'vendido' });
+      assert.equal(r.codigo, 400);
+      assert.equal(reserva.resultado ?? null, null);
+    });
+
+    test('12 · una cancelada no se cierra: no hubo visita', async () => {
+      reserva.status = 'cancelled';
+      reserva.starts_at = AYER;
+      const r = await api(`/visit-bookings/${CITA}/resultado`, { resultado: 'no_fue' });
+      assert.equal(r.codigo, 409);
+      assert.equal(reserva.resultado ?? null, null);
     });
   });
 }

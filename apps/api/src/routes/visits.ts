@@ -4,10 +4,41 @@ import { requireRole, type Role } from '../middleware/auth.js';
 import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA } from '../lib/correo.js';
 import { config } from '../config.js';
 import { manda, mandaOpciones, botonDeHora } from '../lib/whatsapp.js';
+import { esResultado, sePuedeCerrar } from '../lib/resultado-de-la-visita.js';
 
 export const visitsRouter = Router();
 
 const ROLES: Role[] = ['admin', 'support', 'operations', 'sales'];
+
+/**
+ * Cómo acabó la visita, que hasta ahora no se guardaba en ninguna parte.
+ *
+ * La tabla no es nuestra —la crea PopCar—, así que se añaden dos columnas
+ * nulables y nada más: lo que ya escribe la otra aplicación sigue funcionando
+ * sin enterarse. El `CHECK` va aparte y con su nombre, para poder ponerlo sin
+ * pisar el que ya esté.
+ */
+const ENSURE_RESULTADO = `
+  ALTER TABLE vehicle_visit_bookings
+    ADD COLUMN IF NOT EXISTS resultado TEXT,
+    ADD COLUMN IF NOT EXISTS resultado_at TIMESTAMPTZ`;
+
+const ENSURE_RESULTADO_VALIDO = `
+  DO $$
+  BEGIN
+    ALTER TABLE vehicle_visit_bookings
+      ADD CONSTRAINT chk_resultado_de_la_visita
+      CHECK (resultado IS NULL OR resultado IN ('no_fue', 'fue', 'compro'));
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`;
+
+let preparado = false;
+async function prepara() {
+  if (preparado) return;
+  await query(ENSURE_RESULTADO, []).catch(() => {});
+  await query(ENSURE_RESULTADO_VALIDO, []).catch(() => {});
+  preparado = true;
+}
 
 /** Los identificadores de cita son UUID. Lo que no lo sea, no se consulta. */
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -393,6 +424,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
               b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
               b.meeting_place, b.meeting_contact,
+              b.resultado, b.resultado_at,
               b.status, b.created_at
        FROM vehicle_visit_bookings b
        WHERE b.offer_id = $1 AND b.status != 'cancelled'
@@ -860,6 +892,49 @@ visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (
   }
 });
 
+/**
+ * Cómo acabó la visita: no fue, fue, o fue y se lo quedó.
+ *
+ * La puerta la decide `sePuedeCerrar` y no el SQL, para que la razón de que no
+ * se pueda se le pueda contar a quien lo intenta. Y se comprueba en el
+ * servidor aunque el botón no salga en pantalla: el botón se esconde, la regla
+ * se cumple.
+ *
+ * Se puede corregir. Un resultado es un hecho del pasado y quien lo apuntó
+ * puede haberse equivocado de fila; cada cambio deja su línea en el rastro, así
+ * que se ve lo que se dijo antes y quién lo cambió.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/resultado', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const resultado = req.body?.resultado;
+  if (!esResultado(resultado)) {
+    return res.status(400).json({ ok: false, error: 'Resultado no válido' });
+  }
+  try {
+    await prepara();
+    const r = await query(
+      `SELECT id, status, starts_at, resultado FROM vehicle_visit_bookings WHERE id = $1`,
+      [bookingId]
+    );
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'Not found' });
+
+    const puerta = sePuedeCerrar(r.rows[0] as { status: string | null; starts_at: string });
+    if (!puerta.si) return res.status(409).json({ ok: false, error: puerta.porque });
+
+    const antes = (r.rows[0] as { resultado: string | null }).resultado;
+    await query(
+      `UPDATE vehicle_visit_bookings SET resultado = $2, resultado_at = NOW(), updated_at = NOW()
+       WHERE id = $1`,
+      [bookingId, resultado]
+    );
+    await apunta(bookingId, 'resultado', quien(req as never), antes ? { resultado, antes } : { resultado });
+
+    return res.json({ ok: true, data: { resultado } });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
   const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
@@ -896,15 +971,18 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
 
 // GET /all-bookings — global agenda for ERP (all upcoming bookings)
 visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
+  await prepara();
   const status = String(req.query.status || 'confirmed').trim();
   const from   = String(req.query.from || '').trim();
   const to     = String(req.query.to   || '').trim();
+  const sinCerrar = String(req.query.sin_cerrar || '') === '1';
   try {
     let sql = `
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
+             b.resultado, b.resultado_at,
              a.source AS slot_source,
              -- Quién vende y dónde está su teléfono.
              --
@@ -926,6 +1004,11 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     if (status) { sql += ` AND b.status = $${pi++}`; params.push(status); }
     if (from)   { sql += ` AND b.starts_at >= $${pi++}`; params.push(from); }
     if (to)     { sql += ` AND b.starts_at <= $${pi++}`; params.push(to); }
+    // Las que ya pasaron y nadie ha dicho cómo acabaron. Se piden aparte
+    // porque la Agenda enseña de hoy en adelante: si no, para cerrarlas había
+    // que acordarse de cambiar el rango a «Todas», y lo que no se ve no se
+    // hace. La misma regla que en `sePuedeCerrar`, escrita en SQL.
+    if (sinCerrar) sql += ` AND b.starts_at < NOW() AND b.resultado IS NULL`;
     sql += ' ORDER BY b.starts_at ASC LIMIT 200';
     const r = await query(sql, params);
     return res.json({ ok: true, data: { bookings: r.rows } });

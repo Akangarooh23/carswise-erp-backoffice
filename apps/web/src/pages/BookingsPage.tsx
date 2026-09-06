@@ -4,6 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import Boton from '../components/ui/Boton.js';
 import { comoSeLlama, elQueVende, alQueVende } from '../lib/quien-vende.js';
+import { RESULTADOS, COMO_ACABO, TONO, comoAcabo, estaSinCerrar } from '../lib/resultado-de-la-visita.js';
 
 type Booking = {
   id: string;
@@ -33,6 +34,10 @@ type Booking = {
   // vendedor, y no sale nunca en el marketplace.
   seller_phone: string | null;
   seller_contact: string | null;
+  // Cómo acabó la visita, cuando ya ha pasado y alguien lo ha dicho. El estado
+  // cuenta lo de antes de la visita; esto, lo de después.
+  resultado: string | null;
+  resultado_at: string | null;
 };
 
 /**
@@ -99,6 +104,7 @@ const PASO: Record<string, string> = {
   concesionario_avisado:    'Avisado el vendedor de que el cliente va',
   lugar:                    'Apuntado dónde es y por quién preguntar',
   lugar_avisado:            'Mandado el sitio al cliente',
+  resultado:                'Cómo acabó la visita',
 };
 const RANGE_LABELS: Record<Range, string> = { today: 'Hoy', week: 'Esta semana', month: 'Este mes', all: 'Todas' };
 
@@ -207,6 +213,16 @@ function Rastro({ pasos }: { pasos: Paso[] }) {
               {typeof d.motivo === 'string' && d.motivo && (
                 <span className="block text-brand-400 italic">«{d.motivo}»</span>
               )}
+              {typeof d.resultado === 'string' && comoAcabo(d.resultado) && (
+                <span className="block text-brand-500">
+                  {comoAcabo(d.resultado)}
+                  {/* Lo que decía antes, si se ha corregido: sin eso, dos
+                      líneas seguidas parecen dos visitas. */}
+                  {typeof d.antes === 'string' && comoAcabo(d.antes) && (
+                    <span className="text-brand-300"> · antes decía «{comoAcabo(d.antes)}»</span>
+                  )}
+                </span>
+              )}
               {typeof d.nota === 'string' && d.nota && (
                 <span className="block text-brand-500 whitespace-pre-wrap mt-0.5">{d.nota}</span>
               )}
@@ -311,17 +327,67 @@ function PanelDelRastro({ b, pasos, alApuntar, nota, alEscribirNota, guardandoNo
   );
 }
 
+/**
+ * Cómo acabó la visita, en tres botones.
+ *
+ * Solo sale cuando la visita ya ha empezado y está confirmada. Antes no: cerrar
+ * una cita que no ha pasado es inventarse el pasado, y repasando la agenda de
+ * la semana ese botón se pulsa sin querer.
+ *
+ * Son tres y no dos porque contestan cosas distintas: si el cliente fue dice si
+ * el concesionario nos falla, y si se lo quedó dice si el coche convence.
+ * Juntos en uno, la conversión no se puede calcular.
+ */
+function ComoAcabo({ b, cerrando, alCerrar }: {
+  b: Booking;
+  cerrando: boolean;
+  alCerrar: (resultado: string) => void;
+}) {
+  if (b.resultado) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${TONO[b.resultado as keyof typeof TONO] ?? 'bg-brand-50 text-brand-500 border-brand-200'}`}>
+          {comoAcabo(b.resultado)}
+        </span>
+        {/* Se puede corregir: quien lo apuntó pudo equivocarse de fila, y cada
+            cambio queda en el rastro con lo que decía antes. */}
+        <span className="text-[11px] text-brand-300">¿No fue así?</span>
+        {RESULTADOS.filter((r) => r !== b.resultado).map((r) => (
+          <button key={r} type="button" disabled={cerrando} onClick={() => alCerrar(r)}
+                  className="text-[11px] font-medium text-brand-400 underline underline-offset-2 disabled:opacity-50">
+            {COMO_ACABO[r]}
+          </button>
+        ))}
+      </div>
+    );
+  }
+  if (!estaSinCerrar(b)) return null;
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] font-bold text-brand-300 uppercase tracking-wide">Cómo acabó</span>
+      {RESULTADOS.map((r) => (
+        <Boton key={r} tam="sm" variante={r === 'compro' ? 'acento' : 'secundario'}
+               cargando={cerrando} onClick={() => alCerrar(r)}>
+          {COMO_ACABO[r]}
+        </Boton>
+      ))}
+    </div>
+  );
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
   const [range, setRange]           = useState<Range>('week');
   const [search, setSearch]         = useState('');
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cerrando, setCerrando]     = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<Booking | null>(null);
   const [motivo, setMotivo] = useState('');
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
+  const [porCerrar, setPorCerrar]   = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<Booking | null>(null);
   // El mismo par de datos que pide confirmar, pero para una cita que ya lo
@@ -369,16 +435,21 @@ export default function BookingsPage() {
     // desaparecer de la vista sin más.
     const params = new URLSearchParams({ status: 'confirmed', from });
     if (to) params.set('to', to);
-    const [conf, pend] = await Promise.all([
+    const [conf, pend, cerrar] = await Promise.all([
       api.get<any>(`/all-bookings?${params}`),
       // Sin acotar por fecha, ni siquiera por hoy. Una pendiente que se pasa de
       // fecha es una persona a la que no contestamos: esconderla no la arregla,
       // y además el número rojo del menú las cuenta todas, así que marcaba una
       // cifra que en la Agenda no aparecía por ningún lado.
       api.get<any>('/all-bookings?status=pending'),
+      // Las que ya pasaron y nadie ha cerrado. Tampoco se acotan por fecha, y
+      // por el mismo motivo: la Agenda enseña de hoy en adelante, así que estas
+      // no salían salvo cambiando el rango a «Todas». Trabajo invisible.
+      api.get<any>('/all-bookings?status=confirmed&sin_cerrar=1'),
     ]);
     if (conf.ok) setBookings(conf.data?.bookings || []);
     if (pend.ok) setPendientes(pend.data?.bookings || []);
+    if (cerrar.ok) setPorCerrar(cerrar.data?.bookings || []);
     setLoading(false);
   }, [range]);
 
@@ -457,6 +528,29 @@ export default function BookingsPage() {
     // `cargaRastro` y no `verRastro`: el segundo alterna, y aquí lo que hay
     // que hacer es releerlo, no cerrarlo.
     await cargaRastro(b);
+  }
+
+  /**
+   * Dice cómo acabó la visita.
+   *
+   * Recarga la lista después: el resultado cambia la fila y, en cuanto está
+   * puesto, la visita deja de contar entre las que esperan a que alguien las
+   * cierre. Si el rastro está abierto, también se relee, para que se vea la
+   * línea que se acaba de escribir.
+   */
+  async function cierraLaVisita(b: Booking, resultado: string) {
+    setCerrando(b.id);
+    const r = await api.post(`/visit-bookings/${b.id}/resultado`, { resultado });
+    setCerrando(null);
+    if (!r.ok) {
+      // El servidor manda: puede negarse porque la visita no ha empezado o
+      // porque está cancelada, y esa razón hay que contarla tal cual.
+      setResultado({ mal: true, texto: r.error || 'No se ha podido guardar cómo acabó.' });
+      return;
+    }
+    setResultado({ mal: false, texto: `Apuntado: ${COMO_ACABO[resultado as keyof typeof COMO_ACABO]}.` });
+    if (rastroDe === b.id) await cargaRastro(b);
+    await load();
   }
 
   async function apuntaPaso(b: Booking, evento: string, texto: string) {
@@ -721,6 +815,46 @@ export default function BookingsPage() {
                     />
                   </div>
                 )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Las que ya pasaron y nadie ha dicho cómo acabaron.
+          Van en su propio bloque y no dentro de la lista porque la lista enseña
+          de hoy en adelante: estas son de antes de hoy, y son lo único que
+          convierte una visita concertada en un número. Sin esto, la visita se
+          queda confirmada para siempre y nadie sabe si el cliente fue. */}
+      {porCerrar.length > 0 && (
+        <div className="rounded-xl border border-brand-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-brand-100">
+            <h2 className="text-sm font-bold text-brand-600">
+              {porCerrar.length === 1 ? 'Una visita por cerrar' : `${porCerrar.length} visitas por cerrar`}
+            </h2>
+            <p className="text-[12.5px] text-brand-400 mt-0.5 max-w-3xl">
+              Ya han pasado y nadie ha dicho cómo acabaron. Es lo único que dice si de las
+              visitas que concertamos sale algo.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {porCerrar.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="shrink-0 text-center w-16">
+                  <div className="text-lg font-black text-brand-500 leading-none tabular-nums">{fmtTime(b.starts_at)}</div>
+                  <div className="text-[10px] text-brand-300 tabular-nums">{fmtDate(b.starts_at)}</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</div>
+                  <div className="text-xs text-brand-400">
+                    {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
+                  </div>
+                  <QuienVende b={b} />
+                </div>
+                <div className="shrink-0">
+                  <ComoAcabo b={b} cerrando={cerrando === b.id}
+                             alCerrar={(r) => cierraLaVisita(b, r)} />
+                </div>
               </li>
             ))}
           </ul>
@@ -1223,6 +1357,18 @@ export default function BookingsPage() {
 
                             {/* Type badge */}
                             <div className="shrink-0 flex items-center gap-2">
+                              {/* Cómo acabó, sin desplegar: una lista de visitas
+                                  pasadas se lee para ver cuáles quedan por
+                                  cerrar, y para eso hay que verlo de un vistazo. */}
+                              {b.resultado ? (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${TONO[b.resultado as keyof typeof TONO] ?? 'bg-brand-50 text-brand-500 border-brand-200'}`}>
+                                  {comoAcabo(b.resultado)}
+                                </span>
+                              ) : estaSinCerrar(b) ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                  sin cerrar
+                                </span>
+                              ) : null}
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                                 isProf ? 'bg-acento-tenue text-acento-texto' : 'bg-brand-100 text-brand-400'
                               }`}>
@@ -1291,6 +1437,19 @@ export default function BookingsPage() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Cómo acabó, encima de los botones y separado:
+                                  es lo único que queda por hacer en una visita
+                                  que ya ha pasado, y mezclado entre «Otra hora»
+                                  y «Llamar» no se ve. */}
+                              {(b.resultado || estaSinCerrar(b)) && (
+                                <div className="mb-3 pb-3 border-b border-brand-100"
+                                     onClick={(e) => e.stopPropagation()}>
+                                  <ComoAcabo b={b} cerrando={cerrando === b.id}
+                                             alCerrar={(r) => cierraLaVisita(b, r)} />
+                                </div>
+                              )}
+
                               <div className="flex gap-2">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setCancelar(b); setMotivo(''); }}
