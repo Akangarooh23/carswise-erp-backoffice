@@ -369,6 +369,27 @@ export async function ensureSchema() {
   `);
 
   /*
+   * Los números que cuestan demasiado para calcularlos en cada carga.
+   *
+   * Comparar nuestros 4.472 coches contra los 798.000 anuncios rastreados tarda
+   * ocho segundos. Se guarda el resultado con su fecha y se enseña con ella:
+   * «468 € por encima del mercado, calculado ayer» es una respuesta honesta y
+   * «468 € por encima» a secas no lo es.
+   *
+   * Tabla propia y no `erp_kpis`, que es un cuadro de mando —clave, valor,
+   * objetivo, variación— con todas las columnas obligatorias. Meter aquí un
+   * JSON con un objetivo vacío al lado le dejaría a quien venga detrás una
+   * tabla que ya no es lo que dice su nombre.
+   */
+  await query(`
+    CREATE TABLE IF NOT EXISTS erp_calculos_guardados (
+      clave       TEXT PRIMARY KEY,
+      valor       JSONB NOT NULL,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  /*
    * Y la cuota, para las facturas que llevan **varios tipos**.
    *
    * Una de gestoría trae tasas a cero y honorarios al 21 % en el mismo papel:

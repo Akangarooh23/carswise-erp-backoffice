@@ -8,6 +8,7 @@ import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
 import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado } from '../lib/el-periodo.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
+import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 
 export const dashboardRouter = Router();
 
@@ -373,7 +374,7 @@ dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sa
 dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   const vacio = () => ({ rows: [] as Record<string, unknown>[] });
   try {
-    const [leads, citas, usuarios, facturas, importacion, comisiones, contabilidad] = await Promise.all([
+    const [leads, citas, usuarios, facturas, importacion, comisiones, contabilidad, portales] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -446,6 +447,15 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
         FROM moveadvisor_provider_invoices
         WHERE COALESCE(status, '') NOT IN ($1, $2)
       `, [ESPERADA, CUADRADA]).catch(vacio),
+
+      /*
+       * Y las plataformas paradas, leídas y no calculadas.
+       *
+       * Contarlas cuesta un segundo sobre 2,5 GB de anuncios, y esto se pide en
+       * cada carga del panel. Lo guarda la pantalla de Portales, que ya hace esa
+       * consulta para lo suyo; aquí solo se lee lo último que dejó.
+       */
+      leeKpi<{ n?: number }>(KPI.portalesParados).catch(() => null),
     ]);
 
     res.json({
@@ -455,6 +465,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...leads.rows[0], ...citas.rows[0], ...usuarios.rows[0],
           ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
           ...contabilidad.rows[0],
+          portales_parados: portales?.valor?.n ?? 0,
         }),
       },
     });

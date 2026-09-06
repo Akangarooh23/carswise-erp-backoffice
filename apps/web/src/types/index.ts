@@ -419,3 +419,26 @@ export interface Embudo {
   cuelloDeBotella: Escalon | null;
   origenes: { origen: string; personas: number; solicitudes: number }[];
 }
+
+/**
+ * Cuánto se separan nuestros precios de los del mercado.
+ *
+ * Se guarda con su fecha porque calcularlo tarda ocho segundos: la fecha es la
+ * mitad del dato, y una cifra de precios sin saber de cuándo es no sirve.
+ */
+export interface PrecioContraElMercado {
+  valor: {
+    comparables: number;
+    publicados: number;
+    por_encima: number;
+    diferencia_media: number;
+    pct_medio: string | number;
+    los_mas_caros: {
+      title: string; brand: string; model: string; year: number;
+      price: number; medio: number; cuantos: number;
+      diferencia: number; pct: string | number;
+    }[];
+  };
+  cuando: string;
+  horas: number;
+}

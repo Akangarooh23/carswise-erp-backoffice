@@ -29,6 +29,7 @@ const FICHEROS = [
   'apps/api/src/routes/analisis.ts',
   'apps/api/src/routes/dashboard.ts',
   'apps/api/src/lib/apuntes.ts',
+  'apps/api/src/lib/kpis-guardados.ts',
 ];
 
 const env = fs.readFileSync(path.join(RAIZ, '.env'), 'utf8');
@@ -94,16 +95,33 @@ function comoSeLlama(sql) {
 /**
  * Con qué se rellenan los `$1`, `$2`… para poder pedir el plan.
  *
- * Una fecha en texto vale para todos los que hay: se comparan con columnas de
- * fecha o de texto, y Postgres la convierte sola. Si algún día hay uno que no
- * admita esto, el plan fallará y saldrá aquí como consulta rota — que es
- * ruidoso, pero es el lado correcto en el que equivocarse.
+ * Una fecha en texto vale para casi todos: se comparan con columnas de fecha o
+ * de texto y Postgres la convierte sola. Pero un `$2::jsonb` la rechaza —«2026-
+ * 01-01» no es JSON— y la consulta salía **rota siendo correcta**, que es peor
+ * que no comprobarla: un comprobador que da falsos positivos se deja de mirar.
+ *
+ * Así que se mira el cast que lleva cada parámetro y se rellena en consecuencia.
+ * Lo que no lleve cast sigue con la fecha, que es lo que más hay.
  */
-const RELLENO = '2026-01-01';
+const RELLENO_POR_TIPO = {
+  jsonb: 'null', json: 'null',
+  numeric: '1', int: '1', integer: '1', bigint: '1',
+};
+const RELLENO_POR_DEFECTO = '2026-01-01';
 
-function cuantosParametros(sql) {
+function losParametros(sql) {
   const vistos = [...sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
-  return vistos.length ? Math.max(...vistos) : 0;
+  if (!vistos.length) return [];
+
+  // El tipo se toma del primer sitio donde ese parámetro aparece con cast: en
+  // `$6::numeric IS NULL OR ... $6::numeric` los dos dicen lo mismo.
+  const tipos = new Map();
+  for (const m of sql.matchAll(/\$(\d+)::([a-z]+)/gi)) {
+    if (!tipos.has(Number(m[1]))) tipos.set(Number(m[1]), m[2].toLowerCase());
+  }
+
+  return Array.from({ length: Math.max(...vistos) }, (_, i) =>
+    RELLENO_POR_TIPO[tipos.get(i + 1)] ?? RELLENO_POR_DEFECTO);
 }
 
 (async () => {
@@ -111,7 +129,7 @@ function cuantosParametros(sql) {
   const rotas = [];
 
   for (const [fichero, sql] of consultas) {
-    const valores = Array.from({ length: cuantosParametros(sql) }, () => RELLENO);
+    const valores = losParametros(sql);
     // Solo el plan: valida tablas y columnas y no toca una fila.
     try { await pool.query('EXPLAIN ' + sql, valores); }
     catch (e) { rotas.push([path.basename(fichero), comoSeLlama(sql), e.message]); }

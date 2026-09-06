@@ -83,6 +83,12 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     a: '/users', icono: 'usuarios', tono: 'urgente',
   },
   {
+    clave: 'portales_parados',
+    etiqueta: 'plataformas sin repasar', una: 'plataforma sin repasar',
+    porque: 'sus precios son los de hace una semana, y el mercado que comparamos ya no es ese',
+    a: '/portales', icono: 'tabla', tono: 'espera',
+  },
+  {
     clave: 'leads_pendientes',
     etiqueta: 'leads sin contestar', una: 'lead sin contestar',
     porque: 'un lead frío a los tres días ya no compra',
