@@ -320,6 +320,8 @@ export interface Finanzas {
   comprometidoN: number;
   /** Facturas que no dicen su IVA: las cifras son aproximadas. */
   sinDesglosar: number;
+  /** Facturas de la UE sin decidir a qué tipo se autorepercuten. */
+  sinAutorepercusion: number;
   meses: { mes: string; ingresos: number; gastos: number; margen: number }[];
 }
 

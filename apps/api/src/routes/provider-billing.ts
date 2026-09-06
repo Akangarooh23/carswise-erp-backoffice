@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
-import { IVA_GENERAL } from '../lib/dinero.js';
+import { IVA_GENERAL, tipoDeIva, regimenPorDefecto, type Regimen } from '../lib/dinero.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { preparaGarantias } from './garantias.js';
 
@@ -32,6 +32,19 @@ async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: 
 }
 
 export const providerBillingRouter = Router();
+
+/**
+ * Un tipo de IVA que llega en tanto por uno, leído en tanto por ciento.
+ *
+ * La pantalla manda `0.21` porque así lo guarda la columna, y `tipoDeIva`
+ * trabaja en por ciento, que es como lo escribe una factura. Sin esto, un 0,21
+ * es un tipo inventado y se descarta: la factura se quedaba sin IVA.
+ */
+function enPorCiento(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n * 100 : null;
+}
 
 /**
  * El siguiente identificador de fila de facturación de proveedores.
@@ -318,12 +331,36 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
   const {
     provider_name, vehicle_title, amount, invoice_date, notes, contract_id,
     invoice_number, pdf_base64, pdf_filename, esperada_id,
+    iva_rate, regimen, autorepercusion,
   } = req.body ?? {};
   if (!provider_name || !amount) {
     res.status(400).json({ ok: false, error: 'missing_fields', detail: 'provider_name and amount are required' });
     return;
   }
   try {
+    /*
+     * De dónde viene la factura y cómo se parte, que antes se perdían.
+     *
+     * El formulario mandaba `iva_rate` y esto no lo guardaba: una factura
+     * alemana de 890 € entraba como nacional al 21 % y se deducían 154,46 €
+     * de IVA que nadie soportó. Ahora se guardan los tres.
+     *
+     * Si no lo dicen, el régimen se saca del NIF del proveedor —un ROI
+     * alemán es intracomunitario— y si tampoco está de alta, nacional, que
+     * es lo que más hay y el error se ve en el papel.
+     */
+    const suRegimen: Regimen = (regimen === 'intracomunitario' || regimen === 'exento' || regimen === 'nacional')
+      ? regimen
+      : regimenPorDefecto((await query<{ nif: string }>(
+          `SELECT nif FROM erp_proveedores WHERE LOWER(nombre) = LOWER($1) LIMIT 1`,
+          [String(provider_name)]
+        ).catch(() => ({ rows: [] as { nif: string }[] }))).rows[0]?.nif);
+
+    // Una intracomunitaria no lleva IVA en el papel, diga lo que diga el
+    // formulario; el tipo español va aparte, y nulo mientras no se decida.
+    const suIva = suRegimen === 'nacional' ? (tipoDeIva(enPorCiento(iva_rate)) ?? IVA_GENERAL) : 0;
+    const suAuto = suRegimen === 'intracomunitario' ? tipoDeIva(enPorCiento(autorepercusion)) : null;
+
     // Si dos personas dan de alta una factura a la vez, las dos piden el mismo
     // identificador. Una gana y la otra vuelve a pedir, en vez de llevarse un
     // error de base de datos.
@@ -369,10 +406,14 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
                 notes          = COALESCE($5, notes),
                 pdf_url        = COALESCE($6, pdf_url),
                 status         = CASE WHEN $6 IS NOT NULL THEN 'pending_payment' ELSE 'pending' END,
+                regimen        = $7,
+                iva_rate       = $8,
+                autorepercusion = $9,
                 updated_at     = NOW()
           WHERE id = $1`,
         [cierra, String(invoice_number ?? '').trim() || null, Number(amount),
-         invoice_date || null, notes || null, url]
+         invoice_date || null, notes || null, url,
+         suRegimen, suIva / 100, suAuto === null ? null : suAuto / 100]
       );
       res.status(201).json({ ok: true, data: { id: cierra, pdf_url: url, cuadrada: true } });
       return;
@@ -387,11 +428,14 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
       await query(
         `INSERT INTO moveadvisor_provider_invoices
            (id, type, direction, provider_name, contract_id, vehicle_title,
-            invoice_amount, invoice_date, pdf_url, notes, invoice_number, status)
-         VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
+            invoice_amount, invoice_date, pdf_url, notes, invoice_number, status,
+            regimen, iva_rate, autorepercusion)
+         VALUES ($1, 'received_invoice', 'received', $2, $3, $4, $5, $6, $7, $8, $9, 'pending',
+                 $10, $11, $12)`,
         [id, provider_name, contract_id || null, vehicle_title || null,
          Number(amount), invoice_date || null, pdf_url, notes || null,
-         String(invoice_number ?? '').trim() || null]
+         String(invoice_number ?? '').trim() || null,
+         suRegimen, suIva / 100, suAuto === null ? null : suAuto / 100]
       );
     });
     res.status(201).json({ ok: true, data: { id, pdf_url } });
@@ -649,6 +693,10 @@ providerBillingRouter.get('/provider-billing/pending-warranty-commissions', requ
 /**
  * Y emitirla.
  *
+ * El importe que llega es **el total, con IVA dentro**, que es como lo dice el
+ * catálogo de garantías y como se habla de él: «nos comisionan 70 €». La base
+ * se saca de ahí.
+ *
  * El importe llega de fuera y no se calcula aquí: la comisión la fija el
  * contrato con el proveedor, y hasta que haya uno lo que hay en el catálogo es
  * una cifra provisional. Se propone, no se impone.
@@ -675,18 +723,18 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
     const x = lr.rows[0];
 
     /*
-     * La base es la comisión, no lo que pagó el cliente.
+     * La comisión es el total, con el IVA dentro.
      *
      * Aquí ponía el precio de la garantía —190 €— en la base y la comisión
      * —70 €— en el total, y esa factura no existe: dice que se le facturaron
      * 190 € al proveedor y que el total es menor que la base. En el desglose
      * salía un ingreso de 190 € donde se ganan 70.
      *
-     * La comisión se factura al proveedor como un servicio nuestro, así que
-     * lleva IVA encima. Lo que pagó el cliente se queda escrito en el concepto,
-     * que es donde sirve para comprobar la liquidación.
+     * Y de los 70 € no todo es nuestro: 12,15 € son de Hacienda. Lo que pagó el
+     * cliente se queda escrito en el concepto, que es donde sirve para
+     * comprobar la liquidación.
      */
-    const cuota = Math.round(importe * IVA_GENERAL) / 100;
+    const base = Math.round((importe / (1 + IVA_GENERAL / 100)) * 100) / 100;
     const precio = Number(x.precio) || 0;
     const concepto = precio > 0
       ? `Comisión · ${x.garantia} · el cliente pagó ${precio.toFixed(2)} €`
@@ -699,7 +747,7 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
             base_amount, invoice_amount, iva_rate, regimen, notes)
          VALUES ($1, 'warranty_commission', $2, $3, $4, $5, $6, $7, $8, $9, 'nacional', $10)`,
         [nuevo, x.proveedor, lead_id, x.vehicle_title, x.contact_name, x.user_email,
-         importe, Math.round((importe + cuota) * 100) / 100, IVA_GENERAL / 100, concepto]
+         base, importe, IVA_GENERAL / 100, concepto]
       );
     });
 

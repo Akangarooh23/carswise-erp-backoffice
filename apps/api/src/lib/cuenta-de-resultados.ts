@@ -19,7 +19,7 @@
  * mismo.
  */
 
-import { desglosa } from './dinero.js';
+import { desglosa, laAutorepercusion } from './dinero.js';
 import type { Apunte } from './libro-para-el-asesor.js';
 import {
   NOMBRE_DEL_INGRESO, NOMBRE_DEL_GASTO, ORDEN_DE_INGRESOS, ORDEN_DE_GASTOS,
@@ -68,6 +68,14 @@ export interface Resultado {
   comprometidoN: number;
   /** Facturas que no dicen su IVA: el número de arriba es aproximado. */
   sinDesglosar: number;
+  /**
+   * Y facturas de la UE sin decidir a qué tipo se autorepercuten.
+   *
+   * No mueve el margen —lo que se autorepercute se deduce a la vez— pero sí
+   * el 349 y el modelo del trimestre, y el sitio donde alguien lo va a ver es
+   * este.
+   */
+  sinAutorepercusion: number;
 }
 
 /** Si un apunte suma en la cuenta de resultados. */
@@ -107,7 +115,8 @@ function trozos<C extends string>(
 export function cuentaDeResultados(apuntes: readonly ApunteConLinea[] | null | undefined): Resultado {
   const porLinea = new Map<string, { base: number; n: number }>();
   const porConcepto = new Map<string, { base: number; n: number }>();
-  let ingresos = 0, gastos = 0, suplidos = 0, comprometido = 0, comprometidoN = 0, sinDesglosar = 0;
+  let ingresos = 0, gastos = 0, suplidos = 0, comprometido = 0, comprometidoN = 0;
+  let sinDesglosar = 0, sinAutorepercusion = 0;
 
   for (const a of apuntes ?? []) {
     const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
@@ -119,6 +128,10 @@ export function cuentaDeResultados(apuntes: readonly ApunteConLinea[] | null | u
     }
     if (!cuenta(a)) { suplidos += d.total; continue; }
     if (!d.desglosada && d.total > 0) sinDesglosar += 1;
+    if (laAutorepercusion({
+      base: a.base, iva: a.iva, total: a.total,
+      regimen: a.regimen, autorepercusion: a.autorepercusion,
+    }).hayQueDecidirlo) sinAutorepercusion += 1;
 
     const clave = String(a.linea ?? 'otros');
     const donde = a.sentido === 'emitida' ? porLinea : porConcepto;
@@ -146,6 +159,7 @@ export function cuentaDeResultados(apuntes: readonly ApunteConLinea[] | null | u
     comprometido: redondo(comprometido),
     comprometidoN,
     sinDesglosar,
+    sinAutorepercusion,
   };
 }
 

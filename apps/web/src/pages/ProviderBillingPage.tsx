@@ -202,6 +202,16 @@ export default function ProviderBillingPage() {
   const [recvEsperada, setRecvEsperada] = useState<string | null>(null);
   const [savingRecv, setSavingRecv]     = useState(false);
   const [recvIva, setRecvIva]           = useState<number>(0.21);
+  /*
+   * De dónde viene la factura, y el tipo español si es de la UE.
+   *
+   * Una factura alemana con ROI viene sin IVA: el servicio se localiza aquí y
+   * la cuota nos la autorepercutimos nosotros. Grabada como nacional al 21 %
+   * se deducen 154,46 € que nadie soportó; grabada al 0 % sin más, la casilla
+   * del 349 sale a cero. Son dos datos y por eso son dos campos.
+   */
+  const [recvRegimen, setRecvRegimen]   = useState<'nacional' | 'intracomunitario' | 'exento'>('nacional');
+  const [recvAuto, setRecvAuto]         = useState<string>('');
 
   // Rectificativa modal
   const [rectModal, setRectModal]     = useState<ProviderInvoice | null>(null);
@@ -296,6 +306,8 @@ export default function ProviderBillingPage() {
       pdf_base64,
       pdf_filename: recvPdfFile?.name,
       iva_rate: recvIva,
+      regimen: recvRegimen,
+      autorepercusion: recvAuto === '' ? null : Number(recvAuto),
       esperada_id: recvEsperada || undefined,
     };
     const r = await api.post('/provider-billing/received', body);
@@ -303,6 +315,7 @@ export default function ProviderBillingPage() {
       setRecvModal(false);
       setRecvProvider(''); setRecvVehicle(''); setRecvAmount('');
       setRecvDate(''); setRecvNotes(''); setRecvPdfFile(null); setRecvEsperada(null);
+      setRecvRegimen('nacional'); setRecvAuto('');
       await load(1);
     }
     setSavingRecv(false);
@@ -955,16 +968,51 @@ export default function ProviderBillingPage() {
               className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Número de factura del proveedor, observaciones…" />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-brand-400 mb-1">IVA</label>
-            <select value={String(recvIva)} onChange={e => setRecvIva(Number(e.target.value))}
-              className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="0.21">21% (general)</option>
-              <option value="0.10">10% (reducido)</option>
-              <option value="0.04">4% (superreducido)</option>
-              <option value="0">0% (exento)</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">De dónde viene</label>
+              <select value={recvRegimen}
+                onChange={e => { const v = e.target.value as typeof recvRegimen; setRecvRegimen(v); if (v !== 'nacional') setRecvIva(0); if (v !== 'intracomunitario') setRecvAuto(''); }}
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="nacional">España · con IVA dentro</option>
+                <option value="intracomunitario">UE con ROI · sin IVA, se autorepercute</option>
+                <option value="exento">Exenta · una tasa, un impuesto</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-brand-400 mb-1">IVA de la factura</label>
+              <select value={String(recvIva)} onChange={e => setRecvIva(Number(e.target.value))}
+                disabled={recvRegimen !== 'nacional'}
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-brand-50 disabled:text-brand-300">
+                <option value="0.21">21% (general)</option>
+                <option value="0.10">10% (reducido)</option>
+                <option value="0.04">4% (superreducido)</option>
+                <option value="0">0% (sin IVA)</option>
+              </select>
+            </div>
           </div>
+
+          {recvRegimen === 'intracomunitario' && (
+            <div className="rounded-lg border border-acento bg-acento-tenue p-3">
+              <label className="block text-xs font-semibold text-acento-texto mb-1">
+                Tipo que nos autorepercutimos
+              </label>
+              <select value={recvAuto} onChange={e => setRecvAuto(e.target.value)}
+                className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Sin decidir · hay que mirarlo</option>
+                <option value="0.21">21%</option>
+                <option value="0.10">10%</option>
+                <option value="0.04">4%</option>
+                <option value="0">0%</option>
+              </select>
+              <p className="mt-2 text-[11px] text-acento-texto leading-snug">
+                Este no es el IVA de la factura, que es 0. Es el español que se repercute y se
+                deduce a la vez, y va al 349. La regla general lo sitúa donde está el cliente,
+                pero hay excepciones por tipo de servicio: dejarlo sin decidir lo saca en
+                Contabilidad como pendiente en vez de darlo por hecho.
+              </p>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-brand-400 mb-1">PDF de la factura</label>
             <label className={`flex items-center gap-3 cursor-pointer border-2 border-dashed rounded-lg p-4 transition-colors ${

@@ -345,6 +345,30 @@ export async function ensureSchema() {
   `);
 
   /*
+   * Y a qué tipo se autorepercute, que no es el IVA de la factura.
+   *
+   * En una compra de servicios a una empresa de la UE con ROI, el proveedor no
+   * repercute su IVA: el servicio se localiza en España y la cuota la
+   * autoliquida el destinatario, que se la repercute y se la deduce a la vez.
+   * Efecto en caja cero, pero hay que declararla y va al 349.
+   *
+   * Son dos cifras distintas y estaban en la misma columna: `iva_rate` es lo
+   * que pone el papel —0 % en una alemana, y ese 0 es correcto— y esto es el
+   * tipo español que nos aplicamos nosotros. Con una sola, o el papel queda mal
+   * grabado o la casilla del 349 sale a cero, que es lo que pasaba.
+   *
+   * **Nula a propósito, y sin valor por defecto.** La regla general B2B
+   * localiza el servicio donde está el cliente, pero hay excepciones por tipo
+   * de servicio: una peritación hecha físicamente en un concesionario alemán
+   * hay que mirarla antes de decidir. Nula quiere decir «sin decidir», y eso se
+   * dice en pantalla; no se rellena con un 21 % que nadie ha comprobado.
+   */
+  await query(`
+    ALTER TABLE IF EXISTS moveadvisor_provider_invoices
+      ADD COLUMN IF NOT EXISTS autorepercusion NUMERIC(5,4)
+  `);
+
+  /*
    * Cómo se liquidó el impuesto, no solo que se liquidó.
    *
    * El cliente pone una provisión y el impuesto real sale otro. Esa

@@ -22,7 +22,7 @@
  * Y lo entrega en un fichero que se carga sin teclear nada.
  */
 
-import { desglosa, importe, type Regimen, type QueEs } from './dinero.js';
+import { desglosa, laAutorepercusion, importe, type Regimen, type QueEs } from './dinero.js';
 
 /** Una factura, emitida o recibida, tal como la ve el asesor. */
 export interface Apunte {
@@ -41,6 +41,13 @@ export interface Apunte {
   iva?: unknown;
   total?: unknown;
   regimen?: Regimen | null;
+  /**
+   * El tipo español que nos autorepercutimos, solo en intracomunitarias.
+   *
+   * No sale de la factura: la alemana viene al 0 % y ese 0 % es correcto. Sin
+   * él, la casilla del intracomunitario sale a cero y el 349 no cuadra.
+   */
+  autorepercusion?: unknown;
   que?: QueEs | null;
   /** Si todavía no ha llegado. Una esperada no es un apunte contable. */
   pendiente?: boolean;
@@ -64,6 +71,15 @@ export interface Resumen {
   suplidos: number;
   /** Cuántos apuntes no dicen su IVA, que es lo que hace falta arreglar. */
   sinDesglosar: number;
+  /**
+   * Y cuántas intracomunitarias no dicen a qué tipo se autorepercuten.
+   *
+   * No se supone el 21 %: la regla general B2B localiza el servicio donde
+   * está el cliente, pero hay excepciones por tipo de servicio —una
+   * peritación hecha en un concesionario alemán es justo el caso que hay que
+   * mirar—. Se dice que falta y lo decide quien sabe.
+   */
+  sinAutorepercusion: number;
   /** Y cuántas facturas se esperan y no han llegado. */
   pendientes: number;
 }
@@ -91,7 +107,7 @@ export function cuentaEnElModelo(a: Apunte): boolean {
 export function resumeElPeriodo(apuntes: Apunte[] | null | undefined): Resumen {
   const r: Resumen = {
     repercutido: 0, soportado: 0, intracomunitario: 0,
-    aIngresar: 0, suplidos: 0, sinDesglosar: 0, pendientes: 0,
+    aIngresar: 0, suplidos: 0, sinDesglosar: 0, sinAutorepercusion: 0, pendientes: 0,
   };
 
   for (const a of apuntes ?? []) {
@@ -101,9 +117,20 @@ export function resumeElPeriodo(apuntes: Apunte[] | null | undefined): Resumen {
     if ((a.que ?? 'nuestro') === 'suplido') { r.suplidos += d.total; continue; }
     if (!d.desglosada && d.total > 0) r.sinDesglosar += 1;
 
-    if (a.sentido === 'emitida') r.repercutido += d.cuota;
-    else if ((a.regimen ?? 'nacional') === 'intracomunitario') r.intracomunitario += d.cuota;
-    else r.soportado += d.cuota;
+    if (a.sentido === 'emitida') { r.repercutido += d.cuota; continue; }
+
+    if ((a.regimen ?? 'nacional') === 'intracomunitario') {
+      // La factura viene sin IVA; el que se declara nos lo aplicamos aquí.
+      const auto = laAutorepercusion({
+        base: a.base, iva: a.iva, total: a.total,
+        regimen: a.regimen, autorepercusion: a.autorepercusion,
+      });
+      r.intracomunitario += auto.cuota;
+      if (auto.hayQueDecidirlo) r.sinAutorepercusion += 1;
+      continue;
+    }
+
+    r.soportado += d.cuota;
   }
 
   r.repercutido = redondo(r.repercutido);
@@ -127,6 +154,11 @@ export function queFaltaAntesDeMandarlo(r: Resumen): string[] {
     falta.push(r.sinDesglosar === 1
       ? 'una factura no dice su IVA'
       : `${r.sinDesglosar} facturas no dicen su IVA`);
+  }
+  if (r.sinAutorepercusion > 0) {
+    falta.push(r.sinAutorepercusion === 1
+      ? 'una factura intracomunitaria no dice a qué tipo se autorepercute'
+      : `${r.sinAutorepercusion} facturas intracomunitarias no dicen a qué tipo se autorepercuten`);
   }
   if (r.pendientes > 0) {
     falta.push(r.pendientes === 1
@@ -166,6 +198,10 @@ export function delTrimestre(anio: number, trimestre: number): { desde: string; 
 const CABECERA = [
   'Fecha', 'Sentido', 'Numero', 'Contraparte', 'NIF', 'Concepto', 'Vehiculo',
   'Base', 'TipoIVA', 'Cuota', 'Total', 'Regimen', 'Que',
+  // La autorepercusión, aparte de la cuota: en una intracomunitaria la
+  // factura trae 0 € de IVA y el 21 % es nuestro. En la misma columna, el
+  // asesor no puede saber cuál de las dos está mirando.
+  'Autorrepercutido', 'CuotaAutorrepercutida',
 ];
 
 function celda(v: unknown): string {
@@ -191,6 +227,10 @@ export function comoFichero(apuntes: Apunte[] | null | undefined): string {
   for (const a of apuntes ?? []) {
     if (a.pendiente) continue;
     const d = desglosa({ base: a.base, iva: a.iva, total: a.total, regimen: a.regimen });
+    const auto = laAutorepercusion({
+      base: a.base, iva: a.iva, total: a.total,
+      regimen: a.regimen, autorepercusion: a.autorepercusion,
+    });
     filas.push([
       celda(String(a.fecha ?? '').slice(0, 10)),
       celda(a.sentido),
@@ -205,6 +245,8 @@ export function comoFichero(apuntes: Apunte[] | null | undefined): string {
       conComa(d.total),
       celda(a.regimen ?? 'nacional'),
       celda(a.que ?? 'nuestro'),
+      auto.tipo === null ? '' : String(auto.tipo),
+      conComa(auto.cuota),
     ].join(';'));
   }
   return filas.join('\r\n');

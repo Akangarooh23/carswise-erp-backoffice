@@ -52,6 +52,13 @@ export interface LineaDeDinero {
   total?: unknown;
   que?: QueEs | null;
   regimen?: Regimen | null;
+  /**
+   * El tipo español que nos autorepercutimos, solo en intracomunitarias.
+   *
+   * No sale de la factura: la alemana viene al 0 %, y ese 0 % es correcto.
+   * Nulo mientras no se haya decidido, que es distinto de cero.
+   */
+  autorepercusion?: unknown;
 }
 
 export interface Desglose {
@@ -127,10 +134,16 @@ export function desglosa(l: LineaDeDinero): Desglose {
   if (regimen !== 'nacional') {
     // El total es la base: la factura no lleva IVA dentro.
     const suyo = redondo(base || total);
-    const cuota = regimen === 'intracomunitario' && tipo !== null
-      ? redondo(suyo * tipo / 100)  // autoliquidada: se repercute y se deduce
-      : 0;
-    return { base: suyo, tipo, cuota, total: suyo, desglosada: tipo !== null };
+    /*
+     * Y su cuota es cero, siempre.
+     *
+     * Aquí se calculaba la autoliquidada a partir del tipo de la factura, y
+     * son dos cosas distintas: el 0 % de una alemana es el IVA que trae el
+     * papel, no el español que nos aplicamos. Mezclados, o el papel queda
+     * mal grabado o el 349 sale a cero. La autorepercusión vive en
+     * `laAutorepercusion`, con su propio tipo.
+     */
+    return { base: suyo, tipo, cuota: 0, total: suyo, desglosada: tipo !== null };
   }
 
   if (tipo !== null && base > 0) {
@@ -144,6 +157,52 @@ export function desglosa(l: LineaDeDinero): Desglose {
   // Un número y nada más: es lo que hay, y se dice que no está desglosado.
   const solo = redondo(base || total);
   return { base: solo, tipo, cuota: 0, total: solo, desglosada: false };
+}
+
+/**
+ * La inversión del sujeto pasivo de una factura intracomunitaria.
+ *
+ * En una compra de servicios a una empresa de la UE con ROI, el proveedor no
+ * repercute su IVA: el servicio se localiza en España y la cuota la
+ * autoliquida el destinatario. Se repercute y se deduce a la vez, así que el
+ * efecto en caja es cero, pero **hay que declararla** y va al 349.
+ *
+ * Son dos cosas distintas y hasta ahora estaban en la misma columna:
+ *
+ * - `iva` es el IVA **de la factura**, y en una intracomunitaria es 0. Es lo
+ *   que pone el papel y es lo que teclea quien la registra.
+ * - `autorepercusion` es el tipo español que nos aplicamos nosotros. No está
+ *   en la factura y no se puede leer de ella.
+ *
+ * Guardadas como una sola, o el papel queda mal grabado o el 349 sale a cero.
+ * Las facturas alemanas están grabadas al 0 %, que es correcto para el papel,
+ * y por eso el intracomunitario del resumen salía a cero.
+ *
+ * **No se supone el 21 %.** La regla general B2B localiza el servicio donde
+ * está el cliente, pero hay excepciones por tipo de servicio, y una peritación
+ * hecha físicamente en un concesionario alemán es justo el caso que hay que
+ * mirar antes de decidir. Sin tipo, esto devuelve que falta decidirlo, y eso
+ * se dice; no se rellena solo.
+ */
+export interface Autorepercusion {
+  /** El tipo español, o null si todavía no se ha decidido. */
+  tipo: number | null;
+  /** Lo que se autorepercute y se deduce. Cero mientras no haya tipo. */
+  cuota: number;
+  /** Si es una intracomunitaria a la que le falta ese tipo. */
+  hayQueDecidirlo: boolean;
+}
+
+export function laAutorepercusion(l: LineaDeDinero): Autorepercusion {
+  if ((l.regimen ?? 'nacional') !== 'intracomunitario') {
+    return { tipo: null, cuota: 0, hayQueDecidirlo: false };
+  }
+  const tipo = tipoDeIva(l.autorepercusion);
+  if (tipo === null) return { tipo: null, cuota: 0, hayQueDecidirlo: true };
+
+  // Sobre la base de la factura, que en una intracomunitaria es su total.
+  const d = desglosa(l);
+  return { tipo, cuota: redondo(d.base * tipo / 100), hayQueDecidirlo: false };
 }
 /**
  * Lo que de verdad nos cuesta una línea.

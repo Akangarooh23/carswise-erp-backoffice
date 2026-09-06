@@ -155,6 +155,20 @@ export default function Finanzas({ cuentas }: { cuentas: Cuentas }) {
                pie="suplidos: entra y sale, no es nuestro" />
       </div>
 
+      {datos.sinAutorepercusion > 0 && (
+        /*
+         * No mueve el margen —lo autorepercutido se deduce a la vez— pero sí
+         * el 349, y el sitio donde alguien lo va a ver es este.
+         */
+        <Link to="/provider-billing"
+              className="mt-3 flex items-center gap-2 rounded-lg border border-acento bg-acento-tenue px-3 py-2 text-[12px] font-semibold text-acento-texto hover:border-acento-oscuro">
+          <Icono nombre="aviso" tam={15} />
+          {datos.sinAutorepercusion === 1
+            ? 'Una factura de la UE no dice a qué tipo se autorepercute, y sin eso no sale el 349'
+            : `${datos.sinAutorepercusion} facturas de la UE no dicen a qué tipo se autorepercuten, y sin eso no sale el 349`}
+        </Link>
+      )}
+
       {datos.sinDesglosar > 0 && (
         // El número de arriba deja de ser exacto y hay que decirlo donde está
         // el número, no en una pantalla aparte.

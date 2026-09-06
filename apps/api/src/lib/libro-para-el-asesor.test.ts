@@ -28,13 +28,13 @@ const DEL_KIA: Apunte[] = [
   {
     numero: 'ACD-2026-0907-001', fecha: '2026-09-07', sentido: 'recibida',
     contraparte: 'checkdenwagen Automobile DE', nif: 'DE123456789',
-    total: 289, iva: 21, regimen: 'intracomunitario',
+    total: 289, iva: 0, autorepercusion: 21, regimen: 'intracomunitario',
     concepto: 'Peritación', vehiculo: 'Kia Sorento',
   },
   {
     numero: 'BO-2026-118', fecha: '2026-09-10', sentido: 'recibida',
     contraparte: 'Business Ontime GmbH', nif: 'DE307265811',
-    total: 890, iva: 21, regimen: 'intracomunitario',
+    total: 890, iva: 0, autorepercusion: 21, regimen: 'intracomunitario',
     concepto: 'Transporte · tramo 1', vehiculo: 'Kia Sorento',
   },
   {
@@ -108,9 +108,51 @@ describe('qué hay que arreglar antes de mandarlo', () => {
     // Un fichero con huecos vuelve en forma de correo dos días después.
     const uno = queFaltaAntesDeMandarlo({
       repercutido: 0, soportado: 0, intracomunitario: 0, aIngresar: 0,
-      suplidos: 0, sinDesglosar: 1, pendientes: 2,
+      suplidos: 0, sinDesglosar: 1, sinAutorepercusion: 0, pendientes: 2,
     });
     assert.deepEqual(uno, ['una factura no dice su IVA', '2 facturas esperadas sin llegar']);
+  });
+});
+
+describe('la inversión del sujeto pasivo', () => {
+  /** La misma alemana, sin decidir a qué tipo se autorepercute. */
+  const SIN_DECIDIR: Apunte[] = [{
+    numero: 'ACD-1', fecha: '2026-09-07', sentido: 'recibida',
+    contraparte: 'checkdenwagen', total: 289, iva: 0, regimen: 'intracomunitario',
+  }];
+
+  test('el 0 % de la factura alemana no es el tipo que se declara', () => {
+    // Con los dos en la misma columna, o el papel queda mal grabado o la
+    // casilla del 349 sale a cero. Aquí el papel dice 0 y se declara 21.
+    const r = resumeElPeriodo(DEL_KIA);
+    assert.equal(r.intracomunitario, 247.59);
+    assert.equal(r.soportado, 20.66, 'lo alemán no lleva IVA que soportar');
+  });
+
+  test('sin tipo decidido no se supone el 21 %', () => {
+    // La regla general B2B localiza el servicio donde está el cliente, pero
+    // hay excepciones por tipo de servicio. Se dice que falta.
+    const r = resumeElPeriodo(SIN_DECIDIR);
+    assert.equal(r.intracomunitario, 0);
+    assert.equal(r.sinAutorepercusion, 1);
+  });
+
+  test('y se avisa antes de mandarle el fichero al asesor', () => {
+    assert.deepEqual(queFaltaAntesDeMandarlo(resumeElPeriodo(SIN_DECIDIR)),
+      ['una factura intracomunitaria no dice a qué tipo se autorepercute']);
+  });
+
+  test('el fichero lleva las dos cifras en columnas distintas', () => {
+    const csv = comoFichero(DEL_KIA);
+    assert.match(csv.split('\r\n')[0], /Autorrepercutido;CuotaAutorrepercutida$/);
+    const alemana = csv.split('\r\n').find((f) => f.includes('ACD-2026-0907-001')) ?? '';
+    assert.ok(alemana.endsWith(';21;60,69'), 'la alemana: 0 € de IVA en la factura y 60,69 € autorrepercutidos · ' + alemana);
+  });
+
+  test('una nacional no autorepercute nada', () => {
+    const csv = comoFichero(DEL_KIA);
+    const espanola = csv.split('\r\n').find((f) => f.includes('GB-2026-441;Gestoría Bernal') || f.includes('Honorarios')) ?? '';
+    assert.ok(espanola.endsWith(';;0,00'), 'la española no lleva autorepercusión · ' + espanola);
   });
 });
 
@@ -141,7 +183,7 @@ describe('el fichero', () => {
   test('lleva las columnas que él espera', () => {
     const csv = comoFichero(DEL_KIA);
     assert.match(csv.split('\r\n')[0], /^Fecha;Sentido;Numero;Contraparte;NIF;/);
-    assert.match(csv, /Regimen;Que$/m);
+    assert.match(csv, /Regimen;Que;Autorrepercutido;CuotaAutorrepercutida$/m);
   });
 
   test('con punto y coma y decimales con coma', () => {

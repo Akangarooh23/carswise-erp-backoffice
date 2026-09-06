@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 
 import {
   importe, tipoDeIva, desglosa, loQueNosCuesta, loQueSePaga, noCuadra,
-  ivaPorDefecto, regimenPorDefecto, cuenta, comoSeCuenta, TIPOS_DE_IVA,
+  ivaPorDefecto, regimenPorDefecto, cuenta, comoSeCuenta, laAutorepercusion, TIPOS_DE_IVA,
 } from './dinero.js';
 
 describe('leer un importe', () => {
@@ -85,11 +85,21 @@ describe('cómo se parte una línea', () => {
   test('una factura intracomunitaria no lleva IVA dentro: su total es la base', () => {
     // Dividir 890 € entre 1,21 sería inventarse un IVA que la factura no
     // tiene, y decir que el transporte costó 735,54 cuando costó 890.
-    const d = desglosa({ total: 890, iva: 21, regimen: 'intracomunitario' });
+    const d = desglosa({ total: 890, iva: 0, regimen: 'intracomunitario' });
     assert.equal(d.base, 890);
     assert.equal(d.total, 890);
-    // La cuota existe, pero se autoliquida: se repercute y se deduce a la vez.
-    assert.equal(d.cuota, 186.9);
+    // Y su cuota es cero: la que se declara no está en este papel, se la aplica
+    // uno mismo y vive en `laAutorepercusion`.
+    assert.equal(d.cuota, 0);
+  });
+
+  test('y sigue siendo cero aunque alguien le teclee un 21 %', () => {
+    // El régimen manda sobre lo tecleado: una intracomunitaria no lleva IVA
+    // dentro, y de ahí no se puede deducir nada. Antes ese 21 % se convertía en
+    // 186,90 € de cuota de una factura que trae 0 € de IVA.
+    const d = desglosa({ total: 890, iva: 21, regimen: 'intracomunitario' });
+    assert.equal(d.cuota, 0);
+    assert.equal(d.tipo, 21, 'lo tecleado se sigue viendo, para poder corregirlo');
   });
 
   test('y una exenta no tiene cuota ninguna', () => {
@@ -188,8 +198,8 @@ describe('la cuenta de un coche', () => {
    * ninguno.
    */
   const DEL_KIA = [
-    { total: 289, iva: 21, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
-    { total: 890, iva: 21, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
+    { total: 289, iva: 0, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
+    { total: 890, iva: 0, que: 'nuestro' as const, regimen: 'intracomunitario' as const },
     { total: 484, iva: 21, que: 'nuestro' as const, regimen: 'nacional' as const },
     { total: 119.07, iva: 21, que: 'nuestro' as const, regimen: 'nacional' as const },
     { total: 1420, iva: 0, que: 'suplido' as const, regimen: 'exento' as const },
@@ -236,5 +246,43 @@ describe('la cuenta de un coche', () => {
     assert.deepEqual(cuenta(null), {
       nuestro: 0, suplidos: 0, ivaSoportado: 0, pagado: 0, sinDesglosar: 0,
     });
+  });
+});
+
+describe('la inversión del sujeto pasivo', () => {
+  test('sale de su propio tipo, no del que trae la factura', () => {
+    // La alemana viene al 0 %: ese 0 % es correcto y es lo que pone el papel.
+    // El 21 % es español y no está escrito en ningún sitio de esa factura.
+    const a = laAutorepercusion({ total: 890, iva: 0, autorepercusion: 21, regimen: 'intracomunitario' });
+    assert.equal(a.tipo, 21);
+    assert.equal(a.cuota, 186.9);
+    assert.equal(a.hayQueDecidirlo, false);
+  });
+
+  test('sin tipo no se supone el 21 %: se dice que falta decidirlo', () => {
+    // Hay excepciones de localización por tipo de servicio, y una peritación
+    // hecha físicamente en un concesionario alemán es de las que hay que mirar.
+    const a = laAutorepercusion({ total: 289, iva: 0, regimen: 'intracomunitario' });
+    assert.equal(a.tipo, null);
+    assert.equal(a.cuota, 0);
+    assert.equal(a.hayQueDecidirlo, true);
+  });
+
+  test('una nacional no autorepercute nada, aunque le pongan un tipo', () => {
+    const a = laAutorepercusion({ base: 98.4, iva: 21, autorepercusion: 21, regimen: 'nacional' });
+    assert.equal(a.cuota, 0);
+    assert.equal(a.hayQueDecidirlo, false, 'a una española no le falta nada por decidir');
+  });
+
+  test('y una exenta tampoco', () => {
+    const a = laAutorepercusion({ total: 1420, iva: 0, regimen: 'exento' });
+    assert.equal(a.cuota, 0);
+    assert.equal(a.hayQueDecidirlo, false);
+  });
+
+  test('un tipo inventado no cuela', () => {
+    // 15 % no existe. Vale más quedarse sin decidir que declarar una errata.
+    const a = laAutorepercusion({ total: 890, iva: 0, autorepercusion: 15, regimen: 'intracomunitario' });
+    assert.equal(a.hayQueDecidirlo, true);
   });
 });
