@@ -218,7 +218,25 @@ export default function MarketplacePage() {
   const fuelOptions    = useMemo(() => [...new Set(items.map(i => i.fuel).filter(Boolean))].sort(), [items]);
   const yearOptions    = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
   const colorOptions   = useMemo(() => [...new Set(items.flatMap(i => i.available_colors ?? []).filter(Boolean))].sort(), [items]);
-  const sellerOptions  = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
+  // El desplegable de vendedor sale de TODA la base, no de la página cargada.
+  //
+  // Construido con `items` solo ofrecía los vendedores que hubiera en la página
+  // que tocara mirar, y la lista ordena por updated_at: basta con que un
+  // concesionario tenga actividad ese día para que sus filas ocupen la primera
+  // página y tapen a los demás. El 2026-09-06 solo aparecía Modrive —con 838
+  // ofertas despublicadas de golpe esa tarde— y VIAN y Gamboa quedaban detrás,
+  // como si ya no existieran.
+  //
+  // El endpoint /marketplace/vo/filter-options ya devuelve el DISTINCT de la
+  // tabla entera; para eso está, y lo dice su propio comentario. Solo faltaba
+  // usarlo aquí. Lo de `items` se conserva de respaldo para el instante en que
+  // la página pinta antes de que esa llamada conteste.
+  const sellerOptions  = useMemo(
+    () => (voFilterOpts.sellers.length
+      ? voFilterOpts.sellers
+      : [...new Set(items.map(i => i.seller).filter(Boolean))].sort()),
+    [voFilterOpts.sellers, items],
+  );
   const concYearOpts   = useMemo(() => [...new Set(items.map(i => i.year).filter(Boolean))].sort((a,b) => (b??0)-(a??0)), [items]);
   const concSellerOpts = useMemo(() => [...new Set(items.map(i => i.seller).filter(Boolean))].sort(), [items]);
 
