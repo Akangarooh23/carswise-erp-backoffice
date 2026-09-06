@@ -7,6 +7,7 @@ import { ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
 import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado, elDia } from '../lib/el-periodo.js';
 import { margenPorCoche } from '../lib/margen-por-coche.js';
+import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
@@ -515,5 +516,74 @@ dashboardRouter.get('/dashboard/margenes', requireRole(['admin', 'operations']),
     });
   } catch (err) {
     falloInterno(res, 'dashboard_margenes_failed', err);
+  }
+});
+
+/**
+ * Cuánto se tarda en cada cosa.
+ *
+ * El panel decía cuántos leads hay y cuántos coches se han entregado, pero no
+ * cuánto se tarda, que es la mitad de cómo va una operación. «Dos leads
+ * pendientes» es un número tranquilo; «dos leads pendientes desde hace ochenta
+ * días» es otra cosa, y hasta ahora las dos frases eran el mismo dato.
+ *
+ * Se mide con lo que hay: la primera vez que alguien tocó el lead sale del
+ * historial, y la entrega de la fecha que se apunta al cerrarla. De los leads
+ * sin historial no se sabe cuándo se contestaron, así que no entran — y se dice
+ * de cuántos sale cada cifra, que sin eso una mediana de un caso parece una ley.
+ */
+dashboardRouter.get('/dashboard/tiempos', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
+  const vacio = () => ({ rows: [] as Record<string, unknown>[] });
+  try {
+    const [contestados, entregas, esperando] = await Promise.all([
+      // De que entra el lead a que alguien lo toca por primera vez.
+      query<{ horas: string }>(`
+        SELECT EXTRACT(EPOCH FROM (MIN(h.created_at) - l.created_at)) / 3600 AS horas
+          FROM moveadvisor_market_leads l
+          JOIN erp_lead_history h ON h.lead_id = l.id
+         GROUP BY l.id, l.created_at
+        HAVING MIN(h.created_at) >= l.created_at
+      `).catch(vacio),
+
+      // Y de que entra a que el coche está en su casa.
+      query<{ dias: string }>(`
+        SELECT EXTRACT(EPOCH FROM ((entrega->>'fecha')::date - l.created_at::date) * INTERVAL '1 day') / 86400 AS dias
+          FROM moveadvisor_market_leads l
+         WHERE lead_type = 'import'
+           AND entrega ? 'fecha'
+           AND (entrega->>'fecha') <> ''
+      `).catch(vacio),
+
+      /*
+       * Y lo que llevan esperando los que nadie ha tocado.
+       *
+       * Es el número que cambia la lectura de todo lo demás: la mediana puede
+       * ser de dieciséis horas y haber dos clientes esperando desde junio.
+       */
+      query<{ dias: string; n: string }>(`
+        SELECT COUNT(*)::int AS n,
+               MAX(EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400) AS dias
+          FROM moveadvisor_market_leads
+         WHERE status = 'Pendiente'
+      `).catch(vacio),
+    ]);
+
+    const numeros = (filas: Record<string, unknown>[], campo: string) =>
+      filas.map((f) => Number(f[campo])).filter((n) => Number.isFinite(n));
+
+    const sinTocar = esperando.rows[0] ?? {};
+    res.json({
+      ok: true,
+      data: {
+        contestar: elTramo(numeros(contestados.rows, 'horas')),
+        entregar: elTramo(numeros(entregas.rows, 'dias')),
+        sinTocar: {
+          n: Number(sinTocar.n) || 0,
+          dias: Number(sinTocar.dias) > 0 ? Math.round(Number(sinTocar.dias)) : null,
+        },
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_tiempos_failed', err);
   }
 });

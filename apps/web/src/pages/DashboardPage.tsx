@@ -9,6 +9,7 @@ import Negocio from '../components/dashboard/Negocio.js';
 import Escaparate from '../components/dashboard/Escaparate.js';
 import EmbudoDeVentas from '../components/dashboard/EmbudoDeVentas.js';
 import MargenPorCoche from '../components/dashboard/MargenPorCoche.js';
+import Tiempos from '../components/dashboard/Tiempos.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import { StatusBadge } from '../components/ui/Badge.js';
@@ -184,6 +185,9 @@ export default function DashboardPage() {
               </div>
             </section>
           )}
+
+          {/* Cuánto se tarda, que es la mitad de cómo va una operación. */}
+          <Tiempos />
 
           {/* Y lo que hay que hacer con cada coche, no solo cuántos hay. */}
           <CochesEnMarcha />
