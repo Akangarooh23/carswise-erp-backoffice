@@ -53,6 +53,8 @@ interface Peritacion {
   veredicto: string | null;
   notas: string;
   coste: string | number | null;
+  /** El informe del perito, que es la prueba de que alguien fue. */
+  informe_url: string | null;
   cita_avisada_at: string | null;
   cita_avisada_a: string | null;
   factura_numero: string;
@@ -188,6 +190,27 @@ export default function PeritacionesPage() {
   }
 
   /** Su factura, que además se apunta como coste del coche. */
+  /**
+   * Adjuntar el informe del perito.
+   *
+   * Va en su propia llamada y no con el resultado: el veredicto se apunta el
+   * día que el perito llama y el PDF llega después. Atados, o se retrasa el
+   * veredicto —y con él la liberación del dinero— o se pierde el informe.
+   */
+  async function adjuntaElInforme(id: string, fichero: File) {
+    setGuardando(true);
+    try {
+      const r = await api.post(`/peritaciones/${id}/informe`, {
+        pdf_base64: await leeEnBase64(fichero),
+        pdf_filename: fichero.name,
+      });
+      if (!r.ok) { setError(r.error || 'No se ha podido guardar el informe'); return; }
+      await carga();
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function anotaLaFactura(id: string, datos: Record<string, string>, pdf?: File | null) {
     setGuardando(true);
     try {
@@ -342,6 +365,7 @@ export default function PeritacionesPage() {
           onAvisarCita={(d) => void preparaElCorreo(abierta.id, 'cita', d)}
           onPedirFactura={() => void preparaElCorreo(abierta.id, 'pedir-factura')}
           onResultado={(v, n) => void anotaElResultado(abierta.id, v, n)}
+          onInforme={(f) => void adjuntaElInforme(abierta.id, f)}
           onFactura={(d, pdf) => void anotaLaFactura(abierta.id, d, pdf)}
           onApuntarDano={(d) => void conLosDanos(abierta.id, () =>
             api.post(`/peritaciones/${abierta.id}/danos`, d))}
@@ -369,7 +393,7 @@ export default function PeritacionesPage() {
 }
 
 function PeritacionAbierta({
-  p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onFactura, onAvisarCita,
+  p, guardando, onCerrar, onGuardar, onEncargar, onResultado, onInforme, onFactura, onAvisarCita,
   onPedirFactura,
   onApuntarDano, onCorregirDano, onQuitarDano, onPegar, onGuardarPegado,
 }: {
@@ -381,6 +405,7 @@ function PeritacionAbierta({
   // correo lo escribe el servidor con lo grabado.
   onEncargar: (datos: Record<string, unknown>) => void;
   onResultado: (veredicto: string, notas: string) => void;
+  onInforme: (fichero: File) => void;
   onFactura: (datos: Record<string, string>, pdf?: File | null) => void;
   onAvisarCita: (datos: Record<string, unknown>) => void;
   onPedirFactura: () => void;
@@ -638,6 +663,35 @@ function PeritacionAbierta({
           {p.fecha_hecha && (
             <div className={`text-[13px] font-bold mb-2 ${p.veredicto === 'es_el_que_se_anuncio' ? 'text-emerald-700' : 'text-red-700'}`}>
               {VEREDICTOS.find(([k]) => k === p.veredicto)?.[1]} · {dia(p.fecha_hecha)}
+            </div>
+          )}
+
+          {/*
+            * El informe: la prueba de que alguien fue.
+            *
+            * Con un desplegable que pone «apto» se sueltan veinte mil euros, y
+            * si el cliente pregunta qué se vio no hay nada que enseñarle. No
+            * bloquea marcar la revisión hecha —el perito llama y su PDF llega al
+            * día siguiente— pero mientras falte sale en Pendientes.
+            */}
+          {p.fecha_hecha && (
+            <div className={'mb-3 rounded-lg border px-3 py-2 ' +
+              (p.informe_url ? 'border-brand-200 bg-brand-50' : 'border-red-200 bg-red-50')}>
+              {p.informe_url ? (
+                <a href={p.informe_url} target="_blank" rel="noreferrer"
+                   className="text-[12px] font-semibold text-acento-texto hover:underline">
+                  ↓ Ver el informe del perito
+                </a>
+              ) : (
+                <p className="text-[12px] font-semibold text-red-700 mb-1.5">
+                  Sin informe. Es lo único que prueba que alguien fue a ver el coche.
+                </p>
+              )}
+              <label className="mt-1 block text-[11px] text-brand-400 cursor-pointer hover:text-brand-600">
+                <input type="file" accept=".pdf,.PDF,.jpg,.jpeg,.png" className="hidden"
+                       onChange={(e) => { const f = e.target.files?.[0]; if (f) onInforme(f); }} />
+                {p.informe_url ? 'Reemplazarlo' : 'Adjuntar el informe'}
+              </label>
             </div>
           )}
           <div className="flex gap-2 mb-2">

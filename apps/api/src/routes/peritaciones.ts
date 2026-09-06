@@ -23,6 +23,8 @@ import { enviar, respuestaA } from '../lib/correo.js';
 import { correoDeFacturaAlPerito, faltaParaPedirleLaFactura } from '../lib/factura-al-perito.js';
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
+import { subeAlAlmacen } from '../lib/subir-al-almacen.js';
+import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { apuntaFacturaRecibida, apuntaFacturaEsperada } from './provider-billing.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
 import {
@@ -56,6 +58,7 @@ const ENSURE_TABLE = `
     veredicto       TEXT,
     notas           TEXT NOT NULL DEFAULT '',
     coste           NUMERIC(12,2),
+    informe_url     TEXT,
     factura_numero  TEXT NOT NULL DEFAULT '',
     factura_fecha   DATE,
     encargo_enviado_at TIMESTAMPTZ,
@@ -85,6 +88,22 @@ const ENSURE_DANOS = `
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`;
 
+/*
+ * El informe del perito, que es la prueba de que alguien fue.
+ *
+ * Toda la promesa del producto es que una persona se plantó delante del coche
+ * en Alemania. Hasta ahora el único rastro de eso era un desplegable con
+ * «apto», y con eso se sueltan veinte mil euros: si el cliente pregunta qué se
+ * vio, no hay nada que enseñarle.
+ *
+ * Nulo mientras no llegue. No bloquea marcar la revisión como hecha —el perito
+ * llama por teléfono y el PDF llega al día siguiente— pero sale en Pendientes
+ * hasta que se adjunta.
+ */
+const ENSURE_INFORME = `
+  ALTER TABLE IF EXISTS erp_peritaciones
+    ADD COLUMN IF NOT EXISTS informe_url TEXT`;
+
 const ENSURE_DANOS_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_peritacion_danos_peritacion
     ON erp_peritacion_danos (peritacion_id)`;
@@ -101,6 +120,7 @@ async function prepara(): Promise<void> {
   await query(ENSURE_UNICA, []).catch(() => {});
   await query(ENSURE_DANOS, []).catch(() => {});
   await query(ENSURE_DANOS_INDEX, []).catch(() => {});
+  await query(ENSURE_INFORME, []).catch(() => {});
   // Para las tablas que ya existían antes de que hubiera factura.
   await query(
     `ALTER TABLE erp_peritaciones
@@ -136,7 +156,7 @@ const CAMPOS = `id, lead_id, vehiculo_titulo, estado, perito, donde, contacto,
                 telefono, hora_prevista, quien_va, quien_va_email, quien_va_tel,
                 TO_CHAR(fecha_prevista, 'YYYY-MM-DD') AS fecha_prevista,
                 fecha_hecha, veredicto, notas, coste::numeric AS coste,
-                factura_numero, cita_avisada_at, cita_avisada_a,
+                informe_url, factura_numero, cita_avisada_at, cita_avisada_a,
                 factura_pedida_at, factura_pedida_a,
                 TO_CHAR(factura_fecha, 'YYYY-MM-DD') AS factura_fecha,
                 encargo_enviado_at, encargo_enviado_a, creado_por, created_at, updated_at`;
@@ -916,3 +936,60 @@ export async function abrePeritacionDeImportacion(datos: {
     return null;
   }
 }
+
+/**
+ * Adjuntar el informe del perito.
+ *
+ * Es la prueba de que alguien fue. Toda la promesa del producto es que una
+ * persona se plantó delante del coche en Alemania, y hasta ahora el único
+ * rastro de eso era un desplegable con «apto»: si el cliente pregunta qué se
+ * vio, no había nada que enseñarle.
+ *
+ * Va aparte del resultado y no dentro: el perito llama por teléfono y dice que
+ * el coche está bien, y su PDF llega al día siguiente. Exigirlo en ese momento
+ * pararía la liberación del dinero un día por un papel que ya está prometido.
+ * Lo que sí hace es salir en Pendientes hasta que llega.
+ */
+peritacionesRouter.post(
+  '/peritaciones/:id/informe',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    await prepara();
+    const base64 = typeof req.body?.pdf_base64 === 'string' ? req.body.pdf_base64 : '';
+    const nombre = typeof req.body?.pdf_filename === 'string' ? req.body.pdf_filename : '';
+    if (!base64) {
+      res.status(400).json({ ok: false, error: 'sin_fichero', detail: 'Adjunta el informe.' });
+      return;
+    }
+
+    // El tipo se deduce del nombre: la pantalla manda el fichero en base64 y no
+    // el MIME, y un PDF llamado `.pdf` es lo que hay en el 99 % de los casos.
+    const extension = nombre.split('.').pop()?.toLowerCase() ?? '';
+    const mal = revisaFichero(
+      nombre,
+      extension === 'pdf' ? 'application/pdf' : `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+      tamanoDeBase64(base64)
+    );
+    if (mal) { res.status(400).json({ ok: false, error: 'fichero_no_valido', detail: mal.motivo }); return; }
+
+    try {
+      const url = await subeAlAlmacen(base64, nombre, 'peritaciones', req.params.id);
+      if (!url) {
+        // Sin almacén no se puede guardar la dirección de nada: decirlo, en vez
+        // de dejar la peritación diciendo que tiene informe.
+        res.status(502).json({ ok: false, error: 'almacen_no_disponible' });
+        return;
+      }
+      const r = await query(
+        `UPDATE erp_peritaciones SET informe_url = $2, updated_at = NOW() WHERE id = $1
+         RETURNING id, informe_url`,
+        [req.params.id, url]
+      );
+      if (!r.rowCount) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+      res.json({ ok: true, data: r.rows[0] });
+    } catch (err) {
+      console.error('[peritaciones] informe:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'informe_failed' });
+    }
+  }
+);

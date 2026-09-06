@@ -83,6 +83,12 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     a: '/users', icono: 'usuarios', tono: 'urgente',
   },
   {
+    clave: 'peritaciones_sin_informe',
+    etiqueta: 'peritaciones hechas sin su informe', una: 'peritación hecha sin su informe',
+    porque: 'es la prueba de que alguien fue a ver el coche, y con eso se sueltan veinte mil euros',
+    a: '/peritaciones', icono: 'informe', tono: 'urgente',
+  },
+  {
     clave: 'portales_parados',
     etiqueta: 'plataformas sin repasar', una: 'plataforma sin repasar',
     porque: 'sus precios son los de hace una semana, y el mercado que comparamos ya no es ese',

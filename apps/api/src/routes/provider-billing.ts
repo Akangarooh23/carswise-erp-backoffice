@@ -1,35 +1,13 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
-import { config } from '../config.js';
+import { subeAlAlmacen } from '../lib/subir-al-almacen.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
 import { falloInterno } from '../lib/fallos.js';
 import { IVA_GENERAL, tipoDeIva, regimenPorDefecto, noCuadra, type Regimen } from '../lib/dinero.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { preparaGarantias } from './garantias.js';
 
-async function uploadPdfToSupabase(base64: string, filename: string, invoiceId: string): Promise<string | null> {
-  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = config;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
-  try {
-    const ext = filename.split('.').pop()?.toLowerCase() || 'pdf';
-    const path = `provider-invoices/${invoiceId}.${ext}`;
-    const buffer = Buffer.from(base64, 'base64');
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${path}`, {
-      method: 'POST',
-      headers: {
-        // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
-        apikey: SUPABASE_SERVICE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Content-Type': ext === 'pdf' ? 'application/pdf' : 'application/octet-stream',
-        'x-upsert': 'true',
-      },
-      body: buffer,
-    });
-    if (!res.ok) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${path}`;
-  } catch { return null; }
-}
 
 export const providerBillingRouter = Router();
 
@@ -285,7 +263,7 @@ export async function apuntaFacturaRecibida(datos: {
    */
   async function subeElPdf(id: string): Promise<string | null> {
     if (!datos.pdfBase64 || !datos.pdfNombre) return null;
-    return uploadPdfToSupabase(datos.pdfBase64, datos.pdfNombre, id).catch(() => null);
+    return subeAlAlmacen(datos.pdfBase64, datos.pdfNombre, 'provider-invoices', id).catch(() => null);
   }
   if (ya.rows[0]) {
     const pdf = await subeElPdf(ya.rows[0].id);
@@ -396,7 +374,7 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
     const cierra = cualEsperaCierra(candidatas.rows, amount);
     if (cierra) {
       const url = pdf_base64 && pdf_filename
-        ? await uploadPdfToSupabase(pdf_base64, pdf_filename, cierra)
+        ? await subeAlAlmacen(pdf_base64, pdf_filename, 'provider-invoices', cierra)
         : null;
       await query(
         `UPDATE moveadvisor_provider_invoices
@@ -423,7 +401,7 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
       // El PDF se guarda con el identificador en la ruta, así que va aquí
       // dentro: si hay que reintentar, el identificador cambia.
       if (pdf_base64 && pdf_filename) {
-        pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, id);
+        pdf_url = await subeAlAlmacen(pdf_base64, pdf_filename, 'provider-invoices', id);
       }
       await query(
         `INSERT INTO moveadvisor_provider_invoices
@@ -452,7 +430,7 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/pdf', requireRole(['
     return;
   }
   try {
-    const pdf_url = await uploadPdfToSupabase(pdf_base64, pdf_filename, req.params.id);
+    const pdf_url = await subeAlAlmacen(pdf_base64, pdf_filename, 'provider-invoices', req.params.id);
     if (!pdf_url) { res.status(500).json({ ok: false, error: 'upload_failed' }); return; }
     // Auto-advance received invoices from pending → pending_payment when PDF is attached
     await query(

@@ -376,7 +376,7 @@ dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sa
 dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   const vacio = () => ({ rows: [] as Record<string, unknown>[] });
   try {
-    const [leads, citas, usuarios, facturas, importacion, comisiones, contabilidad, portales] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -393,6 +393,20 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'at_risk')::int AS usuarios_en_riesgo
           FROM erp_users
+      `).catch(vacio),
+
+      /*
+       * Las revisiones hechas sin su informe.
+       *
+       * Toda la promesa del producto es que alguien vio el coche en Alemania. Si
+       * el único rastro es un desplegable con «apto», al cliente que pregunta no
+       * se le puede enseñar nada.
+       */
+      query(`
+        SELECT COUNT(*) FILTER (
+                 WHERE estado = 'Hecha' AND COALESCE(informe_url, '') = ''
+               )::int AS peritaciones_sin_informe
+          FROM erp_peritaciones
       `).catch(vacio),
 
       query(`
@@ -465,7 +479,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
       data: {
         pendientes: losPendientes({
           ...leads.rows[0], ...citas.rows[0], ...usuarios.rows[0],
-          ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
+          ...peritaciones.rows[0], ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
           ...contabilidad.rows[0],
           portales_parados: portales?.valor?.n ?? 0,
         }),
