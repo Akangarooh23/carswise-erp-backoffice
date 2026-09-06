@@ -106,11 +106,35 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'pidieron otra fecha y siguen esperando',
     a: '/leads', icono: 'historial', tono: 'espera',
   },
+  /*
+   * Las visitas del marketplace, que no estaban.
+   *
+   * Lo único que las contaba era el número rojo del menú, al lado de Agenda, y
+   * ese hay que ir a buscarlo. En el panel no salían: `citas_7d` cuenta las de
+   * mantenimiento, que son otra tabla y otra pantalla.
+   *
+   * Y son las dos cosas que peor sientan de este flujo. Una por confirmar es
+   * una persona que pidió hora y no ha recibido respuesta —a quien vende hay
+   * que llamarle a mano, y si nadie llama, nadie llama—. Una sin cerrar es una
+   * visita que ya pasó y de la que no sabemos si salió algo.
+   */
+  {
+    clave: 'visitas_por_confirmar',
+    etiqueta: 'visitas por confirmar', una: 'visita por confirmar',
+    porque: 'el cliente pidió hora y sigue esperando a que llamemos',
+    a: '/bookings', icono: 'calendario', tono: 'urgente',
+  },
+  {
+    clave: 'visitas_sin_cerrar',
+    etiqueta: 'visitas sin cerrar', una: 'visita sin cerrar',
+    porque: 'ya pasaron y nadie ha dicho cómo acabaron',
+    a: '/bookings', icono: 'calendario', tono: 'espera',
+  },
   {
     clave: 'citas_7d',
-    etiqueta: 'citas en los próximos 7 días', una: 'cita en los próximos 7 días',
+    etiqueta: 'citas de mantenimiento en 7 días', una: 'cita de mantenimiento en 7 días',
     porque: 'hay que confirmarlas antes',
-    a: '/appointments', icono: 'calendario', tono: 'espera',
+    a: '/appointments', icono: 'llave-inglesa', tono: 'espera',
   },
 ];
 

@@ -45,6 +45,37 @@ describe('lo que está pendiente', () => {
   });
 });
 
+describe('las visitas del marketplace', () => {
+  test('una por confirmar es una persona esperando, y va en rojo', () => {
+    // Es lo mismo que un lead sin contestar: pidió hora y nadie ha llamado.
+    const p = losPendientes({ visitas_por_confirmar: 3 });
+    assert.deepEqual(p.map((x) => x.clave), ['visitas_por_confirmar']);
+    assert.equal(p[0].tono, 'urgente');
+  });
+
+  test('y una sin cerrar espera a que digamos cómo acabó', () => {
+    const p = losPendientes({ visitas_sin_cerrar: 2 });
+    assert.equal(p[0].clave, 'visitas_sin_cerrar');
+    assert.equal(p[0].tono, 'espera');
+  });
+
+  test('las dos llevan a la Agenda, que es donde están los botones', () => {
+    const p = losPendientes({ visitas_por_confirmar: 1, visitas_sin_cerrar: 1 });
+    for (const x of p) assert.equal(x.a, '/bookings');
+  });
+
+  test('y no se confunden con las de mantenimiento', () => {
+    // `citas_7d` cuenta `erp_appointments`, que es otra tabla y otra pantalla.
+    // Estaban las dos diciendo «citas» y llevando a sitios distintos.
+    const p = losPendientes({ visitas_por_confirmar: 1, citas_7d: 1 });
+    assert.equal(p.length, 2);
+    const [visitas, mantenimiento] = p;
+    assert.notEqual(visitas.a, mantenimiento.a);
+    assert.match(mantenimiento.etiqueta, /mantenimiento/);
+    assert.doesNotMatch(visitas.etiqueta, /mantenimiento/);
+  });
+});
+
 describe('cuántas cosas hay que hacer', () => {
   test('la suma de todas', () => {
     assert.equal(cuantasCosas(losPendientes({ leads_pendientes: 2, citas_7d: 3 })), 5);

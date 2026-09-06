@@ -124,17 +124,59 @@ function losParametros(sql) {
     RELLENO_POR_TIPO[tipos.get(i + 1)] ?? RELLENO_POR_DEFECTO);
 }
 
+/**
+ * Las columnas que la API se añade sola al arrancar.
+ *
+ * Varias rutas hacen `ALTER TABLE … ADD COLUMN IF NOT EXISTS` la primera vez
+ * que se las llama, así que en producción la columna existe antes de que nadie
+ * consulte. Aquí no: la base todavía no las tiene, y el plan de una consulta
+ * que las nombre falla por una razón que no es un fallo.
+ *
+ * Se aplican dentro de la transacción y se deshacen con ella. La base se queda
+ * exactamente como estaba —esto es un comprobador, no una migración—, y a
+ * cambio se comprueba de verdad lo que el panel va a preguntar.
+ */
+const LOS_ALTER = /ALTER TABLE[\s\S]*?ADD COLUMN IF NOT EXISTS[\s\S]*?(?=`)/g;
+
+function losAlterDeLaApi() {
+  const fuera = [];
+  const dir = path.join(RAIZ, 'apps', 'api', 'src', 'routes');
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.ts') || f.includes('.test.')) continue;
+    const fuente = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of fuente.matchAll(LOS_ALTER)) fuera.push(m[0].trim());
+  }
+  return fuera;
+}
+
 (async () => {
   const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false } });
   const rotas = [];
+  const c = await pool.connect();
+  await c.query('BEGIN');
+
+  const alters = losAlterDeLaApi();
+  for (const a of alters) await c.query(a).catch(() => {});
 
   for (const [fichero, sql] of consultas) {
     const valores = losParametros(sql);
     // Solo el plan: valida tablas y columnas y no toca una fila.
-    try { await pool.query('EXPLAIN ' + sql, valores); }
-    catch (e) { rotas.push([path.basename(fichero), comoSeLlama(sql), e.message]); }
+    try {
+      await c.query('SAVEPOINT antes');
+      await c.query('EXPLAIN ' + sql, valores);
+      await c.query('RELEASE SAVEPOINT antes');
+    } catch (e) {
+      rotas.push([path.basename(fichero), comoSeLlama(sql), e.message]);
+      // Un EXPLAIN que falla aborta la transacción entera: sin volver al
+      // punto de guardado, la primera consulta rota dejaría las demás sin
+      // comprobar y el recuento saldría en uno siempre.
+      await c.query('ROLLBACK TO SAVEPOINT antes').catch(() => {});
+    }
   }
 
+  // Y se deshace todo, incluidas las columnas de arriba.
+  await c.query('ROLLBACK');
+  c.release();
   await pool.end();
 
   if (rotas.length) {

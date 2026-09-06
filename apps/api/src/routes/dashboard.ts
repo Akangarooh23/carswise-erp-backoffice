@@ -11,6 +11,7 @@ import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
+import { preparaVisitas } from './visits.js';
 
 export const dashboardRouter = Router();
 
@@ -376,7 +377,11 @@ dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sa
 dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   const vacio = () => ({ rows: [] as Record<string, unknown>[] });
   try {
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales] = await Promise.all([
+    // Las columnas del resultado las añade la Agenda al arrancar, y quien abra
+    // el panel primero se encontraria la cuenta a cero para siempre: la
+    // consulta falla, el panel se traga el fallo y un cero no chilla.
+    await preparaVisitas();
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -472,6 +477,25 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * consulta para lo suyo; aquí solo se lee lo último que dejó.
        */
       leeKpi<{ n?: number }>(KPI.portalesParados).catch(() => null),
+
+      /*
+       * Las visitas del marketplace, las dos de un tirón.
+       *
+       * Sin acotar por fecha las pendientes, a propósito: una que se pasó de
+       * fecha es una persona a la que no contestamos, y esconderla no lo
+       * arregla. Y las sin cerrar son por definición de antes de hoy.
+       *
+       * La regla de «sin cerrar» es la misma que `sePuedeCerrar` en el
+       * servidor y en la Agenda: confirmada, empezada y sin resultado. Escrita
+       * aquí en SQL porque contarlas trayéndolas costaría traerlas todas.
+       */
+      query(`
+        SELECT COUNT(*) FILTER (WHERE status = 'pending')::int AS visitas_por_confirmar,
+               COUNT(*) FILTER (
+                 WHERE status = 'confirmed' AND starts_at < NOW() AND resultado IS NULL
+               )::int AS visitas_sin_cerrar
+          FROM vehicle_visit_bookings
+      `).catch(vacio),
     ]);
 
     res.json({
@@ -481,6 +505,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...leads.rows[0], ...citas.rows[0], ...usuarios.rows[0],
           ...peritaciones.rows[0], ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
           ...contabilidad.rows[0],
+          ...visitas.rows[0],
           portales_parados: portales?.valor?.n ?? 0,
         }),
       },

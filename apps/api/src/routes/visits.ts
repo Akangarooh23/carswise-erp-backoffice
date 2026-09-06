@@ -40,6 +40,17 @@ async function prepara() {
   preparado = true;
 }
 
+/**
+ * Para el panel, que cuenta las visitas sin cerrar y necesita la columna.
+ *
+ * Sin esto, quien abriera el panel antes que la Agenda se encontraba la cuenta
+ * a cero para siempre: la consulta falla, el panel se traga sus propios fallos
+ * y un cero es un valor legítimo, así que nadie se entera.
+ */
+export async function preparaVisitas(): Promise<void> {
+  await prepara();
+}
+
 /** Los identificadores de cita son UUID. Lo que no lo sea, no se consulta. */
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
