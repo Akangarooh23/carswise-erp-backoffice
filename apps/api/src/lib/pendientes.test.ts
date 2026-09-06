@@ -76,6 +76,22 @@ describe('las visitas del marketplace', () => {
   });
 });
 
+describe('el dinero del concesionario', () => {
+  test('una venta sin comisionar es dinero que no reclama nadie, y va en rojo', () => {
+    const p = losPendientes({ ventas_sin_comisionar: 2 });
+    assert.deepEqual(p.map((x) => x.clave), ['ventas_sin_comisionar']);
+    assert.equal(p[0].tono, 'urgente');
+    assert.equal(p[0].a, '/comisiones');
+  });
+
+  test('y va antes que las visitas, porque cuesta dinero', () => {
+    // El orden del catálogo es el que manda: lo que cuesta dinero primero
+    // aunque sea uno solo.
+    const p = losPendientes({ visitas_por_confirmar: 9, ventas_sin_comisionar: 1 });
+    assert.deepEqual(p.map((x) => x.clave), ['ventas_sin_comisionar', 'visitas_por_confirmar']);
+  });
+});
+
 describe('cuántas cosas hay que hacer', () => {
   test('la suma de todas', () => {
     assert.equal(cuantasCosas(losPendientes({ leads_pendientes: 2, citas_7d: 3 })), 5);

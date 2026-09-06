@@ -118,6 +118,19 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    * que llamarle a mano, y si nadie llama, nadie llama—. Una sin cerrar es una
    * visita que ya pasó y de la que no sabemos si salió algo.
    */
+  /*
+   * Y el dinero del concesionario, que es de los que se pierden solos.
+   *
+   * El coche se vendió, el concesionario cobró y nuestro fee no lo reclama
+   * nadie si no se emite. Es el mismo caso que la garantía, y por eso va con
+   * los urgentes: no espera a nadie de fuera, espera a que alguien pulse.
+   */
+  {
+    clave: 'ventas_sin_comisionar',
+    etiqueta: 'ventas de concesionario sin comisionar', una: 'venta de concesionario sin comisionar',
+    porque: 'la visita acabó en venta y nuestro fee no está facturado',
+    a: '/comisiones', icono: 'euro', tono: 'urgente',
+  },
   {
     clave: 'visitas_por_confirmar',
     etiqueta: 'visitas por confirmar', una: 'visita por confirmar',

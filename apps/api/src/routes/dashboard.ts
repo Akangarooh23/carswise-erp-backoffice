@@ -490,11 +490,23 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * aquí en SQL porque contarlas trayéndolas costaría traerlas todas.
        */
       query(`
-        SELECT COUNT(*) FILTER (WHERE status = 'pending')::int AS visitas_por_confirmar,
+        SELECT COUNT(*) FILTER (WHERE b.status = 'pending')::int AS visitas_por_confirmar,
                COUNT(*) FILTER (
-                 WHERE status = 'confirmed' AND starts_at < NOW() AND resultado IS NULL
-               )::int AS visitas_sin_cerrar
-          FROM vehicle_visit_bookings
+                 WHERE b.status = 'confirmed' AND b.starts_at < NOW() AND b.resultado IS NULL
+               )::int AS visitas_sin_cerrar,
+               -- Y las que acabaron en venta y no tienen su factura. Mismo
+               -- criterio que la lista de Comisiones: si no coincidieran, el
+               -- panel mandaría a una pantalla donde no está lo que anuncia.
+               COUNT(*) FILTER (
+                 WHERE b.resultado = 'compro'
+                   AND COALESCE(NULLIF(TRIM(o.seller), ''), '') <> ''
+                   AND b.id::text NOT IN (
+                     SELECT contract_id FROM moveadvisor_provider_invoices
+                      WHERE type = 'dealer_commission' AND contract_id IS NOT NULL
+                   )
+               )::int AS ventas_sin_comisionar
+          FROM vehicle_visit_bookings b
+          LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
       `).catch(vacio),
     ]);
 

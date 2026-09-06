@@ -44,9 +44,12 @@ erp: Se apunta lo hablado por teléfono, porque si no, no existe
 erp: Y cuando pasa el día, se dice cómo acabó
 @ Agenda → «visitas por cerrar» → «No fue», «Fue a verlo» o «Fue y se lo quedó»
 + nada: son tres botones, y uno de ellos es la venta
+erp: Si se lo quedó, se le factura el fee al concesionario
+@ Comisiones → la venta → «Emitir la factura»
++ nada: 200 € por coche, y se puede cambiar al emitir
 :::
 
-Nueve pasos, y solo uno de ellos —la llamada— pasa fuera del ERP. Lo que sigue
+Diez pasos, y solo uno de ellos —la llamada— pasa fuera del ERP. Lo que sigue
 es cada uno con su pantalla.
 
 ---
@@ -271,6 +274,10 @@ Los tres finales contestan cosas distintas:
 > queda en el rastro con lo que decía antes, así que se ve qué se dijo y quién
 > lo cambió.
 
+> **«Fue y se lo quedó» es lo que dispara el cobro.** Marcarlo pone la venta en
+> Comisiones esperando su factura, y en Pendientes. Los otros dos finales no
+> generan nada.
+
 > **Solo se cierra una visita que ya ha empezado.** Repasando la agenda de la
 > semana, un botón de «no fue» en una cita de pasado mañana se pulsa sin querer,
 > y ese apunte ya no se distingue de uno de verdad.
@@ -280,7 +287,41 @@ que están por confirmar.
 
 ---
 
-## 7 · Si el cliente se cambia la hora
+## 7 · Cobrarle al concesionario
+
+El coche no es nuestro y no lo vendemos: lo que se cobra es un **fee por coche
+vendido**, y solo cuando la visita acabó en venta.
+
+:::flujo
+erp: Abrir las ventas que esperan su factura
+@ Comisiones → el bloque de arriba
++ nada: salen solas al marcar «Fue y se lo quedó»
+erp: Emitir la factura
+@ Comisiones → la venta → «Emitir la factura»
++ nada: el importe sale del fee. Si el concesionario paga otra cosa, se cambia
+sistema: La factura pasa a la tabla de abajo, y la venta sale de la lista
+:::
+
+| Qué | Cuánto |
+|---|---|
+| Fee por coche vendido | **200 €**, con el IVA dentro |
+| De eso, ingreso nuestro | 165,29 € |
+| Y de Hacienda | 34,71 € |
+
+> **Los 200 € son provisionales.** Es una cifra puesta a mano mientras no haya
+> nada firmado con Modrive, Gamboa Ocasión y VIAN. No es una tarifa acordada: se
+> propone en el botón y se puede cambiar al emitir.
+
+> **No se puede emitir dos veces.** La factura queda atada a la visita, así que
+> volver a intentarlo dice que ya está y con qué número.
+
+Y sale en **Pendientes**, en rojo: una comisión que no se emite no la reclama
+nadie. Es lo mismo que pasó con la primera garantía, que quedó cobrada por el
+proveedor y sin factura nuestra.
+
+---
+
+## 8 · Si el cliente se cambia la hora
 
 :::flujo
 cliente: La mueve desde el enlace de su correo, o desde **Solicitudes**
@@ -316,6 +357,7 @@ escribe solo al reservar. Del concesionario no.
 | Las que hay que cerrar | **Agenda**, el bloque de debajo. Ya pasaron y nadie ha dicho cómo acabaron |
 | Las confirmadas | **Agenda**, por fecha. Con «Todas» salen las de los tres meses anteriores |
 | El rastro de una visita | **Agenda** → Ver rastro |
+| Las ventas sin facturar | **Comisiones**, bloque de arriba |
 | Las visitas de un coche | **Marketplace** → la oferta → panel de visitas |
 | El teléfono del vendedor | **Agenda** → la visita → «apuntarlo». Vale para todos sus coches |
 | El teléfono de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |

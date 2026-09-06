@@ -7,6 +7,8 @@ import { falloInterno } from '../lib/fallos.js';
 import { IVA_GENERAL, tipoDeIva, regimenPorDefecto, noCuadra, type Regimen } from '../lib/dinero.js';
 import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/facturas-esperadas.js';
 import { preparaGarantias } from './garantias.js';
+import { preparaVisitas } from './visits.js';
+import { FEE_POR_VENTA, laComision, elConcepto } from '../lib/comision-del-concesionario.js';
 
 
 export const providerBillingRouter = Router();
@@ -620,6 +622,124 @@ providerBillingRouter.post('/provider-billing/commissions', requireRole(['admin'
     });
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: invoiceAmount, provider_name: providerName } });
+  } catch (err) {
+    falloInterno(res, 'create_failed', err);
+  }
+});
+
+/**
+ * Los coches de concesionario que se vendieron por una visita nuestra y cuya
+ * comisión no hemos facturado.
+ *
+ * El coche no es nuestro: lo único que hacemos es concertar que el cliente vaya
+ * a verlo, y lo que ganamos es un fee del concesionario cuando la visita acaba
+ * en venta. Hasta ahora esta línea no tenía dinero por ninguna parte.
+ *
+ * Sale cuando la visita está cerrada como **«fue y se lo quedó»**, que es lo
+ * único que dice que hubo venta. Una visita confirmada y sin cerrar no vale:
+ * facturar por una venta que nadie ha confirmado es cobrar por nada.
+ *
+ * El identificador de la visita se guarda en `contract_id`, que es lo que
+ * impide emitir dos veces la misma. No es un lead —una visita no lo es—, y por
+ * eso las consultas que cruzan `contract_id` con leads no la encuentran: es un
+ * LEFT JOIN y sale sin datos de lead, que es exactamente lo que es.
+ */
+providerBillingRouter.get('/provider-billing/pending-dealer-commissions', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    // Las columnas del resultado las crea la Agenda al arrancar, y aquí se
+    // puede llegar antes.
+    await preparaVisitas().catch(() => {});
+    const r = await query(`
+      SELECT b.id, b.vehicle_title, b.buyer_name AS contact_name, b.buyer_email AS user_email,
+             b.resultado_at::date AS date,
+             o.seller AS proveedor,
+             o.price::numeric AS precio
+        FROM vehicle_visit_bookings b
+        LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
+       WHERE b.resultado = 'compro'
+         AND COALESCE(NULLIF(TRIM(o.seller), ''), '') <> ''
+         AND b.id::text NOT IN (
+           SELECT contract_id FROM moveadvisor_provider_invoices
+            WHERE type = 'dealer_commission' AND contract_id IS NOT NULL
+         )
+       ORDER BY date DESC
+    `);
+    res.json({ ok: true, data: { ventas: r.rows, fee: FEE_POR_VENTA } });
+  } catch (err) {
+    falloInterno(res, 'pending_dealer_failed', err);
+  }
+});
+
+/**
+ * Y emitirla.
+ *
+ * El importe llega de fuera, como en la de la garantía: los 200 € son una cifra
+ * provisional mientras no haya contrato con cada concesionario, y quien la
+ * emite tiene que poder cambiarla sin tocar código. Lo que sí se impone aquí es
+ * que la visita esté cerrada como venta.
+ *
+ * El importe es **el total, con IVA dentro**. La base se saca de ahí, y se
+ * comprueba que base y cuota sumen: una factura que no suma es una factura mal
+ * hecha, y de esas ya hubo una.
+ */
+providerBillingRouter.post('/provider-billing/dealer-commissions', requireRole(['admin', 'operations']), async (req, res) => {
+  const { booking_id } = req.body ?? {};
+  const importe = req.body?.amount == null ? FEE_POR_VENTA : Number(req.body.amount);
+  if (!booking_id || !Number.isFinite(importe) || importe <= 0) {
+    res.status(400).json({ ok: false, error: 'missing_fields', detail: 'booking_id es obligatorio' });
+    return;
+  }
+  try {
+    await preparaVisitas().catch(() => {});
+    const vr = await query<Record<string, string>>(`
+      SELECT b.id, b.vehicle_title, b.buyer_name, b.buyer_email, b.resultado,
+             o.seller AS proveedor, o.price::numeric AS precio
+        FROM vehicle_visit_bookings b
+        LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
+       WHERE b.id = $1
+    `, [booking_id]);
+    const v = vr.rows[0];
+    if (!v) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+
+    // La puerta: sin venta no hay comisión. Se comprueba aquí y no solo en la
+    // pantalla, porque la pantalla esconde el botón y esto es lo que manda.
+    if (v.resultado !== 'compro') {
+      res.status(409).json({ ok: false, error: 'sin_venta', detail: 'esta visita no acabó en venta' });
+      return;
+    }
+    const proveedor = String(v.proveedor ?? '').trim();
+    if (!proveedor) {
+      res.status(409).json({ ok: false, error: 'sin_proveedor', detail: 'no consta quién vende, así que no hay a quién facturar' });
+      return;
+    }
+
+    // Y que no salga dos veces. La comprobación va antes del alta y con el
+    // mismo criterio que la lista de arriba.
+    const ya = await query(
+      `SELECT id FROM moveadvisor_provider_invoices
+        WHERE type = 'dealer_commission' AND contract_id = $1 LIMIT 1`,
+      [String(v.id)]
+    );
+    if (ya.rows.length) {
+      res.status(409).json({ ok: false, error: 'ya_emitida', detail: `ya está la ${ya.rows[0].id}` });
+      return;
+    }
+
+    const c = laComision(importe);
+    const concepto = elConcepto(v.vehicle_title, Number(v.precio) || null);
+
+    const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevo) => {
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email,
+            base_amount, invoice_amount, iva_rate, regimen, notes)
+         VALUES ($1, 'dealer_commission', $2, $3, $4, $5, $6, $7, $8, $9, 'nacional', $10)`,
+        [nuevo, proveedor, String(v.id), v.vehicle_title, v.buyer_name, v.buyer_email,
+         c.base, c.total, c.iva / 100, concepto]
+      );
+    });
+
+    res.status(201).json({ ok: true, data: { id, invoice_amount: c.total, provider_name: proveedor } });
   } catch (err) {
     falloInterno(res, 'create_failed', err);
   }

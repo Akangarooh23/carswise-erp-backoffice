@@ -65,12 +65,34 @@ const ESTADO: Record<string, { texto: string; clase: string }> = {
   pending_payment: { texto: 'Emitida',   clase: 'bg-acento-tenue text-acento-texto border-acento' },
 };
 
+
+/**
+ * Un coche de concesionario que se vendió por una visita nuestra.
+ *
+ * El coche no es nuestro: lo que ganamos es un fee del concesionario. Sale aquí
+ * en cuanto la visita se cierra como «fue y se lo quedó», que es lo único que
+ * dice que hubo venta.
+ */
+interface VentaSinComisionar {
+  id: string;
+  vehicle_title: string | null;
+  contact_name: string | null;
+  user_email: string | null;
+  date: string | null;
+  proveedor: string | null;
+  precio: string | number | null;
+}
+
 export default function ComisionesPage() {
   const [comisiones, setComisiones] = useState<Comision[] | null>(null);
   const [catalogo, setCatalogo] = useState<Garantia[]>([]);
   const [fallo, setFallo] = useState('');
+  const [ventas, setVentas] = useState<VentaSinComisionar[]>([]);
+  const [fee, setFee] = useState(0);
+  const [emitiendo, setEmitiendo] = useState<string | null>(null);
 
-  useEffect(() => {
+
+  function recarga() {
     api.get<{ comisiones: Comision[]; catalogo: Garantia[] }>('/comisiones')
       .then((r) => {
         if (!r.ok) { setFallo('No se pudieron cargar las comisiones'); return; }
@@ -78,7 +100,28 @@ export default function ComisionesPage() {
         setCatalogo(r.data.catalogo);
       })
       .catch(() => setFallo('Error de conexión'));
-  }, []);
+    cargaVentas();
+  }
+
+  useEffect(() => { recarga(); }, []);
+
+  /** Las ventas de concesionario que esperan su factura. */
+  function cargaVentas() {
+    api.get<{ ventas: VentaSinComisionar[]; fee: number }>('/provider-billing/pending-dealer-commissions')
+      .then((r) => { if (r.ok) { setVentas(r.data.ventas); setFee(r.data.fee); } })
+      .catch(() => { /* el resto de la pantalla sirve igual */ });
+  }
+
+  async function emite(v: VentaSinComisionar) {
+    setEmitiendo(v.id);
+    const r = await api.post('/provider-billing/dealer-commissions', { booking_id: v.id });
+    setEmitiendo(null);
+    if (!r.ok) { setFallo(r.error || 'No se ha podido emitir la comisión'); return; }
+    // Se recarga todo: la factura nueva va a la tabla de abajo y la venta sale
+    // de esta lista. Quitarla de una sola dejaría la otra mintiendo.
+    recarga();
+  }
+
 
   if (fallo)       return <div className="text-red-500 text-sm pt-4">{fallo}</div>;
   if (!comisiones) return <div className="text-brand-300 text-sm pt-4">Cargando comisiones…</div>;
@@ -104,6 +147,48 @@ export default function ComisionesPage() {
             <strong>{sinFacturar === 1 ? 'Una venta sin comisión emitida' : `${sinFacturar} ventas sin comisión emitida`}.</strong>{' '}
             Se han vendido {vendidas} y hay {comisiones.length} facturas. Una comisión que no se emite no la reclama nadie.
           </p>
+        </div>
+      )}
+
+
+      {/* Las ventas de concesionario que esperan su factura.
+          Va antes que la tabla porque es lo único que hay que hacer: lo de
+          abajo ya está hecho. */}
+      {ventas.length > 0 && (
+        <div className="bg-white rounded-xl border border-acento shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-brand-100 bg-acento-tenue">
+            <h3 className="font-semibold text-acento-texto text-sm">
+              {ventas.length === 1 ? 'Una venta de concesionario sin comisionar' : `${ventas.length} ventas de concesionario sin comisionar`}
+            </h3>
+            <p className="text-[12.5px] text-acento-texto/85 mt-0.5">
+              Visitas que acabaron en venta. El fee es de {euros(fee)} por coche, IVA incluido, y es
+              provisional hasta que haya contrato con cada concesionario.
+            </p>
+          </div>
+          <div className="overflow-x-auto"><table className="erp-table">
+            <thead><tr>
+              <th>Fecha</th><th>Concesionario</th><th>Coche</th><th>Cliente</th>
+              <th>Se vendió por</th><th>Comisión</th><th></th>
+            </tr></thead>
+            <tbody>
+              {ventas.map((v) => (
+                <tr key={v.id}>
+                  <td>{elDia(v.date)}</td>
+                  <td className="font-medium text-brand-600">{v.proveedor}</td>
+                  <td>{v.vehicle_title || '–'}</td>
+                  <td>{v.contact_name || v.user_email || '–'}</td>
+                  <td className="tabular-nums">{euros(v.precio)}</td>
+                  <td className="tabular-nums font-semibold">{euros(fee)}</td>
+                  <td>
+                    <button type="button" disabled={emitiendo === v.id} onClick={() => emite(v)}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
+                      {emitiendo === v.id ? 'Emitiendo…' : 'Emitir la factura'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
         </div>
       )}
 
