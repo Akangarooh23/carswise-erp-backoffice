@@ -36,6 +36,8 @@ type Booking = {
   seller_contact: string | null;
   /** Si el teléfono viene del vendedor y no de esta oferta en concreto. */
   del_vendedor?: boolean;
+  /** Cuándo se le puede llamar. Es de uso interno, como el teléfono. */
+  seller_horario?: string | null;
   // Cómo acabó la visita, cuando ya ha pasado y alguien lo ha dicho. El estado
   // cuenta lo de antes de la visita; esto, lo de después.
   resultado: string | null;
@@ -201,6 +203,9 @@ function QuienVende({ b, alApuntarTelefono }: { b: Booking; alApuntarTelefono?: 
         <span className="text-amber-700">sin teléfono</span>
       )}
       {b.seller_contact && <span className="text-brand-400">· pregunta por {b.seller_contact}</span>}
+      {/* Cuándo se le puede llamar. Sin esto se llama a las tres y no coge
+          nadie, y la visita se queda pendiente un día más por nada. */}
+      {b.seller_horario && <span className="text-brand-400">· {b.seller_horario}</span>}
       {b.source_url && (
         <a href={b.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
            className="text-acento-texto underline underline-offset-2"
@@ -405,6 +410,7 @@ export default function BookingsPage() {
   const [telefonoDe, setTelefonoDe] = useState<Booking | null>(null);
   const [telefonoNuevo, setTelefonoNuevo] = useState('');
   const [contactoNuevo, setContactoNuevo] = useState('');
+  const [horarioNuevo, setHorarioNuevo] = useState('');
   const [guardandoTelefono, setGuardandoTelefono] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<Booking | null>(null);
@@ -590,6 +596,7 @@ export default function BookingsPage() {
     setTelefonoDe(b);
     setTelefonoNuevo(b.seller_phone || '');
     setContactoNuevo(b.seller_contact || '');
+    setHorarioNuevo(b.seller_horario || '');
   }
 
   async function guardaElTelefono() {
@@ -599,7 +606,7 @@ export default function BookingsPage() {
     setGuardandoTelefono(true);
     const r = await api.post<{ vendedor?: string }>(
       `/visit-bookings/${telefonoDe.id}/telefono-del-vendedor`,
-      { telefono: tel, contacto: contactoNuevo.trim() },
+      { telefono: tel, contacto: contactoNuevo.trim(), horario: horarioNuevo.trim() },
     );
     setGuardandoTelefono(false);
     if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar el teléfono.' }); return; }
@@ -953,8 +960,15 @@ export default function BookingsPage() {
                        placeholder="Nombre de quien lleva las ventas"
                        className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
               </label>
+              <label className="block text-xs font-medium text-brand-500">
+                Cuándo se le puede llamar
+                <input value={horarioNuevo} onChange={(e) => setHorarioNuevo(e.target.value)} maxLength={200}
+                       placeholder="L-V de 9 a 14 y de 16 a 20, S de 10 a 13"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
               <p className="text-[12px] text-brand-300">
-                Si un coche suyo está en otra sede con otro número, ese se pone en la ficha de la
+                Estos datos son para llamar nosotros: <b>no se le mandan nunca al cliente</b>. Si
+                un coche suyo está en otra sede con otro número, ese se pone en la ficha de la
                 oferta, en Marketplace, y manda sobre este.
               </p>
             </div>

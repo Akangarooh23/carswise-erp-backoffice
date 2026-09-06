@@ -49,7 +49,7 @@ describe('de dónde sale el teléfono en la Agenda', () => {
 
 describe('al guardarlo', () => {
   test('se guarda por vendedor, no por oferta', () => {
-    assert.match(ELUPSERT, /INSERT INTO erp_vendedores_marketplace \(nombre, telefono, contacto\)/);
+    assert.match(ELUPSERT, /INSERT INTO erp_vendedores_marketplace \(nombre, telefono, contacto, horario\)/);
   });
 
   test('volver a ponerlo actualiza en vez de reventar', () => {
@@ -71,10 +71,16 @@ describe('al guardarlo', () => {
     );
   });
 
-  test('y un contacto vacío llega como nulo, no como cadena vacía', () => {
-    // Si llegara vacío, el COALESCE de arriba lo daría por bueno y machacaría
-    // el que había: la protección está en los dos sitios o no está.
-    assert.match(ELUPSERT, /VALUES \(\$1, \$2, NULLIF\(\$3, ''\)\)/);
+  test('y no borra el horario tampoco', () => {
+    // Cada concesionario tiene su horario, y quien viene solo a corregir el
+    // número no tiene por qué volver a escribirlo.
+    assert.match(ELUPSERT, /horario\s+= COALESCE\(EXCLUDED\.horario,\s+erp_vendedores_marketplace\.horario\)/);
+  });
+
+  test('un contacto o un horario vacíos llegan como nulos, no como cadena vacía', () => {
+    // Si llegaran vacíos, los COALESCE de arriba los darían por buenos y
+    // machacarían lo que había: la protección está en los dos sitios o no está.
+    assert.match(ELUPSERT, /VALUES \(\$1, \$2, NULLIF\(\$3, ''\), NULLIF\(\$4, ''\)\)/);
   });
 
   test('la tabla se crea sola, como el resto del esquema', () => {

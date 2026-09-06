@@ -137,16 +137,40 @@ function losParametros(sql) {
  * cambio se comprueba de verdad lo que el panel va a preguntar.
  */
 const LOS_ALTER = /ALTER TABLE[\s\S]*?ADD COLUMN IF NOT EXISTS[\s\S]*?(?=`)/g;
+const LOS_CREATE = /CREATE TABLE IF NOT EXISTS[\s\S]*?\)\s*(?=`)/g;
 
-function losAlterDeLaApi() {
+function elEsquemaDeLaApi() {
   const fuera = [];
   const dir = path.join(RAIZ, 'apps', 'api', 'src', 'routes');
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.ts') || f.includes('.test.')) continue;
     const fuente = fs.readFileSync(path.join(dir, f), 'utf8');
+    // Las tablas antes que las columnas: un ALTER sobre una tabla que todavía
+    // no existe falla, y en Postgres un fallo aborta la transacción entera.
+    for (const m of fuente.matchAll(LOS_CREATE)) fuera.push(m[0].trim());
     for (const m of fuente.matchAll(LOS_ALTER)) fuera.push(m[0].trim());
   }
   return fuera;
+}
+
+/**
+ * Corre algo y, si falla, deja la transacción como estaba.
+ *
+ * En Postgres un error aborta la transacción entera: sin volver al punto de
+ * guardado, el primer fallo deja todo lo que venga detrás sin comprobar y el
+ * recuento sale en uno siempre. Pasó de verdad —un `ALTER` sobre una tabla que
+ * este comprobador no había creado— y se llevó por delante las 44 consultas.
+ */
+async function intenta(c, sql, valores) {
+  await c.query('SAVEPOINT antes');
+  try {
+    await c.query(sql, valores);
+    await c.query('RELEASE SAVEPOINT antes');
+    return null;
+  } catch (e) {
+    await c.query('ROLLBACK TO SAVEPOINT antes');
+    return e;
+  }
 }
 
 (async () => {
@@ -155,23 +179,12 @@ function losAlterDeLaApi() {
   const c = await pool.connect();
   await c.query('BEGIN');
 
-  const alters = losAlterDeLaApi();
-  for (const a of alters) await c.query(a).catch(() => {});
+  for (const sql of elEsquemaDeLaApi()) await intenta(c, sql);
 
   for (const [fichero, sql] of consultas) {
-    const valores = losParametros(sql);
     // Solo el plan: valida tablas y columnas y no toca una fila.
-    try {
-      await c.query('SAVEPOINT antes');
-      await c.query('EXPLAIN ' + sql, valores);
-      await c.query('RELEASE SAVEPOINT antes');
-    } catch (e) {
-      rotas.push([path.basename(fichero), comoSeLlama(sql), e.message]);
-      // Un EXPLAIN que falla aborta la transacción entera: sin volver al
-      // punto de guardado, la primera consulta rota dejaría las demás sin
-      // comprobar y el recuento saldría en uno siempre.
-      await c.query('ROLLBACK TO SAVEPOINT antes').catch(() => {});
-    }
+    const fallo = await intenta(c, 'EXPLAIN ' + sql, losParametros(sql));
+    if (fallo) rotas.push([path.basename(fichero), comoSeLlama(sql), fallo.message]);
   }
 
   // Y se deshace todo, incluidas las columnas de arriba.

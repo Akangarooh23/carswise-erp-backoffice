@@ -50,8 +50,19 @@ const ENSURE_VENDEDORES = `
     nombre     TEXT PRIMARY KEY,
     telefono   TEXT,
     contacto   TEXT,
+    horario    TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`;
+
+/**
+ * Y su horario, para las que ya tuvieran fila antes de que existiera.
+ *
+ * Va aparte del CREATE para que las tablas ya creadas también lo tengan: el
+ * CREATE TABLE IF NOT EXISTS no toca una tabla que ya está.
+ */
+const ENSURE_HORARIO = `
+  ALTER TABLE erp_vendedores_marketplace
+    ADD COLUMN IF NOT EXISTS horario TEXT`;
 
 let preparado = false;
 async function prepara() {
@@ -59,6 +70,7 @@ async function prepara() {
   await query(ENSURE_RESULTADO, []).catch(() => {});
   await query(ENSURE_RESULTADO_VALIDO, []).catch(() => {});
   await query(ENSURE_VENDEDORES, []).catch(() => {});
+  await query(ENSURE_HORARIO, []).catch(() => {});
   preparado = true;
 }
 
@@ -941,6 +953,7 @@ visitsRouter.post('/visit-bookings/:bookingId/telefono-del-vendedor', requireRol
   const { bookingId } = req.params;
   const telefono = String(req.body?.telefono ?? '').trim().slice(0, 40);
   const contacto = String(req.body?.contacto ?? '').trim().slice(0, 120);
+  const horario = String(req.body?.horario ?? '').trim().slice(0, 200);
   if (!telefono) return res.status(400).json({ ok: false, error: 'Hace falta el teléfono' });
   try {
     await prepara();
@@ -957,13 +970,14 @@ visitsRouter.post('/visit-bookings/:bookingId/telefono-del-vendedor', requireRol
       return res.status(409).json({ ok: false, error: 'Esta visita no dice quién vende, así que no hay a quién apuntárselo' });
     }
     await query(
-      `INSERT INTO erp_vendedores_marketplace (nombre, telefono, contacto)
-       VALUES ($1, $2, NULLIF($3, ''))
+      `INSERT INTO erp_vendedores_marketplace (nombre, telefono, contacto, horario)
+       VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''))
        ON CONFLICT (nombre) DO UPDATE
           SET telefono = EXCLUDED.telefono,
               contacto = COALESCE(EXCLUDED.contacto, erp_vendedores_marketplace.contacto),
+              horario  = COALESCE(EXCLUDED.horario,  erp_vendedores_marketplace.horario),
               updated_at = NOW()`,
-      [vendedor, telefono, contacto]
+      [vendedor, telefono, contacto, horario]
     );
     await apunta(bookingId, 'telefono_del_vendedor', quien(req as never), { vendedor });
     return res.json({ ok: true, data: { vendedor, telefono } });
@@ -1110,6 +1124,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              o.seller, o.seller_type, o.source_url,
              COALESCE(NULLIF(TRIM(o.seller_phone), ''), v.telefono)   AS seller_phone,
              COALESCE(NULLIF(TRIM(o.seller_contact), ''), v.contacto) AS seller_contact,
+             v.horario AS seller_horario,
              (NULLIF(TRIM(o.seller_phone), '') IS NULL AND v.telefono IS NOT NULL) AS del_vendedor
       FROM vehicle_visit_bookings b
       -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
