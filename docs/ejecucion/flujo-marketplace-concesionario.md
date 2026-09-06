@@ -41,10 +41,13 @@ erp: Si ya no hay coche, se cancela con un motivo
 erp: Se apunta lo hablado por teléfono, porque si no, no existe
 @ Agenda → la visita → «Ver rastro»
 + los dos botones de la llamada, y una nota con lo que dijo
+erp: Y cuando pasa el día, se dice cómo acabó
+@ Agenda → «visitas por cerrar» → «No fue», «Fue a verlo» o «Fue y se lo quedó»
++ nada: son tres botones, y uno de ellos es la venta
 :::
 
-Ocho pasos, y solo uno de ellos —la llamada— pasa fuera del ERP. Lo que sigue es
-cada uno con su pantalla.
+Nueve pasos, y solo uno de ellos —la llamada— pasa fuera del ERP. Lo que sigue
+es cada uno con su pantalla.
 
 ---
 
@@ -57,9 +60,12 @@ que llamar, y no hay a quién.
 erp: Abrir la oferta del concesionario
 @ Marketplace → VO Concesionarios → la fila del coche
 + nada: se busca por marca, modelo o vendedor
-erp: Comprobar los tres datos que hacen falta
+erp: Comprobar que dice quién vende
 @ Marketplace → la oferta → «Vendedor»
-+ «Tipo de vendedor» en Concesionario, «Vendedor» con su nombre y «Teléfono de quien vende»
++ «Tipo de vendedor» en Concesionario y «Vendedor» con su nombre
+erp: El teléfono no hace falta aquí: se apunta del vendedor
+@ Agenda → la visita → «sin teléfono · apuntarlo»
++ el teléfono y, si hay alguien fijo, por quién preguntar
 erp: Publicar los huecos reales, si los sabemos
 @ Marketplace → la oferta → «Disponibilidad y citas» → «Franjas horarias»
 + día, desde y hasta, de cada franja
@@ -77,6 +83,12 @@ erp: Y que la oferta esté publicada
 > **Si no hay franjas, el sistema se las inventa.** Genera huecos de lunes a
 > viernes de 9 a 18, y en la Agenda la visita sale marcada como «horario sin
 > confirmar». Nadie ha acordado esa hora con nadie.
+
+> **El teléfono es del vendedor, no del coche.** Se apunta una vez, desde la
+> Agenda, y vale para todos sus coches — también los que entren mañana. Hay
+> 4.316 ofertas de concesionario y tres vendedores: puestos los tres, no vuelve
+> a faltar. Si un coche suyo está en otra sede con otro número, ese se pone en
+> la ficha de esa oferta y manda sobre el del vendedor.
 
 ---
 
@@ -168,11 +180,20 @@ rama No contesta | Se le llama | Sigue pendiente. Nadie le ha prometido ninguna 
 erp: Cancelar con un motivo
 @ Agenda → la visita → «Cancelar cita»
 + el motivo, escrito para que lo lea el cliente
+erp: Y marcar que se quite también el anuncio
+@ Agenda → «Cancelar la visita» → la casilla «el coche ya no está»
++ nada: es una casilla, y arranca desmarcada
 correo: **Al cliente** — el motivo, y un enlace para pedir otra hora
 :::
 
 > El motivo se le manda tal cual, así que se escribe pensando en él: «el coche ya
 > no está disponible», no «no coge el teléfono».
+
+> **La casilla solo se marca si el coche ya no está.** Se cancela por muchas
+> cosas —el cliente no puede, el taller cierra ese día— y quitar el escaparate
+> por eso sería una decisión que nadie ha tomado. Pero cuando el coche no
+> existe, marcarla es lo único que evita que el siguiente cliente pida visita al
+> mismo. Se deshace desde Marketplace, con «Publicar».
 
 ---
 
@@ -223,7 +244,43 @@ vuelve a llamar — o no llama.
 
 ---
 
-## 6 · Si el cliente se cambia la hora
+## 6 · Cuando ya ha pasado: cómo acabó
+
+Es el paso que convierte una visita concertada en un número. Sin él, la visita
+se queda confirmada para siempre y nadie sabe si el cliente llegó a ir.
+
+:::flujo
+erp: Abrir las que ya pasaron y nadie ha cerrado
+@ Agenda → el bloque «visitas por cerrar», arriba
++ nada: salen solas en cuanto pasa la hora
+erp: Decir cómo acabó, en un botón
+@ Agenda → la visita → «No fue», «Fue a verlo» o «Fue y se lo quedó»
++ nada: son tres botones
+sistema: Deja de contar entre las pendientes y queda marcada en su fila
+:::
+
+Los tres finales contestan cosas distintas:
+
+| Botón | Qué dice |
+|---|---|
+| **No fue** | El cliente no apareció, o el concesionario no le atendió. Si se repite con el mismo vendedor, el problema es el vendedor |
+| **Fue a verlo** | Fue y no se lo quedó. La visita funcionó; el coche o el precio, no |
+| **Fue y se lo quedó** | Se ha vendido |
+
+> **Se puede corregir.** Quien lo apuntó pudo equivocarse de fila. Cada cambio
+> queda en el rastro con lo que decía antes, así que se ve qué se dijo y quién
+> lo cambió.
+
+> **Solo se cierra una visita que ya ha empezado.** Repasando la agenda de la
+> semana, un botón de «no fue» en una cita de pasado mañana se pulsa sin querer,
+> y ese apunte ya no se distingue de uno de verdad.
+
+Las que quedan sin cerrar salen también en **Pendientes**, en el panel, con las
+que están por confirmar.
+
+---
+
+## 7 · Si el cliente se cambia la hora
 
 :::flujo
 cliente: La mueve desde el enlace de su correo, o desde **Solicitudes**
@@ -254,10 +311,12 @@ escribe solo al reservar. Del concesionario no.
 
 | Qué | Dónde |
 |---|---|
-| Cuántas visitas esperan | El número rojo junto a **Agenda**, en el menú |
+| Cuántas visitas esperan | El número rojo junto a **Agenda**, en el menú, y en **Dashboard → Pendientes** |
 | Las que hay que confirmar | **Agenda**, bloque de arriba. Con las que se pasaron de fecha marcadas |
+| Las que hay que cerrar | **Agenda**, el bloque de debajo. Ya pasaron y nadie ha dicho cómo acabaron |
 | Las confirmadas | **Agenda**, por fecha. Con «Todas» salen las de los tres meses anteriores |
 | El rastro de una visita | **Agenda** → Ver rastro |
 | Las visitas de un coche | **Marketplace** → la oferta → panel de visitas |
-| El teléfono del vendedor | **Marketplace** → la oferta → «Teléfono de quien vende» |
+| El teléfono del vendedor | **Agenda** → la visita → «apuntarlo». Vale para todos sus coches |
+| El teléfono de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |
 | Publicar horarios reales | **Marketplace** → la oferta → «Franjas horarias» |

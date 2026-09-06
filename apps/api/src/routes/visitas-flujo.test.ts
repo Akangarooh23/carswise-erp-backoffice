@@ -61,6 +61,8 @@ let pasos: { evento: string; actor: string; datos: Fila }[] = [];
 let ofertaPublicada = true;
 /** Y si la fila de la oferta existe siquiera: pudo borrarse. */
 let ofertaExiste = true;
+/** Los telefonos apuntados, por vendedor. */
+let vendedores: Record<string, { telefono: string; contacto: string | null }> = {};
 let correos: { to: string; subject: string; conCalendario: boolean }[] = [];
 
 const queryOriginal = pg.Pool.prototype.query;
@@ -95,6 +97,7 @@ function reinicia() {
   correos = [];
   ofertaPublicada = true;
   ofertaExiste = true;
+  vendedores = {};
 }
 
 before(async () => {
@@ -139,6 +142,15 @@ before(async () => {
       if (/starts_at = \$3/.test(t)) { reserva.starts_at = p[2]; reserva.ends_at = p[3]; }
       if (/availability_id = \$1/.test(t)) { reserva.starts_at = p[1]; reserva.ends_at = p[2]; }
       return responde([{ ...reserva }]);
+    }
+
+    // El telefono de quien vende, que se guarda por vendedor.
+    if (/INSERT INTO erp_vendedores_marketplace/i.test(t)) {
+      vendedores[String(p[0])] = { telefono: String(p[1]), contacto: (p[2] ? String(p[2]) : null) };
+      return responde([]);
+    }
+    if (/FROM vehicle_visit_bookings b/i.test(t) && /o\.seller/i.test(t) && /WHERE b\.id/i.test(t)) {
+      return responde([{ seller: reserva.seller }]);
     }
 
     // El escaparate: si el coche ya no esta, se quita de la vista.
@@ -380,6 +392,35 @@ for (const s of SECCIONES) {
       assert.equal(r.codigo, 200);
       assert.equal(r.cuerpo.data?.anuncioQuitado, false);
       assert.ok(!nombres().includes('anuncio_quitado'));
+    });
+
+    test('16 · el telefono se apunta del vendedor, no del coche', async () => {
+      // Un concesionario con cuarenta coches necesitaba el telefono cuarenta
+      // veces, y la primera visita a cada coche nuevo se quedaba sin a quien
+      // llamar.
+      const r = await api(`/visit-bookings/${CITA}/telefono-del-vendedor`, {
+        telefono: '976 000 111', contacto: 'Marta',
+      });
+      assert.equal(r.codigo, 200);
+      assert.equal(r.cuerpo.data?.vendedor, s.vende);
+      assert.equal(vendedores[s.vende]?.telefono, '976 000 111');
+      assert.equal(vendedores[s.vende]?.contacto, 'Marta');
+      assert.ok(nombres().includes('telefono_del_vendedor'));
+    });
+
+    test('17 · sin telefono no se guarda nada', async () => {
+      const r = await api(`/visit-bookings/${CITA}/telefono-del-vendedor`, { telefono: '   ' });
+      assert.equal(r.codigo, 400);
+      assert.equal(vendedores[s.vende], undefined);
+    });
+
+    test('18 · y si no se sabe quien vende, se dice en vez de guardarlo en el aire', async () => {
+      // Con el nombre vacio se guardaria una fila que luego saldria en todas
+      // las ofertas que tampoco tienen vendedor.
+      reserva.seller = null;
+      const r = await api(`/visit-bookings/${CITA}/telefono-del-vendedor`, { telefono: '976 000 111' });
+      assert.equal(r.codigo, 409);
+      assert.equal(Object.keys(vendedores).length, 0);
     });
   });
 }

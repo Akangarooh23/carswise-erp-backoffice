@@ -32,11 +32,33 @@ const ENSURE_RESULTADO_VALIDO = `
   EXCEPTION WHEN duplicate_object THEN NULL;
   END $$`;
 
+/**
+ * El teléfono de quien vende, que es suyo y no de cada coche.
+ *
+ * `seller_phone` es una columna de la oferta, así que un concesionario con
+ * cuarenta coches necesitaba el teléfono cuarenta veces, y la primera visita a
+ * cada coche nuevo se quedaba sin a quién llamar. Hoy hay 4.316 ofertas de
+ * concesionario, tres vendedores y **ningún** teléfono puesto: el sitio donde
+ * estaba pidiendo el dato era el sitio equivocado.
+ *
+ * Va en tabla nuestra y no como columna en la de PopCar: es un dato de
+ * operaciones —a quién llamamos nosotros—, no del escaparate. El de la oferta
+ * se sigue leyendo y manda, para el coche que esté en otra sede.
+ */
+const ENSURE_VENDEDORES = `
+  CREATE TABLE IF NOT EXISTS erp_vendedores_marketplace (
+    nombre     TEXT PRIMARY KEY,
+    telefono   TEXT,
+    contacto   TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_RESULTADO, []).catch(() => {});
   await query(ENSURE_RESULTADO_VALIDO, []).catch(() => {});
+  await query(ENSURE_VENDEDORES, []).catch(() => {});
   preparado = true;
 }
 
@@ -904,6 +926,53 @@ visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (
 });
 
 /**
+ * El teléfono de quien vende, apuntado desde la visita.
+ *
+ * Se pide aquí y no en la ficha de la oferta porque aquí es donde hace falta:
+ * vas a llamar y no hay número. Y se guarda **por vendedor**, así que con
+ * ponerlo una vez quedan cubiertos todos sus coches, que era justo lo que el
+ * campo de la oferta prometía y no cumplía.
+ *
+ * El nombre del vendedor sale de la oferta y no del cuerpo: quien llama no
+ * tiene por qué teclear a quién se lo está poniendo, y así no se puede
+ * equivocar de vendedor.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/telefono-del-vendedor', requireRole(ROLES), async (req, res) => {
+  const { bookingId } = req.params;
+  const telefono = String(req.body?.telefono ?? '').trim().slice(0, 40);
+  const contacto = String(req.body?.contacto ?? '').trim().slice(0, 120);
+  if (!telefono) return res.status(400).json({ ok: false, error: 'Hace falta el teléfono' });
+  try {
+    await prepara();
+    const r = await query(
+      `SELECT o.seller FROM vehicle_visit_bookings b
+         LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
+        WHERE b.id = $1`,
+      [bookingId]
+    );
+    const vendedor = String(r.rows[0]?.seller ?? '').trim();
+    // Sin nombre no hay a quién colgárselo, y guardarlo con la cadena vacía lo
+    // dejaría puesto para todas las ofertas que tampoco tienen vendedor.
+    if (!vendedor) {
+      return res.status(409).json({ ok: false, error: 'Esta visita no dice quién vende, así que no hay a quién apuntárselo' });
+    }
+    await query(
+      `INSERT INTO erp_vendedores_marketplace (nombre, telefono, contacto)
+       VALUES ($1, $2, NULLIF($3, ''))
+       ON CONFLICT (nombre) DO UPDATE
+          SET telefono = EXCLUDED.telefono,
+              contacto = COALESCE(EXCLUDED.contacto, erp_vendedores_marketplace.contacto),
+              updated_at = NOW()`,
+      [vendedor, telefono, contacto]
+    );
+    await apunta(bookingId, 'telefono_del_vendedor', quien(req as never), { vendedor });
+    return res.json({ ok: true, data: { vendedor, telefono } });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
  * Cómo acabó la visita: no fue, fue, o fue y se lo quedó.
  *
  * La puerta la decide `sePuedeCerrar` y no el SQL, para que la razón de que no
@@ -1033,13 +1102,22 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              -- ni quién era: había que ir a buscar la oferta. De un concesionario o
              -- un profesional, el vendedor es un nombre y el teléfono está en el
              -- anuncio de origen. De un particular, es su correo.
-             o.seller, o.seller_type, o.source_url, o.seller_phone, o.seller_contact
+             --
+             -- El teléfono sale de la oferta si lo tiene y, si no, del
+             -- vendedor: es suyo, no de cada coche. La bandera del_vendedor
+             -- dice de dónde vino, para poder contarlo en pantalla en vez de
+             -- que aparezca un número sin explicación.
+             o.seller, o.seller_type, o.source_url,
+             COALESCE(NULLIF(TRIM(o.seller_phone), ''), v.telefono)   AS seller_phone,
+             COALESCE(NULLIF(TRIM(o.seller_contact), ''), v.contacto) AS seller_contact,
+             (NULLIF(TRIM(o.seller_phone), '') IS NULL AND v.telefono IS NOT NULL) AS del_vendedor
       FROM vehicle_visit_bookings b
       -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
       -- JOIN normal desaparecia de la Agenda sin que nadie lo notara.
       LEFT JOIN vehicle_visit_availability a ON a.id = b.availability_id
       -- LEFT también: una oferta puede haberse despublicado y la visita sigue.
       LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
+      LEFT JOIN erp_vendedores_marketplace v ON v.nombre = o.seller
       WHERE 1=1
     `;
     const params: (string | number)[] = [];

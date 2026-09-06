@@ -178,8 +178,15 @@ al reservar.
 Por eso la Agenda dice **quién vende** en cada visita, de qué sección del
 marketplace es el coche —concesionario, ex-renting, particular o importación— y
 **su teléfono**, pinchable para llamar desde el móvil. Si no está puesto lo
-dice: se pone en la ficha de la oferta, en Marketplace, y con una vez basta
-para todos los coches de ese vendedor.
+dice, y se apunta ahí mismo: **el teléfono es del vendedor, no del coche**, así
+que con ponerlo una vez quedan cubiertos todos sus coches — también los que
+entren mañana.
+
+Se guarda aparte del anuncio a propósito: es un dato de operaciones, a quién
+llamamos nosotros, y no tiene por qué ser el número que el concesionario
+publica. Si un coche suyo está en otra sede con otro teléfono, ese se pone en la
+ficha de esa oferta, en Marketplace, y manda sobre el del vendedor. Cuando el
+número que sale no es el de la ficha del coche, la Agenda lo dice.
 
 De un particular sale además su correo. Y hay un enlace de **origen**, que lleva
 a donde salió el coche: de un concesionario suele ser su propio anuncio, con su

@@ -30,10 +30,12 @@ type Booking = {
   seller: string | null;
   seller_type: string | null;
   source_url: string | null;
-  // Cómo se le llama. Se rellena en la ficha de la oferta, una vez por
-  // vendedor, y no sale nunca en el marketplace.
+  // Para llamarle. Sale de la oferta si la oferta lo trae y, si no, de lo que
+  // tengamos apuntado del vendedor: el teléfono es suyo, no de cada coche.
   seller_phone: string | null;
   seller_contact: string | null;
+  /** Si el teléfono viene del vendedor y no de esta oferta en concreto. */
+  del_vendedor?: boolean;
   // Cómo acabó la visita, cuando ya ha pasado y alguien lo ha dicho. El estado
   // cuenta lo de antes de la visita; esto, lo de después.
   resultado: string | null;
@@ -154,7 +156,7 @@ function isProfessional(b: Booking) { return !b.offer_id?.startsWith('idcar-'); 
  * —con su teléfono— y otras un informe de inspección o nada. **El teléfono de
  * quien vende no está guardado en ninguna parte**, y hay que llamarle igual.
  */
-function QuienVende({ b }: { b: Booking }) {
+function QuienVende({ b, alApuntarTelefono }: { b: Booking; alApuntarTelefono?: () => void }) {
   if (!b.seller) return null;
   const correo = correoDelVendedor(b);
   return (
@@ -172,14 +174,31 @@ function QuienVende({ b }: { b: Booking }) {
       {/* El teléfono, que es lo que hace falta para llamarle. Si no está
           puesto se dice, porque el hueco vacío se lee como «no hace falta». */}
       {b.seller_phone ? (
-        <a href={`tel:${b.seller_phone}`} onClick={(e) => e.stopPropagation()}
-           className="font-bold text-acento-texto underline underline-offset-2">
-          ☎ {b.seller_phone}
-        </a>
+        <>
+          <a href={`tel:${b.seller_phone}`} onClick={(e) => e.stopPropagation()}
+             className="font-bold text-acento-texto underline underline-offset-2">
+            ☎ {b.seller_phone}
+          </a>
+          {/* De dónde salió. Un número que no está en la ficha de este coche
+              aparecía sin explicación, y quien llama quiere saber si es el de
+              la sede o el de este coche en concreto. */}
+          {b.del_vendedor && (
+            <span className="text-brand-300" title={`Apuntado de ${b.seller}, no de esta oferta`}>
+              (de {b.seller})
+            </span>
+          )}
+        </>
+      ) : alApuntarTelefono ? (
+        // Se pide aquí porque aquí es donde falta: vas a llamar y no hay
+        // número. Y se guarda por vendedor, así que con una vez valen todos
+        // sus coches.
+        <button type="button"
+                onClick={(e) => { e.stopPropagation(); alApuntarTelefono(); }}
+                className="font-bold text-amber-700 underline underline-offset-2">
+          sin teléfono · apuntarlo
+        </button>
       ) : (
-        <span className="text-amber-700" title="Se pone en la ficha de la oferta, en Marketplace">
-          sin teléfono
-        </span>
+        <span className="text-amber-700">sin teléfono</span>
       )}
       {b.seller_contact && <span className="text-brand-400">· pregunta por {b.seller_contact}</span>}
       {b.source_url && (
@@ -383,6 +402,10 @@ export default function BookingsPage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cerrando, setCerrando]     = useState<string | null>(null);
   const [quitarElAnuncio, setQuitarElAnuncio] = useState(false);
+  const [telefonoDe, setTelefonoDe] = useState<Booking | null>(null);
+  const [telefonoNuevo, setTelefonoNuevo] = useState('');
+  const [contactoNuevo, setContactoNuevo] = useState('');
+  const [guardandoTelefono, setGuardandoTelefono] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<Booking | null>(null);
   const [motivo, setMotivo] = useState('');
@@ -551,6 +574,37 @@ export default function BookingsPage() {
     }
     setResultado({ mal: false, texto: `Apuntado: ${COMO_ACABO[resultado as keyof typeof COMO_ACABO]}.` });
     if (rastroDe === b.id) await cargaRastro(b);
+    await load();
+  }
+
+
+  /**
+   * Apunta el teléfono de quien vende. Por vendedor, no por coche.
+   *
+   * Después recarga: el número que se acaba de poner vale para todas las demás
+   * visitas de ese vendedor que estén en pantalla, y dejarlas diciendo «sin
+   * teléfono» invitaría a apuntarlo otra vez.
+   */
+  /** Abre el diálogo con lo que ya hubiera, que casi nunca es nada. */
+  function abreElTelefono(b: Booking) {
+    setTelefonoDe(b);
+    setTelefonoNuevo(b.seller_phone || '');
+    setContactoNuevo(b.seller_contact || '');
+  }
+
+  async function guardaElTelefono() {
+    if (!telefonoDe) return;
+    const tel = telefonoNuevo.trim();
+    if (!tel) { setResultado({ mal: true, texto: 'Pon el teléfono.' }); return; }
+    setGuardandoTelefono(true);
+    const r = await api.post<{ vendedor?: string }>(
+      `/visit-bookings/${telefonoDe.id}/telefono-del-vendedor`,
+      { telefono: tel, contacto: contactoNuevo.trim() },
+    );
+    setGuardandoTelefono(false);
+    if (!r.ok) { setResultado({ mal: true, texto: r.error || 'No se ha podido guardar el teléfono.' }); return; }
+    setTelefonoDe(null);
+    setResultado({ mal: false, texto: `Apuntado el teléfono de ${r.data?.vendedor || 'quien vende'}, para todos sus coches.` });
     await load();
   }
 
@@ -780,7 +834,7 @@ export default function BookingsPage() {
                   {/* A quién hay que llamar. El sistema no le avisa nunca, así
                       que lo primero que hace falta aquí es su nombre y dónde
                       está su teléfono. */}
-                  <QuienVende b={b} />
+                  <QuienVende b={b} alApuntarTelefono={() => abreElTelefono(b)} />
                   {b.notes && <div className="text-xs text-brand-300 italic mt-0.5">"{b.notes}"</div>}
                 </div>
                 {/* Los tres finales de la llamada al concesionario: que sí, que
@@ -858,7 +912,7 @@ export default function BookingsPage() {
                   <div className="text-xs text-brand-400">
                     {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
                   </div>
-                  <QuienVende b={b} />
+                  <QuienVende b={b} alApuntarTelefono={() => abreElTelefono(b)} />
                 </div>
                 <div className="shrink-0">
                   <ComoAcabo b={b} cerrando={cerrando === b.id}
@@ -867,6 +921,50 @@ export default function BookingsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* El teléfono de quien vende, cuando no lo hay.
+          Se guarda por vendedor y no por coche: es suyo, y con ponerlo una vez
+          quedan cubiertos todos sus coches. Hoy hay 4.316 ofertas de
+          concesionario y ningún teléfono, así que el sitio donde se pedía era
+          el equivocado. */}
+      {telefonoDe && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setTelefonoDe(null)} role="dialog" aria-modal="true" aria-label="Apuntar el teléfono de quien vende">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">El teléfono de {telefonoDe.seller}</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                Queda apuntado para todos sus coches, no solo para este.
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <label className="block text-xs font-medium text-brand-500">
+                Teléfono
+                <input value={telefonoNuevo} onChange={(e) => setTelefonoNuevo(e.target.value)} maxLength={40}
+                       placeholder="El fijo de la sede o el móvil del comercial"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <label className="block text-xs font-medium text-brand-500">
+                Por quién preguntar (si hay alguien fijo)
+                <input value={contactoNuevo} onChange={(e) => setContactoNuevo(e.target.value)} maxLength={120}
+                       placeholder="Nombre de quien lleva las ventas"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <p className="text-[12px] text-brand-300">
+                Si un coche suyo está en otra sede con otro número, ese se pone en la ficha de la
+                oferta, en Marketplace, y manda sobre este.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-end gap-2">
+              <Boton variante="fantasma" onClick={() => setTelefonoDe(null)}>Volver</Boton>
+              <Boton variante="acento" cargando={guardandoTelefono} onClick={guardaElTelefono}>
+                Guardar
+              </Boton>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1433,7 +1531,7 @@ export default function BookingsPage() {
                                 <div>
                                   <div className="text-[10px] font-bold text-brand-300 uppercase tracking-wide mb-0.5">Quién vende</div>
                                   {b.seller
-                                    ? <QuienVende b={b} />
+                                    ? <QuienVende b={b} alApuntarTelefono={() => abreElTelefono(b)} />
                                     : <div className="text-brand-300">La oferta ya no está publicada</div>}
                                 </div>
                                 <div>
