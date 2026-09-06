@@ -7,6 +7,7 @@ import CochesEnMarcha from '../components/dashboard/CochesEnMarcha.js';
 import Finanzas, { DeDondeViene, useFinanzas } from '../components/dashboard/Finanzas.js';
 import Negocio from '../components/dashboard/Negocio.js';
 import Escaparate from '../components/dashboard/Escaparate.js';
+import EmbudoDeVentas from '../components/dashboard/EmbudoDeVentas.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatusBadge } from '../components/ui/Badge.js';
 import type { DashboardStats } from '../types/index.js';
@@ -183,6 +184,9 @@ export default function DashboardPage() {
 
       {ver === 'ofertas' && (
         <>
+          {/* El embudo primero: de cuántos vienen los leads de abajo. */}
+          <EmbudoDeVentas />
+
           <Escaparate />
 
           {stats.leads && (

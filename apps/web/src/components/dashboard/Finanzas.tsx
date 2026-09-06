@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { useAuth } from '../../store/auth.js';
@@ -81,14 +81,56 @@ export function useFinanzas() {
 export type Cuentas = ReturnType<typeof useFinanzas>;
 
 /**
+ * Cuánto ha cambiado, dicho con su signo y con su color.
+ *
+ * En los gastos, subir es malo. Pintar de verde todo lo que sube haría que un
+ * +40 % de gasto se leyera como una buena noticia durante el medio segundo que
+ * dura mirar una tarjeta, que es justo el tiempo que se le dedica.
+ */
+function Cambio({ pct, subirEsBueno, contra }: {
+  pct: number | null; subirEsBueno: boolean; contra: string;
+}) {
+  // Sin base anterior no hay porcentaje: pasar de 0 € a 3.000 € no es +100 %,
+  // es que antes no había con qué comparar.
+  if (pct === null) return <span className="text-brand-300">sin comparación con {contra}</span>;
+
+  const sube = pct > 0;
+  const plano = Math.abs(pct) < 0.05;
+  const bien = plano ? null : sube === subirEsBueno;
+  const color = bien === null ? 'text-brand-300' : bien ? 'text-emerald-700' : 'text-red-600';
+
+  /*
+   * Pasado el 900 %, en veces.
+   *
+   * Septiembre contra agosto salía «+36.920 %», que es exacto y no lo lee
+   * nadie: son 3.058 € contra 8 €. «×38» se entiende de un vistazo y dice lo
+   * mismo. Debajo de ahí el porcentaje es la forma en la que se piensa.
+   */
+  const texto = plano
+    ? 'igual'
+    : Math.abs(pct) >= 900
+      ? `×${Math.round(pct / 100 + 1).toLocaleString('es-ES')}`
+      : `${sube ? '+' : ''}${pct.toLocaleString('es-ES')} %`;
+
+  return (
+    <span className={color}>
+      <span className="font-semibold tabular-nums">{texto}</span>
+      <span className="text-brand-300"> vs {contra}</span>
+    </span>
+  );
+}
+
+/**
  * Una cifra de las grandes.
  *
  * El margen se colorea y los demás no. Colorear los cuatro haría que ninguno
  * destacara, y de los cuatro este es el único cuyo signo cambia lo que hay que
  * hacer al día siguiente.
  */
-function Cifra({ etiqueta, valor, pie, tono = 'neutro', a }: {
+function Cifra({ etiqueta, valor, pie, cambio, tono = 'neutro', a }: {
   etiqueta: string; valor: string; pie?: string;
+  /** La variación contra el tramo anterior, si se sabe. */
+  cambio?: ReactNode;
   tono?: 'neutro' | 'bien' | 'mal'; a?: string;
 }) {
   const color = tono === 'bien' ? 'text-emerald-700' : tono === 'mal' ? 'text-red-600' : 'text-brand-600';
@@ -98,7 +140,8 @@ function Cifra({ etiqueta, valor, pie, tono = 'neutro', a }: {
       <p className={`mt-1.5 font-display text-[27px] leading-none font-extrabold tabular-nums ${color}`}>
         {valor}
       </p>
-      {pie && <p className="mt-1.5 text-[11px] text-brand-300 leading-snug">{pie}</p>}
+      {cambio && <p className="mt-1.5 text-[11px] leading-snug">{cambio}</p>}
+      {pie && <p className="mt-1 text-[11px] text-brand-300 leading-snug">{pie}</p>}
     </div>
   );
   return a
@@ -133,6 +176,7 @@ export default function Finanzas({ cuentas }: { cuentas: Cuentas }) {
   if (!datos) return <section>{cabecera}<p className="text-sm text-brand-300">Cargando las cuentas…</p></section>;
 
   const { margen, margenPorcentaje } = datos;
+  const antes = datos.anterior;
 
   return (
     <section className={cargando ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
@@ -140,18 +184,22 @@ export default function Finanzas({ cuentas }: { cuentas: Cuentas }) {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Cifra etiqueta="Ingresos" valor={euros(datos.ingresos)}
+               cambio={antes && <Cambio pct={antes.cambioIngresos} subirEsBueno contra={antes.etiqueta} />}
                pie="facturado sin IVA" a="/contabilidad" />
         <Cifra etiqueta="Gastos" valor={euros(datos.gastos)}
+               cambio={antes && <Cambio pct={antes.cambioGastos} subirEsBueno={false} contra={antes.etiqueta} />}
                pie={datos.comprometido > 0
                  ? `y ${euros(datos.comprometido)} comprometidos sin factura`
                  : 'facturas recibidas, sin IVA'}
                a="/provider-billing" />
         <Cifra etiqueta="Margen" valor={euros(margen)}
                tono={margen > 0 ? 'bien' : margen < 0 ? 'mal' : 'neutro'}
+               cambio={antes && <Cambio pct={antes.cambioMargen} subirEsBueno contra={antes.etiqueta} />}
                pie={margenPorcentaje === null
                  ? 'sin ingresos en el periodo'
                  : `${margenPorcentaje.toLocaleString('es-ES')} % de los ingresos`} />
         <Cifra etiqueta="Dinero de terceros" valor={euros(datos.suplidos)}
+               cambio={antes && <Cambio pct={antes.cambioSuplidos} subirEsBueno contra={antes.etiqueta} />}
                pie="suplidos: entra y sale, no es nuestro" />
       </div>
 

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { elPeriodo, esTramo, elDia } from './el-periodo.js';
+import { elPeriodo, elPeriodoAnterior, esTramo, elDia, comoHaCambiado } from './el-periodo.js';
 
 /** Un 6 de septiembre cualquiera, en local. */
 const HOY = new Date(2026, 8, 6);
@@ -93,5 +93,79 @@ describe('el día de una fecha', () => {
     assert.equal(elDia(''), '');
     assert.equal(elDia('cuando sea'), '');
     assert.equal(elDia(new Date('x')), '');
+  });
+});
+
+describe('el tramo anterior', () => {
+  test('el mes pasado entero, no los últimos treinta días', () => {
+    // Lo que compara el asesor y lo que sale en el banco.
+    const p = elPeriodoAnterior('mes', HOY);
+    assert.equal(p.desde, '2026-08-01');
+    assert.equal(p.hasta, '2026-08-31');
+  });
+
+  test('y cruzando el año, diciembre del anterior', () => {
+    const p = elPeriodoAnterior('mes', new Date(2026, 0, 15));
+    assert.equal(p.desde, '2025-12-01');
+    assert.equal(p.hasta, '2025-12-31');
+  });
+
+  test('el 31 compara con el mes anterior entero, no con treinta días atrás', () => {
+    // El 31 de mayo menos treinta días sigue siendo mayo, así que restar días
+    // haría que mayo se comparase consigo mismo. Mayo y no marzo a propósito:
+    // en marzo el cambio de hora tapa el fallo y el test pasaría igual.
+    const p = elPeriodoAnterior('mes', new Date(2026, 4, 31));
+    assert.equal(p.desde, '2026-04-01');
+    assert.equal(p.hasta, '2026-04-30');
+  });
+
+  test('y febrero se compara con enero entero, con sus 31 días', () => {
+    const p = elPeriodoAnterior('mes', new Date(2026, 1, 15));
+    assert.equal(p.desde, '2026-01-01');
+    assert.equal(p.hasta, '2026-01-31');
+  });
+
+  test('el trimestre anterior', () => {
+    const p = elPeriodoAnterior('trimestre', HOY);
+    assert.equal(p.desde, '2026-04-01');
+    assert.equal(p.hasta, '2026-06-30');
+    assert.equal(p.etiqueta, '2T 2026');
+  });
+
+  test('y el primero compara con el cuarto del año pasado', () => {
+    const p = elPeriodoAnterior('trimestre', new Date(2026, 1, 10));
+    assert.equal(p.desde, '2025-10-01');
+    assert.equal(p.hasta, '2025-12-31');
+  });
+
+  test('el año anterior, entero', () => {
+    const p = elPeriodoAnterior('anio', HOY);
+    assert.equal(p.desde, '2025-01-01');
+    assert.equal(p.hasta, '2025-12-31');
+  });
+});
+
+describe('cuánto ha cambiado', () => {
+  test('sube y baja, con un decimal', () => {
+    assert.equal(comoHaCambiado(150, 100), 50);
+    assert.equal(comoHaCambiado(75, 100), -25);
+    assert.equal(comoHaCambiado(1333, 1000), 33.3);
+  });
+
+  test('de cero no se puede subir un porcentaje', () => {
+    // Un +100 % sobre una base de cero es el gráfico que enseña todo el mundo
+    // cuando quiere que algo parezca que sube.
+    assert.equal(comoHaCambiado(3000, 0), null);
+    assert.equal(comoHaCambiado(0, 0), null);
+  });
+
+  test('y desde un negativo se mide sobre lo que valía', () => {
+    // De −500 € a −250 € es una mejora del 50 %, no un −50 %.
+    assert.equal(comoHaCambiado(-250, -500), 50);
+  });
+
+  test('lo que no es un número no inventa un cambio', () => {
+    assert.equal(comoHaCambiado(NaN, 100), null);
+    assert.equal(comoHaCambiado(100, NaN), null);
   });
 });

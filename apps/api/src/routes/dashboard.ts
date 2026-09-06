@@ -4,7 +4,8 @@ import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
 import { losApuntes } from '../lib/apuntes.js';
 import { cuentaDeResultados, mesAMes } from '../lib/cuenta-de-resultados.js';
-import { elPeriodo, esTramo } from '../lib/el-periodo.js';
+import { elPeriodo, elPeriodoAnterior, esTramo, comoHaCambiado } from '../lib/el-periodo.js';
+import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 
 export const dashboardRouter = Router();
 
@@ -178,16 +179,46 @@ dashboardRouter.get('/dashboard/finanzas', requireRole(['admin']), async (req, r
     // vez y el periodo se recorta encima. Dos consultas traerían lo mismo dos
     // veces y podrían no coincidir si algo entra entre medias.
     const largo = await losApuntes(p.desdeElGrafico, p.hasta);
-    const delPeriodo = largo.filter((a) => {
+    const entre = (desde: string, hasta: string) => largo.filter((a) => {
       const f = String(a.fecha ?? '').slice(0, 10);
-      return f >= p.desde && f <= p.hasta;
+      return f >= desde && f <= hasta;
     });
+
+    /*
+     * Y el mismo tramo un paso atrás, para poder decir hacia dónde va.
+     *
+     * Una cifra suelta no dice si vamos bien: 19.805 € se lee igual siendo el
+     * doble del año pasado que la mitad.
+     *
+     * Si el tramo anterior cae dentro de los doce meses que ya se han pedido
+     * —el mes o el trimestre pasado— se recorta de ahí; si cae fuera —el año
+     * pasado— se pide aparte. Volver a la base para algo que ya está en memoria
+     * es una consulta de más en cada carga del panel.
+     */
+    const anterior = elPeriodoAnterior(p.tramo);
+    const apuntesAnteriores = anterior.desde >= p.desdeElGrafico
+      ? entre(anterior.desde, anterior.hasta)
+      : await losApuntes(anterior.desde, anterior.hasta);
+
+    const ahora = cuentaDeResultados(entre(p.desde, p.hasta));
+    const antes = cuentaDeResultados(apuntesAnteriores);
 
     res.json({
       ok: true,
       data: {
         periodo: { tramo: p.tramo, desde: p.desde, hasta: p.hasta, etiqueta: p.etiqueta },
-        ...cuentaDeResultados(delPeriodo),
+        ...ahora,
+        anterior: {
+          etiqueta: anterior.etiqueta,
+          ingresos: antes.ingresos,
+          gastos: antes.gastos,
+          margen: antes.margen,
+          suplidos: antes.suplidos,
+          cambioIngresos: comoHaCambiado(ahora.ingresos, antes.ingresos),
+          cambioGastos: comoHaCambiado(ahora.gastos, antes.gastos),
+          cambioMargen: comoHaCambiado(ahora.margen, antes.margen),
+          cambioSuplidos: comoHaCambiado(ahora.suplidos, antes.suplidos),
+        },
         meses: mesAMes(largo, p.desdeElGrafico, p.hasta),
       },
     });
@@ -295,5 +326,71 @@ dashboardRouter.get('/dashboard/negocio', requireRole(['admin', 'operations', 's
     });
   } catch (err) {
     falloInterno(res, 'dashboard_negocio_failed', err);
+  }
+});
+
+/**
+ * El embudo: cuánta gente llega, cuánta avanza y dónde se cae.
+ *
+ * El panel decía «11 leads» sin decir de cuántos vienen, y esa es la mitad que
+ * sirve para decidir algo: once de doce visitas es un negocio y once de cuatro
+ * mil es otro, y el arreglo de cada caso es el contrario.
+ *
+ * **Cuenta personas, no eventos.** Alguien que recarga la portada catorce veces
+ * son catorce eventos y una persona. Por eventos este embudo sale
+ * 1.511 → 437 → 139 → 22, y por personas 400 → 8 → 3 → 3: son dos historias
+ * distintas y solo la segunda dice dónde invertir.
+ *
+ * Y cada persona cuenta en el paso **más hondo** al que llegó, no en todos los
+ * que tocó: contando cada paso por su cuenta, quien entra directo a una ficha
+ * por un enlace hace que «abren un coche» tenga más gente que «llegan a la
+ * web», y entonces el dibujo enseña un embudo que se ensancha.
+ */
+dashboardRouter.get('/dashboard/embudo', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  try {
+    const pedido = String((req.query as Record<string, unknown>).tramo ?? '');
+    const p = elPeriodo(esTramo(pedido) ? pedido : 'anio');
+
+    const [hondura, origenes] = await Promise.all([
+      query(`
+        SELECT hondura, COUNT(*)::int AS personas
+          FROM (
+            SELECT ${SQL_QUIEN} AS quien, MAX(${SQL_HONDURA}) AS hondura
+              FROM moveadvisor_funnel_events
+             WHERE created_at::date BETWEEN $1::date AND $2::date
+               AND ${SQL_QUIEN} IS NOT NULL
+             GROUP BY 1
+          ) AS gente
+         WHERE hondura > 0
+         GROUP BY 1
+      `, [p.desde, p.hasta]).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+
+      // Y de dónde llega esa gente, que es la otra mitad de la pregunta: sin
+      // esto se sabe que se cae, pero no de qué campaña venía.
+      query(`
+        SELECT COALESCE(NULLIF(utm_source, ''), '(directo)') AS origen,
+               COUNT(DISTINCT ${SQL_QUIEN})::int AS personas,
+               COUNT(DISTINCT ${SQL_QUIEN}) FILTER (WHERE event_type = 'lead_request')::int AS solicitudes
+          FROM moveadvisor_funnel_events
+         WHERE created_at::date BETWEEN $1::date AND $2::date
+         GROUP BY 1
+         ORDER BY 2 DESC
+         LIMIT 10
+      `, [p.desde, p.hasta]).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    ]);
+
+    const escalones = elEmbudo(hondura.rows as { hondura?: unknown; personas?: unknown }[]);
+
+    res.json({
+      ok: true,
+      data: {
+        periodo: { tramo: p.tramo, desde: p.desde, hasta: p.hasta, etiqueta: p.etiqueta },
+        escalones,
+        cuelloDeBotella: dondeSePierde(escalones),
+        origenes: origenes.rows,
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'dashboard_embudo_failed', err);
   }
 });

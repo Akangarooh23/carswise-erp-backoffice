@@ -322,6 +322,8 @@ export interface Finanzas {
   sinDesglosar: number;
   /** Facturas de la UE sin decidir a qué tipo se autorepercuten. */
   sinAutorepercusion: number;
+  /** El mismo tramo un paso atrás. */
+  anterior?: Anterior;
   meses: { mes: string; ingresos: number; gastos: number; margen: number }[];
 }
 
@@ -394,4 +396,38 @@ export interface Negocio {
     taller: { n: number; proximas: number };
   };
   comisiones: { n: number; base: number | string; sin_cobrar: number };
+}
+
+/** El mismo tramo un paso atrás, y cuánto ha cambiado cada cifra. */
+export interface Anterior {
+  etiqueta: string;
+  ingresos: number;
+  gastos: number;
+  margen: number;
+  suplidos: number;
+  /** En tanto por ciento. Null cuando antes no había con qué comparar. */
+  cambioIngresos: number | null;
+  cambioGastos: number | null;
+  cambioMargen: number | null;
+  cambioSuplidos: number | null;
+}
+
+/** Un escalón del embudo: cuánta gente llegó al menos hasta aquí. */
+export interface Escalon {
+  clave: string;
+  nombre: string;
+  queEs: string;
+  personas: number;
+  /** Qué parte del escalón anterior sigue aquí. Null en el primero. */
+  desdeElAnterior: number | null;
+  desdeElPrincipio: number | null;
+  seCaen: number;
+}
+
+export interface Embudo {
+  periodo: { tramo: Tramo; desde: string; hasta: string; etiqueta: string };
+  escalones: Escalon[];
+  /** Dónde se cae más gente, para poder decirlo en una frase. */
+  cuelloDeBotella: Escalon | null;
+  origenes: { origen: string; personas: number; solicitudes: number }[];
 }

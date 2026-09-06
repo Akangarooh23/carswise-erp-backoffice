@@ -108,3 +108,43 @@ export function elDia(v: unknown): string {
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? '' : comoFecha(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
+
+/**
+ * El mismo tramo, un paso atrás.
+ *
+ * Un número absoluto no dice si vamos bien. «19.805 €» se lee igual siendo el
+ * doble del año pasado que la mitad, y la dirección es lo que hace falta para
+ * decidir algo. Comparar contra el tramo anterior completo —el mes pasado
+ * entero, no los treinta días anteriores— es lo que espera quien mira: es lo
+ * que compara su asesor y lo que sale en el banco.
+ *
+ * El mes anterior va **al último día del mes**, no al mismo día: el 31 de marzo
+ * comparado con «el 31 de febrero» no existe, y restar 30 días haría que
+ * febrero empezara en enero.
+ */
+export function elPeriodoAnterior(tramo: Tramo, hoy: Date = new Date()): Periodo {
+  const a = hoy.getFullYear();
+  const m = hoy.getMonth() + 1;
+
+  if (tramo === 'anio') return elPeriodo('anio', new Date(a - 1, 0, 1));
+  if (tramo === 'trimestre') {
+    // El primer día del trimestre menos uno cae siempre en el anterior.
+    const primero = Math.floor((m - 1) / 3) * 3 + 1;
+    return elPeriodo('trimestre', new Date(a, primero - 1, 0));
+  }
+  // Día 0 del mes corriente es el último del anterior.
+  return elPeriodo('mes', new Date(a, m - 1, 0));
+}
+
+/**
+ * Cuánto ha cambiado una cifra respecto a la anterior, en tanto por ciento.
+ *
+ * Null cuando antes no había nada. Pasar de 0 € a 3.000 € no es «+100 %» ni
+ * «+∞»: es que antes no había con qué comparar, y decirlo así es lo único
+ * honesto. Un porcentaje inventado sobre una base de cero es el gráfico que
+ * enseña todo el mundo cuando quiere que algo parezca que sube.
+ */
+export function comoHaCambiado(ahora: number, antes: number): number | null {
+  if (!Number.isFinite(ahora) || !Number.isFinite(antes) || antes === 0) return null;
+  return Math.round(((ahora - antes) / Math.abs(antes)) * 1000) / 10;
+}
