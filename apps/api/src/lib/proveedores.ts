@@ -197,6 +197,24 @@ export function elProveedorDe<T extends { nombre?: string | null }>(
   });
   if (!parecidos.length) return null;
 
-  return parecidos.reduce((a, b) =>
+  /*
+   * Entre varias que empiezan igual, las sedes se apartan.
+   *
+   * Con Modrive SL y sus sedes dadas de alta, un anuncio que dice «Modrive» a
+   * secas empieza igual que las tres. Coger la más larga —que es la regla de
+   * abajo— contestaría «Modrive Barcelona», y ese coche puede estar en Madrid:
+   * el anuncio no dice en qué sede está, así que contestar una es inventarla.
+   *
+   * La empresa sí se sabe. Se contesta la empresa, y quien confirme la visita
+   * apunta la sede.
+   *
+   * Solo se apartan si queda alguna que no lo sea: si lo único que casa son
+   * sedes, la más larga sigue siendo mejor respuesta que ninguna.
+   */
+  const esSede = (p: T) => (p as { relacion?: string | null }).relacion === 'sede';
+  const sinSedes = parecidos.filter((p) => !esSede(p));
+  const entreLosQueElegir = sinSedes.length ? sinSedes : parecidos;
+
+  return entreLosQueElegir.reduce((a, b) =>
     nombreComparable(String(b.nombre ?? '')).length > nombreComparable(String(a.nombre ?? '')).length ? b : a);
 }

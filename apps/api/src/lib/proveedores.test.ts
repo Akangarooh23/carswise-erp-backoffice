@@ -218,3 +218,44 @@ describe('a qué proveedor se refiere un nombre escrito a mano', () => {
     assert.equal(elProveedorDe('Becker', null), null);
   });
 });
+
+describe('un nombre que casa con una empresa y con sus sedes', () => {
+  /*
+   * Modrive SL, con sedes en Madrid y Barcelona. Los 2.626 anuncios suyos
+   * dicen «Modrive» a secas: no dicen en qué sede está el coche.
+   */
+  const MODRIVE = [
+    { id: 'PRV-1', nombre: 'Modrive SL', relacion: null },
+    { id: 'PRV-2', nombre: 'Modrive Madrid', relacion: 'sede' },
+    { id: 'PRV-3', nombre: 'Modrive Barcelona', relacion: 'sede' },
+  ];
+
+  test('se contesta la empresa, no una sede al azar', () => {
+    /*
+     * La regla de «el más largo» contestaría «Modrive Barcelona», y ese coche
+     * puede estar en Madrid. El anuncio no dice la sede, así que contestar una
+     * es inventarla; la empresa sí se sabe.
+     */
+    assert.equal(elProveedorDe('Modrive', MODRIVE)?.id, 'PRV-1');
+  });
+
+  test('pero si el anuncio dice la sede, se contesta la sede', () => {
+    assert.equal(elProveedorDe('Modrive Madrid', MODRIVE)?.id, 'PRV-2');
+  });
+
+  test('y si lo único que casa son sedes, se contesta la más larga', () => {
+    // Peor respuesta que la empresa, pero mejor que ninguna.
+    const soloSedes = MODRIVE.filter((x) => x.relacion === 'sede');
+    assert.equal(elProveedorDe('Modrive', soloSedes)?.id, 'PRV-3');
+  });
+
+  test('lo de siempre sigue igual: el paréntesis que se escribe de menos', () => {
+    // Sin sedes por medio, entre «Becker» y «Becker Solutions, S.L. (Becker
+    // Lines)» sigue ganando la larga, que es la que tiene la ficha de verdad.
+    const becker = [
+      { id: 'A', nombre: 'Becker' },
+      { id: 'B', nombre: 'Becker Solutions, S.L. (Becker Lines)' },
+    ];
+    assert.equal(elProveedorDe('Becker Solutions, S.L.', becker)?.id, 'B');
+  });
+});
