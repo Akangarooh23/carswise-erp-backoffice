@@ -13,7 +13,8 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
-import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
+import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
+import { esRelacion, seSostiene, PORQUE_NO_VALE } from '../lib/el-obligado.js';
 import {
   TIPOS_PROVEEDOR, ETIQUETA_TIPO, tiposLimpios, nombreComparable, agrupaNombresSueltos,
   fallaLaMatriz, EXPLICA_FALLO_DE_MATRIZ, elYLosSuyos,
@@ -54,6 +55,48 @@ const ENSURE_MATRIZ = `
   ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS matriz_id TEXT`;
 
 /**
+ * Y de qué manera cuelga: sede o sociedad del grupo.
+ *
+ * `matriz_id` solo decía «van juntas», y eso valía mientras lo único que hubiera
+ * fueran grupos de sociedades con su CIF cada una. Una empresa con varias sedes
+ * —un CIF, varias direcciones— cuelga igual y no es lo mismo: el grupo declara
+ * una vez por NIF y las sedes declaran una sola vez entre todas.
+ *
+ * Se queda en blanco en las que ya estaban, a propósito. Lo que significaban
+ * entonces era «filial», y es lo que `elObligado` sigue haciendo con ellas: una
+ * fila sin relación declara a su nombre. Poner «filial» a todas de golpe sería
+ * afirmar algo de cada una sin haberlo mirado.
+ */
+const ENSURE_RELACION = `
+  ALTER TABLE erp_proveedores ADD COLUMN IF NOT EXISTS relacion TEXT`;
+
+const ENSURE_RELACION_VALIDA = `
+  DO $$
+  BEGIN
+    ALTER TABLE erp_proveedores
+      ADD CONSTRAINT chk_relacion_del_proveedor
+      CHECK (relacion IS NULL OR relacion IN ('sede', 'filial'));
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`;
+
+/**
+ * Dos proveedores no pueden compartir CIF.
+ *
+ * Si comparten CIF son la misma empresa, y entonces una es sede de la otra. Sin
+ * esto, «Modrive Madrid» y «Modrive Barcelona» entran como dos acreedores, el
+ * saldo se parte en dos y el 347 saca dos importes por debajo del umbral donde
+ * tiene que salir uno por encima.
+ *
+ * Parcial por dos motivos: las sedes no tienen NIF —lo heredan— y hoy hay seis
+ * proveedores con el NIF sin rellenar. Un índice a secas no dejaría guardar el
+ * segundo de esos seis.
+ */
+const ENSURE_NIF_UNICO = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_proveedores_nif
+    ON erp_proveedores (nif)
+    WHERE nif <> '' AND COALESCE(relacion, '') <> 'sede'`;
+
+/**
  * Dónde se le paga.
  *
  * Faltaba, y es el dato del que depende que salga dinero: a un vendedor
@@ -82,6 +125,18 @@ const ENSURE_CONTACTO = `
     ADD COLUMN IF NOT EXISTS contacto TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS horario  TEXT NOT NULL DEFAULT ''`;
 
+
+/**
+ * El indice del NIF, dicho de forma que se pueda hacer algo con ello.
+ *
+ * Postgres contesta «duplicate key value violates unique constraint» y quien lo
+ * lee no sabe que hacer. Lo que hay que decirle es que eso que intenta crear es
+ * la misma empresa en otra direccion, y que eso se da de alta como sede.
+ */
+function esElNifRepetido(err: unknown): boolean {
+  return String((err as Error)?.message ?? '').includes('idx_proveedores_nif');
+}
+
 let preparado = false;
 async function prepara() {
   if (preparado) return;
@@ -89,7 +144,10 @@ async function prepara() {
   await query(ENSURE_CONTACTO, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
   await query(ENSURE_MATRIZ, []).catch(() => {});
+  await query(ENSURE_RELACION, []).catch(() => {});
+  await query(ENSURE_RELACION_VALIDA, []).catch(() => {});
   await query(ENSURE_IBAN, []).catch(() => {});
+  await query(ENSURE_NIF_UNICO, []).catch(() => {});
   await traeLoQueYaEstaba();
   preparado = true;
 }
@@ -156,8 +214,14 @@ async function traeLoQueYaEstaba() {
 
 const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, contacto, horario,
                 iban, notas, activo, created_at,
-                matriz_id,
-                (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz`;
+                matriz_id, relacion,
+                (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz,
+                -- El CIF que le toca: el suyo, o el de su matriz si es sede.
+                -- Va resuelto desde aquí para que ninguna pantalla tenga que
+                -- acordarse de la regla.
+                CASE WHEN relacion = 'sede'
+                     THEN (SELECT nif FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id)
+                     ELSE nif END AS nif_efectivo`;
 
 // ── Los tipos que hay ───────────────────────────────────────────────────────
 proveedoresRouter.get('/proveedores/tipos', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
@@ -224,6 +288,10 @@ proveedoresRouter.post('/proveedores', requireRole(['admin', 'operations']), asy
     const r = await query(`SELECT ${CAMPOS} FROM erp_proveedores WHERE id = $1`, [id]);
     res.json({ ok: true, data: r.rows[0] });
   } catch (err) {
+    if (esElNifRepetido(err)) {
+      res.status(409).json({ ok: false, error: 'nif_repetido', detail: PORQUE_NO_VALE.nifRepetido });
+      return;
+    }
     console.error('[proveedores] crear:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'proveedores_failed' });
   }
@@ -289,6 +357,50 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
       pon('matriz_id', matrizId || null);
     }
 
+    /**
+     * Y de qué manera cuelga: sede o sociedad del grupo.
+     *
+     * Es lo que decide si lo suyo se declara con la matriz o aparte, así que se
+     * escribe y no se deduce. Y se comprueba con lo que va a quedar guardado
+     * —no solo con lo que llega—, porque poner «sede» sin tocar el NIF y poner
+     * el NIF sin tocar la relación acaban las dos en una sede con CIF propio.
+     */
+    if (req.body?.relacion !== undefined || req.body?.nif !== undefined || req.body?.matriz_id !== undefined) {
+      const antes = await query(
+        `SELECT id, matriz_id, relacion, nif FROM erp_proveedores WHERE id = $1`,
+        [req.params.id]
+      );
+      const fila = antes.rows[0] as { id: string; matriz_id: string | null; relacion: string | null; nif: string } | undefined;
+      if (!fila) { res.status(404).json({ ok: false, error: 'proveedor_no_encontrado' }); return; }
+
+      const matriz = req.body?.matriz_id !== undefined ? nt(req.body.matriz_id) || null : fila.matriz_id;
+      let relacion = req.body?.relacion !== undefined ? nt(req.body.relacion) || null : fila.relacion;
+      if (relacion && !esRelacion(relacion)) {
+        res.status(400).json({ ok: false, error: 'relacion_no_valida', detail: 'Solo vale «sede» o «filial».' });
+        return;
+      }
+      /*
+       * Sin matriz no hay relación, y se limpia sin protestar.
+       *
+       * La pantalla manda siempre el desplegable, también cuando se acaba de
+       * quitar el grupo: rechazarlo por «sede de nadie» sería negarse a guardar
+       * un proveedor independiente por un campo que ni se ve.
+       */
+      if (!matriz) relacion = null;
+
+      const comoQueda = {
+        id: fila.id, matriz_id: matriz, relacion,
+        nif: req.body?.nif !== undefined ? nt(req.body.nif) : fila.nif,
+      };
+      const puerta = seSostiene(comoQueda);
+      if (!puerta.si) {
+        res.status(400).json({ ok: false, error: 'relacion_no_valida', detail: puerta.porque });
+        return;
+      }
+      // Y se guarda lo que ha quedado, no lo que llegó.
+      if (relacion !== fila.relacion) pon('relacion', relacion);
+    }
+
     if (!sets.length) { res.status(400).json({ ok: false, error: 'nada_que_cambiar' }); return; }
     valores.push(req.params.id);
     const r = await query(
@@ -298,6 +410,10 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
     if (!r.rows.length) { res.status(404).json({ ok: false, error: 'proveedor_no_encontrado' }); return; }
     res.json({ ok: true, data: r.rows[0] });
   } catch (err) {
+    if (esElNifRepetido(err)) {
+      res.status(409).json({ ok: false, error: 'nif_repetido', detail: PORQUE_NO_VALE.nifRepetido });
+      return;
+    }
     console.error('[proveedores] cambiar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'proveedores_failed' });
   }

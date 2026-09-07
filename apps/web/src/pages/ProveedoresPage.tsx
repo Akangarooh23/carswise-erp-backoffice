@@ -33,6 +33,10 @@ interface Proveedor {
   nombre: string;
   matriz_id: string | null;
   matriz: string | null;
+  /** Sede —misma empresa, otra dirección— o filial —otra sociedad, otro CIF—. */
+  relacion: string | null;
+  /** El CIF que le toca: el suyo, o el de su matriz si es sede. */
+  nif_efectivo?: string | null;
   tipos: string[];
   nif: string;
   telefono: string;
@@ -327,6 +331,7 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
     contacto: p.contacto ?? '', horario: p.horario ?? '',
     notas: p.notas ?? '',
     matriz_id: p.matriz_id ?? '',
+    relacion: p.relacion ?? 'filial',
   });
   const matricesPosibles = posiblesMatrices(p, todos);
   const filiales = todos.filter((x) => x.matriz_id === p.id);
@@ -502,6 +507,29 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
             <p className="text-[10px] text-brand-400 mt-1">
               No hay ningún proveedor que pueda ser su grupo todavía.
             </p>
+          )}
+
+          {/* Y de qué manera cuelga.
+              Colgar de una matriz significaba una sola cosa —un grupo de
+              sociedades, cada una con su CIF—, y ahora también puede ser la
+              misma empresa en otra dirección. Para Hacienda no se parecen: el
+              grupo declara una vez por NIF y las sedes declaran una sola vez
+              entre todas, así que hay que decirlo y no deducirlo. */}
+          {datos.matriz_id && (
+            <label className="block text-[11px] text-brand-400 mt-2">
+              Y qué es respecto de {matricesPosibles.find((m) => m.id === datos.matriz_id)?.nombre || 'ella'}
+              <select value={datos.relacion}
+                      onChange={(e) => setDatos((d) => ({ ...d, relacion: e.target.value }))}
+                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg bg-white">
+                <option value="filial">Otra sociedad, con su propio CIF</option>
+                <option value="sede">La misma empresa en otra dirección</option>
+              </select>
+              <span className="block text-[10px] text-brand-400 mt-1">
+                {datos.relacion === 'sede'
+                  ? 'Una sede no tiene CIF propio: usa el de su matriz, y lo suyo se declara con ella.'
+                  : 'Una sociedad del grupo declara aparte, con su NIF.'}
+              </span>
+            </label>
           )}
         </div>
 
