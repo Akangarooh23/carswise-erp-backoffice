@@ -93,6 +93,11 @@ erp: Y que la oferta esté publicada
 > a faltar. Si un coche suyo está en otra sede con otro número, ese se pone en
 > la ficha de esa oferta y manda sobre el del vendedor.
 
+> **Y va a su ficha de Proveedores.** Apuntarlo desde la Agenda le da de alta
+> como proveedor si no lo estaba, con tipo «vendedor». Ahí es donde luego viven
+> su CIF, su dirección y su IBAN, que es lo que hace falta para facturarle el
+> fee. La línea de «Vende» lleva un enlace a esa ficha.
+
 ---
 
 ## 2 · El cliente pide la visita
@@ -320,6 +325,17 @@ sistema: La factura pasa a la tabla de abajo, y la venta sale de la lista
 > nada firmado con Modrive, Gamboa Ocasión y VIAN. No es una tarifa acordada: se
 > propone en el botón y se puede cambiar al emitir.
 
+> **Y hace falta su ficha con el CIF.** La factura sale a nombre de la sociedad,
+> no del rótulo: Modrive es **Marcos Ocasión SL**. En Proveedores, el nombre
+> fiscal es el que se imprime y el comercial es con el que vienen escritos los
+> anuncios — hacen falta los dos, porque ninguno empieza por el otro.
+>
+> Si algún día una empresa factura desde varias direcciones, cada una se da de
+> alta como **sede** colgando de la matriz: comparten CIF, tienen su propia
+> dirección y su teléfono, y en el libro salen las tres con el CIF de la matriz.
+> Dos fichas con el mismo CIF sin colgar una de otra el ERP no las deja: el 347
+> se presenta por NIF y con la suma del año.
+
 > **No se puede emitir dos veces.** La factura queda atada a la visita, así que
 > volver a intentarlo dice que ya está y con qué número.
 
@@ -369,4 +385,5 @@ escribe solo al reservar. Del concesionario no.
 | Las visitas de un coche | **Marketplace** → la oferta → panel de visitas |
 | El teléfono del vendedor | **Agenda** → la visita → «apuntarlo». Vale para todos sus coches |
 | El teléfono de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |
+| Su CIF, dirección e IBAN | **Proveedores** → su ficha |
 | Publicar horarios reales | **Marketplace** → la oferta → «Franjas horarias» |
