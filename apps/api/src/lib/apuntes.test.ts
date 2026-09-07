@@ -189,3 +189,68 @@ describe('las cuadradas no entran', () => {
     assert.doesNotMatch(FUENTE, /status\s*<>\s*\$\d+\s*AND[\s\S]{0,40}ESPERADA/);
   });
 });
+
+/**
+ * Modrive SL con sedes en Madrid y Barcelona: un CIF, tres fichas.
+ *
+ * Las sedes facturan con su dirección y su teléfono, pero el NIF es el de la
+ * matriz. En el libro del asesor tienen que salir con ese, porque es el que
+ * declara: el 347 se presenta por NIF y con la suma del año.
+ */
+const CON_SEDES: FichaDeProveedor[] = [
+  { id: 'PRV-1', nombre: 'Modrive SL', nif: 'B11111111', tipos: ['vendedor'], matriz_id: null, relacion: null },
+  { id: 'PRV-2', nombre: 'Modrive Madrid', nif: '', tipos: ['vendedor'], matriz_id: 'PRV-1', relacion: 'sede' },
+  { id: 'PRV-3', nombre: 'Astara Fleet', nif: 'B22222222', tipos: ['vendedor'], matriz_id: 'PRV-1', relacion: 'filial' },
+];
+
+const DE_UNA_SEDE = {
+  ...RECIBIDA,
+  provider_name: 'Modrive Madrid',
+  proveedor_id: 'PRV-2',
+  regimen: 'nacional',
+};
+
+describe('el NIF que sale en el libro', () => {
+  test('el de una sede es el de su matriz', () => {
+    // Modrive Madrid no tiene CIF propio: declara con Modrive SL.
+    assert.equal(elApunteDelProveedor(DE_UNA_SEDE, CON_SEDES).nif, 'B11111111');
+  });
+
+  test('pero en la contraparte sigue saliendo a quién se le facturó', () => {
+    // El CIF es el de la matriz y el nombre es el que se imprimió. Cambiar el
+    // nombre a «Modrive SL» sería reescribir una factura ya emitida.
+    assert.equal(elApunteDelProveedor(DE_UNA_SEDE, CON_SEDES).contraparte, 'Modrive Madrid');
+  });
+
+  test('el de una filial es el suyo, que para eso lo tiene', () => {
+    const a = elApunteDelProveedor(
+      { ...RECIBIDA, provider_name: 'Astara Fleet', proveedor_id: 'PRV-3', regimen: 'nacional' },
+      CON_SEDES,
+    );
+    assert.equal(a.nif, 'B22222222');
+  });
+
+  test('la ficha se busca por su identificador, no por el nombre', () => {
+    /*
+     * Es lo que se guardó al emitirla: dice a quién se le facturó entonces.
+     *
+     * Aquí el nombre impreso **no casa con ninguna ficha** —la sede se llamaba
+     * de otra manera cuando se emitió— y el NIF tiene que salir igual. Con un
+     * nombre parecido esta prueba no valdría: `elProveedorDe` lo encontraría
+     * por el prefijo y pasaría sin mirar el identificador.
+     */
+    const a = elApunteDelProveedor(
+      { ...DE_UNA_SEDE, provider_name: 'Automóviles Vallecas' },
+      CON_SEDES,
+    );
+    assert.equal(a.nif, 'B11111111');
+    assert.equal(a.contraparte, 'Automóviles Vallecas');
+  });
+
+  test('y sin identificador se busca por el nombre, como antes', () => {
+    // Las que ya estaban se atan solas al arrancar, pero una que llegue antes
+    // de eso tiene que salir en el libro igual.
+    const a = elApunteDelProveedor({ ...DE_UNA_SEDE, proveedor_id: null }, CON_SEDES);
+    assert.equal(a.nif, 'B11111111');
+  });
+});

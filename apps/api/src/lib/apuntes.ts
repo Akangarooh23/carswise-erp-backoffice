@@ -22,9 +22,30 @@ import type { ApunteConLinea } from './cuenta-de-resultados.js';
 const nt = (v: unknown) => String(v ?? '').trim();
 
 export interface FichaDeProveedor {
+  id?: string;
   nombre: string;
   nif: string | null;
   tipos: string[] | null;
+  /** De quién cuelga, si cuelga de alguien. */
+  matriz_id?: string | null;
+  /** Sede —mismo CIF que su matriz— o filial —el suyo—. */
+  relacion?: string | null;
+}
+
+/**
+ * El NIF que le toca a una ficha.
+ *
+ * De una sede no sale el suyo, porque no tiene: sale el de su matriz. Modrive
+ * Madrid y Modrive Barcelona facturan con su dirección y declaran las dos con
+ * el CIF de Modrive SL, y en el libro tienen que salir con ese.
+ */
+function elNifDe(
+  ficha: FichaDeProveedor | null,
+  alta: readonly FichaDeProveedor[]
+): string | null {
+  if (!ficha) return null;
+  if (ficha.relacion !== 'sede' || !ficha.matriz_id) return ficha.nif ?? null;
+  return alta.find((x) => x.id === ficha.matriz_id)?.nif ?? null;
 }
 
 /**
@@ -41,7 +62,18 @@ export function elApunteDelProveedor(
   alta: readonly FichaDeProveedor[]
 ): ApunteConLinea {
   const emitida = nt(f.direction) === 'emitted';
-  const ficha = emitida ? null : elProveedorDe(nt(f.provider_name), alta);
+  /*
+   * La ficha, por su identificador si la factura lo trae.
+   *
+   * Se guardó al emitirla, así que dice a quién se le facturó **entonces**.
+   * Buscarla por el nombre cada vez que se lee es volver a comparar cadenas, y
+   * el nombre puede haber cambiado de forma desde entonces.
+   *
+   * Por nombre solo para las que aún no lo tienen. Se atan solas al arrancar,
+   * pero una que llegue antes de eso tiene que salir en el libro igual.
+   */
+  const porId = nt(f.proveedor_id) ? alta.find((x) => x.id === nt(f.proveedor_id)) ?? null : null;
+  const ficha = emitida ? null : (porId ?? elProveedorDe(nt(f.provider_name), alta));
   const numero = nt(f.invoice_number) || nt(f.id);
 
   return {
@@ -49,7 +81,7 @@ export function elApunteDelProveedor(
     fecha: elDia(f.fecha),
     sentido: emitida ? 'emitida' : 'recibida',
     contraparte: emitida ? nt(f.customer_name) || nt(f.customer_email) : nt(f.provider_name),
-    nif: ficha?.nif ?? null,
+    nif: elNifDe(ficha, alta),
     concepto: nt(f.notes) || null,
     vehiculo: nt(f.vehicle_title) || null,
     contrato: nt(f.contract_id) || null,
@@ -162,6 +194,10 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
               i.invoice_amount::numeric AS total, i.base_amount::numeric AS base,
               i.iva_rate::numeric AS tipo, i.iva_amount::numeric AS cuota, i.regimen,
               i.autorepercusion::numeric AS autorepercusion,
+              -- A quién se le facturó, resuelto al emitirla. Es lo que permite
+              -- que Modrive Madrid y Modrive Barcelona salgan en el libro con
+              -- el CIF de Modrive SL, que es el que declara.
+              i.proveedor_id,
               COALESCE(i.invoice_date, i.issued_at::date) AS fecha
          FROM moveadvisor_provider_invoices i
         WHERE COALESCE(i.invoice_date, i.issued_at::date) BETWEEN $1::date AND $2::date
@@ -173,7 +209,7 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
     // La ficha se trae entera y se empareja aquí: el LEFT JOIN por nombre
     // exacto dejaba sin NIF ni tipo a cualquier factura escrita de otra manera.
     query<Record<string, unknown>>(
-      `SELECT nombre, nif, tipos FROM erp_proveedores`
+      `SELECT id, nombre, nif, tipos, matriz_id, relacion FROM erp_proveedores`
     ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
     query<Record<string, unknown>>(

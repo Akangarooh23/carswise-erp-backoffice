@@ -9,6 +9,112 @@ import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/fa
 import { preparaGarantias } from './garantias.js';
 import { preparaVisitas } from './visits.js';
 import { FEE_POR_VENTA, laComision, elConcepto } from '../lib/comision-del-concesionario.js';
+import { elProveedorDe } from '../lib/proveedores.js';
+
+/**
+ * A qué ficha de proveedor corresponde cada factura.
+ *
+ * Hasta ahora la única atadura era `provider_name`, texto libre. Eso vale para
+ * leer la factura y no vale para sumar: «Becker Solutions, S.L.» y «Becker
+ * Solutions, S.L. (Becker Lines)» son el mismo acreedor y dos cadenas
+ * distintas, y el día que haya sedes —Modrive Madrid, Modrive Barcelona— hay
+ * que poder saber que las dos declaran con Modrive SL.
+ *
+ * `provider_name` **no se toca**: es lo que decía el documento cuando se
+ * emitió, y reescribirlo a posteriori cambiaría una factura ya emitida. La
+ * columna nueva es para sumar; la vieja es lo que se imprimió.
+ */
+const ENSURE_PROVEEDOR = `
+  ALTER TABLE moveadvisor_provider_invoices
+    ADD COLUMN IF NOT EXISTS proveedor_id VARCHAR(40)`;
+
+let preparado = false;
+async function prepara() {
+  if (preparado) return;
+  await query(ENSURE_PROVEEDOR, []).catch(() => {});
+  await ataLasQueYaEstaban();
+  preparado = true;
+}
+
+/**
+ * Las facturas que ya estaban, atadas a su ficha.
+ *
+ * Se hace una vez, al arrancar, y solo sobre las que no tienen ficha todavía:
+ * volver a pasar no cambia nada. Se resuelve con `elProveedorDe`, que es el
+ * mismo emparejador que usa el resto —el nombre entero primero y, si no, que
+ * uno empiece por el otro—, así que lo que aquí quede atado es lo mismo que ya
+ * se juntaba para leer.
+ *
+ * Las ventas de vehículo se quedan fuera: ahí el otro lado es un cliente, no un
+ * proveedor. Ponerles una ficha sería decir que le compramos algo a alguien a
+ * quien le hemos vendido un coche.
+ */
+async function ataLasQueYaEstaban() {
+  const sinFicha = await query<{ provider_name: string }>(
+    `SELECT DISTINCT provider_name FROM moveadvisor_provider_invoices
+      WHERE proveedor_id IS NULL AND COALESCE(provider_name, '') <> '' AND type <> 'vehicle_sale'`,
+    []
+  ).catch(() => ({ rows: [] as { provider_name: string }[] }));
+  if (!sinFicha.rows.length) return;
+
+  const fichas = await query<{ id: string; nombre: string }>(
+    `SELECT id, nombre FROM erp_proveedores`, []
+  ).catch(() => ({ rows: [] as { id: string; nombre: string }[] }));
+  if (!fichas.rows.length) return;
+
+  for (const { provider_name } of sinFicha.rows) {
+    const ficha = elProveedorDe(provider_name, fichas.rows);
+    if (!ficha) continue;
+    await query(
+      `UPDATE moveadvisor_provider_invoices SET proveedor_id = $2
+        WHERE proveedor_id IS NULL AND provider_name = $1 AND type <> 'vehicle_sale'`,
+      [provider_name, ficha.id]
+    ).catch(() => {});
+  }
+}
+
+/**
+ * La ficha que le toca a un nombre, al guardar una factura nueva.
+ *
+ * Se resuelve al crearla y no al leerla: el nombre puede cambiar de forma más
+ * tarde —o el proveedor puede pasar a ser sede de otro— y lo que hay que
+ * conservar es a quién se le facturó entonces.
+ *
+ * Si no casa con ninguna ficha, se queda a nulo. No se da de alta sola: dar de
+ * alta un proveedor con lo que venga escrito en una factura es cómo se acaba
+ * con tres fichas del mismo. Sale sin ficha, y sin ficha se ve.
+ */
+async function laFichaDe(nombre: unknown): Promise<string | null> {
+  const buscado = typeof nombre === 'string' ? nombre.trim() : '';
+  if (!buscado) return null;
+  const fichas = await query<{ id: string; nombre: string }>(
+    `SELECT id, nombre FROM erp_proveedores WHERE activo = TRUE`, []
+  ).catch(() => ({ rows: [] as { id: string; nombre: string }[] }));
+  return elProveedorDe(buscado, fichas.rows)?.id ?? null;
+}
+
+/**
+ * Ata una factura recién creada a la ficha de quien la emite.
+ *
+ * Va después del alta y no dentro, a propósito. Hay seis sitios que crean
+ * facturas, cada uno con sus columnas: meter una más en las seis es seis
+ * ocasiones de desplazar un parámetro sin darse cuenta, y ahí lo que se
+ * desplaza son importes.
+ *
+ * Y si esto falla, la factura queda sin ficha y no pasa nada más: se ata sola
+ * en el siguiente arranque, porque `ataLasQueYaEstaban` busca exactamente eso.
+ * Lo que no puede pasar es que una factura no se guarde por no encontrar una
+ * ficha.
+ */
+async function ataLaFactura(id: string, nombre: unknown): Promise<void> {
+  const ficha = await laFichaDe(nombre);
+  if (!ficha) return;
+  await query(
+    `UPDATE moveadvisor_provider_invoices SET proveedor_id = $2
+      WHERE id = $1 AND proveedor_id IS NULL`,
+    [id, ficha]
+  ).catch(() => {});
+}
 
 
 export const providerBillingRouter = Router();
@@ -86,6 +192,10 @@ providerBillingRouter.get('/provider-billing/summary', requireRole(['admin', 'op
 
 // ── List invoices (emitted: renting_fee + portal_commission) ──────────────────
 providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'operations']), async (req, res) => {
+  // La columna de la ficha se crea al arrancar, y aqui es donde primero se
+  // entra: sin esto, las que ya estaban se quedarian sin atar hasta que
+  // alguien pasara por otra pantalla.
+  await prepara();
   const type   = String(req.query.type   || 'all').trim();
   const status = String(req.query.status || '').trim();
   const page   = Math.max(1, Number(req.query.page)  || 1);
@@ -206,6 +316,7 @@ export async function apuntaFacturaEsperada(datos: {
        ESPERADA, datos.desde || null]
     );
   });
+  await ataLaFactura(id, proveedor);
   return id;
 }
 
@@ -301,6 +412,7 @@ export async function apuntaFacturaRecibida(datos: {
        notas, numero, await subeElPdf(nuevoId)]
     );
   });
+  await ataLaFactura(id, proveedor);
   return id;
 }
 
@@ -418,6 +530,7 @@ providerBillingRouter.post('/provider-billing/received', requireRole(['admin', '
          suRegimen, suIva / 100, suAuto === null ? null : suAuto / 100]
       );
     });
+    await ataLaFactura(id, provider_name);
     res.status(201).json({ ok: true, data: { id, pdf_url } });
   } catch (err) {
     falloInterno(res, 'create_failed', err);
@@ -451,6 +564,7 @@ providerBillingRouter.patch('/provider-billing/invoices/:id/pdf', requireRole(['
 
 // ── List stored received invoices (provider → CarsWise) ──────────────────────
 providerBillingRouter.get('/provider-billing/received', requireRole(['admin', 'operations']), async (req, res) => {
+  await prepara();
   const page  = Math.max(1, Number(req.query.page)  || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -620,6 +734,7 @@ providerBillingRouter.post('/provider-billing/commissions', requireRole(['admin'
         [id, providerName, lead_id, lead.vehicle_title, lead.contact_name, lead.user_email, salePrice, invoiceAmount]
       );
     });
+    await ataLaFactura(id, providerName);
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: invoiceAmount, provider_name: providerName } });
   } catch (err) {
@@ -738,6 +853,7 @@ providerBillingRouter.post('/provider-billing/dealer-commissions', requireRole([
          c.base, c.total, c.iva / 100, concepto]
       );
     });
+    await ataLaFactura(id, proveedor);
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: c.total, provider_name: proveedor } });
   } catch (err) {
@@ -852,6 +968,7 @@ providerBillingRouter.post('/provider-billing/warranty-commissions', requireRole
          base, importe, IVA_GENERAL / 100, concepto]
       );
     });
+    await ataLaFactura(id, x.proveedor);
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: importe, provider_name: x.proveedor } });
   } catch (err) {
