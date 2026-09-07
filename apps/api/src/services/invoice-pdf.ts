@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { randomBytes } from 'node:crypto';
 import { query } from '../db/pool.js';
 import { config } from '../config.js';
+import { SITIO, RAZON_SOCIAL, NOMBRE } from '../lib/marca.js';
 
 // ── Series counter ────────────────────────────────────────────────────────────
 export async function nextInvoiceNumber(series: 'SUBS' | 'VTA' | 'PROV' | 'RECT'): Promise<string> {
@@ -183,10 +184,10 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
 
   // Left: EMISOR
   page.drawText('EMISOR', { x: M, y: partyTopY, size: 9, font: boldFont, color: AMARILLO });
-  page.drawText('PopCar Mobility S.L.',               { x: M, y: partyTopY - 16, size: 13, font: boldFont,    color: TEXT  });
+  page.drawText(RAZON_SOCIAL,                         { x: M, y: partyTopY - 16, size: 13, font: boldFont,    color: TEXT  });
   page.drawText('NIF: Pendiente de asignación',  { x: M, y: partyTopY - 31, size: 10, font: regularFont, color: MUTED });
   page.drawText('Dirección: Pendiente de asignación', { x: M, y: partyTopY - 44, size: 10, font: regularFont, color: MUTED });
-  page.drawText('www.popcar.tech',                    { x: M, y: partyTopY - 57, size: 10, font: regularFont, color: AMARILLO_T });
+  page.drawText(SITIO,                                { x: M, y: partyTopY - 57, size: 10, font: regularFont, color: AMARILLO_T });
 
   // Right: FACTURAR A
   page.drawText('FACTURAR A', { x: colR, y: partyTopY, size: 9, font: boldFont, color: AMARILLO });
@@ -316,8 +317,8 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   const thanksPrefix = 'Gracias por confiar en ';
   const thanksPW = regularFont.widthOfTextAtSize(thanksPrefix, 11);
   page.drawText(thanksPrefix, { x: M, y: footerBaseY, size: 11, font: regularFont, color: MUTED });
-  page.drawText('PopCar', { x: M + thanksPW, y: footerBaseY, size: 11, font: boldFont, color: TEXT });
-  const siteStr = 'www.popcar.tech';
+  page.drawText(NOMBRE, { x: M + thanksPW, y: footerBaseY, size: 11, font: boldFont, color: TEXT });
+  const siteStr = SITIO;
   const siteW = boldFont.widthOfTextAtSize(siteStr, 11);
   page.drawText(siteStr, { x: width - M - siteW, y: footerBaseY, size: 11, font: boldFont, color: AMARILLO_T });
 

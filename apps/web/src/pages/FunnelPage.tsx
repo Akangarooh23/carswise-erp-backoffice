@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../api/client.js';
+import { SITIO_URL, MARKETPLACE_URL } from '../lib/marca.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import Icono from '../components/ui/Icono.js';
@@ -420,7 +421,7 @@ export default function FunnelPage() {
   const [exporting, setExporting] = useState<'sessions' | 'events' | null>(null);
 
   // UTM link builder
-  const [utmBase,     setUtmBase]     = useState('https://www.popcar.tech/marketplace-vo');
+  const [utmBase,     setUtmBase]     = useState(MARKETPLACE_URL);
   const [utmSource,   setUtmSource]   = useState('');
   const [utmMedium,   setUtmMedium]   = useState('');
   const [utmCampaign, setUtmCampaign] = useState('');
@@ -1096,14 +1097,14 @@ export default function FunnelPage() {
                   type="text"
                   value={utmBase}
                   onChange={(e) => setUtmBase(e.target.value)}
-                  placeholder="https://www.popcar.tech/marketplace-vo/..."
+                  placeholder={`${MARKETPLACE_URL}/...`}
                   className="w-full text-xs border border-brand-200 rounded-lg px-3 py-2 bg-white text-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                 />
                 <div className="flex gap-2 mt-1.5 flex-wrap">
                   {[
-                    { label: 'Marketplace',  url: 'https://www.popcar.tech/marketplace-vo' },
-                    { label: 'Renting',      url: 'https://www.popcar.tech/marketplace-vo?tipo=renting' },
-                    { label: 'Inicio',       url: 'https://www.popcar.tech' },
+                    { label: 'Marketplace',  url: MARKETPLACE_URL },
+                    { label: 'Renting',      url: `${MARKETPLACE_URL}?tipo=renting` },
+                    { label: 'Inicio',       url: SITIO_URL },
                   ].map((s) => (
                     <button key={s.label} onClick={() => setUtmBase(s.url)}
                       className="text-[11px] text-brand-600 hover:underline border border-brand-200 rounded px-2 py-0.5 bg-brand-50 hover:bg-brand-100 transition-colors">
@@ -1261,7 +1262,7 @@ export default function FunnelPage() {
                           <td className="text-xs text-brand-400 max-w-[160px] truncate">
                             {e.offer_title
                               ? e.offer_id
-                                ? <a href={`https://www.popcar.tech/marketplace-vo/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
+                                ? <a href={`${MARKETPLACE_URL}/${e.offer_id}`} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} className="text-acento-texto hover:text-acento-texto hover:underline">{e.offer_title}</a>
                                 : e.offer_title
                               : <span className="text-brand-300">–</span>}
                           </td>

@@ -15,13 +15,14 @@
  * correo no hay CSS que los resuelva.
  */
 import { config } from '../config.js';
+import { NOMBRE, SITIO, CORREO_CONTACTO } from './marca.js';
 
 const RESEND = 'https://api.resend.com/emails';
 
-/** La marca, escrita una vez. */
+/** La marca, escrita una vez. El valor vive en `marca.ts`. */
 export const MARCA = {
-  nombre: 'PopCar',
-  sitio: 'www.popcar.tech',
+  nombre: NOMBRE,
+  sitio: SITIO,
   get sitioUrl() { return config.PUBLIC_SITE_URL; },
 };
 
@@ -39,19 +40,28 @@ const C = {
 
 const TIPO = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
-/** De quién sale. La variable de entorno manda; si falta, el buzón de la marca. */
+/**
+ * De quién sale. La variable de entorno manda; si falta, el buzón de la marca.
+ *
+ * La reserva era `notifications@popcar.tech`, y ese dominio no está verificado
+ * en Resend desde que la web se mudó: mandar desde ahí no da error, rebota del
+ * lado de Resend y el correo no sale. popcarmobility.com sí lo está.
+ */
 export function remitente(): string {
-  return (config.RESEND_FROM_EMAIL || '').trim() || `${MARCA.nombre} <notifications@popcar.tech>`;
+  return (config.RESEND_FROM_EMAIL || '').trim() || `${MARCA.nombre} <${CORREO_CONTACTO}>`;
 }
 
 /**
  * A dónde va la respuesta si el cliente le da a Responder.
  *
- * Devuelve `undefined` cuando no está puesta, y así `JSON.stringify` quita el
- * campo del cuerpo en vez de mandar una cadena vacía, que Resend rechaza.
+ * Devolvía `undefined` sin REPLY_TO_EMAIL, y eso quitaba la cabecera del
+ * cuerpo. Sin ella, la respuesta se iba a la dirección del remitente, que no
+ * tiene MX: se perdía sin rebotar a ningún sitio visible. Ahora la reserva es
+ * el buzón que sí recibe, y `undefined` solo puede salir si alguien pone la
+ * variable a vacío a mano.
  */
 export function respuestaA(): string | undefined {
-  return (config.REPLY_TO_EMAIL || '').trim() || undefined;
+  return (config.REPLY_TO_EMAIL || '').trim() || CORREO_CONTACTO || undefined;
 }
 
 export function esc(s: unknown): string {

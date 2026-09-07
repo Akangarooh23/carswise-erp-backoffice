@@ -3,6 +3,7 @@ import { query } from '../db/pool.js';
 import { requireRole, type Role } from '../middleware/auth.js';
 import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA } from '../lib/correo.js';
 import { config } from '../config.js';
+import { DOMINIO_UID } from '../lib/marca.js';
 import { manda, mandaOpciones, botonDeHora } from '../lib/whatsapp.js';
 import { esResultado, sePuedeCerrar } from '../lib/resultado-de-la-visita.js';
 import { elProveedorDe, nombreComparable } from '../lib/proveedores.js';
@@ -90,9 +91,9 @@ const enFormatoIcs = (iso: string) => new Date(iso).toISOString().replace(/[-:]/
  * una cita cerrada, y una solicitud sobre un horario que nadie ha publicado no
  * lo es.
  *
- * El identificador va contra popcar.tech. Si algún día se reenvía el mismo
- * evento, el calendario lo reconoce y lo actualiza en vez de duplicarlo, así que
- * este valor no se cambia a la ligera.
+ * El identificador va contra DOMINIO_UID, que no sigue a la marca. Si algún día
+ * se reenvía el mismo evento, el calendario lo reconoce y lo actualiza en vez de
+ * duplicarlo, así que ese valor no se cambia aunque cambie el dominio de la web.
  */
 export function calendarioDeLaCita(r: Reserva): string {
   const fin = r.ends_at || new Date(new Date(r.starts_at).getTime() + 3600000).toISOString();
@@ -106,8 +107,10 @@ export function calendarioDeLaCita(r: Reserva): string {
     `DTEND:${enFormatoIcs(fin)}`,
     `SUMMARY:Visita: ${r.vehicle_title || r.offer_id}`,
     `DESCRIPTION:Visita confirmada para ver el vehículo.\\nID: ${r.id}`,
-    `UID:${r.id}@popcar.tech`,
-    `ORGANIZER;CN=${MARCA.nombre}:mailto:${(respuestaA() || 'notifications@popcar.tech')}`,
+    `UID:${r.id}@${DOMINIO_UID}`,
+    // El ORGANIZER sí sigue al buzón: si no coincide con una dirección que
+    // recibe, Gmail y Outlook tratan la invitación como suplantada.
+    `ORGANIZER;CN=${MARCA.nombre}:mailto:${respuestaA()}`,
     'STATUS:CONFIRMED',
     'END:VEVENT',
     'END:VCALENDAR',

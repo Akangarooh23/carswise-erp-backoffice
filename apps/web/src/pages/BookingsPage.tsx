@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
+import { MARKETPLACE_URL } from '../lib/marca.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 import Boton from '../components/ui/Boton.js';
@@ -140,7 +141,7 @@ function groupByDay(bookings: Booking[]): Record<string, Booking[]> {
  */
 function enlaceOferta(offerId: string): string {
   if (!offerId) return '';
-  return `https://www.popcar.tech/marketplace-vo/${encodeURIComponent(offerId)}`;
+  return `${MARKETPLACE_URL}/${encodeURIComponent(offerId)}`;
 }
 
 function isToday(d: string) { return d === todayIso(); }

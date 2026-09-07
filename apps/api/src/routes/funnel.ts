@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
+import { SITIO_URL } from '../lib/marca.js';
 
 export const funnelRouter = Router();
 
@@ -70,7 +71,7 @@ funnelRouter.get('/funnel/stats', requireRole(['admin', 'sales', 'operations']),
 
       query(
         `SELECT offer_id, offer_title,
-           'https://www.carswiseai.com/marketplace-vo/' || offer_id AS offer_url,
+           '${SITIO_URL}/marketplace-vo/' || offer_id AS offer_url,
            COUNT(*)::int AS views,
            COUNT(*) FILTER (WHERE event_type = 'lead_request')::int AS leads
          FROM moveadvisor_funnel_events
@@ -305,7 +306,7 @@ funnelRouter.get('/funnel/callqueue', requireRole(['admin', 'sales', 'operations
            MAX(fe.utm_campaign) AS utm_campaign,
            MIN(fe.created_at)   AS first_seen,
            MAX(fe.created_at)   AS last_seen,
-           array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', 'https://www.carswiseai.com/marketplace-vo/' || fe.offer_id))
+           array_agg(DISTINCT jsonb_build_object('title', fe.offer_title, 'url', '${SITIO_URL}/marketplace-vo/' || fe.offer_id))
              FILTER (WHERE fe.event_type = 'offer_view' AND fe.offer_title IS NOT NULL)
              AS offers_viewed,
            COUNT(*) FILTER (WHERE fe.event_type = 'offer_view')::int AS offer_view_count,

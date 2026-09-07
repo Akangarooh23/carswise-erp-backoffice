@@ -22,8 +22,9 @@ const envSchema = z.object({
   // A donde contesta el cliente si le da a Responder. Sin esto, las respuestas
   // caen en un buzon que nadie lee.
   REPLY_TO_EMAIL: z.string().optional(),
-  // La web publica, para los enlaces de los correos.
-  PUBLIC_SITE_URL: z.string().default('https://www.popcar.tech'),
+  // La web publica, para los enlaces de los correos. El valor vive en
+  // lib/marca.ts; esto es solo la reserva cuando no hay variable puesta.
+  PUBLIC_SITE_URL: z.string().default('https://www.popcar.com.es'),
   APP_URL: z.string().default('http://localhost:5175'),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_KEY: z.string().optional(),

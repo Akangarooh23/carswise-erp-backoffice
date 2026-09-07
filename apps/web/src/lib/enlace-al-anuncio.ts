@@ -9,7 +9,7 @@
  * Devuelve null cuando no hay nada que abrir, para que quien lo llame pinte
  * texto en vez de un enlace roto.
  */
-const POPCAR = 'https://www.popcar.tech';
+import { SITIO_URL as POPCAR } from './marca.js';
 
 export function enlaceAlAnuncio(url?: string | null): string | null {
   const s = (url ?? '').trim();

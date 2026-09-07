@@ -1,17 +1,21 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { enlaceAlAnuncio } from './enlace-al-anuncio.js';
+import { SITIO_URL } from './marca.js';
+
+// El dominio sale de la marca y no escrito a mano: estaba fijado aqui y la
+// prueba caduco sola el dia que la web se mudo, que es tarde para enterarse.
 
 describe('el enlace al anuncio', () => {
   test('completa el que se guardó a medias', () => {
     assert.equal(
       enlaceAlAnuncio('/marketplace-vo/as_6256929c'),
-      'https://www.popcar.tech/marketplace-vo/as_6256929c'
+      `${SITIO_URL}/marketplace-vo/as_6256929c`
     );
   });
 
   test('deja en paz el que ya viene entero', () => {
-    const u = 'https://www.popcar.tech/marketplace-vo/as_1';
+    const u = `${SITIO_URL}/marketplace-vo/as_1`;
     assert.equal(enlaceAlAnuncio(u), u);
   });
 
@@ -28,6 +32,6 @@ describe('el enlace al anuncio', () => {
   });
 
   test('sin barra delante también', () => {
-    assert.equal(enlaceAlAnuncio('marketplace-vo/as_1'), 'https://www.popcar.tech/marketplace-vo/as_1');
+    assert.equal(enlaceAlAnuncio('marketplace-vo/as_1'), `${SITIO_URL}/marketplace-vo/as_1`);
   });
 });
