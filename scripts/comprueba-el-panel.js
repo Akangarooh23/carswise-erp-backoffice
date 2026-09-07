@@ -175,8 +175,20 @@ function losParametros(sql) {
  * exactamente como estaba —esto es un comprobador, no una migración—, y a
  * cambio se comprueba de verdad lo que el panel va a preguntar.
  */
-const LOS_ALTER = /ALTER TABLE[\s\S]*?ADD COLUMN IF NOT EXISTS[\s\S]*?(?=`)/g;
-const LOS_CREATE = /CREATE TABLE IF NOT EXISTS[\s\S]*?\)\s*(?=`)/g;
+/*
+ * Cada sentencia, dentro de su plantilla.
+ *
+ * Con `[\s\S]*?` el patrón cruzaba de una plantilla a la siguiente: entre
+ * `ENSURE_RELACION_VALIDA` —un bloque DO con un ALTER dentro— y el siguiente
+ * ADD COLUMN había dos constantes por medio, así que salía una sentencia
+ * imposible que fallaba en silencio **y se llevaba por delante la de en medio**.
+ * `ENSURE_COMERCIAL` no se aplicaba, y la consulta que usa esa columna salía
+ * como rota sin estarlo.
+ *
+ * Con `[^\`]` el emparejado no puede salir de la plantilla en la que empezó.
+ */
+const LOS_ALTER = /ALTER TABLE[^`]*?ADD COLUMN IF NOT EXISTS[^`]*?(?=`)/g;
+const LOS_CREATE = /CREATE TABLE IF NOT EXISTS[^`]*?\)\s*(?=`)/g;
 
 function elEsquemaDeLaApi() {
   const fuera = [];

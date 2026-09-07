@@ -30,7 +30,19 @@ const TIPOS = [
 
 interface Proveedor {
   id: string;
+  /** El fiscal, el que se imprime en una factura. */
   nombre: string;
+  /**
+   * Con el que se le conoce, si no es el suyo.
+   *
+   * Modrive es Marcos Ocasión SL: los anuncios dicen uno y la factura tiene que
+   * decir el otro. Hacen falta los dos — con uno solo, o la ficha casa con los
+   * anuncios o sirve para facturar.
+   */
+  nombre_comercial: string;
+  cp: string;
+  municipio: string;
+  provincia: string;
   matriz_id: string | null;
   matriz: string | null;
   /** Sede —misma empresa, otra dirección— o filial —otra sociedad, otro CIF—. */
@@ -326,8 +338,10 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
   onCerrar: () => void; onGuardado: () => void; onError: (m: string) => void;
 }) {
   const [datos, setDatos] = useState({
-    nombre: p.nombre, nif: p.nif ?? '', telefono: p.telefono ?? '',
+    nombre: p.nombre, nombre_comercial: p.nombre_comercial ?? '',
+    nif: p.nif ?? '', telefono: p.telefono ?? '',
     email: p.email ?? '', direccion: p.direccion ?? '', iban: p.iban ?? '',
+    cp: p.cp ?? '', municipio: p.municipio ?? '', provincia: p.provincia ?? '',
     contacto: p.contacto ?? '', horario: p.horario ?? '',
     notas: p.notas ?? '',
     matriz_id: p.matriz_id ?? '',
@@ -407,8 +421,14 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          {([['nombre', 'Nombre'], ['nif', 'NIF'], ['telefono', 'Teléfono'], ['email', 'Correo']] as const).map(([campo, etiqueta]) => (
-            <label key={campo} className={`text-[11px] text-brand-400 ${campo === 'nombre' ? 'col-span-2' : ''}`}>
+          {([
+            ['nombre', 'Nombre fiscal'],
+            ['nombre_comercial', 'Nombre comercial'],
+            ['nif', 'NIF'],
+            ['telefono', 'Teléfono'],
+            ['email', 'Correo'],
+          ] as const).map(([campo, etiqueta]) => (
+            <label key={campo} className={`text-[11px] text-brand-400 ${campo === 'nombre' || campo === 'nombre_comercial' ? 'col-span-2' : ''}`}>
               {etiqueta}
               <input value={datos[campo]} onChange={(e) => setDatos((d) => ({ ...d, [campo]: e.target.value }))}
                      className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
@@ -417,6 +437,30 @@ function ProveedorAbierto({ p, todos, onCerrar, onGuardado, onError }: {
           <label className="col-span-2 text-[11px] text-brand-400">
             Dirección
             <input value={datos.direccion} onChange={(e) => setDatos((d) => ({ ...d, direccion: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+
+          {/* El sitio, en trozos y no dentro de la dirección.
+              La dirección es texto libre y ahí caben el portal, la planta y
+              «entrada por detrás». Lo que no cabe es preguntarle nada —cuántos
+              proveedores hay en Zaragoza—, porque para eso hay que partirla, y
+              partir texto libre después es adivinar. */}
+          <label className="text-[11px] text-brand-400">
+            Código postal
+            <input value={datos.cp} placeholder="50014"
+                   onChange={(e) => setDatos((d) => ({ ...d, cp: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="text-[11px] text-brand-400">
+            Municipio
+            <input value={datos.municipio} placeholder="Zaragoza"
+                   onChange={(e) => setDatos((d) => ({ ...d, municipio: e.target.value }))}
+                   className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
+          </label>
+          <label className="col-span-2 text-[11px] text-brand-400">
+            Provincia
+            <input value={datos.provincia} placeholder="Zaragoza"
+                   onChange={(e) => setDatos((d) => ({ ...d, provincia: e.target.value }))}
                    className="w-full mt-0.5 px-3 py-2 text-sm border border-brand-200 rounded-lg" />
           </label>
 

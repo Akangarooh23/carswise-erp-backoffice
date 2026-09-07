@@ -184,17 +184,27 @@ export function elProveedorDe<T extends { nombre?: string | null }>(
   if (!buscado) return null;
 
   const lista = proveedores ?? [];
-  const exacto = lista.find((p) => nombreComparable(String(p.nombre ?? '')) === buscado);
+
+  /*
+   * Los nombres con los que se le puede llamar: el fiscal y el comercial.
+   *
+   * Modrive es Marcos Ocasión SL. Los anuncios dicen «Modrive» y la factura
+   * dice «Marcos Ocasión SL», y ninguno empieza por el otro: buscando solo por
+   * el fiscal, esos 2.626 coches no encuentran su ficha.
+   */
+  const susNombres = (p: T): string[] =>
+    [p.nombre, (p as { nombre_comercial?: string | null }).nombre_comercial]
+      .map((x) => nombreComparable(String(x ?? '')))
+      .filter(Boolean);
+
+  const exacto = lista.find((p) => susNombres(p).includes(buscado));
   if (exacto) return exacto;
 
   // Y de las que empiezan igual, la más larga: entre «Becker» y «Becker
   // Solutions, S.L. (Becker Lines)», la segunda dice más y es la que la ficha
   // tiene de verdad.
-  const parecidos = lista.filter((p) => {
-    const suyo = nombreComparable(String(p.nombre ?? ''));
-    if (!suyo) return false;
-    return suyo.startsWith(buscado) || buscado.startsWith(suyo);
-  });
+  const parecidos = lista.filter((p) =>
+    susNombres(p).some((suyo) => suyo.startsWith(buscado) || buscado.startsWith(suyo)));
   if (!parecidos.length) return null;
 
   /*
@@ -215,6 +225,18 @@ export function elProveedorDe<T extends { nombre?: string | null }>(
   const sinSedes = parecidos.filter((p) => !esSede(p));
   const entreLosQueElegir = sinSedes.length ? sinSedes : parecidos;
 
+  /*
+   * Y de las que quedan, la que más se le parece.
+   *
+   * Se mide contra el nombre que ha casado, no contra el fiscal: buscando
+   * «Modrive Madrid», lo que se parece es su nombre comercial, y medir por el
+   * fiscal compararía longitudes de cadenas que no tienen nada que ver.
+   */
+  const loQueCasa = (p: T) => {
+    const casan = susNombres(p).filter((s) => s.startsWith(buscado) || buscado.startsWith(s));
+    return casan.reduce((a, b) => (b.length > a.length ? b : a), '');
+  };
+
   return entreLosQueElegir.reduce((a, b) =>
-    nombreComparable(String(b.nombre ?? '')).length > nombreComparable(String(a.nombre ?? '')).length ? b : a);
+    loQueCasa(b).length > loQueCasa(a).length ? b : a);
 }

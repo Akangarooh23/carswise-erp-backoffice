@@ -259,3 +259,70 @@ describe('un nombre que casa con una empresa y con sus sedes', () => {
     assert.equal(elProveedorDe('Becker Solutions, S.L.', becker)?.id, 'B');
   });
 });
+
+describe('la empresa se llama de una manera y los anuncios de otra', () => {
+  /*
+   * Modrive es Marcos Ocasión SL. Los 2.626 anuncios suyos dicen «Modrive» y la
+   * factura tiene que decir «Marcos Ocasión SL». Ninguno empieza por el otro,
+   * así que con un solo nombre la ficha o casa con los anuncios o sirve para
+   * facturar.
+   */
+  const MARCOS = [
+    { id: 'PRV-1', nombre: 'Marcos Ocasión SL', nombre_comercial: 'Modrive', relacion: null },
+    { id: 'PRV-2', nombre: 'Marcos Ocasión SL · Madrid', nombre_comercial: 'Modrive Madrid', relacion: 'sede' },
+    { id: 'PRV-3', nombre: 'Marcos Ocasión SL · Barcelona', nombre_comercial: 'Modrive Barcelona', relacion: 'sede' },
+  ];
+
+  test('el nombre de los anuncios encuentra la ficha', () => {
+    assert.equal(elProveedorDe('Modrive', MARCOS)?.id, 'PRV-1');
+  });
+
+  test('y el fiscal también, que es el que va en la factura', () => {
+    assert.equal(elProveedorDe('Marcos Ocasión SL', MARCOS)?.id, 'PRV-1');
+  });
+
+  test('un anuncio que sí dice la sede da con la sede', () => {
+    assert.equal(elProveedorDe('Modrive Madrid', MARCOS)?.id, 'PRV-2');
+  });
+
+  test('pero «Modrive» a secas sigue dando la empresa, no una sede', () => {
+    // El anuncio no dice dónde está el coche. La empresa sí se sabe.
+    assert.equal(elProveedorDe('Modrive', MARCOS)?.id, 'PRV-1');
+  });
+
+  test('sin nombre comercial se comporta como siempre', () => {
+    const sinComercial = [{ id: 'A', nombre: 'Gestoría Bernal' }];
+    assert.equal(elProveedorDe('Gestoría Bernal', sinComercial)?.id, 'A');
+    assert.equal(elProveedorDe('Modrive', sinComercial), null);
+  });
+
+  test('y un comercial vacío no casa con cualquier cosa', () => {
+    // Con la cadena vacía dentro, `''.startsWith(x)` haría que esta ficha
+    // casara con todo lo que se busque.
+    const conVacio = [{ id: 'A', nombre: 'Gestoría Bernal', nombre_comercial: '' }];
+    assert.equal(elProveedorDe('Transportes Gómez', conVacio), null);
+  });
+});
+
+describe('el desempate mide el nombre que ha casado', () => {
+  /*
+   * Dos empresas cuyo nombre comercial empieza igual, y cuyos nombres fiscales
+   * no tienen nada que ver ni con el buscado ni entre sí.
+   *
+   * Midiendo por el fiscal se elegiría la primera —tiene el nombre más largo—
+   * cuando lo que de verdad se parece a lo buscado es el comercial de la
+   * segunda. Se comparan longitudes de cadenas que no vienen a cuento.
+   */
+  const DOS = [
+    { id: 'A', nombre: 'Transportes Internacionales del Ebro SL', nombre_comercial: 'Becker' },
+    { id: 'B', nombre: 'BK SL', nombre_comercial: 'Becker Solutions Lines' },
+  ];
+
+  test('gana la que más se parece, no la del nombre fiscal más largo', () => {
+    assert.equal(elProveedorDe('Becker Sol', DOS)?.id, 'B');
+  });
+
+  test('y con el nombre entero se acierta igual', () => {
+    assert.equal(elProveedorDe('Becker', DOS)?.id, 'A');
+  });
+});

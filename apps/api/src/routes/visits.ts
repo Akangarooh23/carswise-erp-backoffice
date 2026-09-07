@@ -1127,9 +1127,9 @@ async function conLaFichaDeQuienVende(
 ): Promise<Record<string, unknown>[]> {
   if (!visitas.length) return visitas;
   const fichas = await query<{
-    id: string; nombre: string; telefono: string; contacto: string; horario: string; relacion: string | null;
+    id: string; nombre: string; nombre_comercial: string; telefono: string; contacto: string; horario: string; relacion: string | null;
   }>(
-    `SELECT id, nombre, telefono, contacto, horario, relacion FROM erp_proveedores WHERE activo = TRUE`,
+    `SELECT id, nombre, nombre_comercial, telefono, contacto, horario, relacion FROM erp_proveedores WHERE activo = TRUE`,
     []
   ).catch(() => ({ rows: [] as { id: string; nombre: string; telefono: string; contacto: string; horario: string }[] }));
 

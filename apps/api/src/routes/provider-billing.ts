@@ -57,9 +57,9 @@ async function ataLasQueYaEstaban() {
   ).catch(() => ({ rows: [] as { provider_name: string }[] }));
   if (!sinFicha.rows.length) return;
 
-  const fichas = await query<{ id: string; nombre: string; relacion: string | null }>(
-    `SELECT id, nombre, relacion FROM erp_proveedores`, []
-  ).catch(() => ({ rows: [] as { id: string; nombre: string; relacion: string | null }[] }));
+  const fichas = await query<{ id: string; nombre: string; nombre_comercial: string; relacion: string | null }>(
+    `SELECT id, nombre, nombre_comercial, relacion FROM erp_proveedores`, []
+  ).catch(() => ({ rows: [] as { id: string; nombre: string; nombre_comercial: string; relacion: string | null }[] }));
   if (!fichas.rows.length) return;
 
   for (const { provider_name } of sinFicha.rows) {
@@ -87,9 +87,9 @@ async function ataLasQueYaEstaban() {
 async function laFichaDe(nombre: unknown): Promise<string | null> {
   const buscado = typeof nombre === 'string' ? nombre.trim() : '';
   if (!buscado) return null;
-  const fichas = await query<{ id: string; nombre: string; relacion: string | null }>(
-    `SELECT id, nombre, relacion FROM erp_proveedores WHERE activo = TRUE`, []
-  ).catch(() => ({ rows: [] as { id: string; nombre: string; relacion: string | null }[] }));
+  const fichas = await query<{ id: string; nombre: string; nombre_comercial: string; relacion: string | null }>(
+    `SELECT id, nombre, nombre_comercial, relacion FROM erp_proveedores WHERE activo = TRUE`, []
+  ).catch(() => ({ rows: [] as { id: string; nombre: string; nombre_comercial: string; relacion: string | null }[] }));
   return elProveedorDe(buscado, fichas.rows)?.id ?? null;
 }
 

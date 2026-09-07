@@ -97,6 +97,43 @@ const ENSURE_NIF_UNICO = `
     WHERE nif <> '' AND COALESCE(relacion, '') <> 'sede'`;
 
 /**
+ * Con qué nombre se le conoce, si no es el suyo.
+ *
+ * Modrive es Marcos Ocasión SL. Los 2.626 anuncios suyos dicen «Modrive», y la
+ * factura tiene que decir «Marcos Ocasión SL»: son dos nombres de la misma
+ * empresa y hacen falta los dos. Con uno solo, o la ficha casa con los anuncios
+ * o sirve para facturar.
+ *
+ * Alguien ya se topó con esto y lo resolvió metiendo los dos en el mismo campo
+ * —«Becker Solutions, S.L. (Becker Lines)»—, y funciona mientras el comercial
+ * venga detrás del fiscal. «Modrive» no empieza por «Marcos», así que ahí deja
+ * de funcionar.
+ *
+ * `nombre` es el fiscal, el que se imprime. Este es el otro, y solo sirve para
+ * reconocerlo en lo que viene escrito de fuera.
+ */
+const ENSURE_COMERCIAL = `
+  ALTER TABLE erp_proveedores
+    ADD COLUMN IF NOT EXISTS nombre_comercial TEXT NOT NULL DEFAULT ''`;
+
+/**
+ * Y dónde está, en trozos.
+ *
+ * `direccion` es texto libre y seguirá siéndolo: ahí caben el portal, la planta
+ * y «entrada por detrás». Lo que no cabe es preguntarle nada — cuántos
+ * proveedores hay en Zaragoza, o de qué provincia son los coches que más se
+ * venden— porque para eso hay que partirlo, y partir texto libre es adivinar.
+ *
+ * Con sedes hace más falta todavía: lo que distingue a Madrid de Barcelona es
+ * justo esto, y en una factura el código postal y el municipio no son adorno.
+ */
+const ENSURE_DONDE = `
+  ALTER TABLE erp_proveedores
+    ADD COLUMN IF NOT EXISTS cp        TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS municipio TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS provincia TEXT NOT NULL DEFAULT ''`;
+
+/**
  * Dónde se le paga.
  *
  * Faltaba, y es el dato del que depende que salga dinero: a un vendedor
@@ -144,6 +181,8 @@ async function prepara() {
   await query(ENSURE_CONTACTO, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
   await query(ENSURE_MATRIZ, []).catch(() => {});
+  await query(ENSURE_COMERCIAL, []).catch(() => {});
+  await query(ENSURE_DONDE, []).catch(() => {});
   await query(ENSURE_RELACION, []).catch(() => {});
   await query(ENSURE_RELACION_VALIDA, []).catch(() => {});
   await query(ENSURE_IBAN, []).catch(() => {});
@@ -212,7 +251,8 @@ async function traeLoQueYaEstaba() {
   }
 }
 
-const CAMPOS = `id, nombre, tipos, nif, telefono, email, direccion, contacto, horario,
+const CAMPOS = `id, nombre, nombre_comercial, tipos, nif, telefono, email, direccion,
+                cp, municipio, provincia, contacto, horario,
                 iban, notas, activo, created_at,
                 matriz_id, relacion,
                 (SELECT nombre FROM erp_proveedores m WHERE m.id = erp_proveedores.matriz_id) AS matriz,
@@ -276,12 +316,15 @@ proveedoresRouter.post('/proveedores', requireRole(['admin', 'operations']), asy
       async (nuevoId) => {
         await query(
           `INSERT INTO erp_proveedores (id, nombre, clave, tipos, nif, telefono, email, direccion,
-                                        contacto, horario, iban, notas, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+                                        contacto, horario, iban, notas, creado_por, nombre_comercial,
+                                        cp, municipio, provincia)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
           [nuevoId, nombre, clave, tipos, nt(req.body?.nif), nt(req.body?.telefono),
            nt(req.body?.email).toLowerCase(), nt(req.body?.direccion),
            nt(req.body?.contacto), nt(req.body?.horario), ibanLimpio(req.body?.iban),
-           nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '']
+           nt(req.body?.notas), req.actor?.name ?? req.actor?.sub ?? '',
+           nt(req.body?.nombre_comercial),
+           nt(req.body?.cp), nt(req.body?.municipio), nt(req.body?.provincia)]
         );
       }
     );
@@ -316,7 +359,8 @@ proveedoresRouter.patch('/proveedores/:id', requireRole(['admin', 'operations'])
       if (!tipos.length) { res.status(400).json({ ok: false, error: 'falta_tipo' }); return; }
       pon('tipos', tipos);
     }
-    for (const campo of ['nif', 'telefono', 'email', 'direccion', 'contacto', 'horario', 'notas'] as const) {
+    for (const campo of ['nif', 'telefono', 'email', 'direccion', 'contacto', 'horario', 'notas', 'nombre_comercial',
+                              'cp', 'municipio', 'provincia'] as const) {
       if (req.body?.[campo] !== undefined) pon(campo, nt(req.body[campo]));
     }
     // El IBAN se guarda sin espacios: escrito de dos formas distintas, el mismo

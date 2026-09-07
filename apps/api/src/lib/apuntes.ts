@@ -24,6 +24,8 @@ const nt = (v: unknown) => String(v ?? '').trim();
 export interface FichaDeProveedor {
   id?: string;
   nombre: string;
+  /** Con el que se le conoce, si no es el suyo: Modrive es Marcos Ocasión SL. */
+  nombre_comercial?: string | null;
   nif: string | null;
   tipos: string[] | null;
   /** De quién cuelga, si cuelga de alguien. */
@@ -209,7 +211,7 @@ export async function losApuntes(desde: string, hasta: string): Promise<ApunteCo
     // La ficha se trae entera y se empareja aquí: el LEFT JOIN por nombre
     // exacto dejaba sin NIF ni tipo a cualquier factura escrita de otra manera.
     query<Record<string, unknown>>(
-      `SELECT id, nombre, nif, tipos, matriz_id, relacion FROM erp_proveedores`
+      `SELECT id, nombre, nombre_comercial, nif, tipos, matriz_id, relacion FROM erp_proveedores`
     ).catch(() => ({ rows: [] as Record<string, unknown>[] })),
 
     query<Record<string, unknown>>(
