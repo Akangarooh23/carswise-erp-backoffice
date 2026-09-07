@@ -35,6 +35,7 @@ import { invoiceDownloadRouter } from './routes/invoice-download.js';
 import { visitsRouter } from './routes/visits.js';
 import { peritacionesRouter } from './routes/peritaciones.js';
 import { whatsappRouter } from './routes/whatsapp.js';
+import { cronRouter } from './routes/cron.js';
 import { apuntaCambios } from './middleware/auditoria.js';
 
 export function createApp() {
@@ -92,6 +93,7 @@ export function createApp() {
   // Sin sesión: quien llama es Meta. Lo protege el token de verificación y que
   // la hora tenga que venir en un botón nuestro.
   app.use('/api', whatsappRouter);
+  app.use('/api', cronRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ ok: false, error: 'not_found' });

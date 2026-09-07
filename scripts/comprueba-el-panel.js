@@ -30,6 +30,12 @@ const FICHEROS = [
   'apps/api/src/routes/dashboard.ts',
   'apps/api/src/lib/apuntes.ts',
   'apps/api/src/lib/kpis-guardados.ts',
+  // La consulta cara —nuestros precios contra los del mercado— vivía dentro de
+  // la pantalla y se mudó aquí para que la tarea nocturna corriera la misma.
+  // Al mudarse salió de esta lista y el recuento bajó de 45 a 44 sin que nada
+  // fallara: una lista escrita a mano solo mira lo que alguien se acordó de
+  // apuntar.
+  'apps/api/src/lib/recalcula-los-kpis.ts',
 ];
 
 const env = fs.readFileSync(path.join(RAIZ, '.env'), 'utf8');
@@ -62,12 +68,45 @@ function losTrozosDeSql() {
   return trozos;
 }
 
+/**
+ * Las consultas enteras que viven en una constante.
+ *
+ * `query(SQL_PRECIO_CONTRA_EL_MERCADO, [])` no lleva la consulta escrita
+ * dentro, así que el barrido de abajo no la veía: al mudar esa consulta de la
+ * pantalla a una lib, el recuento bajó de 45 a 44 y no falló nada. Un
+ * comprobador que deja de mirar algo sin decirlo es peor que no tenerlo.
+ *
+ * Se buscan por nombre en el propio fichero y en las libs, que es donde acaban
+ * las consultas que se comparten.
+ */
+function lasConsultasEnConstantes() {
+  const fuera = new Map();
+  const sitios = [path.join(RAIZ, 'apps/api/src/lib')];
+  for (const dir of sitios) {
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.ts') || f.endsWith('.test.ts')) continue;
+      const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      for (const m of src.matchAll(/(?:export )?const ([A-Z][A-Z0-9_]*) = `([\s\S]*?)`;/g)) {
+        // Solo lo que parece una consulta: hay constantes de texto que no lo son.
+        if (/\b(SELECT|INSERT|UPDATE|DELETE)\b/i.test(m[2])) fuera.set(m[1], m[2]);
+      }
+    }
+  }
+  return fuera;
+}
+
 const TROZOS = losTrozosDeSql();
+const ENTERAS = lasConsultasEnConstantes();
 const consultas = [];
 const sinResolver = [];
 
 for (const fichero of FICHEROS) {
   const src = fs.readFileSync(path.join(RAIZ, fichero), 'utf8');
+  // Las que se pasan por su nombre, resueltas contra las de arriba.
+  for (const m of src.matchAll(/query(?:<[^(]*>)?\(\s*([A-Z][A-Z0-9_]*)\s*,/g)) {
+    if (ENTERAS.has(m[1])) consultas.push([fichero, ENTERAS.get(m[1])]);
+    else sinResolver.push([path.basename(fichero), m[1]]);
+  }
   for (const m of src.matchAll(/query(?:<[^(]*>)?\(\s*`([\s\S]*?)`/g)) {
     let sql = m[1];
     let falta = null;

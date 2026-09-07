@@ -9,6 +9,9 @@
       "includeFiles": "apps/api/dist/**"
     }
   },
+  "crons": [
+    { "path": "/api/cron/kpis", "schedule": "0 4 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/(.*)", "destination": "/index.html" }

@@ -23,6 +23,7 @@ import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
 import { lasSecciones, SQL_DE_LA_SECCION, SQL_ES_RENTING } from '../lib/secciones-del-marketplace.js';
 import { leeKpi, guardaKpi, KPI } from '../lib/kpis-guardados.js';
+import { losParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
 
 export const analisisRouter = Router();
 
@@ -148,15 +149,8 @@ analisisRouter.get('/portales/analisis', requireRole(['admin', 'operations', 'sa
      * consulta tarda un segundo y el panel no puede esperarlo en cada carga.
      * Aquí ya está hecho, así que se apunta con su fecha y Pendientes lo lee.
      */
-    const hace = (v: unknown) => (v ? (Date.now() - new Date(String(v)).getTime()) / 86400000 : Infinity);
-    const parados = porPortal.rows.filter((x) => hace(x.ultima) > 7);
-    if (porPortal.rows.length) {
-      await guardaKpi(KPI.portalesParados, {
-        n: parados.length,
-        de: porPortal.rows.length,
-        cuales: parados.map((x) => String(x.portal)),
-      });
-    }
+    const parados = losParados(porPortal.rows as { portal: unknown; ultima: unknown }[]);
+    if (parados) await guardaKpi(KPI.portalesParados, parados);
 
     res.json({ ok: true, data: { portales: porPortal.rows, leads: leads.rows } });
   } catch (err) {
@@ -256,47 +250,17 @@ analisisRouter.get('/kpis/precio-contra-el-mercado', requireRole(['admin', 'oper
 /**
  * Y volver a calcularlo, que lo pide una persona.
  *
- * Ocho segundos de espera que quien pulsa sabe que está pagando. Escondido en
- * un recálculo automático, se los cobraría a quien pasaba por ahí a mirar otra
- * cosa.
+ * Ocho segundos de espera que quien pulsa sabe que está pagando, y que en una
+ * carga cualquiera se los cobraría a quien pasaba por ahí a mirar otra cosa.
+ *
+ * Desde que hay tarea nocturna el botón no es lo único que lo refresca, pero
+ * sigue haciendo falta: cuando se cambian precios a media mañana, esperar a la
+ * noche para saber cómo quedamos no vale. Es la misma función que corre la
+ * tarea, así que las dos dan la misma cifra.
  */
 analisisRouter.post('/kpis/precio-contra-el-mercado', requireRole(['admin', 'operations']), async (_req, res) => {
   try {
-    const r = await query(`
-  WITH mercado AS (
-    SELECT LOWER(brand) AS b, LOWER(model) AS m, year AS y,
-           (power_cv / 25)::int AS tramo,
-           AVG(price)::numeric AS medio, COUNT(*)::int AS cuantos
-      FROM moveadvisor_market_offers
-     WHERE COALESCE(is_active, TRUE) AND price > 0 AND power_cv > 0
-       AND COALESCE(brand, '') <> '' AND COALESCE(model, '') <> '' AND year IS NOT NULL
-     GROUP BY 1, 2, 3, 4
-    HAVING COUNT(*) >= 3
-  ),
-  nuestros AS (
-    SELECT o.id, o.title, o.brand, o.model, o.year, o.price,
-           k.medio, k.cuantos,
-           (o.price - k.medio) AS diferencia,
-           (100.0 * (o.price - k.medio) / k.medio) AS pct
-      FROM moveadvisor_marketplace_vo_offers o
-      JOIN mercado k ON k.b = LOWER(o.brand) AND k.m = LOWER(o.model) AND k.y = o.year
-                    AND k.tramo = (NULLIF(regexp_replace(o.power, '[^0-9]', '', 'g'), '')::int / 25)
-     WHERE o.is_active AND o.price > 0
-  )
-  SELECT
-    (SELECT COUNT(*)::int FROM nuestros)                                        AS comparables,
-    (SELECT COUNT(*)::int FROM moveadvisor_marketplace_vo_offers WHERE is_active) AS publicados,
-    (SELECT COUNT(*)::int FROM nuestros WHERE diferencia > 0)                   AS por_encima,
-    (SELECT ROUND(AVG(diferencia))::int FROM nuestros)                          AS diferencia_media,
-    (SELECT ROUND(AVG(pct), 1) FROM nuestros)                                   AS pct_medio,
-    (SELECT COALESCE(json_agg(x), '[]'::json) FROM (
-       SELECT title, brand, model, year, price::int,
-              ROUND(medio)::int AS medio, cuantos,
-              ROUND(diferencia)::int AS diferencia, ROUND(pct, 1) AS pct
-         FROM nuestros ORDER BY diferencia DESC LIMIT 10
-     ) x)                                                                       AS los_mas_caros
-`);
-    await guardaKpi(KPI.precioContraElMercado, r.rows[0] ?? null);
+    await recalculaPrecioContraElMercado();
     res.json({ ok: true, data: await leeKpi(KPI.precioContraElMercado) });
   } catch (err) {
     falloInterno(res, 'kpi_recalculo_failed', err);

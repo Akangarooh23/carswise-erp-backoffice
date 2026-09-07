@@ -2,20 +2,23 @@
  * Números que cuestan demasiado para calcularlos en cada carga.
  *
  * Comparar nuestros 4.472 coches contra los 798.000 anuncios rastreados tarda
- * **ocho segundos**. Eso no puede colgar de una pantalla, y tampoco se arregla
- * con un cron: aquí no hay ninguno, y montar uno para tres números es
- * infraestructura que luego hay que acordarse de mantener.
+ * **ocho segundos**. Eso no puede colgar de una pantalla.
  *
  * Así que se guardan con su fecha y se enseñan con ella. «Estamos 468 € por
  * encima del mercado, calculado ayer a las 19:40» es una respuesta honesta;
  * «estamos 468 € por encima» a secas, sin saber de cuándo es, no lo es.
  *
- * ## Y se recalculan a mano
+ * ## Quién los recalcula
  *
- * Quien mira la pantalla decide si el número está lo bastante fresco y pulsa el
- * botón. Es una decisión suya y le cuesta ocho segundos de espera que sabe que
- * está pagando —al revés que un recálculo automático escondido, que se los
- * cobra a quien pasaba por ahí—.
+ * Aquí decía que un cron no valía la pena —«infraestructura que luego hay que
+ * acordarse de mantener»— y que bastaba con el botón. Duró lo que tardó en
+ * verse la consecuencia: si nadie entra en la pantalla, el panel enseña lo
+ * último que alguien miró, y si nadie mira en dos semanas, eso es lo que dice.
+ *
+ * Ahora hay una tarea diaria de madrugada, `/cron/kpis`, que corre las mismas
+ * funciones que las pantallas. Y el botón sigue: cuando se tocan precios a
+ * media mañana, esperar a la noche para saber cómo quedamos no vale. Los ocho
+ * segundos los paga quien pulsa, sabiéndolo, y no quien pasaba por ahí.
  */
 
 import { query } from '../db/pool.js';
