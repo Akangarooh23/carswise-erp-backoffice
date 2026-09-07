@@ -144,9 +144,22 @@ before(async () => {
       return responde([{ ...reserva }]);
     }
 
-    // El telefono de quien vende, que se guarda por vendedor.
-    if (/INSERT INTO erp_vendedores_marketplace/i.test(t)) {
-      vendedores[String(p[0])] = { telefono: String(p[1]), contacto: (p[2] ? String(p[2]) : null) };
+    // El numero de serie del proveedor nuevo. Sin esto, la ruta revienta
+    // con un 500 y el fallo no dice de que.
+    if (/FROM erp_proveedores/i.test(t) && /MAX\(substring/i.test(t)) return responde([{ ultimo: 0 }]);
+    // El telefono de quien vende, que ahora va a su ficha de proveedor.
+    if (/SELECT id FROM erp_proveedores WHERE clave/i.test(t)) {
+      const ya = vendedores[String(p[0])];
+      return responde(ya ? [{ id: 'PRV-' + String(p[0]) }] : []);
+    }
+    if (/INSERT INTO erp_proveedores/i.test(t)) {
+      // La clave es el segundo parametro; el nombre, el primero.
+      vendedores[String(p[2])] = { telefono: String(p[3]), contacto: (p[4] ? String(p[4]) : null) };
+      return responde([]);
+    }
+    if (/UPDATE erp_proveedores/i.test(t) && /telefono = \$2/.test(t)) {
+      const clave = String(p[0]).replace(/^PRV-/, '');
+      vendedores[clave] = { telefono: String(p[1]), contacto: (p[2] ? String(p[2]) : vendedores[clave]?.contacto ?? null) };
       return responde([]);
     }
     if (/FROM vehicle_visit_bookings b/i.test(t) && /o\.seller/i.test(t) && /WHERE b\.id/i.test(t)) {
@@ -403,15 +416,17 @@ for (const s of SECCIONES) {
       });
       assert.equal(r.codigo, 200);
       assert.equal(r.cuerpo.data?.vendedor, s.vende);
-      assert.equal(vendedores[s.vende]?.telefono, '976 000 111');
-      assert.equal(vendedores[s.vende]?.contacto, 'Marta');
+      const suyo = vendedores[s.vende.toLowerCase()];
+      assert.ok(suyo, 'no ha quedado guardado en la ficha del vendedor');
+      assert.equal(suyo.telefono, '976 000 111');
+      assert.equal(suyo.contacto, 'Marta');
       assert.ok(nombres().includes('telefono_del_vendedor'));
     });
 
     test('17 · sin telefono no se guarda nada', async () => {
       const r = await api(`/visit-bookings/${CITA}/telefono-del-vendedor`, { telefono: '   ' });
       assert.equal(r.codigo, 400);
-      assert.equal(vendedores[s.vende], undefined);
+      assert.equal(vendedores[s.vende.toLowerCase()], undefined);
     });
 
     test('18 · y si no se sabe quien vende, se dice en vez de guardarlo en el aire', async () => {

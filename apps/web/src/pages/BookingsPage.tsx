@@ -38,6 +38,8 @@ type Booking = {
   del_vendedor?: boolean;
   /** Cuándo se le puede llamar. Es de uso interno, como el teléfono. */
   seller_horario?: string | null;
+  /** Su ficha de Proveedores, cuando el nombre casa con una. */
+  proveedor_id?: string | null;
   // Cómo acabó la visita, cuando ya ha pasado y alguien lo ha dicho. El estado
   // cuenta lo de antes de la visita; esto, lo de después.
   resultado: string | null;
@@ -212,6 +214,14 @@ function QuienVende({ b, alApuntarTelefono }: { b: Booking; alApuntarTelefono?: 
       {/* Cuándo se le puede llamar. Sin esto se llama a las tres y no coge
           nadie, y la visita se queda pendiente un día más por nada. */}
       {b.seller_horario && <span className="text-brand-400">· {b.seller_horario}</span>}
+      {/* Su ficha, para el NIF, el IBAN y las sedes. Quien llama acaba
+          necesitándola en cuanto hay que facturarle. */}
+      {b.proveedor_id && (
+        <a href={`/proveedores?abrir=${b.proveedor_id}`} onClick={(e) => e.stopPropagation()}
+           className="text-acento-texto underline underline-offset-2">
+          su ficha ↗
+        </a>
+      )}
       {b.source_url && (
         <a href={b.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
            className="text-acento-texto underline underline-offset-2"

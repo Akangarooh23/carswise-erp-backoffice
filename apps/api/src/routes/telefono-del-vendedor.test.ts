@@ -1,16 +1,20 @@
 /**
- * El teléfono es del vendedor, no de cada coche.
+ * El teléfono es del vendedor, no de cada coche — y vive en su ficha.
  *
  * `seller_phone` es una columna de la oferta, así que un concesionario con
  * cuarenta coches necesitaba el teléfono cuarenta veces. En la base hay hoy
  * 4.316 ofertas de concesionario, tres vendedores y **ningún** teléfono puesto:
- * el sitio donde se pedía el dato era el equivocado, y la Agenda no tenía a
- * quién llamar para ninguna de ellas.
+ * el sitio donde se pedía el dato era el equivocado.
  *
- * Esto se comprueba leyendo el SQL de la ruta y no contra una base. Lo que hay
- * que fijar es de dónde sale el teléfono y qué pasa al volver a guardarlo, y
- * eso está escrito ahí: un doble de la base contestaría lo que se le haya
- * enseñado a contestar, que es exactamente lo que aquí no vale.
+ * Estuvo tres días en una tabla propia, `erp_vendedores_marketplace`, hasta que
+ * quedó claro que ese sitio ya existe: la ficha de Proveedores guarda lo mismo
+ * y además el NIF, la dirección, el IBAN y las sedes, que es lo que hace falta
+ * para facturarle. Estas pruebas fijan que solo haya una.
+ *
+ * Se comprueba leyendo el SQL de la ruta y no contra una base: lo que hay que
+ * fijar es a qué tabla se escribe y qué se conserva al volver a guardar, y eso
+ * está escrito ahí. Un doble de la base contestaría lo que se le haya enseñado
+ * a contestar, que es justo lo que aquí no vale.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,74 +22,91 @@ import { readFileSync } from 'node:fs';
 
 const FUENTE = readFileSync(new URL('./visits.ts', import.meta.url), 'utf8');
 
-const ELUPSERT = FUENTE.slice(
-  FUENTE.indexOf('INSERT INTO erp_vendedores_marketplace'),
-  FUENTE.indexOf('telefono_del_vendedor'),
+/** El trozo que da de alta o actualiza la ficha al apuntar el teléfono. */
+const APUNTAR = FUENTE.slice(
+  FUENTE.indexOf('await preparaProveedores()'),
+  FUENTE.indexOf("await apunta(bookingId, 'telefono_del_vendedor'"),
 );
 
-describe('de dónde sale el teléfono en la Agenda', () => {
-  test('de la oferta si lo trae, y si no del vendedor', () => {
-    assert.match(FUENTE, /COALESCE\(NULLIF\(TRIM\(o\.seller_phone\), ''\), v\.telefono\)\s+AS seller_phone/);
+describe('dónde vive el teléfono', () => {
+  test('en la ficha del proveedor, y en ningún otro sitio', () => {
+    // La tabla vieja se queda en la base, vacía, pero nadie la escribe ni la
+    // lee: dos sitios con el mismo dato acaban diciendo cosas distintas.
+    assert.ok(!/INSERT INTO erp_vendedores_marketplace/.test(FUENTE));
+    assert.ok(!/FROM erp_vendedores_marketplace/.test(FUENTE));
+    assert.ok(!/JOIN erp_vendedores_marketplace/.test(FUENTE));
+    assert.ok(!/CREATE TABLE IF NOT EXISTS erp_vendedores_marketplace/.test(FUENTE));
   });
 
-  test('y un teléfono que es solo espacios cuenta como que no hay', () => {
-    // Sin el NULLIF, una oferta con la casilla tocada y vacía tapa el del
-    // vendedor y la Agenda enseña un teléfono en blanco.
-    assert.match(FUENTE, /NULLIF\(TRIM\(o\.seller_phone\), ''\)/);
-    assert.match(FUENTE, /NULLIF\(TRIM\(o\.seller_contact\), ''\)/);
-  });
-
-  test('la Agenda dice cuándo el número no es de este coche', () => {
-    // Un número que no está en la ficha del coche aparecía sin explicación.
-    assert.match(FUENTE, /AS del_vendedor/);
-  });
-
-  test('y se junta por nombre de vendedor, con LEFT', () => {
-    // Con JOIN normal, una visita cuyo vendedor no tenga fila desaparecería de
-    // la Agenda entera.
-    assert.match(FUENTE, /LEFT JOIN erp_vendedores_marketplace v ON v\.nombre = o\.seller/);
+  test('y se escribe en erp_proveedores', () => {
+    assert.match(APUNTAR, /UPDATE erp_proveedores/);
+    assert.match(APUNTAR, /INSERT INTO erp_proveedores/);
   });
 });
 
-describe('al guardarlo', () => {
-  test('se guarda por vendedor, no por oferta', () => {
-    assert.match(ELUPSERT, /INSERT INTO erp_vendedores_marketplace \(nombre, telefono, contacto, horario\)/);
-  });
-
-  test('volver a ponerlo actualiza en vez de reventar', () => {
-    assert.match(ELUPSERT, /ON CONFLICT \(nombre\) DO UPDATE/);
-    assert.match(ELUPSERT, /SET telefono = EXCLUDED\.telefono/);
-  });
-
-  test('y no borra el contacto al no mandarlo', () => {
+describe('al apuntarlo', () => {
+  test('si el vendedor no está dado de alta, se da', () => {
     /*
-     * Es la trampa del upsert: quien solo viene a corregir el número deja el
-     * campo del contacto vacío, y con `contacto = EXCLUDED.contacto` se lleva
-     * por delante el nombre que alguien apuntó de una llamada anterior. Lo que
-     * se apunta de una gestión no se pierde por guardar otra cosa.
+     * Es el único momento en que alguien tiene el dato delante. Obligar a ir a
+     * otra pantalla a darlo de alta antes es garantizar que el teléfono no se
+     * apunte — y hoy Modrive, Gamboa y VIAN no están en Proveedores.
      */
-    assert.match(ELUPSERT, /contacto = COALESCE\(EXCLUDED\.contacto, erp_vendedores_marketplace\.contacto\)/);
-    assert.ok(
-      !/contacto = EXCLUDED\.contacto\b/.test(ELUPSERT),
-      'el contacto se sobrescribe con lo que venga, aunque venga vacío',
-    );
+    assert.match(APUNTAR, /INSERT INTO erp_proveedores \(id, nombre, clave, tipos/);
+    assert.match(APUNTAR, /'\{vendedor\}'/, 'no queda marcado como vendedor');
   });
 
-  test('y no borra el horario tampoco', () => {
-    // Cada concesionario tiene su horario, y quien viene solo a corregir el
-    // número no tiene por qué volver a escribirlo.
-    assert.match(ELUPSERT, /horario\s+= COALESCE\(EXCLUDED\.horario,\s+erp_vendedores_marketplace\.horario\)/);
+  test('y si ya estaba, se le suma el tipo en vez de perder los que tuviera', () => {
+    // Un transportista que además vende coches no puede dejar de ser
+    // transportista por apuntarle un teléfono desde la Agenda.
+    assert.match(APUNTAR, /array_append\(tipos, 'vendedor'\)/);
+    assert.match(APUNTAR, /WHEN 'vendedor' = ANY\(tipos\) THEN tipos/);
   });
 
-  test('un contacto o un horario vacíos llegan como nulos, no como cadena vacía', () => {
-    // Si llegaran vacíos, los COALESCE de arriba los darían por buenos y
-    // machacarían lo que había: la protección está en los dos sitios o no está.
-    assert.match(ELUPSERT, /VALUES \(\$1, \$2, NULLIF\(\$3, ''\), NULLIF\(\$4, ''\)\)/);
+  test('el contacto y el horario no se pisan con vacíos', () => {
+    /*
+     * Quien viene a corregir el número deja los otros dos campos en blanco, y
+     * eso no puede llevarse por delante el nombre que alguien apuntó de una
+     * llamada anterior. Lo que se apunta de una gestión no se pierde por
+     * guardar otra cosa.
+     */
+    assert.match(APUNTAR, /contacto = COALESCE\(NULLIF\(\$3, ''\), contacto\)/);
+    assert.match(APUNTAR, /horario\s+= COALESCE\(NULLIF\(\$4, ''\), horario\)/);
+    assert.ok(!/contacto = \$3\b/.test(APUNTAR), 'el contacto se sobrescribe con lo que venga');
   });
 
-  test('la tabla se crea sola, como el resto del esquema', () => {
-    // Nadie corre migraciones a mano en este proyecto.
-    assert.match(FUENTE, /CREATE TABLE IF NOT EXISTS erp_vendedores_marketplace/);
-    assert.match(FUENTE, /nombre\s+TEXT PRIMARY KEY/);
+  test('se busca por nombre comparable, no por el nombre tal cual', () => {
+    // «VIAN», «Vian Motor» y «vian  motor» son el mismo, y con un igual exacto
+    // saldrían tres fichas del mismo concesionario.
+    assert.match(APUNTAR, /nombreComparable\(vendedor\)/);
+    assert.match(APUNTAR, /WHERE clave = \$1/);
+  });
+});
+
+describe('y en la Agenda', () => {
+  const AGENDA = FUENTE.slice(
+    FUENTE.indexOf('async function conLaFichaDeQuienVende'),
+    FUENTE.indexOf('// GET /all-bookings'),
+  );
+
+  test('el teléfono de la oferta manda sobre el de la ficha', () => {
+    // Para el coche que esté en otra sede con otro número.
+    assert.match(AGENDA, /seller_phone: suyo \|\| puesto\(ficha\?\.telefono\)/);
+  });
+
+  test('y se dice cuándo el número no es de este coche', () => {
+    // Un número que no está en la ficha del coche aparecía sin explicación.
+    assert.match(AGENDA, /del_vendedor: !suyo && Boolean\(puesto\(ficha\?\.telefono\)\)/);
+  });
+
+  test('se junta con elProveedorDe y no con un igual escrito aquí', () => {
+    // Las reglas de emparejar nombres ya están escritas y probadas. Repetirlas
+    // serían dos versiones de la misma regla.
+    assert.match(AGENDA, /elProveedorDe\(puesto\(b\.seller\), fichas\.rows\)/);
+  });
+
+  test('las fichas se traen de una vez, no una por visita', () => {
+    // Hay doce proveedores y hasta doscientas visitas: una consulta por visita
+    // serían doscientas para leer doce filas.
+    assert.equal((AGENDA.match(/await query/g) ?? []).length, 1);
   });
 });

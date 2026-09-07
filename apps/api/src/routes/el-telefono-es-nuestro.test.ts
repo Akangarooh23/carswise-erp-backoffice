@@ -105,8 +105,10 @@ describe('y quién puede leerlo', () => {
     // por buena, y quitarlo de la Agenda no habría hecho fallar nada.
     const agenda = lasRutas(FUENTE).find((r) => r.camino === '/all-bookings');
     assert.ok(agenda, 'no encuentro la ruta de la Agenda');
-    assert.match(agenda.cuerpo, /AS seller_phone/, 'la Agenda ya no trae el teléfono');
-    assert.match(agenda.cuerpo, /AS seller_horario/, 'la Agenda ya no trae el horario');
+    // Sale del SELECT y se completa despues con la ficha del proveedor, asi
+    // que lo que se ancla es que la ruta siga trayendo lo de quien vende.
+    assert.match(agenda.cuerpo, /o\.seller_phone/, 'la Agenda ya no trae el teléfono');
+    assert.match(agenda.cuerpo, /conLaFichaDeQuienVende/, 'la Agenda ya no completa con la ficha');
   });
 
   test('ninguna otra parte de la API lo lee', () => {
@@ -116,7 +118,7 @@ describe('y quién puede leerlo', () => {
     const fuera: string[] = [];
     for (const f of readdirSync(DIR)) {
       if (!f.endsWith('.ts') || f.includes('.test.') || permitidos.has(f)) continue;
-      if (/erp_vendedores_marketplace|seller_phone/.test(readFileSync(join(DIR, f), 'utf8'))) fuera.push(f);
+      if (/seller_phone|seller_horario/.test(readFileSync(join(DIR, f), 'utf8'))) fuera.push(f);
     }
     assert.deepEqual(fuera, [], `también lo leen: ${fuera.join(', ')}`);
   });

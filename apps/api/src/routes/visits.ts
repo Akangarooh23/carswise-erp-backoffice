@@ -5,6 +5,9 @@ import { enviar, plantilla, parrafo, datos, aviso, boton, esc, MARCA, respuestaA
 import { config } from '../config.js';
 import { manda, mandaOpciones, botonDeHora } from '../lib/whatsapp.js';
 import { esResultado, sePuedeCerrar } from '../lib/resultado-de-la-visita.js';
+import { elProveedorDe, nombreComparable } from '../lib/proveedores.js';
+import { preparaProveedores } from './proveedores.js';
+import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 
 export const visitsRouter = Router();
 
@@ -32,45 +35,24 @@ const ENSURE_RESULTADO_VALIDO = `
   EXCEPTION WHEN duplicate_object THEN NULL;
   END $$`;
 
-/**
- * El teléfono de quien vende, que es suyo y no de cada coche.
+/*
+ * El teléfono de quien vende vivía aquí, en `erp_vendedores_marketplace`, con
+ * el nombre del vendedor por clave. Duró tres días.
  *
- * `seller_phone` es una columna de la oferta, así que un concesionario con
- * cuarenta coches necesitaba el teléfono cuarenta veces, y la primera visita a
- * cada coche nuevo se quedaba sin a quién llamar. Hoy hay 4.316 ofertas de
- * concesionario, tres vendedores y **ningún** teléfono puesto: el sitio donde
- * estaba pidiendo el dato era el sitio equivocado.
+ * La ficha de Proveedores guarda lo mismo —teléfono, contacto, horario— y
+ * además el NIF, la dirección, el IBAN y las sedes, que es lo que hace falta
+ * para facturarle. Tener las dos era el mismo dato en dos sitios, y de esos el
+ * que se actualiza es siempre el que no se lee.
  *
- * Va en tabla nuestra y no como columna en la de PopCar: es un dato de
- * operaciones —a quién llamamos nosotros—, no del escaparate. El de la oferta
- * se sigue leyendo y manda, para el coche que esté en otra sede.
+ * La tabla se queda en la base, vacía y sin usar: borrar tablas es de las cosas
+ * que no se deshacen, y esta no estorba.
  */
-const ENSURE_VENDEDORES = `
-  CREATE TABLE IF NOT EXISTS erp_vendedores_marketplace (
-    nombre     TEXT PRIMARY KEY,
-    telefono   TEXT,
-    contacto   TEXT,
-    horario    TEXT,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  )`;
-
-/**
- * Y su horario, para las que ya tuvieran fila antes de que existiera.
- *
- * Va aparte del CREATE para que las tablas ya creadas también lo tengan: el
- * CREATE TABLE IF NOT EXISTS no toca una tabla que ya está.
- */
-const ENSURE_HORARIO = `
-  ALTER TABLE erp_vendedores_marketplace
-    ADD COLUMN IF NOT EXISTS horario TEXT`;
 
 let preparado = false;
 async function prepara() {
   if (preparado) return;
   await query(ENSURE_RESULTADO, []).catch(() => {});
   await query(ENSURE_RESULTADO_VALIDO, []).catch(() => {});
-  await query(ENSURE_VENDEDORES, []).catch(() => {});
-  await query(ENSURE_HORARIO, []).catch(() => {});
   preparado = true;
 }
 
@@ -969,16 +951,44 @@ visitsRouter.post('/visit-bookings/:bookingId/telefono-del-vendedor', requireRol
     if (!vendedor) {
       return res.status(409).json({ ok: false, error: 'Esta visita no dice quién vende, así que no hay a quién apuntárselo' });
     }
-    await query(
-      `INSERT INTO erp_vendedores_marketplace (nombre, telefono, contacto, horario)
-       VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''))
-       ON CONFLICT (nombre) DO UPDATE
-          SET telefono = EXCLUDED.telefono,
-              contacto = COALESCE(EXCLUDED.contacto, erp_vendedores_marketplace.contacto),
-              horario  = COALESCE(EXCLUDED.horario,  erp_vendedores_marketplace.horario),
-              updated_at = NOW()`,
-      [vendedor, telefono, contacto, horario]
-    );
+
+    /*
+     * Va a la ficha del proveedor, que es donde vive esto.
+     *
+     * Y si no está dado de alta, se da: apuntar el teléfono de Modrive la crea
+     * como proveedor de tipo «vendedor». Es el único momento en que alguien
+     * tiene el dato delante, y obligar a ir a otra pantalla a darla de alta
+     * antes es garantizar que el teléfono no se apunte.
+     *
+     * Lo que ya hubiera **no se pisa con vacíos**: quien viene a corregir el
+     * número deja el contacto y el horario en blanco, y eso no puede llevarse
+     * por delante lo que alguien apuntó de otra llamada.
+     */
+    await preparaProveedores().catch(() => {});
+    const clave = nombreComparable(vendedor);
+    const ficha = await query<{ id: string }>(`SELECT id FROM erp_proveedores WHERE clave = $1`, [clave]);
+    if (ficha.rows.length) {
+      await query(
+        `UPDATE erp_proveedores
+            SET telefono = $2,
+                contacto = COALESCE(NULLIF($3, ''), contacto),
+                horario  = COALESCE(NULLIF($4, ''), horario),
+                tipos    = CASE WHEN 'vendedor' = ANY(tipos) THEN tipos ELSE array_append(tipos, 'vendedor') END
+          WHERE id = $1`,
+        [ficha.rows[0].id, telefono, contacto, horario]
+      );
+    } else {
+      await guardaConIdUnico(
+        () => siguienteDeSerie('erp_proveedores', prefijoAnual('PRV')),
+        async (nuevoId) => {
+          await query(
+            `INSERT INTO erp_proveedores (id, nombre, clave, tipos, telefono, contacto, horario, creado_por)
+             VALUES ($1, $2, $3, '{vendedor}', $4, $5, $6, $7)`,
+            [nuevoId, vendedor, clave, telefono, contacto, horario, quien(req as never)]
+          );
+        }
+      );
+    }
     await apunta(bookingId, 'telefono_del_vendedor', quien(req as never), { vendedor });
     return res.json({ ok: true, data: { vendedor, telefono } });
   } catch (e: any) {
@@ -1095,6 +1105,53 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
   }
 });
 
+/**
+ * A cada visita, lo que sepamos de quien vende.
+ *
+ * El teléfono sale de la oferta si la oferta lo trae y, si no, de la ficha del
+ * proveedor: es suyo, no de cada coche. Un concesionario con cuarenta coches
+ * necesitaba el teléfono cuarenta veces, y la primera visita a cada coche nuevo
+ * se quedaba sin a quién llamar.
+ *
+ * Se junta aquí y no en el SQL porque `o.seller` es texto escrito a mano —«VIAN»,
+ * «Vian Motor», «vian  motor»— y compararlo con la ficha tiene reglas: el nombre
+ * entero primero, y si no, que uno empiece por el otro. Eso ya está escrito y
+ * probado en `elProveedorDe`. Volver a escribirlo en SQL serían dos versiones de
+ * la misma regla, y el día que una cambie no cambiarían las dos.
+ *
+ * Los proveedores se traen de una vez: hay doce, y una consulta por visita
+ * serían doscientas.
+ */
+async function conLaFichaDeQuienVende(
+  visitas: Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
+  if (!visitas.length) return visitas;
+  const fichas = await query<{
+    id: string; nombre: string; telefono: string; contacto: string; horario: string;
+  }>(
+    `SELECT id, nombre, telefono, contacto, horario FROM erp_proveedores WHERE activo = TRUE`,
+    []
+  ).catch(() => ({ rows: [] as { id: string; nombre: string; telefono: string; contacto: string; horario: string }[] }));
+
+  const puesto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+  return visitas.map((b) => {
+    const ficha = elProveedorDe(puesto(b.seller), fichas.rows);
+    const suyo = puesto(b.seller_phone);
+    return {
+      ...b,
+      seller_phone: suyo || puesto(ficha?.telefono) || null,
+      seller_contact: puesto(b.seller_contact) || puesto(ficha?.contacto) || null,
+      seller_horario: puesto(ficha?.horario) || null,
+      // De dónde vino el número, para poder contarlo en pantalla en vez de que
+      // aparezca uno sin explicación.
+      del_vendedor: !suyo && Boolean(puesto(ficha?.telefono)),
+      // Y a qué ficha corresponde, que es lo que permite abrirla desde aquí.
+      proveedor_id: ficha?.id ?? null,
+    };
+  });
+}
+
 // GET /all-bookings — global agenda for ERP (all upcoming bookings)
 visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
   await prepara();
@@ -1133,22 +1190,20 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              -- un profesional, el vendedor es un nombre y el teléfono está en el
              -- anuncio de origen. De un particular, es su correo.
              --
-             -- El teléfono sale de la oferta si lo tiene y, si no, del
-             -- vendedor: es suyo, no de cada coche. La bandera del_vendedor
-             -- dice de dónde vino, para poder contarlo en pantalla en vez de
-             -- que aparezca un número sin explicación.
+             -- Lo de la oferta, tal cual. Lo que falte lo completa después la
+             -- ficha del proveedor, y eso no se hace aquí: el nombre del
+             -- vendedor es texto escrito a mano, juntarlo con la ficha es
+             -- comparar nombres, y eso ya lo sabe hacer elProveedorDe con sus
+             -- reglas y sus pruebas. Escribirlas otra vez en SQL sería tener
+             -- dos versiones de la misma regla.
              o.seller, o.seller_type, o.source_url,
-             COALESCE(NULLIF(TRIM(o.seller_phone), ''), v.telefono)   AS seller_phone,
-             COALESCE(NULLIF(TRIM(o.seller_contact), ''), v.contacto) AS seller_contact,
-             v.horario AS seller_horario,
-             (NULLIF(TRIM(o.seller_phone), '') IS NULL AND v.telefono IS NOT NULL) AS del_vendedor
+             o.seller_phone, o.seller_contact
       FROM vehicle_visit_bookings b
       -- LEFT: una visita puede quedarse sin hueco si alguien lo borra, y con
       -- JOIN normal desaparecia de la Agenda sin que nadie lo notara.
       LEFT JOIN vehicle_visit_availability a ON a.id = b.availability_id
       -- LEFT también: una oferta puede haberse despublicado y la visita sigue.
       LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
-      LEFT JOIN erp_vendedores_marketplace v ON v.nombre = o.seller
       WHERE 1=1
     `;
     const params: (string | number)[] = [];
@@ -1163,7 +1218,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     if (sinCerrar) sql += ` AND b.starts_at < NOW() AND b.resultado IS NULL`;
     sql += ' ORDER BY b.starts_at ASC LIMIT 200';
     const r = await query(sql, params);
-    return res.json({ ok: true, data: { bookings: r.rows } });
+    return res.json({ ok: true, data: { bookings: await conLaFichaDeQuienVende(r.rows) } });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
