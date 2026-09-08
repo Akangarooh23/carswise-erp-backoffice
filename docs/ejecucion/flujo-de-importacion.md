@@ -254,7 +254,12 @@ erp: Cerrar la entrega
 @ Importaciones → el coche → «Firmado y entregado»
 + kilómetros de salida y quién lo entrega
 sistema: El expediente pasa a **Entregado** y nace su **IdCar** en el garaje del cliente
+sistema: En el panel del cliente, la solicitud salta de «En curso» a **Contratadas**
 :::
+
+> Lo de la pestaña es automático: lo decide el paso del expediente y nada más.
+> Va a **Contratadas** y no a Finalizadas porque ya es un coche suyo, no una
+> visita que pasó. El porqué está en el manual de negocio.
 
 ---
 

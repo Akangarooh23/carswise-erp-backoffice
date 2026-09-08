@@ -857,8 +857,12 @@ En el expediente de **Importaciones**, en «La entrega»:
 
 Vuelve a PopCar, a su panel:
 
-- [ ] La solicitud está en **Finalizadas**.
-- [ ] Ha ido cambiando de paso a lo largo de toda la prueba.
+- [ ] La solicitud está en **Contratadas**, no en Finalizadas. Ya es su coche,
+      y esa pestaña es la de los vehículos comprados o contratados en renting.
+- [ ] Y **no sale duplicada** en ninguna otra pestaña.
+- [ ] Ha ido cambiando de paso a lo largo de toda la prueba, y de pestaña con
+      él: en Pendiente hasta que transfirió, en **En curso** desde el depósito
+      hasta los trámites, y en Contratadas al entregarlo.
 - [ ] Sus facturas están en Facturación.
 - [ ] **No ve nada** del proveedor, ni del coste, ni de las notas internas.
 

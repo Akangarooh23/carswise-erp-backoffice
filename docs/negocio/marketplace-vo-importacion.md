@@ -1302,6 +1302,40 @@ que está y una frase que se lo explica en su idioma:
 | En trámites | «Ya está aquí: ITV de homologación y matriculación para que puedas usarlo.» |
 | Entregado | «Es tuyo y lo tienes contigo.» |
 
+### Y en qué pestaña la encuentra
+
+Su panel tiene cinco pestañas —Pendiente, En curso, Finalizadas, Contratadas y
+Canceladas— y la solicitud se va moviendo sola según el paso en el que la
+pongas. No hay que hacer nada para moverla: **el paso del expediente es lo
+único que lo decide**.
+
+| Paso | Pestaña | Por qué ahí |
+|---|---|---|
+| Pendiente, Contactado | **Pendiente** | Todavía espera algo suyo: la llamada y la transferencia |
+| Depósito retenido → En trámites | **En curso** | Su coche está en marcha, y lo que quiere ver es por dónde va |
+| Entregado | **Contratadas** | Ya es suyo: comprado, pagado y con su factura |
+
+**Al pasarlo a Entregado, la solicitud salta de «En curso» a «Contratadas» en su
+panel.** Es automático, en cuanto guardas el paso; lo ve la próxima vez que
+abra.
+
+Y va a Contratadas y **no a Finalizadas** a propósito, aunque suene raro que un
+proceso terminado no acabe en «finalizadas». Finalizadas es donde caen las
+visitas que ya pasaron —fui a ver un coche y se acabó, no tengo nada—, y una
+importación entregada es justo lo contrario. La propia pestaña lo dice: «aquí
+aparecerán los vehículos que hayas comprado o contratado en renting». Puesta en
+Finalizadas, la compra más grande que ha hecho con nosotros queda archivada
+junto a las visitas que no fueron a ninguna parte.
+
+El corte se pone en la entrega y no en el pago porque, mientras el coche está de
+camino, lo que quiere es seguirlo. Contratadas es para lo que ya tiene.
+
+> Si alguna vez ves una importación que **no sale en ninguna pestaña**, es que
+> tiene un estado que no es de los siete —«En proceso», «Cerrado»— puesto desde
+> el ERP. Se arregla devolviéndola a su paso. Ya pasó una vez, en agosto, y era
+> lo peor que podía pasar: el cliente acababa de pagar cuatro mil euros y su
+> coche había desaparecido de su panel.
+
 Debajo va el dinero y la fecha, según toque:
 
 - Si **no ha depositado**: los pasos explicados y la cifra, con la nota de que va
