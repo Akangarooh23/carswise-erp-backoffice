@@ -24,6 +24,7 @@ export const leadsRouter = Router();
 
 import { enviar, plantilla, parrafo, datos, aviso, boton, enlace, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
+import { yaEsDeUnCliente, SQL_RESERVA } from '../lib/anuncio-reservado.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import {
   sePuedeLiberar, escritoEnLista, PORQUE_NO_SE_LIBERA, liquidacionDelImpuesto,
@@ -1253,6 +1254,23 @@ leadsRouter.patch('/leads/:id', requireRole(['admin', 'support', 'operations']),
     if (status === 'En trámites' && prev.status !== 'En trámites'
         && updatedLead.lead_type === 'import') {
       abreLosTramitesQueFalten().catch((e: Error) => console.error('[leads] trámites de importación:', e.message));
+    }
+
+    /*
+     * Comprado: el anuncio alemán deja de ofrecerse.
+     *
+     * El escaparate de importación son anuncios de AutoScout24, y el nuestro
+     * seguía enseñando un coche que ya era de un cliente: otro podía encargar
+     * el mismo. Se retira en cuanto se le ha pagado al vendedor, no al
+     * entregarlo — entre las dos cosas pasan semanas.
+     *
+     * No tumba nada si falla: el expediente avanza igual y el anuncio se puede
+     * quitar a mano. Lo que no puede es impedir que una importación siga.
+     */
+    if (updatedLead.lead_type === 'import' && updatedLead.vehicle_id
+        && yaEsDeUnCliente(status) && !yaEsDeUnCliente(prev.status)) {
+      void query(SQL_RESERVA, [updatedLead.vehicle_id])
+        .catch((e: Error) => console.error('[leads] no se ha podido retirar el anuncio:', e.message));
     }
 
     // Entregado: el final del recorrido de una importación.
