@@ -16,14 +16,21 @@
  */
 
 /**
- * Lo que se firma no es un pago: es un mandato en exclusiva con fecha de
- * caducidad. El cliente no adelanta un euro.
+ * Lo que se firma no es un pago: es un mandato de gestión de venta. El cliente
+ * no adelanta un euro.
  *
- * Los 150 € de cancelación no son un castigo: cubren lo que nos hemos gastado
- * en él aunque no venda —el anuncio y la revisión mecánica— y dejan algo. Por
- * eso poder cobrarlos es lo que permite no cobrar nada por delante.
+ * **El mandato no caduca.** Se extiende hasta que él lo cancela o hasta que
+ * vendemos el coche. Esto estuvo escrito al revés durante unos días —una fecha
+ * de vencimiento a los 30 que despublicaba el coche y le escribía diciéndoselo—
+ * y era un invento: nadie retira el anuncio de un cliente por el calendario.
+ *
+ * Los 30 días son otra cosa: **hasta cuándo se le puede cobrar la penalización**.
+ *
+ * Los 150 € no son un castigo: cubren lo que nos hemos gastado en él aunque no
+ * venda —el anuncio y la revisión mecánica— y dejan algo. Por eso poder
+ * cobrarlos es lo que permite no cobrarle nada por delante.
  */
-export const DIAS_DE_EXCLUSIVA = 30;
+export const DIAS_HASTA_SALIR_GRATIS = 30;
 export const FEE_DE_GESTION = 299;
 export const FEE_DE_CANCELACION = 150;
 
@@ -60,13 +67,53 @@ export const INFORME_HECHO = ['informe_listo', 'verificada', 'publicada'];
 
 export type Estado = 'recogiendo' | 'listo' | 'publicado' | 'vendido' | 'cancelado' | 'vencido';
 
-/** Cuándo se acaba la exclusiva. */
-export function venceEl(firmadoAt: string | Date): Date | null {
+/**
+ * Desde cuándo se puede ir sin pagar nada.
+ *
+ * Solo el que **firmó la cláusula del precio** llega a estar libre, y a los 30
+ * días de firmar. El que firmó el acuerdo pero no esa cláusula paga la
+ * penalización desde el día 1 y no deja de deberla nunca mientras no venda con
+ * nosotros: por eso ahí no hay fecha, y se devuelve `null`.
+ *
+ * `null` quiere decir «nunca», no «no lo sé». Son cosas distintas y quien lea
+ * esto tiene que poder distinguirlas: mira `aceptoElPrecio` para saber cuál es.
+ */
+export function libreDesde(firmadoAt: string | Date, aceptoElPrecio: boolean): Date | null {
+  if (!aceptoElPrecio) return null;
   const d = new Date(firmadoAt);
   if (Number.isNaN(d.getTime())) return null;
-  const vence = new Date(d);
-  vence.setDate(vence.getDate() + DIAS_DE_EXCLUSIVA);
-  return vence;
+  const libre = new Date(d);
+  libre.setDate(libre.getDate() + DIAS_HASTA_SALIR_GRATIS);
+  return libre;
+}
+
+/**
+ * Cuánto se le cobra si se va sin vender con nosotros.
+ *
+ * Las tres ramas, que son las que dijo Juan:
+ *
+ *   · No firmó la cláusula del precio → **150 €, desde el día 1 y siempre**.
+ *   · La firmó y aún no han pasado 30 días → **150 €**.
+ *   · La firmó y ya han pasado → **0 €**, se va gratis.
+ *
+ * No confundir con el fee de gestión: eso son 299 € y se cobran cuando el coche
+ * se vende **con** nosotros. Esto es lo contrario, lo que se cobra cuando no.
+ */
+export function laPenalizacion(
+  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  ahora: Date = new Date(),
+): number {
+  if (!e.acepto_el_precio) return FEE_DE_CANCELACION;
+  const libre = e.firmado_at ? libreDesde(e.firmado_at, true) : null;
+  /*
+   * Sin fecha de firma legible no se le perdona la penalización.
+   *
+   * Perdonar sale de la puerta equivocada: se dejaría de cobrar por una fila
+   * mal escrita y nadie se enteraría. Cobrar de más, en cambio, lo ve el
+   * cliente y lo dice.
+   */
+  if (!libre) return FEE_DE_CANCELACION;
+  return ahora >= libre ? 0 : FEE_DE_CANCELACION;
 }
 
 /**
@@ -84,20 +131,16 @@ export function diasQueQuedan(venceAt: string | Date | null, ahora: Date = new D
 }
 
 /**
- * Si ya se pasó el plazo.
+ * Si ya se puede ir gratis.
  *
- * Una fecha ilegible cuenta como **no vencida**, a propósito. Vencer despublica
- * el coche de alguien que está pagando por tenerlo publicado, y eso no puede
- * pasar por una fila mal escrita. Lo que sí pasa es que salga en la lista de
- * `laFechaEstaRota`, para que una persona lo mire.
+ * Aquí ya no hay nada que caduque: esto no despublica ningún coche ni cierra
+ * ningún encargo. Solo dice si, en caso de irse hoy, se le puede cobrar.
  */
-export function estaVencido(venceAt: string | Date | null, ahora: Date = new Date()): boolean {
-  const dias = diasQueQuedan(venceAt, ahora);
-  return dias === null ? false : dias < 0;
-}
-
-export function laFechaEstaRota(venceAt: string | Date | null): boolean {
-  return diasQueQuedan(venceAt) === null;
+export function yaSePuedeIrGratis(
+  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  ahora: Date = new Date(),
+): boolean {
+  return laPenalizacion(e, ahora) === 0;
 }
 
 /** Lo que hay reunido de un coche, tal como sale de la base. */
@@ -236,18 +279,32 @@ export function loQueLeFalta(puertas: readonly Puerta[]): string[] {
 }
 
 /**
- * Con cuántos días de antelación se avisa de que vence.
+ * Con cuántos días de antelación sale en la lista de llamar.
  *
- * No el día 30. Avisar el día que se muere es contárselo cuando ya no puede
- * hacer nada, y lo que se quiere es que le dé tiempo a renovar: uno de cada
- * cinco encargos acaba agotando el plazo sin vender ni cancelar, y cada uno de
- * esos nos ha costado el anuncio y la revisión y no ha pagado nada.
+ * El aviso no es una despedida: es lo contrario. Faltan cinco días para que ese
+ * cliente pueda irse sin pagarnos nada, así que es **el momento de llamarle** —
+ * con un ajuste de precio, con quién ha preguntado, con lo que sea—. Después de
+ * esa fecha sigue siendo cliente, pero ya no hay nada que le retenga.
+ *
+ * Uno de cada cinco encargos acaba así, sin vender ni cancelar, y en cada uno de
+ * esos nos hemos gastado el anuncio y la revisión sin cobrar.
  */
 export const AVISAR_CON = 5;
 
-/** Si toca avisar ya —o si ya se pasó, que también hay que mirarlo—. */
-export function tocaAvisar(venceAt: string | Date | null, ahora: Date = new Date()): boolean {
-  const dias = diasQueQuedan(venceAt, ahora);
+/**
+ * Si toca llamarle ya, porque está a punto de poder irse gratis o ya puede.
+ *
+ * Al que nunca va a poder irse gratis —el que no firmó el precio— no se le pone
+ * en esta lista: no hay ninguna fecha que corra en su contra y llamarle por esto
+ * sería llenar la lista de gente sin motivo.
+ */
+export function tocaLlamarle(
+  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  ahora: Date = new Date(),
+): boolean {
+  const libre = e.firmado_at ? libreDesde(e.firmado_at, Boolean(e.acepto_el_precio)) : null;
+  if (!libre) return false;
+  const dias = diasQueQuedan(libre, ahora);
   return dias !== null && dias <= AVISAR_CON;
 }
 

@@ -146,18 +146,20 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
   /*
    * Los encargos de venta de particulares.
    *
-   * El que vence va con los urgentes y por delante de casi todo: uno de cada
-   * cinco encargos acaba agotando el plazo sin vender ni cancelar, y ese es el
-   * único caso en que nos hemos gastado el anuncio y la revisión sin cobrar
-   * nada. Llamar a tiempo para renovar es dinero, no cortesía.
+   * El mandato no caduca: se extiende hasta que el cliente cancela o vendemos.
+   * Lo que sí tiene fecha es **hasta cuándo se le puede cobrar la penalización**
+   * —30 días, si firmó la cláusula del precio—, y por eso el aviso no es una
+   * despedida sino lo contrario: quedan cinco días para que pueda irse sin
+   * pagarnos nada, así que es el momento de llamarle. Uno de cada cinco acaba
+   * yéndose así, y en ese nos hemos gastado el anuncio y la revisión sin cobrar.
    *
-   * El de las franjas también, porque es un coche publicado —o a punto— que
-   * **nadie puede visitar**: paga el anuncio y no puede convertir a nadie.
+   * El de las franjas va con los urgentes porque es un coche publicado —o a
+   * punto— que **nadie puede visitar**: paga el anuncio y no convierte a nadie.
    */
   {
-    clave: 'encargos_vencen',
-    etiqueta: 'encargos que vencen', una: 'encargo que vence',
-    porque: 'si se agota el plazo no cobramos nada y ya nos hemos gastado el coche',
+    clave: 'encargos_por_llamar',
+    etiqueta: 'encargos a punto de poder irse', una: 'encargo a punto de poder irse',
+    porque: 'en unos días podrá vender por su cuenta sin pagarnos nada',
     a: '/idcars', icono: 'reloj', tono: 'urgente',
   },
   {

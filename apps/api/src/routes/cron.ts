@@ -19,7 +19,6 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import { falloInterno } from '../lib/fallos.js';
 import { recalculaPortalesParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
-import { venceLoQueTocaHoy } from './encargos.js';
 
 export const cronRouter = Router();
 
@@ -37,22 +36,6 @@ export function autorizado(req: Pick<Request, 'headers'>): boolean {
   return String(req.headers['user-agent'] ?? '').toLowerCase().includes('vercel-cron');
 }
 
-/**
- * Y quién puede disparar lo que **escribe**.
- *
- * Mientras aquí solo se recalculaban números, la puerta débil daba igual: lo
- * peor que conseguía quien se colara era que las cifras estuvieran más frescas.
- * Ya no. Vencer un encargo retira el anuncio de un cliente y le manda un correo,
- * y eso no puede depender de un agente, que se copia escribiéndolo.
- *
- * Así que las tareas que escriben exigen el secreto de verdad. Sin `CRON_SECRET`
- * configurado no corren — y se dice en la respuesta, para que no parezca que
- * corrieron y no había nada que hacer.
- */
-export function puedeEscribir(req: Pick<Request, 'headers'>): boolean {
-  const secreto = String(process.env.CRON_SECRET ?? '').trim();
-  return secreto !== '' && String(req.headers.authorization ?? '') === `Bearer ${secreto}`;
-}
 
 cronRouter.get('/cron/kpis', async (req, res) => {
   if (!autorizado(req)) {
@@ -73,22 +56,6 @@ cronRouter.get('/cron/kpis', async (req, res) => {
     const parados = await recalculaPortalesParados();
     const precios = await recalculaPrecioContraElMercado();
 
-    /*
-     * Y los encargos de venta que se han pasado de los treinta días.
-     *
-     * Va el último y en su propio `catch`: es lo único de aquí que **escribe** y
-     * que le manda un correo a alguien de fuera. Si fallara, los dos recálculos
-     * ya están guardados y mañana se vuelve a intentar — los que se pasaron
-     * siguen saliendo porque se piden por «vencidos y sin avisar», no por «los
-     * de hoy».
-     */
-    const encargos = puedeEscribir(req)
-      ? await venceLoQueTocaHoy().catch((e: Error) => {
-          console.error('[cron] los encargos vencidos han fallado:', e.message);
-          return null;
-        })
-      : 'sin_secreto';
-
     res.json({
       ok: true,
       data: {
@@ -96,11 +63,6 @@ cronRouter.get('/cron/kpis', async (req, res) => {
         // no había con qué calcularlo, y eso también hay que poder verlo.
         portales_parados: Boolean(parados),
         precio_contra_el_mercado: Boolean(precios),
-        // `null` con `sin_secreto` no es «no había nada»: es que no se ha
-        // ejecutado. Callarlo haría creer que se está barriendo cuando no.
-        encargos_vencidos: encargos === 'sin_secreto' ? null : encargos?.vencidos ?? null,
-        clientes_avisados: encargos === 'sin_secreto' ? null : encargos?.avisados ?? null,
-        ...(encargos === 'sin_secreto' ? { encargos: 'sin CRON_SECRET no se vence nada' } : {}),
       },
     });
   } catch (err) {

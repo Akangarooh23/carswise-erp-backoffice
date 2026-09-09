@@ -7,11 +7,16 @@
  *
  * ## Por qué esto tiene tabla propia y no una casilla en el IDCar
  *
- * Porque lo que hay que poder contestar no es «¿está publicado?» sino **cuándo
- * vence su exclusiva**, **qué le falta por traer** y **cuánto se le factura al
- * cerrar**. Eso son cuatro fechas y dos importes que no caben en una casilla, y
- * que además tienen que sobrevivir a que el coche se despublique y se vuelva a
- * publicar.
+ * Porque lo que hay que poder contestar no es «¿está publicado?» sino **si
+ * aceptó nuestro precio**, **qué le falta por traer**, **desde cuándo puede
+ * irse sin pagarnos** y **cuánto se le factura al cerrar**. Eso no cabe en una
+ * casilla, y además tiene que sobrevivir a que el coche se despublique y se
+ * vuelva a publicar.
+ *
+ * ## El mandato no caduca
+ *
+ * Se extiende hasta que el cliente lo cancela o hasta que vendemos. Los 30 días
+ * no son una caducidad: son hasta cuándo se le puede cobrar la penalización.
  *
  * ## Lo que aquí no se guarda
  *
@@ -29,16 +34,11 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import {
-  DIAS_DE_EXCLUSIVA, FEE_DE_GESTION, FEE_DE_CANCELACION,
-  venceEl, diasQueQuedan, estaVencido, laFechaEstaRota,
-  lasPuertas, sePuedePublicar, loQueLeFalta, tocaAvisar, soloLeFaltanFranjas,
+  DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION,
+  libreDesde, diasQueQuedan, laPenalizacion, yaSePuedeIrGratis,
+  lasPuertas, sePuedePublicar, loQueLeFalta, tocaLlamarle, soloLeFaltanFranjas,
   type LoQueHay,
 } from '../lib/encargo-de-venta.js';
-import {
-  SQL_LOS_QUE_VENCEN, SQL_MARCA_AVISADO, SQL_RETIRA_EL_ANUNCIO,
-  elCorreoDeVencimiento, type ElQueVence,
-} from '../lib/vence-el-encargo.js';
-import { enviar } from '../lib/correo.js';
 
 export const encargosRouter = Router();
 
@@ -63,7 +63,9 @@ const ENSURE_TABLE = `
     cliente_nombre  TEXT NOT NULL DEFAULT '',
     estado          TEXT NOT NULL DEFAULT 'recogiendo',
     firmado_at      TIMESTAMPTZ,
-    vence_at        TIMESTAMPTZ,
+    libre_desde     TIMESTAMPTZ,
+    acepto_el_precio BOOLEAN NOT NULL DEFAULT FALSE,
+    precio_referencia NUMERIC(12,2),
     precio_acordado NUMERIC(12,2),
     fee_gestion     NUMERIC(12,2),
     fee_cancelacion NUMERIC(12,2),
@@ -79,10 +81,23 @@ const ENSURE_TABLE = `
  * Un coche, un encargo vivo.
  *
  * Sin esto, dos personas atendiendo al mismo cliente le abren dos mandatos y el
- * coche acaba con dos fechas de vencimiento distintas — y una de las dos
- * despublica el anuncio de la otra. Los cerrados no cuentan: el mismo señor
+ * coche acaba con dos mandatos distintos, cada uno con su penalización y su
+ * fecha — y ninguna de las dos vale. Los cerrados no cuentan: el mismo señor
  * puede volver el año que viene con el mismo coche.
  */
+/*
+ * Las columnas que llegaron después.
+ *
+ * La tabla se creó con un modelo de caducidad que resultó no ser el trato: el
+ * mandato no vence, se extiende hasta que el cliente cancela o vendemos. Se
+ * quedó una `vence_at` que ya no escribe ni lee nadie.
+ */
+const ENSURE_COLUMNAS = `
+  ALTER TABLE erp_encargos_venta
+    ADD COLUMN IF NOT EXISTS libre_desde TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS acepto_el_precio BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS precio_referencia NUMERIC(12,2)`;
+
 const ENSURE_UNO_VIVO = `
   CREATE UNIQUE INDEX IF NOT EXISTS ux_encargo_vivo_por_coche
     ON erp_encargos_venta (vehicle_id)
@@ -92,6 +107,7 @@ let listo = false;
 async function prepara(): Promise<void> {
   if (listo) return;
   await query(ENSURE_TABLE);
+  await query(ENSURE_COLUMNAS).catch(() => {});
   await query(ENSURE_UNO_VIVO).catch(() => {});
   listo = true;
 }
@@ -149,50 +165,6 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
 }
 
 /**
- * El barrido del día 30: se avisa al cliente y el coche sale del escaparate.
- *
- * Va uno a uno y no en bloque, a propósito. Un fallo escribiéndole a uno no
- * puede dejar sin avisar a los otros cuatro, y como cada uno se marca antes de
- * mandarle nada, lo peor que pasa es que a alguien no le llegue su correo — y
- * eso se ve, porque su encargo sigue saliendo en Pendientes.
- *
- * Devuelve la cuenta, no las filas: es una tarea, no una consulta.
- */
-export async function venceLoQueTocaHoy(): Promise<{ vencidos: number; avisados: number }> {
-  await prepara();
-  const r = await query(SQL_LOS_QUE_VENCEN).catch(() => null);
-  if (!r) return { vencidos: 0, avisados: 0 };
-
-  let vencidos = 0;
-  let avisados = 0;
-
-  for (const e of r.rows) {
-    // Quien se queda la fila es quien manda el correo. Si otra ejecución se le
-    // adelantó, esta no actualiza nada y no escribe.
-    const mio = await query(SQL_MARCA_AVISADO, [e.id]).catch(() => ({ rows: [] }));
-    if (!mio.rows.length) continue;
-    vencidos += 1;
-
-    await query(SQL_RETIRA_EL_ANUNCIO, [`idcar-${e.vehicle_id}`])
-      .catch((x: Error) => console.error('[encargos] no se ha podido retirar el anuncio:', x.message));
-
-    const para = String(e.cliente_email ?? '').trim();
-    if (!para) continue;
-    try {
-      const { subject, html } = elCorreoDeVencimiento(e as ElQueVence);
-      await enviar({ to: para, subject, html, alClienteSiempre: true });
-      avisados += 1;
-    } catch (x) {
-      // El encargo ya está marcado y el anuncio retirado. Este cliente se queda
-      // sin su correo, y se ve: sigue en Pendientes hasta que alguien lo cierre.
-      console.error('[encargos] no se ha podido avisar del vencimiento:', (x as Error).message);
-    }
-  }
-
-  return { vencidos, avisados };
-}
-
-/**
  * Los tres avisos de los encargos, para el panel.
  *
  * Se traen **todos los encargos vivos en una consulta** y las puertas se
@@ -200,20 +172,19 @@ export async function venceLoQueTocaHoy(): Promise<{ vencidos: number; avisados:
  * en SQL— obligaría a reescribir las cuatro puertas en otro idioma, y el día
  * que cambie una de las dos versiones el panel diría una cosa y la ficha otra.
  *
- * Traerlos todos se puede porque son pocos por definición: un encargo vive
- * treinta días, así que la lista no crece con el tiempo, crece con lo que se
- * capta al mes.
+ * Traerlos todos se puede porque son pocos: los vivos son los que se han
+ * captado y todavía no se han vendido ni cancelado.
  */
 export async function losAvisosDeEncargos(): Promise<{
-  encargos_vencen: number;
+  encargos_por_llamar: number;
   encargos_sin_franjas: number;
   encargos_listos: number;
 }> {
-  const vacio = { encargos_vencen: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
+  const vacio = { encargos_por_llamar: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
   await prepara();
 
   const r = await query(`
-    SELECT e.vence_at,
+    SELECT e.firmado_at, e.acepto_el_precio,
            v.plate, v.brand, v.model, v.year, v.mileage,
            (SELECT COUNT(*) FROM moveadvisor_user_vehicle_files f
              WHERE f.vehicle_id = e.vehicle_id AND f.file_type = 'photo'
@@ -247,7 +218,7 @@ export async function losAvisosDeEncargos(): Promise<{
       franjas: ((fila.franjas as (string | Date)[]) ?? []).map((f) => new Date(f).toISOString()),
     });
 
-    if (tocaAvisar(fila.vence_at as string | null)) cuenta.encargos_vencen += 1;
+    if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) cuenta.encargos_por_llamar += 1;
     if (soloLeFaltanFranjas(puertas)) cuenta.encargos_sin_franjas += 1;
     if (sePuedePublicar(puertas)) cuenta.encargos_listos += 1;
   }
@@ -300,9 +271,13 @@ encargosRouter.get(
           puertas,
           se_puede_publicar: sePuedePublicar(puertas),
           le_falta: loQueLeFalta(puertas),
-          dias_que_quedan: encargo ? diasQueQuedan(encargo.vence_at) : null,
-          vencido: encargo ? estaVencido(encargo.vence_at) : false,
-          fecha_rota: encargo ? laFechaEstaRota(encargo.vence_at) : false,
+          /*
+           * Nada de esto caduca. Lo que se dice es qué pasaría si se fuera hoy,
+           * que es lo que hace falta saber cuando se le llama.
+           */
+          penalizacion: encargo ? laPenalizacion(encargo) : null,
+          ya_se_puede_ir_gratis: encargo ? yaSePuedeIrGratis(encargo) : false,
+          dias_hasta_irse_gratis: encargo ? diasQueQuedan(encargo.libre_desde) : null,
         },
       });
     } catch (err) {
@@ -338,26 +313,38 @@ encargosRouter.post(
       }
 
       const firmado = new Date();
-      const vence = venceEl(firmado);
+      /*
+       * Si firmó la cláusula del precio o no.
+       *
+       * Por defecto **no**, que es la respuesta prudente: da por hecho que se le
+       * puede cobrar la penalización, y eso lo corrige el cliente en cuanto
+       * pase. Al revés —darlo por firmado— se dejaría de cobrar sin que nadie se
+       * entere.
+       */
+      const aceptoElPrecio = req.body?.acepto_el_precio === true;
+      const libre = libreDesde(firmado, aceptoElPrecio);
       const id = `enc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
       const r = await query(
         `INSERT INTO erp_encargos_venta
-           (id, vehicle_id, cliente_email, cliente_nombre, estado, firmado_at, vence_at,
+           (id, vehicle_id, cliente_email, cliente_nombre, estado, firmado_at,
+            acepto_el_precio, libre_desde, precio_referencia,
             fee_gestion, fee_cancelacion, creado_por)
-         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9)
+         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9,$10,$11)
          RETURNING *`,
         [
           id, vehicleId,
           String(req.body?.cliente_email ?? coche.rows[0].user_email ?? ''),
           String(req.body?.cliente_nombre ?? coche.rows[0].name ?? ''),
-          firmado.toISOString(), vence?.toISOString() ?? null,
+          firmado.toISOString(),
+          aceptoElPrecio, libre?.toISOString() ?? null,
+          Number(req.body?.precio_referencia) || null,
           FEE_DE_GESTION, FEE_DE_CANCELACION,
           req.actor?.name ?? req.actor?.sub ?? '',
         ]
       );
 
-      res.status(201).json({ ok: true, data: r.rows[0], dias: DIAS_DE_EXCLUSIVA });
+      res.status(201).json({ ok: true, data: r.rows[0], dias: DIAS_HASTA_SALIR_GRATIS });
     } catch (err) {
       const msg = (err as Error).message;
       // El índice de «un coche, un encargo vivo».

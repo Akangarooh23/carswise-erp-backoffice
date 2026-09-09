@@ -9,11 +9,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DIAS_DE_EXCLUSIVA, FEE_DE_GESTION, FEE_DE_CANCELACION,
+  DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION,
   FRANJAS_MINIMAS, FOTOS_MINIMAS, LAS_CUATRO,
-  venceEl, diasQueQuedan, estaVencido, laFechaEstaRota,
+  libreDesde, laPenalizacion, yaSePuedeIrGratis,
   franjasQueValen, lasPuertas, sePuedePublicar, loQueLeFalta,
-  AVISAR_CON, tocaAvisar, soloLeFaltanFranjas,
+  AVISAR_CON, tocaLlamarle, soloLeFaltanFranjas,
   type LoQueHay,
 } from './encargo-de-venta.js';
 
@@ -28,48 +28,6 @@ const COMPLETO: LoQueHay = {
   informe: 'informe_listo',
   franjas: Array.from({ length: FRANJAS_MINIMAS }, (_, i) => enDias(i + 1)),
 };
-
-describe('lo que se firma', () => {
-  test('treinta días, 299 € al cierre y 150 € si se sale', () => {
-    assert.equal(DIAS_DE_EXCLUSIVA, 30);
-    assert.equal(FEE_DE_GESTION, 299);
-    assert.equal(FEE_DE_CANCELACION, 150);
-  });
-
-  test('la exclusiva vence treinta días después de firmar', () => {
-    const vence = venceEl('2026-09-09T10:00:00Z');
-    assert.equal(vence?.toISOString().slice(0, 10), '2026-10-09');
-  });
-
-  test('y una fecha de firma ilegible no inventa un vencimiento', () => {
-    assert.equal(venceEl('el martes'), null);
-  });
-});
-
-describe('cuánto queda', () => {
-  test('se cuenta por días naturales', () => {
-    assert.equal(diasQueQuedan(enDias(5), AHORA), 5);
-    assert.equal(diasQueQuedan(enDias(0), AHORA), 0);
-  });
-
-  test('el mismo día todavía no ha vencido', () => {
-    // Al cliente se le dijo «treinta días». El día treinta es suyo entero.
-    assert.equal(estaVencido(enDias(0), AHORA), false);
-    assert.equal(estaVencido(enDias(-1), AHORA), true);
-  });
-
-  test('una fecha rota NO despublica el coche', () => {
-    /*
-     * Vencer retira el anuncio de alguien que está pagando por tenerlo puesto.
-     * Eso no puede pasar porque una fila esté mal escrita: se marca para que lo
-     * mire una persona, y mientras tanto el coche sigue publicado.
-     */
-    assert.equal(estaVencido('cuando sea', AHORA), false);
-    assert.equal(estaVencido(null, AHORA), false);
-    assert.equal(laFechaEstaRota('cuando sea'), true);
-    assert.equal(laFechaEstaRota(enDias(3)), false);
-  });
-});
 
 describe('las franjas', () => {
   test('cuentan las libres de los próximos catorce días', () => {
@@ -150,54 +108,6 @@ describe('las cuatro puertas', () => {
   });
 });
 
-describe('cuándo merece un aviso', () => {
-  test('se avisa cinco días antes, no el día que vence', () => {
-    /*
-     * Avisar el día 30 es contárselo cuando ya no puede hacer nada. Uno de cada
-     * cinco encargos agota el plazo sin vender ni cancelar, y cada uno de esos
-     * nos costó el anuncio y la revisión sin pagar nada.
-     */
-    assert.equal(AVISAR_CON, 5);
-    assert.equal(tocaAvisar(enDias(6), AHORA), false);
-    assert.equal(tocaAvisar(enDias(5), AHORA), true);
-    assert.equal(tocaAvisar(enDias(0), AHORA), true);
-  });
-
-  test('y los que ya se pasaron siguen saliendo', () => {
-    // Uno vencido y publicado es el coche de alguien con quien ya no tenemos
-    // mandato. Dejar de contarlo al vencer es justo perderlo de vista.
-    assert.equal(tocaAvisar(enDias(-3), AHORA), true);
-  });
-
-  test('sin fecha no se avisa de nada', () => {
-    assert.equal(tocaAvisar(null, AHORA), false);
-    assert.equal(tocaAvisar('el martes', AHORA), false);
-  });
-
-  test('«solo le faltan franjas» es el que se puede resolver con una llamada', () => {
-    const gastadas = lasPuertas({ ...COMPLETO, franjas: [] }, AHORA);
-    assert.equal(soloLeFaltanFranjas(gastadas), true);
-  });
-
-  test('uno recién firmado NO es un aviso de franjas', () => {
-    /*
-     * No tiene nada, y eso no es una tarea: es que acaba de empezar. Contarlo
-     * aquí llenaría la lista de gente a la que no hay que llamar todavía, y una
-     * lista así se deja de leer.
-     */
-    assert.equal(soloLeFaltanFranjas(lasPuertas({}, AHORA)), false);
-  });
-
-  test('ni uno al que le falten franjas y papeles', () => {
-    const aMedias = lasPuertas({ ...COMPLETO, franjas: [], papeles: [] }, AHORA);
-    assert.equal(soloLeFaltanFranjas(aMedias), false);
-  });
-
-  test('ni uno que lo tiene todo', () => {
-    assert.equal(soloLeFaltanFranjas(lasPuertas(COMPLETO, AHORA)), false);
-  });
-});
-
 describe('sePuedePublicar mira las cuatro por su nombre', () => {
   test('una lista vacía no autoriza nada', () => {
     /*
@@ -212,5 +122,96 @@ describe('sePuedePublicar mira las cuatro por su nombre', () => {
     const puertas = lasPuertas(COMPLETO, AHORA).filter((p) => p.clave !== 'informe');
     assert.equal(puertas.every((p) => p.abierta), true, 'las que quedan sí están abiertas');
     assert.equal(sePuedePublicar(puertas), false, 'pero falta el informe');
+  });
+});
+
+describe('lo que se firma', () => {
+  test('299 € si vendemos, 150 € si se va, 30 días para poder irse gratis', () => {
+    assert.equal(FEE_DE_GESTION, 299);
+    assert.equal(FEE_DE_CANCELACION, 150);
+    assert.equal(DIAS_HASTA_SALIR_GRATIS, 30);
+  });
+
+  test('el mandato NO caduca: pasar los 30 días no cierra ni despublica nada', () => {
+    /*
+     * Se extiende hasta que el cliente lo cancela o hasta que vendemos. Esto
+     * estuvo escrito al revés unos días —una fecha de vencimiento a los 30 que
+     * despublicaba el coche y le escribía diciéndoselo— y era un invento.
+     *
+     * Lo único que cambia el día 30 es cuánto se le puede cobrar. Un encargo de
+     * hace un año sigue vivo, sigue con sus cuatro puertas y sigue publicable.
+     */
+    const deHaceUnAño = { firmado_at: new Date(AHORA.getTime() - 365 * 86400000).toISOString(), acepto_el_precio: true };
+    assert.equal(laPenalizacion(deHaceUnAño, AHORA), 0, 'ya no se le puede cobrar');
+    assert.equal(sePuedePublicar(lasPuertas(COMPLETO, AHORA)), true, 'y su coche se sigue pudiendo publicar');
+  });
+});
+
+describe('la penalización, que es lo que los 30 días deciden de verdad', () => {
+  const firmadoHoy = AHORA.toISOString();
+  const firmadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
+
+  test('el que NO firmó la cláusula del precio paga desde el día 1', () => {
+    // Y no deja de deberla nunca mientras no venda con nosotros.
+    assert.equal(laPenalizacion({ firmado_at: firmadoHoy, acepto_el_precio: false }, AHORA), 150);
+    assert.equal(laPenalizacion({ firmado_at: firmadoHace(400), acepto_el_precio: false }, AHORA), 150);
+  });
+
+  test('nunca llega a poder irse gratis, así que no tiene fecha', () => {
+    // `null` aquí quiere decir «nunca», no «no lo sé».
+    assert.equal(libreDesde(firmadoHoy, false), null);
+  });
+
+  test('el que sí la firmó paga durante los primeros 30 días', () => {
+    assert.equal(laPenalizacion({ firmado_at: firmadoHace(29), acepto_el_precio: true }, AHORA), 150);
+  });
+
+  test('y a partir del día 30 se va gratis', () => {
+    assert.equal(laPenalizacion({ firmado_at: firmadoHace(30), acepto_el_precio: true }, AHORA), 0);
+    assert.equal(laPenalizacion({ firmado_at: firmadoHace(90), acepto_el_precio: true }, AHORA), 0);
+    assert.equal(yaSePuedeIrGratis({ firmado_at: firmadoHace(30), acepto_el_precio: true }, AHORA), true);
+  });
+
+  test('la fecha de firma se cuenta desde el día que firmó', () => {
+    const libre = libreDesde('2026-09-09T10:00:00Z', true);
+    assert.equal(libre?.toISOString().slice(0, 10), '2026-10-09');
+  });
+
+  test('una fecha de firma ilegible NO le perdona la penalización', () => {
+    /*
+     * Perdonar sale de la puerta equivocada: se dejaría de cobrar por una fila
+     * mal escrita y nadie se enteraría. Cobrar de más lo ve el cliente y lo dice.
+     */
+    assert.equal(laPenalizacion({ firmado_at: 'el martes', acepto_el_precio: true }, AHORA), 150);
+    assert.equal(laPenalizacion({ firmado_at: null, acepto_el_precio: true }, AHORA), 150);
+  });
+});
+
+describe('a quién hay que llamar', () => {
+  const firmadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
+
+  test('al que le quedan cinco días o menos para poder irse gratis', () => {
+    /*
+     * El aviso no es una despedida: es lo contrario. Faltan días para que ese
+     * cliente pueda vender por su cuenta sin pagarnos nada, así que es el
+     * momento de llamarle con un ajuste de precio.
+     */
+    assert.equal(AVISAR_CON, 5);
+    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(24), acepto_el_precio: true }, AHORA), false);
+    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(25), acepto_el_precio: true }, AHORA), true);
+  });
+
+  test('y al que ya puede, que sigue siendo cliente', () => {
+    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(45), acepto_el_precio: true }, AHORA), true);
+  });
+
+  test('pero NO al que nunca va a poder irse gratis', () => {
+    // No hay ninguna fecha que corra en su contra: llamarle por esto llenaría
+    // la lista de gente sin motivo.
+    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(200), acepto_el_precio: false }, AHORA), false);
+  });
+
+  test('ni a uno sin fecha de firma', () => {
+    assert.equal(tocaLlamarle({ firmado_at: null, acepto_el_precio: true }, AHORA), false);
   });
 });

@@ -6,8 +6,9 @@
  * «¿puedo publicar ya?» —eso lo dice el botón— sino «¿qué le pido cuando le
  * llame?», y para eso hace falta ver la lista entera con su semáforo.
  *
- * Y enseña la cuenta atrás, porque el mandato dura treinta días y la rama que
- * cuesta dinero es la de los que se agotan sin que nadie se entere.
+ * El mandato **no caduca**: se extiende hasta que el cliente lo cancela o hasta
+ * que vendemos. Lo que sí corre es la penalización, y eso es lo que se enseña
+ * arriba a la derecha — no para despedirse, sino para saber cuándo llamarle.
  *
  * El **porqué** está en el manual de ejecución «Flujo particular — Nosotros lo
  * vendemos por ti».
@@ -30,7 +31,9 @@ export interface Encargo {
   cliente_nombre: string;
   estado: string;
   firmado_at: string | null;
-  vence_at: string | null;
+  libre_desde: string | null;
+  acepto_el_precio: boolean;
+  precio_referencia: string | null;
   precio_acordado: string | null;
   fee_gestion: string | null;
   fee_cancelacion: string | null;
@@ -41,9 +44,9 @@ export interface ElEncargo {
   puertas: Puerta[];
   se_puede_publicar: boolean;
   le_falta: string[];
-  dias_que_quedan: number | null;
-  vencido: boolean;
-  fecha_rota: boolean;
+  penalizacion: number | null;
+  ya_se_puede_ir_gratis: boolean;
+  dias_hasta_irse_gratis: number | null;
 }
 
 const fecha = (s: string | null) =>
@@ -57,30 +60,36 @@ const euros = (v: string | null) => {
 };
 
 /**
- * Cómo se ve lo que queda de plazo.
+ * Qué pasa si el cliente se va hoy.
  *
- * Los últimos días van en ámbar y no en rojo: todavía se puede llamar al
- * cliente y renovar, que es justo lo que hay que hacer. El rojo se guarda para
- * cuando ya no hay nada que hacer.
+ * El mandato **no caduca**: se extiende hasta que él lo cancela o hasta que
+ * vendemos. Lo único que corre es la penalización, y por eso lo que se enseña
+ * no es una cuenta atrás para despedirse sino un aviso para llamarle.
+ *
+ * Los últimos días van en ámbar y no en rojo: todavía se puede hacer algo —un
+ * ajuste de precio, contarle quién ha preguntado—. El rojo se guarda para
+ * cuando ya no hay nada que le retenga.
  */
-function ComoVaElPlazo({ dias, rota }: { dias: number | null; rota: boolean }) {
-  if (rota) {
+function ComoVaElPlazo({
+  dias, aceptoElPrecio, penalizacion,
+}: { dias: number | null; aceptoElPrecio: boolean; penalizacion: number | null }) {
+  // El que no firmó la cláusula del precio no llega nunca a poder irse gratis.
+  if (!aceptoElPrecio) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 text-red-700 px-2.5 py-1 text-xs font-semibold">
-        <Icono nombre="aviso" tam={13} />
-        La fecha de vencimiento está mal escrita
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 text-brand-500 px-2.5 py-1 text-xs font-semibold">
+        No aceptó el precio · siempre paga {penalizacion ?? 150} €
       </span>
     );
   }
-  if (dias === null) return <span className="text-xs text-brand-300">Sin fecha de vencimiento</span>;
+  if (dias === null) return <span className="text-xs text-brand-300">Sin fecha de firma</span>;
 
   const tono = dias < 0 ? 'bg-red-50 text-red-700'
     : dias <= 5 ? 'bg-amber-50 text-amber-700'
     : 'bg-emerald-50 text-emerald-700';
 
-  const texto = dias < 0 ? `Venció hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`
-    : dias === 0 ? 'Vence hoy'
-    : `Quedan ${dias} día${dias === 1 ? '' : 's'}`;
+  const texto = dias < 0 ? 'Ya puede irse sin pagar'
+    : dias === 0 ? 'Desde hoy puede irse sin pagar'
+    : `${dias} día${dias === 1 ? '' : 's'} para que pueda irse sin pagar`;
 
   return <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${tono}`}>{texto}</span>;
 }
@@ -192,7 +201,11 @@ export default function EncargoDeVenta({
             {e.cliente_nombre || e.cliente_email || 'Sin cliente'} · firmado el {fecha(e.firmado_at)}
           </p>
         </div>
-        <ComoVaElPlazo dias={datos.dias_que_quedan} rota={datos.fecha_rota} />
+        <ComoVaElPlazo
+          dias={datos.dias_hasta_irse_gratis}
+          aceptoElPrecio={e.acepto_el_precio}
+          penalizacion={datos.penalizacion}
+        />
       </div>
 
       <ul className="mb-3">
@@ -217,7 +230,7 @@ export default function EncargoDeVenta({
           <span className="font-semibold text-brand-600">{euros(e.fee_gestion)}</span>
         </div>
         <div>
-          <span className="block text-brand-300">Si se sale antes</span>
+          <span className="block text-brand-300">Si se va sin vender</span>
           <span className="font-semibold text-brand-600">{euros(e.fee_cancelacion)}</span>
         </div>
       </div>

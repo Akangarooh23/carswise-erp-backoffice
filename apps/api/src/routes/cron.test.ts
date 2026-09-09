@@ -10,7 +10,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { autorizado, puedeEscribir } from './cron.js';
+import { autorizado } from './cron.js';
+
+const FUENTE = readFileSync(new URL('./cron.ts', import.meta.url), 'utf8');
 
 const conCabeceras = (headers: Record<string, string>) => ({ headers });
 
@@ -44,7 +46,6 @@ describe('quién puede disparar la tarea', () => {
 });
 
 describe('cómo está montada', () => {
-  const FUENTE = readFileSync(new URL('./cron.ts', import.meta.url), 'utf8');
   const VERCEL = JSON.parse(readFileSync(new URL('../../../../vercel.json', import.meta.url), 'utf8'));
 
   test('la puerta va antes que nada', () => {
@@ -89,53 +90,30 @@ describe('cómo está montada', () => {
   });
 });
 
-describe('lo que escribe pide el secreto de verdad', () => {
-  const FUENTE = readFileSync(new URL('./cron.ts', import.meta.url), 'utf8');
 
+describe('la tarea diaria no toca los encargos', () => {
   /*
-   * Mientras aquí solo se recalculaban números, la puerta débil daba igual: lo
-   * peor que conseguía quien se colara era que las cifras estuvieran más
-   * frescas. Vencer un encargo retira el anuncio de un cliente y le manda un
-   * correo. Un agente de navegador se copia escribiéndolo, así que eso no puede
-   * depender de él.
+   * Durante unos días este cron despublicaba el coche de un cliente al llegar
+   * al dia 30 y le escribia diciendoselo. Estaba montado sobre una lectura
+   * equivocada del trato: el mandato no caduca, se extiende hasta que el
+   * cliente cancela o hasta que vendemos.
+   *
+   * Es el tipo de fallo que no se nota: no rompe nada, no sale ningun error, y
+   * lo unico que pasa es que un cliente que esta esperando compradores deja de
+   * tener anuncio.
    */
-  const conSecreto = (valor: string, auth?: string) => {
-    const antes = process.env.CRON_SECRET;
-    process.env.CRON_SECRET = valor;
-    try {
-      return puedeEscribir({ headers: auth ? { authorization: auth } : {} });
-    } finally {
-      if (antes === undefined) delete process.env.CRON_SECRET;
-      else process.env.CRON_SECRET = antes;
-    }
-  };
-
-  test('con el secreto correcto, sí', () => {
-    assert.equal(conSecreto('abc', 'Bearer abc'), true);
+  test('no vence ningun encargo', () => {
+    assert.ok(!/encargo/i.test(FUENTE), 'el cron ha vuelto a meterse con los encargos');
   });
 
-  test('con el secreto equivocado, no', () => {
-    assert.equal(conSecreto('abc', 'Bearer otro'), false);
+  test('no despublica nada', () => {
+    assert.ok(!/is_active|UPDATE |despublic/i.test(FUENTE), 'el cron escribe en el marketplace');
   });
 
-  test('y SIN secreto configurado, tampoco', () => {
-    // Aquí es donde se separa de `autorizado`: esa deja pasar a Vercel por su
-    // agente, y para escribir eso no basta.
-    assert.equal(conSecreto('', 'Bearer lo-que-sea'), false);
-    assert.equal(
-      autorizado({ headers: { 'user-agent': 'vercel-cron/1.0' } }), true,
-      'la de recalcular sí deja pasar a Vercel: si no, esta prueba no compara nada',
-    );
-    assert.equal(puedeEscribir({ headers: { 'user-agent': 'vercel-cron/1.0' } }), false);
-  });
-
-  test('el barrido de encargos está detrás de esa puerta', () => {
-    assert.match(FUENTE, /puedeEscribir\(req\)\s*\?\s*await venceLoQueTocaHoy\(\)/);
-  });
-
-  test('y cuando no corre se dice, en vez de contestar cero', () => {
-    // Un cero se lee como «no había nada que vencer». Callarlo haría creer que
-    // se está barriendo cuando no.
-    assert.match(FUENTE, /sin CRON_SECRET no se vence nada/);
+  test('solo recalcula, que es para lo que esta', () => {
+    // Mientras solo recalcule, la puerta debil de `autorizado` basta: lo peor
+    // que consigue quien se cuele es que los numeros esten mas frescos.
+    assert.match(FUENTE, /recalculaPortalesParados/);
+    assert.match(FUENTE, /recalculaPrecioContraElMercado/);
   });
 });

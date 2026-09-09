@@ -104,16 +104,17 @@ describe('cuántas cosas hay que hacer', () => {
 });
 
 describe('los encargos de venta de particulares', () => {
-  test('uno que vence va en rojo, porque es el único que no paga nada', () => {
+  test('uno a punto de poder irse va en rojo: es el momento de llamarle', () => {
     /*
-     * Uno de cada cinco encargos agota los treinta días sin vender ni cancelar.
-     * En esos nos hemos gastado el anuncio y la revisión y no hemos cobrado.
-     * Llamar a tiempo para renovar es dinero, no cortesía.
+     * El mandato no caduca. Lo que se acaba a los 30 días es la penalización:
+     * a partir de ahí puede vender por su cuenta sin pagarnos nada. Uno de cada
+     * cinco acaba yéndose así, y en ese nos hemos gastado el anuncio y la
+     * revisión sin cobrar. El aviso es para llamarle antes, no para despedirse.
      */
-    const p = losPendientes({ encargos_vencen: 2 });
+    const p = losPendientes({ encargos_por_llamar: 2 });
     assert.equal(p[0].tono, 'urgente');
     assert.equal(p[0].n, 2);
-    assert.match(p[0].porque, /no cobramos nada/);
+    assert.match(p[0].porque, /sin pagarnos nada/);
   });
 
   test('uno sin horas es un anuncio que nadie puede visitar, y también', () => {
@@ -128,14 +129,14 @@ describe('los encargos de venta de particulares', () => {
   });
 
   test('los tres llevan a IDCars, que es donde está el encargo', () => {
-    for (const clave of ['encargos_vencen', 'encargos_sin_franjas', 'encargos_listos']) {
+    for (const clave of ['encargos_por_llamar', 'encargos_sin_franjas', 'encargos_listos']) {
       assert.equal(CATALOGO.find((p) => p.clave === clave)?.a, '/idcars', clave);
     }
   });
 
-  test('el que vence va antes que el que solo espera', () => {
-    const p = losPendientes({ encargos_listos: 9, encargos_vencen: 1 });
-    assert.deepEqual(p.map((x) => x.clave), ['encargos_vencen', 'encargos_listos']);
+  test('el que hay que llamar va antes que el que solo espera', () => {
+    const p = losPendientes({ encargos_listos: 9, encargos_por_llamar: 1 });
+    assert.deepEqual(p.map((x) => x.clave), ['encargos_por_llamar', 'encargos_listos']);
   });
 });
 
