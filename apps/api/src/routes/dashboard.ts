@@ -10,6 +10,7 @@ import { margenPorCoche } from '../lib/margen-por-coche.js';
 import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
+import { losAvisosDeEncargos } from './encargos.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 import { preparaVisitas } from './visits.js';
 
@@ -381,7 +382,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -508,6 +509,18 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           FROM vehicle_visit_bookings b
           LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = b.offer_id
       `).catch(vacio),
+
+      /*
+       * Y los encargos de venta de particulares.
+       *
+       * Este no cuenta en SQL: trae los encargos vivos y aplica las mismas
+       * cuatro puertas que la ficha del IDCar. Contarlos aquí obligaría a
+       * reescribir las puertas en SQL, y el día que cambiara una de las dos
+       * el panel diría una cosa y la ficha otra.
+       */
+      losAvisosDeEncargos().catch(() => ({
+        encargos_vencen: 0, encargos_sin_franjas: 0, encargos_listos: 0,
+      })),
     ]);
 
     res.json({
@@ -518,6 +531,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...peritaciones.rows[0], ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
           ...contabilidad.rows[0],
           ...visitas.rows[0],
+          ...encargos,
           portales_parados: portales?.valor?.n ?? 0,
         }),
       },

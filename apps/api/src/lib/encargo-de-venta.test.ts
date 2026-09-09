@@ -13,6 +13,7 @@ import {
   FRANJAS_MINIMAS, FOTOS_MINIMAS, LAS_CUATRO,
   venceEl, diasQueQuedan, estaVencido, laFechaEstaRota,
   franjasQueValen, lasPuertas, sePuedePublicar, loQueLeFalta,
+  AVISAR_CON, tocaAvisar, soloLeFaltanFranjas,
   type LoQueHay,
 } from './encargo-de-venta.js';
 
@@ -146,6 +147,54 @@ describe('las cuatro puertas', () => {
     assert.equal(sePuedePublicar(puertas), false);
     assert.equal(loQueLeFalta(puertas).length, 4);
     assert.match(loQueLeFalta(puertas)[0], /la matrícula, la marca, el modelo, el año/);
+  });
+});
+
+describe('cuándo merece un aviso', () => {
+  test('se avisa cinco días antes, no el día que vence', () => {
+    /*
+     * Avisar el día 30 es contárselo cuando ya no puede hacer nada. Uno de cada
+     * cinco encargos agota el plazo sin vender ni cancelar, y cada uno de esos
+     * nos costó el anuncio y la revisión sin pagar nada.
+     */
+    assert.equal(AVISAR_CON, 5);
+    assert.equal(tocaAvisar(enDias(6), AHORA), false);
+    assert.equal(tocaAvisar(enDias(5), AHORA), true);
+    assert.equal(tocaAvisar(enDias(0), AHORA), true);
+  });
+
+  test('y los que ya se pasaron siguen saliendo', () => {
+    // Uno vencido y publicado es el coche de alguien con quien ya no tenemos
+    // mandato. Dejar de contarlo al vencer es justo perderlo de vista.
+    assert.equal(tocaAvisar(enDias(-3), AHORA), true);
+  });
+
+  test('sin fecha no se avisa de nada', () => {
+    assert.equal(tocaAvisar(null, AHORA), false);
+    assert.equal(tocaAvisar('el martes', AHORA), false);
+  });
+
+  test('«solo le faltan franjas» es el que se puede resolver con una llamada', () => {
+    const gastadas = lasPuertas({ ...COMPLETO, franjas: [] }, AHORA);
+    assert.equal(soloLeFaltanFranjas(gastadas), true);
+  });
+
+  test('uno recién firmado NO es un aviso de franjas', () => {
+    /*
+     * No tiene nada, y eso no es una tarea: es que acaba de empezar. Contarlo
+     * aquí llenaría la lista de gente a la que no hay que llamar todavía, y una
+     * lista así se deja de leer.
+     */
+    assert.equal(soloLeFaltanFranjas(lasPuertas({}, AHORA)), false);
+  });
+
+  test('ni uno al que le falten franjas y papeles', () => {
+    const aMedias = lasPuertas({ ...COMPLETO, franjas: [], papeles: [] }, AHORA);
+    assert.equal(soloLeFaltanFranjas(aMedias), false);
+  });
+
+  test('ni uno que lo tiene todo', () => {
+    assert.equal(soloLeFaltanFranjas(lasPuertas(COMPLETO, AHORA)), false);
   });
 });
 

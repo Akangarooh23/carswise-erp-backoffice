@@ -31,7 +31,7 @@ import { requireRole } from '../middleware/auth.js';
 import {
   DIAS_DE_EXCLUSIVA, FEE_DE_GESTION, FEE_DE_CANCELACION,
   venceEl, diasQueQuedan, estaVencido, laFechaEstaRota,
-  lasPuertas, sePuedePublicar, loQueLeFalta,
+  lasPuertas, sePuedePublicar, loQueLeFalta, tocaAvisar, soloLeFaltanFranjas,
   type LoQueHay,
 } from '../lib/encargo-de-venta.js';
 
@@ -141,6 +141,68 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     informe: informe.rows[0]?.status ?? null,
     franjas: franjas.rows.map((r) => new Date(r.starts_at as string).toISOString()),
   };
+}
+
+/**
+ * Los tres avisos de los encargos, para el panel.
+ *
+ * Se traen **todos los encargos vivos en una consulta** y las puertas se
+ * calculan aquí, con las mismas reglas que la ficha. La alternativa —contarlos
+ * en SQL— obligaría a reescribir las cuatro puertas en otro idioma, y el día
+ * que cambie una de las dos versiones el panel diría una cosa y la ficha otra.
+ *
+ * Traerlos todos se puede porque son pocos por definición: un encargo vive
+ * treinta días, así que la lista no crece con el tiempo, crece con lo que se
+ * capta al mes.
+ */
+export async function losAvisosDeEncargos(): Promise<{
+  encargos_vencen: number;
+  encargos_sin_franjas: number;
+  encargos_listos: number;
+}> {
+  const vacio = { encargos_vencen: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
+  await prepara();
+
+  const r = await query(`
+    SELECT e.vence_at,
+           v.plate, v.brand, v.model, v.year, v.mileage,
+           (SELECT COUNT(*) FROM moveadvisor_user_vehicle_files f
+             WHERE f.vehicle_id = e.vehicle_id AND f.file_type = 'photo'
+               AND COALESCE(f.file_url, '') <> '') AS fotos,
+           (SELECT COALESCE(array_agg(DISTINCT d.document_type), '{}')
+              FROM moveadvisor_user_vehicle_documents d
+             WHERE d.vehicle_id = e.vehicle_id) AS papeles,
+           (SELECT r2.status FROM moveadvisor_vehicle_condition_reports r2
+             WHERE r2.vehicle_id = e.vehicle_id ORDER BY r2.created_at DESC LIMIT 1) AS informe,
+           (SELECT COALESCE(array_agg(a.starts_at), '{}')
+              FROM vehicle_visit_availability a
+             WHERE a.offer_id = 'idcar-' || e.vehicle_id
+               AND a.status = 'available' AND a.starts_at > NOW()) AS franjas
+      FROM erp_encargos_venta e
+      LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+     WHERE e.cerrado_at IS NULL
+  `).catch(() => null);
+  if (!r) return vacio;
+
+  const cuenta = { ...vacio };
+  for (const fila of r.rows) {
+    const puertas = lasPuertas({
+      matricula: fila.plate as string | null,
+      marca: fila.brand as string | null,
+      modelo: fila.model as string | null,
+      ano: fila.year as number | null,
+      kilometros: fila.mileage as number | null,
+      fotos: Number(fila.fotos ?? 0),
+      papeles: (fila.papeles as string[]) ?? [],
+      informe: fila.informe as string | null,
+      franjas: ((fila.franjas as (string | Date)[]) ?? []).map((f) => new Date(f).toISOString()),
+    });
+
+    if (tocaAvisar(fila.vence_at as string | null)) cuenta.encargos_vencen += 1;
+    if (soloLeFaltanFranjas(puertas)) cuenta.encargos_sin_franjas += 1;
+    if (sePuedePublicar(puertas)) cuenta.encargos_listos += 1;
+  }
+  return cuenta;
 }
 
 /**

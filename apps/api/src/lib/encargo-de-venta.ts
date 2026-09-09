@@ -234,3 +234,33 @@ export function sePuedePublicar(puertas: readonly Puerta[]): boolean {
 export function loQueLeFalta(puertas: readonly Puerta[]): string[] {
   return puertas.filter((p) => !p.abierta).map((p) => p.falta).filter(Boolean);
 }
+
+/**
+ * Con cuántos días de antelación se avisa de que vence.
+ *
+ * No el día 30. Avisar el día que se muere es contárselo cuando ya no puede
+ * hacer nada, y lo que se quiere es que le dé tiempo a renovar: uno de cada
+ * cinco encargos acaba agotando el plazo sin vender ni cancelar, y cada uno de
+ * esos nos ha costado el anuncio y la revisión y no ha pagado nada.
+ */
+export const AVISAR_CON = 5;
+
+/** Si toca avisar ya —o si ya se pasó, que también hay que mirarlo—. */
+export function tocaAvisar(venceAt: string | Date | null, ahora: Date = new Date()): boolean {
+  const dias = diasQueQuedan(venceAt, ahora);
+  return dias !== null && dias <= AVISAR_CON;
+}
+
+/**
+ * Si lo único que le falta es poner horas.
+ *
+ * Este es el aviso que vale, y no «encargos sin franjas» a secas. Uno recién
+ * firmado no tiene nada, y eso no es una tarea: es que acaba de empezar, y ya
+ * se ve en su ficha. Lo que sí hay que hacer esta tarde es llamar al que lo ha
+ * traído todo y se ha quedado sin huecos — porque ese es un anuncio vivo, o a
+ * punto de estarlo, que **nadie puede visitar**.
+ */
+export function soloLeFaltanFranjas(puertas: readonly Puerta[]): boolean {
+  const cerradas = puertas.filter((p) => !p.abierta);
+  return cerradas.length === 1 && cerradas[0].clave === 'franjas';
+}

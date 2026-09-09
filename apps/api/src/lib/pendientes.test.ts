@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { losPendientes, cuantasCosas, CATALOGO } from './pendientes.js';
 
 describe('lo que está pendiente', () => {
@@ -99,6 +100,69 @@ describe('cuántas cosas hay que hacer', () => {
 
   test('sin nada, cero', () => {
     assert.equal(cuantasCosas([]), 0);
+  });
+});
+
+describe('los encargos de venta de particulares', () => {
+  test('uno que vence va en rojo, porque es el único que no paga nada', () => {
+    /*
+     * Uno de cada cinco encargos agota los treinta días sin vender ni cancelar.
+     * En esos nos hemos gastado el anuncio y la revisión y no hemos cobrado.
+     * Llamar a tiempo para renovar es dinero, no cortesía.
+     */
+    const p = losPendientes({ encargos_vencen: 2 });
+    assert.equal(p[0].tono, 'urgente');
+    assert.equal(p[0].n, 2);
+    assert.match(p[0].porque, /no cobramos nada/);
+  });
+
+  test('uno sin horas es un anuncio que nadie puede visitar, y también', () => {
+    const p = losPendientes({ encargos_sin_franjas: 1 });
+    assert.equal(p[0].tono, 'urgente');
+    assert.equal(p[0].una, 'encargo sin horas para visitar');
+  });
+
+  test('y uno listo solo espera al taller', () => {
+    const p = losPendientes({ encargos_listos: 3 });
+    assert.equal(p[0].tono, 'espera');
+  });
+
+  test('los tres llevan a IDCars, que es donde está el encargo', () => {
+    for (const clave of ['encargos_vencen', 'encargos_sin_franjas', 'encargos_listos']) {
+      assert.equal(CATALOGO.find((p) => p.clave === clave)?.a, '/idcars', clave);
+    }
+  });
+
+  test('el que vence va antes que el que solo espera', () => {
+    const p = losPendientes({ encargos_listos: 9, encargos_vencen: 1 });
+    assert.deepEqual(p.map((x) => x.clave), ['encargos_vencen', 'encargos_listos']);
+  });
+});
+
+describe('el panel pide de verdad los avisos de encargos', () => {
+  /*
+   * Un catálogo bien escrito no sirve de nada si nadie cuenta esas tres cosas.
+   * El fallo silencioso es este: la entrada existe, la pantalla la sabría
+   * pintar, y como nadie le pasa el número se queda a cero para siempre — que
+   * es indistinguible de «no hay nada pendiente».
+   */
+  const DASHBOARD = readFileSync(
+    new URL('../routes/dashboard.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  test('llama a quien los calcula', () => {
+    assert.match(DASHBOARD, /losAvisosDeEncargos\(\)/);
+  });
+
+  test('y mete el resultado en las cuentas', () => {
+    assert.match(DASHBOARD, /losPendientes\(\{[\s\S]{0,400}\.\.\.encargos,/);
+  });
+
+  test('si falla, el panel entero no se cae', () => {
+    // El resto de pendientes no puede desaparecer porque la tabla de encargos
+    // todavía no exista en un entorno.
+    assert.match(DASHBOARD, /losAvisosDeEncargos\(\)\.catch\(/);
   });
 });
 

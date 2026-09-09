@@ -143,6 +143,35 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'ya pasaron y nadie ha dicho cómo acabaron',
     a: '/bookings', icono: 'calendario', tono: 'espera',
   },
+  /*
+   * Los encargos de venta de particulares.
+   *
+   * El que vence va con los urgentes y por delante de casi todo: uno de cada
+   * cinco encargos acaba agotando el plazo sin vender ni cancelar, y ese es el
+   * único caso en que nos hemos gastado el anuncio y la revisión sin cobrar
+   * nada. Llamar a tiempo para renovar es dinero, no cortesía.
+   *
+   * El de las franjas también, porque es un coche publicado —o a punto— que
+   * **nadie puede visitar**: paga el anuncio y no puede convertir a nadie.
+   */
+  {
+    clave: 'encargos_vencen',
+    etiqueta: 'encargos que vencen', una: 'encargo que vence',
+    porque: 'si se agota el plazo no cobramos nada y ya nos hemos gastado el coche',
+    a: '/idcars', icono: 'reloj', tono: 'urgente',
+  },
+  {
+    clave: 'encargos_sin_franjas',
+    etiqueta: 'encargos sin horas para visitar', una: 'encargo sin horas para visitar',
+    porque: 'lo ha traído todo y se ha quedado sin huecos: nadie puede ir a ver el coche',
+    a: '/idcars', icono: 'calendario', tono: 'urgente',
+  },
+  {
+    clave: 'encargos_listos',
+    etiqueta: 'encargos listos para el taller', una: 'encargo listo para el taller',
+    porque: 'el cliente ya lo ha traído todo y falta la revisión para poder publicar',
+    a: '/idcars', icono: 'taller', tono: 'espera',
+  },
   {
     clave: 'citas_7d',
     etiqueta: 'citas de mantenimiento en 7 días', una: 'cita de mantenimiento en 7 días',
