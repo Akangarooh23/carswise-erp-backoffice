@@ -15,6 +15,7 @@ import { ticketsRouter } from './routes/tickets.js';
 import { workshopsRouter } from './routes/workshops.js';
 import { workshopLocationsRouter } from './routes/workshop-locations.js';
 import { idcarsRouter } from './routes/idcars.js';
+import { encargosRouter } from './routes/encargos.js';
 import { billingRouter } from './routes/billing.js';
 import { leadsRouter } from './routes/leads.js';
 import { documentosRouter } from './routes/documentos.js';
@@ -71,6 +72,7 @@ export function createApp() {
   app.use('/api', workshopsRouter);
   app.use('/api', workshopLocationsRouter);
   app.use('/api', idcarsRouter);
+  app.use('/api', encargosRouter);
   app.use('/api', billingRouter);
   app.use('/api', leadsRouter);
   app.use('/api', documentosRouter);
