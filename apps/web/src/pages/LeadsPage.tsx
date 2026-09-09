@@ -35,7 +35,7 @@ interface Lead {
   id: string;
   user_email: string;
   vehicle_id: string;
-  appointment_type: 'info' | 'visit' | 'question' | 'renting' | 'import';
+  appointment_type: 'info' | 'visit' | 'question' | 'renting' | 'import' | 'venta_gestionada';
   title: string;
   meta: LeadMeta;
   status: string;
@@ -125,6 +125,8 @@ const TYPE_LABELS: Record<string, string> = {
   renting:  'Oferta de renting',
   // Una solicitud de importación. Salía la palabra «import», en crudo y en gris.
   import:   'Importar un coche',
+  // El que pide que le vendamos su coche. Salia «venta_gestionada» en crudo.
+  venta_gestionada: 'Vender su coche',
 };
 const TYPE_COLORS: Record<string, string> = {
   info:     'bg-acento-tenue text-acento-texto',
@@ -132,6 +134,7 @@ const TYPE_COLORS: Record<string, string> = {
   visit:    'bg-emerald-100 text-emerald-700',
   question: 'bg-acento-tenue text-acento-texto',
   renting:  'bg-emerald-100 text-emerald-800',
+  venta_gestionada: 'bg-violet-100 text-violet-700',
 };
 const STATUS_COLORS: Record<string, string> = {
   Pendiente:              'bg-amber-100 text-amber-700',
