@@ -20,6 +20,22 @@ export type Trozo =
 /** Quién hace el paso. Da el color de la caja, para verlo de un vistazo. */
 export type Actor = 'cliente' | 'sistema' | 'correo' | 'erp' | 'trabajador';
 
+/**
+ * Cómo se llama cada actor en el rótulo de la caja.
+ *
+ * Vive aquí y no en la pantalla porque lo usan dos sitios: el manual en el
+ * navegador y el que se descarga en Word. Escrito dos veces, renombrar
+ * «Automático» deja el Word diciendo otra cosa, y nadie se entera hasta que
+ * alguien imprime el documento y lee dos nombres para lo mismo.
+ */
+export const ROTULO: Record<Actor, string> = {
+  cliente: 'Cliente',
+  sistema: 'Automático',
+  correo: 'Correo',
+  erp: 'En el ERP',
+  trabajador: 'Una persona',
+};
+
 export type Paso =
   | {
       tipo: 'paso';

@@ -17,7 +17,8 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
-import { interpreta, tituloDe, type Bloque, type Trozo, type Paso } from '../lib/markdown.js';
+import { interpreta, tituloDe, ROTULO, type Bloque, type Trozo, type Paso } from '../lib/markdown.js';
+import { elFichero, nombreDelFichero } from '../lib/manual-a-word.js';
 
 const FICHEROS = import.meta.glob('../../../../docs/**/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -73,11 +74,11 @@ function Trozos({ trozos }: { trozos: Trozo[] }) {
  * es lo que importa al leer un flujo — dónde hace falta alguien.
  */
 const ACTOR = {
-  cliente:    { rotulo: 'Cliente',    caja: 'bg-blue-50 border-blue-200',       texto: 'text-blue-800' },
-  sistema:    { rotulo: 'Automático', caja: 'bg-brand-50 border-brand-200',     texto: 'text-brand-500' },
-  correo:     { rotulo: 'Correo',     caja: 'bg-violet-50 border-violet-200',   texto: 'text-violet-800' },
-  erp:        { rotulo: 'En el ERP',  caja: 'bg-emerald-50 border-emerald-200', texto: 'text-emerald-800' },
-  trabajador: { rotulo: 'Una persona', caja: 'bg-acento-tenue border-acento',   texto: 'text-acento-texto' },
+  cliente:    { caja: 'bg-blue-50 border-blue-200',       texto: 'text-blue-800' },
+  sistema:    { caja: 'bg-brand-50 border-brand-200',     texto: 'text-brand-500' },
+  correo:     { caja: 'bg-violet-50 border-violet-200',   texto: 'text-violet-800' },
+  erp:        { caja: 'bg-emerald-50 border-emerald-200', texto: 'text-emerald-800' },
+  trabajador: { caja: 'bg-acento-tenue border-acento',    texto: 'text-acento-texto' },
 } as const;
 
 /** La flecha entre dos cajas. */
@@ -109,7 +110,7 @@ function Caja({ paso }: { paso: Extract<Paso, { tipo: 'paso' }> }) {
   const cuerpo = (
     <>
       <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5 w-20 ${ACTOR[paso.actor].texto}`}>
-        {ACTOR[paso.actor].rotulo}
+        {ROTULO[paso.actor]}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] text-brand-600 leading-snug"><Trozos trozos={paso.trozos} /></span>
@@ -260,6 +261,22 @@ function Contenido({ bloques }: { bloques: Bloque[] }) {
   );
 }
 
+/**
+ * Se lleva el manual a un fichero que abre Word.
+ *
+ * Para quien no entra al ERP: un taller, una gestoría, alguien que empieza el
+ * lunes. Y para imprimirlo, que es como se lee un flujo de catorce pasos
+ * mientras se hace el trabajo.
+ */
+function descarga(titulo: string, bloques: Bloque[]) {
+  const url = URL.createObjectURL(elFichero(titulo, bloques));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreDelFichero(titulo);
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ManualPage() {
   /*
    * Abre por el primero de **Ejecución**.
@@ -341,6 +358,14 @@ export default function ManualPage() {
         </nav>
 
         <article className="flex-1 min-w-0 rounded-xl border border-brand-200 bg-white px-6 py-6 sm:px-8 sm:py-7">
+          <div className="flex justify-end -mt-1 mb-1">
+            <button type="button" onClick={() => descarga(doc.titulo, bloques)}
+                    className="flex items-center gap-1.5 rounded-lg border border-brand-200 px-3 py-1.5
+                               text-[12px] font-semibold text-brand-500 hover:bg-brand-50">
+              <Icono nombre="documento" tam={13} />
+              Descargar en Word
+            </button>
+          </div>
           <Contenido bloques={bloques} />
         </article>
       </div>
