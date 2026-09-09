@@ -34,6 +34,11 @@ import {
   lasPuertas, sePuedePublicar, loQueLeFalta, tocaAvisar, soloLeFaltanFranjas,
   type LoQueHay,
 } from '../lib/encargo-de-venta.js';
+import {
+  SQL_LOS_QUE_VENCEN, SQL_MARCA_AVISADO, SQL_RETIRA_EL_ANUNCIO,
+  elCorreoDeVencimiento, type ElQueVence,
+} from '../lib/vence-el-encargo.js';
+import { enviar } from '../lib/correo.js';
 
 export const encargosRouter = Router();
 
@@ -141,6 +146,50 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     informe: informe.rows[0]?.status ?? null,
     franjas: franjas.rows.map((r) => new Date(r.starts_at as string).toISOString()),
   };
+}
+
+/**
+ * El barrido del día 30: se avisa al cliente y el coche sale del escaparate.
+ *
+ * Va uno a uno y no en bloque, a propósito. Un fallo escribiéndole a uno no
+ * puede dejar sin avisar a los otros cuatro, y como cada uno se marca antes de
+ * mandarle nada, lo peor que pasa es que a alguien no le llegue su correo — y
+ * eso se ve, porque su encargo sigue saliendo en Pendientes.
+ *
+ * Devuelve la cuenta, no las filas: es una tarea, no una consulta.
+ */
+export async function venceLoQueTocaHoy(): Promise<{ vencidos: number; avisados: number }> {
+  await prepara();
+  const r = await query(SQL_LOS_QUE_VENCEN).catch(() => null);
+  if (!r) return { vencidos: 0, avisados: 0 };
+
+  let vencidos = 0;
+  let avisados = 0;
+
+  for (const e of r.rows) {
+    // Quien se queda la fila es quien manda el correo. Si otra ejecución se le
+    // adelantó, esta no actualiza nada y no escribe.
+    const mio = await query(SQL_MARCA_AVISADO, [e.id]).catch(() => ({ rows: [] }));
+    if (!mio.rows.length) continue;
+    vencidos += 1;
+
+    await query(SQL_RETIRA_EL_ANUNCIO, [`idcar-${e.vehicle_id}`])
+      .catch((x: Error) => console.error('[encargos] no se ha podido retirar el anuncio:', x.message));
+
+    const para = String(e.cliente_email ?? '').trim();
+    if (!para) continue;
+    try {
+      const { subject, html } = elCorreoDeVencimiento(e as ElQueVence);
+      await enviar({ to: para, subject, html, alClienteSiempre: true });
+      avisados += 1;
+    } catch (x) {
+      // El encargo ya está marcado y el anuncio retirado. Este cliente se queda
+      // sin su correo, y se ve: sigue en Pendientes hasta que alguien lo cierre.
+      console.error('[encargos] no se ha podido avisar del vencimiento:', (x as Error).message);
+    }
+  }
+
+  return { vencidos, avisados };
 }
 
 /**

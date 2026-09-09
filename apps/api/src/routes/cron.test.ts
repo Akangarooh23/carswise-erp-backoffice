@@ -10,7 +10,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { autorizado } from './cron.js';
+import { autorizado, puedeEscribir } from './cron.js';
 
 const conCabeceras = (headers: Record<string, string>) => ({ headers });
 
@@ -86,5 +86,56 @@ describe('cómo está montada', () => {
     // su fecha al lado.
     assert.match(FUENTE, /portales_parados: Boolean\(parados\)/);
     assert.match(FUENTE, /precio_contra_el_mercado: Boolean\(precios\)/);
+  });
+});
+
+describe('lo que escribe pide el secreto de verdad', () => {
+  const FUENTE = readFileSync(new URL('./cron.ts', import.meta.url), 'utf8');
+
+  /*
+   * Mientras aquí solo se recalculaban números, la puerta débil daba igual: lo
+   * peor que conseguía quien se colara era que las cifras estuvieran más
+   * frescas. Vencer un encargo retira el anuncio de un cliente y le manda un
+   * correo. Un agente de navegador se copia escribiéndolo, así que eso no puede
+   * depender de él.
+   */
+  const conSecreto = (valor: string, auth?: string) => {
+    const antes = process.env.CRON_SECRET;
+    process.env.CRON_SECRET = valor;
+    try {
+      return puedeEscribir({ headers: auth ? { authorization: auth } : {} });
+    } finally {
+      if (antes === undefined) delete process.env.CRON_SECRET;
+      else process.env.CRON_SECRET = antes;
+    }
+  };
+
+  test('con el secreto correcto, sí', () => {
+    assert.equal(conSecreto('abc', 'Bearer abc'), true);
+  });
+
+  test('con el secreto equivocado, no', () => {
+    assert.equal(conSecreto('abc', 'Bearer otro'), false);
+  });
+
+  test('y SIN secreto configurado, tampoco', () => {
+    // Aquí es donde se separa de `autorizado`: esa deja pasar a Vercel por su
+    // agente, y para escribir eso no basta.
+    assert.equal(conSecreto('', 'Bearer lo-que-sea'), false);
+    assert.equal(
+      autorizado({ headers: { 'user-agent': 'vercel-cron/1.0' } }), true,
+      'la de recalcular sí deja pasar a Vercel: si no, esta prueba no compara nada',
+    );
+    assert.equal(puedeEscribir({ headers: { 'user-agent': 'vercel-cron/1.0' } }), false);
+  });
+
+  test('el barrido de encargos está detrás de esa puerta', () => {
+    assert.match(FUENTE, /puedeEscribir\(req\)\s*\?\s*await venceLoQueTocaHoy\(\)/);
+  });
+
+  test('y cuando no corre se dice, en vez de contestar cero', () => {
+    // Un cero se lee como «no había nada que vencer». Callarlo haría creer que
+    // se está barriendo cuando no.
+    assert.match(FUENTE, /sin CRON_SECRET no se vence nada/);
   });
 });
