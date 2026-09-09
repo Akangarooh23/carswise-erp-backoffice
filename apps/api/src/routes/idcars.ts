@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { porQueNoSePuedePublicar } from './encargos.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { falloInterno } from '../lib/fallos.js';
@@ -417,6 +418,22 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
     if (missing.length) {
       res.status(400).json({ ok: false, error: 'missing_required_fields', fields: missing,
         detail: `Campos obligatorios sin rellenar: ${missing.join(', ')}` });
+      return;
+    }
+
+    /*
+     * Si el coche lo vendemos nosotros, las cuatro puertas mandan.
+     *
+     * En la pantalla el botón sale apagado, pero un botón apagado es una pista y
+     * no una regla: la promesa de que un anuncio nuestro lleva informe y se
+     * puede visitar tiene que sostenerse aunque la llamada venga de otro sitio.
+     *
+     * Sin encargo no se comprueba nada. Un particular que publica su propio
+     * IDCar no nos ha encargado la venta y no le pedimos nada.
+     */
+    const noPuede = await porQueNoSePuedePublicar(req.params.id);
+    if (noPuede) {
+      res.status(409).json({ ok: false, error: 'el_encargo_no_esta_listo', detail: noPuede });
       return;
     }
 

@@ -1,0 +1,226 @@
+/**
+ * El encargo de venta de un particular, en la ficha de su coche.
+ *
+ * Enseña **las cuatro puertas siempre**, abiertas o no, y no solo si se puede
+ * publicar. La pregunta que se hace quien mira esta pantalla casi nunca es
+ * «¿puedo publicar ya?» —eso lo dice el botón— sino «¿qué le pido cuando le
+ * llame?», y para eso hace falta ver la lista entera con su semáforo.
+ *
+ * Y enseña la cuenta atrás, porque el mandato dura treinta días y la rama que
+ * cuesta dinero es la de los que se agotan sin que nadie se entere.
+ *
+ * El **porqué** está en el manual de ejecución «Flujo particular — Nosotros lo
+ * vendemos por ti».
+ */
+import { useEffect, useState, useCallback } from 'react';
+import { api } from '../../api/client.js';
+import { Card } from '../../components/ui/Card.js';
+import Icono from '../../components/ui/Icono.js';
+
+export interface Puerta {
+  clave: string;
+  nombre: string;
+  abierta: boolean;
+  falta: string;
+}
+
+export interface Encargo {
+  id: string;
+  cliente_email: string;
+  cliente_nombre: string;
+  estado: string;
+  firmado_at: string | null;
+  vence_at: string | null;
+  precio_acordado: string | null;
+  fee_gestion: string | null;
+  fee_cancelacion: string | null;
+}
+
+export interface ElEncargo {
+  encargo: Encargo | null;
+  puertas: Puerta[];
+  se_puede_publicar: boolean;
+  le_falta: string[];
+  dias_que_quedan: number | null;
+  vencido: boolean;
+  fecha_rota: boolean;
+}
+
+const fecha = (s: string | null) =>
+  s ? new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
+
+const euros = (v: string | null) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0
+    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+    : '–';
+};
+
+/**
+ * Cómo se ve lo que queda de plazo.
+ *
+ * Los últimos días van en ámbar y no en rojo: todavía se puede llamar al
+ * cliente y renovar, que es justo lo que hay que hacer. El rojo se guarda para
+ * cuando ya no hay nada que hacer.
+ */
+function ComoVaElPlazo({ dias, rota }: { dias: number | null; rota: boolean }) {
+  if (rota) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 text-red-700 px-2.5 py-1 text-xs font-semibold">
+        <Icono nombre="aviso" tam={13} />
+        La fecha de vencimiento está mal escrita
+      </span>
+    );
+  }
+  if (dias === null) return <span className="text-xs text-brand-300">Sin fecha de vencimiento</span>;
+
+  const tono = dias < 0 ? 'bg-red-50 text-red-700'
+    : dias <= 5 ? 'bg-amber-50 text-amber-700'
+    : 'bg-emerald-50 text-emerald-700';
+
+  const texto = dias < 0 ? `Venció hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`
+    : dias === 0 ? 'Vence hoy'
+    : `Quedan ${dias} día${dias === 1 ? '' : 's'}`;
+
+  return <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${tono}`}>{texto}</span>;
+}
+
+function Semaforo({ puerta }: { puerta: Puerta }) {
+  return (
+    <li className="flex items-start gap-2.5 py-2 border-b border-brand-100 last:border-0">
+      <span className={`mt-0.5 shrink-0 ${puerta.abierta ? 'text-emerald-600' : 'text-brand-300'}`}>
+        <Icono nombre={puerta.abierta ? 'comprobado' : 'reloj'} tam={15} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[13.5px] ${puerta.abierta ? 'text-brand-500' : 'text-brand-600 font-medium'}`}>
+          {puerta.nombre}
+        </span>
+        {!puerta.abierta && puerta.falta && (
+          <span className="block text-[12px] text-brand-400 mt-0.5">{puerta.falta}</span>
+        )}
+      </span>
+    </li>
+  );
+}
+
+export default function EncargoDeVenta({
+  vehicleId,
+  alCambiar,
+}: {
+  vehicleId: string;
+  /** Para que la ficha sepa si puede dejar publicar. */
+  alCambiar?: (e: ElEncargo | null) => void;
+}) {
+  const [datos, setDatos] = useState<ElEncargo | null>(null);
+  const [fallo, setFallo] = useState('');
+  const [abriendo, setAbriendo] = useState(false);
+
+  const carga = useCallback(async () => {
+    try {
+      const r = await api.get<ElEncargo>(`/encargos/coche/${vehicleId}`);
+      if (!r.ok) { setFallo(r.error ?? 'no_se_ha_podido_leer'); return; }
+      setDatos(r.data);
+      alCambiar?.(r.data);
+    } catch (e) {
+      setFallo((e as Error).message);
+    }
+  }, [vehicleId, alCambiar]);
+
+  useEffect(() => { void carga(); }, [carga]);
+
+  async function abre() {
+    setAbriendo(true);
+    setFallo('');
+    try {
+      const r = await api.post<Encargo>(`/encargos`, { vehicle_id: vehicleId });
+      if (!r.ok) {
+        // El índice de «un encargo vivo por coche». Pasa cuando dos personas
+        // atienden al mismo cliente a la vez.
+        setFallo(r.error === 'ya_tiene_un_encargo_vivo'
+          ? 'Este coche ya tiene un encargo abierto. Recarga la página.'
+          : 'No se ha podido abrir el encargo.');
+        return;
+      }
+      await carga();
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setAbriendo(false);
+    }
+  }
+
+  if (fallo && !datos) {
+    return <Card><p className="text-sm text-red-600">No se ha podido leer el encargo: {fallo}</p></Card>;
+  }
+  if (!datos) return null;
+
+  // Sin encargo, este coche no lo vendemos nosotros: lo publicó su dueño. Se
+  // ofrece abrirlo, sin ocupar media pantalla contando algo que no existe.
+  if (!datos.encargo) {
+    return (
+      <Card>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-semibold text-brand-600 text-sm">Encargo de venta</h3>
+            <p className="text-xs text-brand-400 mt-1">
+              Este coche no lo gestionamos nosotros. Su dueño lo publica por su cuenta.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={abre}
+            disabled={abriendo}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-brand-200
+                       text-brand-500 hover:bg-brand-50 disabled:opacity-50"
+          >
+            {abriendo ? 'Abriendo…' : 'Abrir encargo de venta'}
+          </button>
+        </div>
+        {fallo && <p className="text-xs text-red-600 mt-2">{fallo}</p>}
+      </Card>
+    );
+  }
+
+  const e = datos.encargo;
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
+        <div>
+          <h3 className="font-semibold text-brand-600 text-sm">Encargo de venta</h3>
+          <p className="text-xs text-brand-400 mt-1">
+            {e.cliente_nombre || e.cliente_email || 'Sin cliente'} · firmado el {fecha(e.firmado_at)}
+          </p>
+        </div>
+        <ComoVaElPlazo dias={datos.dias_que_quedan} rota={datos.fecha_rota} />
+      </div>
+
+      <ul className="mb-3">
+        {datos.puertas.map((p) => <Semaforo key={p.clave} puerta={p} />)}
+      </ul>
+
+      <div className={`rounded-lg px-3 py-2 text-[13px] ${
+        datos.se_puede_publicar ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-50 text-brand-500'
+      }`}>
+        {datos.se_puede_publicar
+          ? 'Lo ha traído todo. Falta la revisión del taller antes de publicar.'
+          : `Le falta: ${datos.le_falta.join('; ')}`}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-3 text-[12px]">
+        <div>
+          <span className="block text-brand-300">Precio acordado</span>
+          <span className="font-semibold text-brand-600">{euros(e.precio_acordado)}</span>
+        </div>
+        <div>
+          <span className="block text-brand-300">Gestión, si vende</span>
+          <span className="font-semibold text-brand-600">{euros(e.fee_gestion)}</span>
+        </div>
+        <div>
+          <span className="block text-brand-300">Si se sale antes</span>
+          <span className="font-semibold text-brand-600">{euros(e.fee_cancelacion)}</span>
+        </div>
+      </div>
+    </Card>
+  );
+}

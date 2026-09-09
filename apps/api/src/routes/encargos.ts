@@ -143,6 +143,29 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
   };
 }
 
+/**
+ * Por qué no se puede publicar este coche todavía, o cadena vacía si sí se puede.
+ *
+ * Devuelve la frase, no un booleano, porque al otro lado hay alguien que tiene
+ * que llamar al cliente y decirle qué le falta. Un `false` obliga a preguntarlo
+ * otra vez.
+ *
+ * **Sin encargo no hay nada que comprobar.** Ese coche lo publica su dueño por
+ * su cuenta y no nos ha prometido nada.
+ */
+export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string> {
+  await prepara();
+  const r = await query(
+    `SELECT id FROM erp_encargos_venta WHERE vehicle_id = $1 AND cerrado_at IS NULL`,
+    [vehicleId]
+  ).catch(() => ({ rows: [] }));
+  if (!r.rows.length) return '';
+
+  const puertas = lasPuertas(await loQueHayDe(vehicleId));
+  if (sePuedePublicar(puertas)) return '';
+  return `Este coche lo vendemos nosotros y le falta: ${loQueLeFalta(puertas).join('; ')}`;
+}
+
 /** El encargo de un coche, con sus puertas al día. */
 encargosRouter.get(
   '/encargos/coche/:vehicleId',

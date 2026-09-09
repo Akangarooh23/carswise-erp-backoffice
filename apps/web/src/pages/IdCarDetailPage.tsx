@@ -5,6 +5,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import type { IdCar, IdCarFile } from '../types/index.js';
 import Icono, { type NombreIcono } from '../components/ui/Icono.js';
+import EncargoDeVenta, { type ElEncargo } from './idcar/EncargoDeVenta.js';
 
 const MIME_ICONS: Record<string, NombreIcono> = {
   'image/jpeg': 'imagen', 'image/png': 'imagen', 'image/webp': 'imagen', 'image/gif': 'imagen',
@@ -73,6 +74,7 @@ export default function IdCarDetailPage() {
   const [files, setFiles]       = useState<IdCarFile[]>([]);
   const [loading, setLoading]   = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [encargo, setEncargo] = useState<ElEncargo | null>(null);
   const [publishMsg, setPublishMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [publishPrice, setPublishPrice] = useState('');
@@ -98,6 +100,16 @@ export default function IdCarDetailPage() {
   // Photo drag-to-reorder state
   const draggingPhotoId = useRef<number | null>(null);
   const [dragOverPhotoId, setDragOverPhotoId] = useState<number | null>(null);
+
+  /*
+   * Las cuatro puertas atan al coche que **nosotros** vendemos, no a todos.
+   *
+   * Un particular que publica su propio IDCar no nos ha encargado nada y no le
+   * pedimos nada: sin encargo, el botón de publicar sigue como estaba. Con
+   * encargo, no se publica hasta que lo ha traído todo, que es lo que hace que
+   * el anuncio valga algo.
+   */
+  const sePuedePublicar = !encargo?.encargo || encargo.se_puede_publicar;
 
   const loadFiles = useCallback(async () => {
     if (!id) return;
@@ -653,6 +665,8 @@ export default function IdCarDetailPage() {
         </div>
       </Card>
 
+      <EncargoDeVenta vehicleId={id!} alCambiar={setEncargo} />
+
       {/* Publish to Marketplace */}
       <Card>
         <h3 className="font-semibold text-brand-600 text-sm mb-4">Publicar en Marketplace</h3>
@@ -675,12 +689,24 @@ export default function IdCarDetailPage() {
           </div>
           <button
             onClick={handlePublish}
-            disabled={publishing}
+            disabled={publishing || !sePuedePublicar}
             className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {publishing ? 'Publicando…' : 'Publicar en Marketplace'}
           </button>
         </div>
+
+        {/*
+          * El aviso solo aparece cuando hay encargo. Un particular que publica
+          * su propio coche no nos ha prometido nada y no le pedimos nada: las
+          * puertas atan al que nos ha encargado la venta, no a todo el mundo.
+          */}
+        {!sePuedePublicar && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+            Este coche lo vendemos nosotros y todavía le falta algo. No se publica hasta
+            que estén las cuatro cosas — están arriba, en «Encargo de venta».
+          </p>
+        )}
 
         {publishMsg && (
           <div className={`mt-3 px-3 py-2 rounded-lg text-sm ${publishMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
