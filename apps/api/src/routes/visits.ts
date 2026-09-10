@@ -6,6 +6,11 @@ import { config } from '../config.js';
 import { DOMINIO_UID } from '../lib/marca.js';
 import { manda, mandaOpciones, botonDeHora } from '../lib/whatsapp.js';
 import { esResultado, sePuedeCerrar } from '../lib/resultado-de-la-visita.js';
+import {
+  SQL_SIN_LLAMAR as SQL_FINANCIACION_SIN_LLAMAR, SQL_LOS_SIN_LLAMAR,
+  SQL_MARCA_LLAMADA, ENSURE_COLUMNAS as ENSURE_FINANCIACION,
+  QUE_SE_LE_DICE, LO_QUE_FALTA,
+} from '../lib/financiacion-del-comprador.js';
 import { elProveedorDe, nombreComparable } from '../lib/proveedores.js';
 import { preparaProveedores } from './proveedores.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
@@ -77,7 +82,23 @@ async function prepara() {
   if (preparado) return;
   await query(ENSURE_RESULTADO, []).catch(() => {});
   await query(ENSURE_RESULTADO_VALIDO, []).catch(() => {});
+  // Atender la financiación es trabajo de aquí, igual que el resultado de la
+  // visita: PopCar pregunta y guarda la respuesta, y llamar lo hacemos nosotros.
+  await query(ENSURE_FINANCIACION, []).catch(() => {});
   preparado = true;
+}
+
+/**
+ * Cuántos compradores han levantado la mano y siguen sin llamada.
+ *
+ * Es lo que hay donde irá el scoring: mientras no sepamos con qué entidad ni
+ * cómo nos llega la respuesta, el hueco no se queda vacío — se queda una
+ * llamada, que es lo que de verdad vende esto.
+ */
+export async function losQueQuierenFinanciacion(): Promise<{ financiacion_sin_llamar: number }> {
+  await prepara().catch(() => {});
+  const r = await query(SQL_FINANCIACION_SIN_LLAMAR).catch(() => null);
+  return { financiacion_sin_llamar: Number(r?.rows[0]?.n ?? 0) };
 }
 
 /**
@@ -476,6 +497,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
     const r = await query(
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
               b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
+             b.financiacion_llamada_at, b.financiacion_llamada_por,
               b.meeting_place, b.meeting_contact,
               b.resultado, b.resultado_at,
               b.status, b.created_at
@@ -1065,6 +1087,53 @@ visitsRouter.post('/visit-bookings/:bookingId/resultado', requireRole(ROLES), as
   }
 });
 
+/**
+ * Los compradores que quieren financiación y siguen sin llamada.
+ *
+ * Va con el guion de lo que hay que decirles y con lo que todavía no se puede
+ * hacer. Sin guion, cada uno cuenta una cosa y la mitad no menciona que el
+ * coche lo vende un particular — que es justo lo que cambia la conversación.
+ */
+visitsRouter.get('/visit-bookings/financiacion', requireRole(ROLES), async (_req, res) => {
+  try {
+    await prepara();
+    const r = await query(SQL_LOS_SIN_LLAMAR).catch(() => ({ rows: [] }));
+    res.json({
+      ok: true,
+      data: { compradores: r.rows, que_se_le_dice: QUE_SE_LE_DICE, lo_que_falta: LO_QUE_FALTA },
+    });
+  } catch (e) {
+    console.error('[visitas] financiacion:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'financiacion_get_failed' });
+  }
+});
+
+/**
+ * Se apunta que ya se le ha llamado.
+ *
+ * Es lo que apaga el aviso. Solo si no estaba apuntado ya: volver a pulsar no
+ * reescribe quién ni cuándo, porque lo que hace falta saber el día que el
+ * comprador dice que nadie le ha contado nada es la vez que se le llamó, no la
+ * última vez que alguien tocó el botón.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/financiacion-llamada', requireRole(ROLES), async (req, res) => {
+  try {
+    await prepara();
+    const r = await query(SQL_MARCA_LLAMADA, [
+      req.params.bookingId,
+      req.actor?.name ?? req.actor?.sub ?? '',
+    ]);
+    if (!r.rows.length) {
+      res.status(409).json({ ok: false, error: 'ya_estaba_llamado' });
+      return;
+    }
+    res.json({ ok: true, data: { id: r.rows[0].id } });
+  } catch (e) {
+    console.error('[visitas] marcar la llamada de financiacion:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'financiacion_llamada_failed' });
+  }
+});
+
 visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async (req, res) => {
   const { bookingId } = req.params;
   const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
@@ -1189,6 +1258,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     let sql = `
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
+             b.financiacion_llamada_at, b.financiacion_llamada_por,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,

@@ -57,6 +57,9 @@ trabajador: Y a mano en el portal, con nuestro teléfono
 cliente: Un comprador llega del portal y pide cita sin registrarse
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y si le interesaría financiarlo
+erp: Si dijo que sí, sale en Pendientes para llamarle
+@ Agenda → la visita → «quiere financiar · marcar llamado»
++ nada: se pulsa cuando ya se le ha llamado
 sistema: Hasta que no pulsa el enlace del correo, no hay reserva
 @ Agenda → la visita aparece cuando la confirma
 + nada: el hueco sigue libre mientras tanto
@@ -490,7 +493,7 @@ se deshace: no deja ni una fila.
 
 | Qué | De quién depende |
 |---|---|
-| Con qué entidad financiera y **cómo nos llega si la aprueban** | Sin eso no se puede facturar la comisión, que es la línea de ingreso más grande |
+| Con qué entidad financiera y **cómo nos llega si la aprueban** | Juan. Mientras tanto, el comprador que la pide sale en Pendientes y se le llama |
 | Si al que agota el plazo se le cobra algo | Ana |
 | Qué pasa con el comprador financiado después de comprar | Sin diseñar |
 | El contrato de compraventa: dónde se pide el DNI de las dos partes | Sin diseñar |

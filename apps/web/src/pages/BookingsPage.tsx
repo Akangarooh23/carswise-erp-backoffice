@@ -24,6 +24,9 @@ type Booking = {
    * que en el ERP no la mira nadie: se apuntaba y se tiraba.
    */
   quiere_financiar: boolean;
+  /** Cuando se le llamo por la financiacion, y quien. Apaga el aviso. */
+  financiacion_llamada_at: string | null;
+  financiacion_llamada_por: string;
   /**
    * De donde vino el comprador: «coches.net», «direct»…
    *
@@ -717,6 +720,22 @@ export default function BookingsPage() {
           }
         : { mal: true, texto: `Movida, pero no hemos podido avisar a ${quien}. Llámale antes de que se presente a la hora vieja.` }
     );
+    load();
+  }
+
+  /**
+   * Se apunta que ya se le ha llamado por la financiacion.
+   *
+   * Es lo que apaga el aviso. Va aqui y no en un dialogo porque no decide
+   * nada: solo dice que la llamada ya se ha hecho, y pedir confirmacion para
+   * eso es una pantalla de mas en la que nadie lee nada.
+   */
+  async function marcaLlamadaFinanciacion(id: string) {
+    const r = await api.post(`/visit-bookings/${id}/financiacion-llamada`, {});
+    if (!r.ok && r.error !== 'ya_estaba_llamado') {
+      setResultado({ mal: true, texto: 'No se ha podido apuntar la llamada.' });
+      return;
+    }
     load();
   }
 
@@ -1544,12 +1563,33 @@ export default function BookingsPage() {
                     {b.utm_source}
                   </span>
                 )}
+                {/*
+                  * La financiación: la etiqueta dice que la quiere y el botón
+                  * es lo que hay donde irá el scoring.
+                  *
+                  * Verlo no es atenderlo. Mientras no sepamos con qué entidad
+                  * ni cómo nos llega la respuesta, el hueco no se queda vacío:
+                  * se queda una llamada, y el botón apaga el aviso cuando se
+                  * ha hecho. Ya llamado sale en gris con quién y cuándo.
+                  */}
                 {b.quiere_financiar && (
-                                  <span title="Dijo que le interesaría financiarlo. Llámale antes de la visita."
-                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
-                                    quiere financiar
-                                  </span>
-                                )}
+                  b.financiacion_llamada_at ? (
+                    <span title={`Le llamó ${b.financiacion_llamada_por || 'alguien'}`}
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-50 text-brand-500 border border-brand-200">
+                      financiación · llamado
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(ev) => { ev.stopPropagation(); void marcaLlamadaFinanciacion(b.id); }}
+                      title="Dijo que le interesaría financiarlo. Llámale ANTES de la visita: quien llega sabiendo lo que puede pagar negocia distinto."
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700
+                                 border border-violet-200 hover:bg-violet-100"
+                    >
+                      quiere financiar · marcar llamado
+                    </button>
+                  )
+                )}
                               </div>
                             </div>
 

@@ -131,6 +131,22 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'la visita acabó en venta y nuestro fee no está facturado',
     a: '/comisiones', icono: 'euro', tono: 'urgente',
   },
+  /*
+   * El comprador que ha levantado la mano para la financiacion.
+   *
+   * Lo contesta al pedir la visita y hasta ahora no lo pedia nadie: se veia en
+   * la Agenda, que no es lo mismo que atenderlo. Es la operacion que deja
+   * margen -una hora al telefono- y se perdia entre las visitas.
+   *
+   * Va con los urgentes y antes de la visita: quien llega sabiendo lo que puede
+   * pagar negocia distinto, y descubrirlo en el parking es descubrirlo tarde.
+   */
+  {
+    clave: 'financiacion_sin_llamar',
+    etiqueta: 'compradores que quieren financiacion', una: 'comprador que quiere financiacion',
+    porque: 'ha levantado la mano y hay que llamarle antes de que vaya a ver el coche',
+    a: '/bookings', icono: 'euro', tono: 'urgente',
+  },
   {
     clave: 'visitas_por_confirmar',
     etiqueta: 'visitas por confirmar', una: 'visita por confirmar',
