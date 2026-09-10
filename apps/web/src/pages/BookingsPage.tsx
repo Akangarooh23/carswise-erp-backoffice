@@ -17,6 +17,13 @@ type Booking = {
   buyer_name: string;
   buyer_phone: string;
   notes: string;
+  /**
+   * Si dijo que le interesaría financiarlo, al pedir la visita.
+   *
+   * Lo contesta en PopCar y hasta ahora se quedaba en la tabla de solicitudes,
+   * que en el ERP no la mira nadie: se apuntaba y se tiraba.
+   */
+  quiere_financiar: boolean;
   // Dónde es la visita y por quién preguntar. Se apuntan al confirmar, pero
   // muchas veces se saben después, así que pueden llegar vacíos.
   meeting_place: string | null;
@@ -1512,6 +1519,18 @@ export default function BookingsPage() {
                                   <span title="Este hueco lo generó el sistema; nadie ha acordado aún esa hora"
                                         className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                                     hora propuesta por el sistema
+                                  </span>
+                                )}
+                                {/*
+                                  * Lo contestó él al pedir la visita, y hasta ahora se quedaba
+                                  * guardado en una tabla que no miraba nadie. Es la operación que
+                                  * deja margen y la que se atiende a mano: hay que saberlo antes
+                                  * de la visita, no descubrirlo en el parking.
+                                  */}
+                                {b.quiere_financiar && (
+                                  <span title="Dijo que le interesaría financiarlo. Llámale antes de la visita."
+                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
+                                    quiere financiar
                                   </span>
                                 )}
                               </div>

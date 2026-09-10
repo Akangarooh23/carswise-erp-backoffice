@@ -25,7 +25,17 @@ const ROLES: Role[] = ['admin', 'support', 'operations', 'sales'];
 const ENSURE_RESULTADO = `
   ALTER TABLE vehicle_visit_bookings
     ADD COLUMN IF NOT EXISTS resultado TEXT,
-    ADD COLUMN IF NOT EXISTS resultado_at TIMESTAMPTZ`;
+    ADD COLUMN IF NOT EXISTS resultado_at TIMESTAMPTZ,
+    /*
+     * Y si el comprador dijo que le interesaría financiarlo.
+     *
+     * La escribe PopCar, que es quien la pregunta y quien crea la reserva. Se
+     * asegura también aquí porque las consultas de la Agenda la leen: si el
+     * despliegue del ERP llegara antes que el de PopCar, la columna no
+     * existiría y la Agenda entera dejaría de cargar. Con IF NOT EXISTS, que
+     * la pongan los dos no cuesta nada.
+     */
+    ADD COLUMN IF NOT EXISTS quiere_financiar BOOLEAN NOT NULL DEFAULT FALSE`;
 
 const ENSURE_RESULTADO_VALIDO = `
   DO $$
@@ -452,7 +462,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
   try {
     const r = await query(
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
-              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
+              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar,
               b.meeting_place, b.meeting_contact,
               b.resultado, b.resultado_at,
               b.status, b.created_at
@@ -1165,7 +1175,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
   try {
     let sql = `
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
-             b.buyer_email, b.buyer_name, b.buyer_phone, b.notes,
+             b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,
