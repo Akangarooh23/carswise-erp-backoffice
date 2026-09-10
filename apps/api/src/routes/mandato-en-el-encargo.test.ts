@@ -505,4 +505,38 @@ describe('la factura sale y se apunta que salió', () => {
     // El PDF ya lo tiene delante quien lo pidió.
     assert.match(FACTURAS, /no ha salido la factura/);
   });
+
+  test('la del proveedor NO se le manda al cliente', () => {
+    /*
+     * El fallo entero. El PDF de la comisión sale a nombre del concesionario y
+     * el correo se mandaba a `customer_email`, que en esas facturas es el
+     * particular que fue a ver el coche: le llegaba la factura del
+     * concesionario con nuestro importe y la referencia de la venta.
+     *
+     * Se mira el trozo de la ruta del proveedor, no el fichero entero: en la
+     * de la venta del coche el cliente **sí** es el destinatario, y buscar en
+     * todo daría por buena cualquiera de las dos.
+     */
+    const ruta = FACTURAS.slice(
+      FACTURAS.indexOf("'/invoices/provider/:id/pdf'"),
+      FACTURAS.indexOf('// ── Subscription invoices'),
+    );
+    assert.ok(ruta.length > 0, 'no encuentro la ruta del proveedor');
+    assert.match(ruta, /aQuienSeLeManda\(\{/, 'la ruta tiene que preguntar a quién va');
+    assert.match(ruta, /sendInvoiceEmail\(destino\.email/);
+    assert.doesNotMatch(
+      ruta,
+      /sendInvoiceEmail\(String\(inv\.customer_email\)/,
+      'el correo del cliente no es el destinatario de la factura de una empresa',
+    );
+  });
+
+  test('y si no hay a quién, no se manda ni se marca', () => {
+    // Tirar del correo del cliente «para que salga algo» es volver al fallo.
+    const ruta = FACTURAS.slice(
+      FACTURAS.indexOf("'/invoices/provider/:id/pdf'"),
+      FACTURAS.indexOf('// ── Subscription invoices'),
+    );
+    assert.match(ruta, /sin mandar: falta/);
+  });
 });

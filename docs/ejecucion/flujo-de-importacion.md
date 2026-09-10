@@ -269,6 +269,9 @@ sistema: En el panel del cliente, la solicitud salta de «En curso» a **Contrat
 erp: Emitir la comisión de la garantía, si se vendió una
 @ Comisiones → la garantía pendiente
 + nada: el importe sale del catálogo
+erp: Y mandarle la factura, que es descargar el PDF
+@ Facturación clientes → la factura → descargar el PDF
++ nada: al descargarlo sale el correo con el adjunto y queda marcada
 erp: Pedirle la factura al perito, si no ha llegado
 @ Peritaciones → el coche → «Pedir su factura»
 erp: Comprobar que no queda ninguna factura sin llegar
@@ -279,6 +282,15 @@ erp: Y que el coche cuadra
 
 > El expediente cerrado **sigue diciendo qué le falta**. Un gasto sin factura no
 > se deduce, y cerrar la entrega no hace que deje de faltar.
+
+> **Y lo mismo al revés: emitir una factura nuestra no es mandarla.** Le pone
+> número y la deja en Facturación, pero no sale de aquí hasta que alguien
+> descarga su PDF — eso es lo que dispara el correo. Las que están emitidas y
+> sin mandar salen en **Pendientes**.
+>
+> A quién le llega depende de a nombre de quién esté: la del cliente, a él; la
+> comisión de una garantía, al correo de la ficha de **Proveedores** de la
+> aseguradora. Si esa ficha no tiene correo, no se manda y se queda avisando.
 
 ---
 

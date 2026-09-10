@@ -313,7 +313,27 @@ erp: Emitir la factura
 @ Comisiones → la venta → «Emitir la factura»
 + nada: el importe sale del fee. Si el concesionario paga otra cosa, se cambia
 sistema: La factura pasa a la tabla de abajo, y la venta sale de la lista
+erp: Y mandársela, que es descargar el PDF
+@ Facturación clientes → la factura → descargar el PDF
++ nada: al descargarlo sale el correo con el adjunto y queda marcada
 :::
+
+> **Emitirla no es mandarla.** Son dos pasos y el segundo se olvida: emitir crea
+> la factura y le pone número, pero al concesionario no le llega nada hasta que
+> alguien descarga el PDF. Descargarlo es lo que dispara el correo.
+>
+> Mientras no se haya hecho, esa factura sale en **Pendientes** como «facturas
+> emitidas sin enviar». Antes no salía en ningún sitio.
+
+> **Le llega al concesionario, no al comprador.** La factura va a nombre de la
+> sociedad —**Marcos Ocasión SL**, no «Modrive»— y el correo sale al que tenga
+> puesto en su ficha de **Proveedores**. En la factura también aparece el
+> particular que fue a ver el coche, pero ahí es un dato del concepto: es la
+> venta que justifica la comisión, no quien la paga.
+>
+> **Si su ficha no tiene correo, no se manda y no se marca**: la factura se
+> queda en Pendientes hasta que se le ponga. No se manda al comprador «para que
+> salga algo» — sería enseñarle a un tercero lo que cobramos y a quién.
 
 | Qué | Cuánto |
 |---|---|
@@ -368,6 +388,7 @@ acordado el concesionario. **Toda visita se aprueba**, también esta.
 | Confirmar una visita sola, aunque el horario estuviera publicado | Confirmarla después de la llamada |
 | Mandar el calendario al pedir la cita | Sale al confirmar, no antes |
 | Sonar en la campana del cliente mientras está pendiente | Mientras tanto la ve en Solicitudes |
+| Mandar la factura al emitirla | Descargar su PDF, que es lo que la manda. El ERP avisa de las que faltan |
 
 La única excepción es el **particular**: de ese sí tenemos el correo, y se le
 escribe solo al reservar. Del concesionario no.
@@ -382,6 +403,7 @@ escribe solo al reservar. Del concesionario no.
 | Las confirmadas | **Agenda**, por fecha. Con «Todas» salen las de los tres meses anteriores |
 | El rastro de una visita | **Agenda** → Ver rastro |
 | Las ventas sin facturar | **Comisiones**, bloque de arriba |
+| Las facturas emitidas que no se han mandado | **Dashboard → Pendientes**, y la lista en **Facturación clientes** |
 | Las visitas de un coche | **Marketplace** → la oferta → panel de visitas |
 | El teléfono del vendedor | **Agenda** → la visita → «apuntarlo». Vale para todos sus coches |
 | El teléfono de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |

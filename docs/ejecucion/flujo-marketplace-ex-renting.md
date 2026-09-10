@@ -189,7 +189,15 @@ mismo fee de 200 €.
 erp: Emitir la factura
 @ Comisiones → la venta → «Emitir la factura»
 + nada: el importe sale del fee, y se puede cambiar al emitir
+erp: Y mandársela, que es descargar el PDF
+@ Facturación clientes → la factura → descargar el PDF
++ nada: al descargarlo sale el correo con el adjunto y queda marcada
 :::
+
+> **Emitirla no es mandarla**, igual que con un concesionario. A Astara o Leasys
+> no le llega nada hasta que alguien descarga el PDF, y el correo sale al que
+> tengan puesto en su ficha de **Proveedores**. Mientras tanto sale en
+> **Pendientes** como «facturas emitidas sin enviar».
 
 > **Con Astara y Leasys no hay nada acordado todavía.** Los 200 € son la cifra
 > provisional que se puso para los concesionarios, y aquí sale la misma porque
@@ -204,7 +212,8 @@ erp: Emitir la factura
 | Qué | Dónde |
 |---|---|
 | Los coches | **Marketplace → VO Empresas Renting** |
-| El teléfono de la empresa | **Proveedores** → su ficha |
+| El teléfono y el correo de la empresa | **Proveedores** → su ficha. El correo es al que sale su factura |
+| Las facturas emitidas que no se han mandado | **Dashboard → Pendientes**, y la lista en **Facturación clientes** |
 | El de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |
 | Las visitas por confirmar | **Agenda**, bloque de arriba, con la marca «Ex-renting» |
 | El informe de DEKRA | **Agenda** → la visita → enlace «origen» |

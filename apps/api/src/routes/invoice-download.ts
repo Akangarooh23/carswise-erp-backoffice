@@ -4,9 +4,28 @@ import { requireRole } from '../middleware/auth.js';
 import { buildInvoicePdf, generateAndStoreInvoicePdf, nextInvoiceNumber, type InvoiceData } from '../services/invoice-pdf.js';
 import { enviar, plantilla, parrafo, esc, MARCA } from '../lib/correo.js';
 import { falloInterno } from '../lib/fallos.js';
+import { aQuienSeLeManda } from '../lib/a-quien-se-le-manda.js';
 import { config } from '../config.js';
 
 export const invoiceDownloadRouter = Router();
+
+/**
+ * El correo de la ficha de Proveedores de quien emite esta factura.
+ *
+ * Va por `proveedor_id`, que es lo que ata la factura a su ficha al crearla. Si
+ * la factura no está atada a ninguna —o la ficha no tiene correo— devuelve
+ * vacío, y entonces no se manda: quien decide eso es `aQuienSeLeManda`, y lo
+ * que **no** hace es tirar del correo del cliente para que salga algo.
+ */
+async function elCorreoDelProveedor(proveedorId: unknown): Promise<string> {
+  const id = String(proveedorId ?? '').trim();
+  if (!id) return '';
+  const r = await query<{ email: string | null }>(
+    `SELECT email FROM erp_proveedores WHERE id = $1`,
+    [id]
+  ).catch(() => null);
+  return String(r?.rows[0]?.email ?? '').trim();
+}
 
 /**
  * Se le manda la factura al cliente, y **se apunta que salió**.
@@ -111,12 +130,29 @@ invoiceDownloadRouter.get(
       const baseAmount = Number(inv.invoice_amount) || 0;
       const ivaRate    = Number(inv.iva_rate) || 0.21;
 
+      /*
+       * A quién va, que no siempre es el cliente.
+       *
+       * El PDF sale a nombre de `provider_name` y el correo se mandaba a
+       * `customer_email`: en la comisión del concesionario eso es el particular
+       * que fue a ver el coche, así que le llegaba la factura del concesionario
+       * con nuestro importe y la referencia de la venta. La regla está en
+       * `a-quien-se-le-manda.ts`; aquí solo se le da lo que necesita.
+       */
+      const destino = aQuienSeLeManda({
+        type: inv.type,
+        provider_name: inv.provider_name,
+        customer_email: inv.customer_email,
+        proveedor_email: await elCorreoDelProveedor(inv.proveedor_id),
+      });
+
       const data: InvoiceData = {
         invoiceNumber,
         date: inv.issued_at ? new Date(inv.issued_at as string) : new Date(),
         series: 'PROV',
         recipientName:    String(inv.provider_name   || 'Proveedor'),
-        recipientEmail:   inv.customer_email ? String(inv.customer_email) : undefined,
+        // El correo que se imprime es el del destinatario, no el del cliente.
+        recipientEmail:   destino.email || undefined,
         lines: [{
           description: typeLabel[inv.type as string] ?? String(inv.type),
           subtitle: [
@@ -143,8 +179,16 @@ invoiceDownloadRouter.get(
       );
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
-      if (inv.customer_email) {
-        sendInvoiceEmail(String(inv.customer_email), invoiceNumber!, pdf, req.params.id).catch(() => {});
+      if (destino.email) {
+        sendInvoiceEmail(destino.email, invoiceNumber!, pdf, req.params.id).catch(() => {});
+      } else {
+        /*
+         * Sin correo no se manda, y no se marca: se queda en «facturas
+         * emitidas sin enviar» hasta que alguien complete la ficha. Antes esto
+         * no existía porque siempre había un correo al que tirar — el del
+         * cliente, que era el equivocado.
+         */
+        console.warn('[facturas] %s sin mandar: falta %s', invoiceNumber, destino.falta);
       }
     } catch (err) {
       falloInterno(res, 'pdf_failed', err);

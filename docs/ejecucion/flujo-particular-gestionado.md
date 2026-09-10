@@ -460,6 +460,12 @@ erp: Y la factura queda en su sitio
 > Si el correo falla, la factura **sigue** en la lista. Se marca como enviada
 > solo cuando el envío ha salido, para que un fallo no la borre del aviso
 > justo el día que hace falta.
+>
+> **Ésta sí va al cliente** porque se le factura a él: no hay ninguna empresa
+> detrás. En las otras facturas del ERP —la comisión del concesionario, la del
+> portal, el fee de renting— quien paga es la empresa, y el correo sale al de
+> su ficha de **Proveedores**. Es la misma pantalla y el mismo botón, así que
+> conviene saber que el destinatario no siempre es el cliente.
 
 > **Y si el coche estaba en un portal, ahí sigue.** Al despublicarse de nuestro
 > escaparate sale el aviso de retirarlo, pero quitarlo lo hace una persona.
