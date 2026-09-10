@@ -78,6 +78,7 @@ const ENSURE_TABLE = `
     avisado_at      TIMESTAMPTZ,
     cerrado_at      TIMESTAMPTZ,
     motivo_cierre   TEXT NOT NULL DEFAULT '',
+    lead_id         TEXT,
     creado_por      TEXT NOT NULL DEFAULT '',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -102,7 +103,8 @@ const ENSURE_COLUMNAS = `
   ALTER TABLE erp_encargos_venta
     ADD COLUMN IF NOT EXISTS libre_desde TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS acepto_el_precio BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS precio_referencia NUMERIC(12,2)`;
+    ADD COLUMN IF NOT EXISTS precio_referencia NUMERIC(12,2),
+    ADD COLUMN IF NOT EXISTS lead_id TEXT`;
 
 const ENSURE_UNO_VIVO = `
   CREATE UNIQUE INDEX IF NOT EXISTS ux_encargo_vivo_por_coche
@@ -371,8 +373,8 @@ encargosRouter.post(
         `INSERT INTO erp_encargos_venta
            (id, vehicle_id, cliente_email, cliente_nombre, estado, firmado_at,
             acepto_el_precio, libre_desde, precio_referencia,
-            fee_gestion, fee_cancelacion, creado_por)
-         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9,$10,$11)
+            fee_gestion, fee_cancelacion, lead_id, creado_por)
+         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9,$10,$11,$12)
          RETURNING *`,
         [
           id, vehicleId,
@@ -382,6 +384,7 @@ encargosRouter.post(
           aceptoElPrecio, libre?.toISOString() ?? null,
           Number(req.body?.precio_referencia) || null,
           FEE_DE_GESTION, FEE_DE_CANCELACION,
+          String(req.body?.lead_id ?? '').trim() || null,
           req.actor?.name ?? req.actor?.sub ?? '',
         ]
       );
@@ -558,6 +561,52 @@ encargosRouter.patch(
     } catch (err) {
       console.error('[encargos] precio:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'encargo_precio_failed' });
+    }
+  }
+);
+
+/**
+ * Los coches de un cliente, para poder abrirle el encargo desde su lead.
+ *
+ * Un lead de la web llega con el coche escrito a mano —«Volkswagen T-Roc R line
+ * 2022»— y eso no es un IDCar: el IDCar lo crea él en su cuenta, porque es
+ * quien sube las fotos, los papeles y el informe. Así que entre el lead y el
+ * encargo hay una llamada y un rato.
+ *
+ * Esto es lo que hace que ese rato no acabe en «búscalo tú en IDCars»: se le
+ * enseñan sus coches, con cuál ya tiene encargo, y se abre sobre el que sea.
+ * Si no tiene ninguno, eso también hay que verlo — es lo que se le pide en la
+ * llamada.
+ *
+ * Se busca por el correo del lead y no por el identificador de usuario porque
+ * el que deja el formulario puede no tener cuenta todavía: el correo es lo
+ * único que hay a los dos lados.
+ */
+encargosRouter.get(
+  '/encargos/candidatos',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const email = String(req.query.email ?? '').trim().toLowerCase();
+      if (!email) { res.status(400).json({ ok: false, error: 'falta_el_correo' }); return; }
+
+      const r = await query(
+        `SELECT v.id, v.plate, v.brand, v.model, v.year, v.created_at,
+                e.id AS encargo_id, e.cerrado_at
+           FROM moveadvisor_user_vehicles v
+           LEFT JOIN moveadvisor_users u ON u.id = v.user_id
+           LEFT JOIN erp_encargos_venta e
+                  ON e.vehicle_id = v.id AND e.cerrado_at IS NULL
+          WHERE lower(COALESCE(v.user_email, '')) = $1
+             OR lower(COALESCE(u.email, '')) = $1
+          ORDER BY v.created_at DESC`,
+        [email]
+      );
+      res.json({ ok: true, data: r.rows });
+    } catch (err) {
+      console.error('[encargos] candidatos:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'candidatos_failed' });
     }
   }
 );

@@ -4,6 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
+import AbrirEncargo from './leads/AbrirEncargo.js';
 
 // ─── Leads (solicitudes) types ────────────────────────────────────────────────
 
@@ -1247,6 +1248,18 @@ export default function LeadsPage() {
         <Modal open={true} title={`Lead: ${selected.meta?.name ?? selected.user_email}`} onClose={() => setSelected(null)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
+              {/*
+                * Quien pide que le vendamos su coche: se le abre el encargo
+                * desde aqui, sin salir a buscarlo a IDCars.
+                */}
+              {selected.appointment_type === 'venta_gestionada' && (
+                <AbrirEncargo
+                  leadId={selected.id}
+                  email={selected.user_email}
+                  cocheQuePidio={selected.title}
+                />
+              )}
+
               {selected.appointment_type === 'import' && (
                 /* El expediente: lo que se le dijo, si lo ha pagado y cuándo lo
                    tendrá. Es lo que hay que mirar antes de cogerle el teléfono. */
