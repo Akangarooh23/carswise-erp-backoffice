@@ -1,18 +1,17 @@
 # Flujo particular — «Nosotros lo vendemos por ti»
 
-> **Esto todavía no está construido.** Los otros tres manuales cuentan lo que
-> hay; este cuenta lo que va a haber. Las pantallas que nombra existen, pero
-> casi ninguno de los botones. Está escrito así a propósito: sirve para acordar
-> el flujo antes de tocar código, y para que cuando se construya haya un sitio
-> donde mirar si falta algo.
-
 Un particular quiere vender su coche y nos encarga la venta entera. Él conserva
-el coche y lo único que hace es enseñarlo; lo demás —anuncios, llamadas,
-papeles— lo llevamos nosotros. No compramos el coche en ningún momento.
+el coche y lo único que hace es enseñarlo; lo demás —precio, anuncio, llamadas,
+citas, papeles— lo llevamos nosotros. No compramos el coche en ningún momento.
 
 El color dice quién lo hace: azul el cliente, gris lo que pasa solo, morado un
 correo que sale, verde algo que se hace en el ERP y amarillo algo que hace una
 persona por su cuenta.
+
+> **Qué está construido y qué no.** Todo lo de este manual funciona menos dos
+> cosas, que van marcadas donde tocan: **la revisión del taller** —que no tiene
+> pantalla y se apunta a mano— y **los anuncios en portales**, que se ponen y se
+> quitan sin que el ERP lo sepa. Lo demás se puede recorrer entero.
 
 La otra opción de **Vender** —publicar él mismo su IDCar en el marketplace— es
 un camino distinto y más corto: no hay mandato, ni taller, ni portales, ni
@@ -23,94 +22,135 @@ factura. Aquí solo está el gestionado.
 ## De un vistazo
 
 :::flujo
-cliente: Elige «Nosotros lo vendemos por ti» y firma el mandato
-@ En PopCar, no en el ERP — nos entra en **Leads**
-+ sus datos y la firma. Cero euros ahora
-erp: El encargo aparece con su cuenta atrás de 30 días
+cliente: Pide en la web que le vendamos su coche
+@ En PopCar, no en el ERP — cae en **Leads** como «Vender su coche»
++ qué coche, en cuánto tiempo, nombre, teléfono y correo
+erp: Se le llama y se le abre el encargo sobre su coche
+@ Leads → el lead → «Encargo de venta» → «Abrir encargo»
++ nada: se pulsa sobre el coche que él eligió
+erp: Se acuerda el precio y si firma la cláusula
 @ IDCars → el coche → «Encargo de venta»
-+ nada: entra solo al firmar
-cliente: Sube el coche como IDCar y sus papeles
++ el precio que le proponemos y la casilla de la cláusula
+cliente: Se hace la tasación gratuita
+@ En PopCar, no en el ERP — sale en **IDCars** cuando está hecha
++ nada: es un cuestionario, y de ahí sale el precio
+cliente: Sube el coche, sus papeles y el informe de estado
 @ IDCars → el coche → «Datos del vehículo» y «Documentos»
-+ matrícula, kilómetros, fotos, permiso de circulación, ficha técnica e ITV
-cliente: Hace el informe de estado con el móvil
-@ IDCars → el coche → «Informe de estado»
-+ nada: son fotos guiadas, y de ahí no sale ningún precio
-cliente: Elige las franjas en las que puede enseñarlo
++ matrícula, kilómetros, fotos, permiso, ficha técnica e ITV
+cliente: Y elige las franjas en las que puede enseñarlo
 @ IDCars → el coche → «Franjas horarias»
 + al menos seis en los próximos catorce días
-erp: Se le lleva a un taller de la red, que lo revisa
-@ Talleres → «Nueva revisión» → el coche
-+ el taller, el día y la hora
-erp: Con la revisión hecha, el coche ya tiene sello
-@ Peritaciones → la revisión → «Verificado»
-+ el grado mecánico, que solo puede poner el taller
+erp: Con las cinco puertas abiertas, se le lleva al taller
+@ Talleres → la revisión del coche
++ el taller, el día y la hora. Todavía se apunta a mano
 erp: Se publica en nuestro marketplace
 @ Marketplace → VO Particulares → «Publicar»
 + el precio de salida que se ha acordado con él
-trabajador: Y a mano en los portales, con nuestro teléfono
-@ Portales → «Nuestros anuncios» → el coche
-+ en qué portales se ha puesto y el enlace de cada uno
-cliente: Un comprador llega de un portal y pide cita sin registrarse
-@ En PopCar, no en el ERP — cae en **Agenda**, como las demás
+trabajador: Y a mano en el portal, con nuestro teléfono
+@ Portales → el portal donde se publique
++ el anuncio, con el enlace corto y el 684 717 736
+cliente: Un comprador llega del portal y pide cita sin registrarse
+@ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y si le interesaría financiarlo
+sistema: Hasta que no pulsa el enlace del correo, no hay reserva
+@ Agenda → la visita aparece cuando la confirma
++ nada: el hueco sigue libre mientras tanto
 erp: La visita se confirma y se cierra como todas
 @ Agenda → la visita → «Confirmar», y después «Fue y se lo quedó»
 + nada: son botones
-erp: Si se lo quedó, hay que retirarlo de los portales
-@ Portales → «Nuestros anuncios» → el aviso en rojo
-+ una casilla por portal; no se cierra hasta que están todas
-erp: Y se le factura la gestión al cliente
-@ Facturación clientes → «Emitir la factura»
-+ nada: 299 €, y se puede cambiar al emitir
-erp: Si llega el día 30 sin venderse, se avisa y se retira
-@ IDCars → el coche → «Encargo de venta» → «Vence hoy»
-+ nada: el correo sale solo. Retirar de los portales sigue siendo a mano
+erp: Se cierra el encargo y se factura lo que toque
+@ IDCars → el coche → «Cerrar el encargo»
++ nada: son tres botones y cada uno dice cuánto se le factura
 :::
 
-Catorce pasos. Dos pasan fuera del ERP —lo que hace el cliente en PopCar— y uno
-es trabajo de persona: poner y quitar los anuncios de los portales.
+Trece pasos. Cinco los hace el cliente, dos pasan fuera del ERP y uno es trabajo
+de persona: poner y quitar el anuncio del portal.
 
 ---
 
-## 1 · El encargo
+## 1 · Del lead al encargo
 
-Lo que se firma no es un pago: es un **mandato de gestión en exclusiva** con
-fecha de caducidad. El cliente no adelanta un euro.
+Lo que se firma no es un pago: es un **mandato de gestión de venta**. El cliente
+no adelanta un euro.
 
 :::flujo
-cliente: Entra en Vender y elige «Nosotros lo vendemos por ti»
-sistema: Se crea el encargo y empieza a contar el plazo
-erp: Nos sale como un lead nuevo, con su coche
-@ Leads → el lead → «Encargo de venta»
+cliente: Rellena el formulario de «Nosotros lo vendemos por ti»
+sistema: Entra como lead de tipo «Vender su coche»
+correo: **Al cliente** — que le llamamos en menos de 24 horas laborables
+erp: Sale en la lista, y en Pendientes como lead sin contestar
+@ Leads → «Solicitudes»
 + nada: llega solo
-erp: Y desde ahí se abre la ficha del coche
-@ IDCars → el coche
-+ nada: se crea al firmar, aunque esté vacía
+trabajador: Se le llama. Es la promesa de la web y no la hace el sistema
+erp: Y se le abre el encargo sobre su coche
+@ Leads → el lead → «Encargo de venta»
++ nada: se pulsa el botón del coche
 :::
 
-> **Los tres números del mandato.** 299 € de fee de gestión, que solo se cobra
-> si vende con nosotros. 150 € de fee de cancelación, si se sale antes y lo
-> vende por su cuenta. Y 30 días de exclusiva. Están así porque los 150 €
-> cubren lo que nos hemos gastado en él aunque no venda —92 €— y dejan algo.
+> **Qué coche es lo dice él, no lo adivinamos.** Si al rellenar el formulario
+> había entrado, eligió el coche de una lista con los suyos, y en el lead sale
+> el primero, en negrita y con «← el que eligió». Si lo escribió a mano —porque
+> no había entrado— el bloque lo dice: «lo puso a mano, confírmale cuál de estos
+> es». Con un coche se adivina; con tres, no.
 
-> **Exclusiva quiere decir exclusiva.** Mientras dure, el coche no puede estar
-> anunciado por él en Wallapop ni en ningún sitio. Esto se puede comprobar:
-> rastreamos 800.000 anuncios y se puede buscar su matrícula.
+> **Si no tiene ningún coche dado de alta**, el bloque lo dice y no hay botón que
+> pulsar: el IDCar lo crea él, porque es quien tiene las fotos y los papeles. En
+> la llamada, lo que hay que pedirle es eso.
+
+> **El mandato no caduca.** Se extiende hasta que él lo cancela o hasta que
+> vendemos. Los 30 días de los que se habla más abajo no son una caducidad: son
+> hasta cuándo se le puede cobrar la cancelación.
 
 ---
 
-## 2 · Las cuatro cosas que tiene que traer
+## 2 · El precio, y si lo acepta
 
-Ninguna es opcional. Mientras falte una, el coche no se publica: en la ficha
-salen como una lista con su semáforo, y el botón de publicar no aparece.
+El precio no se lo inventa nadie: sale de la **tasación gratuita** que se hace
+el cliente. Se le propone ese número y él lo acepta firmando la cláusula, o no.
+
+:::flujo
+cliente: Se hace la tasación gratuita de su coche
+@ En PopCar, no en el ERP — llega a **IDCars**, en el encargo
++ nada: un cuestionario, y sale un importe
+erp: El campo del precio arranca con lo que dio su tasación
+@ IDCars → el coche → «Encargo de venta» → «Precio que le proponemos»
++ el precio, si se acuerda otro distinto
+erp: Y se marca si ha firmado la cláusula del precio
+@ IDCars → el coche → «Encargo de venta»
++ una casilla, y se guarda
+:::
+
+> **Es lo que decide la penalización**, así que no es un detalle administrativo:
+
+| Situación | ¿Paga los 150 €? |
+|---|---|
+| Firmó la cláusula · se va antes de 30 días | **Sí** |
+| Firmó la cláusula · se va después de 30 días | **No** |
+| No firmó la cláusula · no vende con nosotros | **Sí, siempre y desde el día 1** |
+
+> **Los 30 días cuentan desde que firmó**, no desde que se marca la casilla. Si
+> se le apunta tres semanas después, le quedan diez días, no treinta.
+
+> **Por defecto nace en «no aceptó».** Es la respuesta prudente: da por hecho que
+> se le puede cobrar, y eso lo corrige el cliente en cuanto pase. Al revés se
+> dejaría de cobrar sin que nadie se entere.
+
+---
+
+## 3 · Las cinco puertas
+
+Ninguna es opcional. Mientras falte una, el coche no se publica: salen como una
+lista con su semáforo, y el botón de publicar no deja.
 
 :::flujo
 cliente: El coche, como IDCar
 @ IDCars → el coche → «Datos del vehículo»
-+ matrícula, marca, modelo, año, kilómetros y fotos
++ matrícula, marca, modelo, año, kilómetros y seis fotos
 cliente: Los papeles del coche
 @ IDCars → el coche → «Documentos»
 + permiso de circulación, ficha técnica y la última ITV
+cliente: La tasación gratuita
+@ IDCars → el coche → «Encargo de venta»
++ nada: se la hace él desde su panel
 cliente: El informe de estado
 @ IDCars → el coche → «Informe de estado»
 + nada: se abre en el móvil y son fotos guiadas
@@ -127,123 +167,129 @@ erp: Desde aquí se ve qué le falta y se le puede reclamar
 > cuyo coche no se vendió nunca.
 
 > **El informe no tasa el coche.** Enseña los daños sobre un esquema y dice el
-> estado aparente. Ni precio, ni horquilla, ni comparación de mercado: eso es
-> otra cosa y va por otro lado.
+> estado aparente. Ni precio, ni horquilla: eso es la tasación y va por otro
+> lado.
 
 > **Las franjas son suyas, no nuestras.** El que enseña el coche es él, en su
-> casa y a su hora. Los huecos de lunes a viernes de nueve a seis que el sistema
-> se inventa para los concesionarios aquí no valen: esta persona trabaja.
+> casa y a su hora.
 
-> **Y se gastan.** Una lista de franjas vacía es un coche que no se puede
-> visitar aunque esté publicado. Sale un aviso cuando se acaban.
+> **Y se gastan.** Según se reservan, esa puerta se vuelve a cerrar sola y sale
+> el aviso de «encargos sin horas para visitar»: un anuncio vivo que nadie puede
+> visitar paga el anuncio y no convierte a nadie.
 
 ---
 
-## 3 · El taller, y el sello
+## 4 · El taller, y el sello
 
-Esta es la parte que no puede hacer una foto. La revisión física es lo único que
-permite decir algo de la mecánica; sin ella, en el informe la mecánica sale como
-«sin datos» y no hay sello.
+Es la parte que no puede hacer una foto. La revisión física es lo único que
+permite decir algo de la mecánica.
 
 :::flujo
 erp: Se le da cita en un taller de la red
-@ Talleres → «Nueva revisión» → el coche
+@ Talleres → la revisión
 + el taller, el día y la hora
 correo: **Al cliente** — dónde y cuándo tiene que llevarlo
 trabajador: El taller lo revisa y devuelve el resultado
-erp: Se apunta, y con eso el coche queda verificado
-@ Peritaciones → la revisión → «Verificado»
-+ el grado mecánico y lo que haya encontrado
-sistema: El informe deja de decir «sin datos» en la parte mecánica
-erp: Y el coche ya se puede publicar
-@ IDCars → el coche → «Encargo de venta»
-+ nada: la última luz se pone en verde
+erp: Se apunta lo que dijo
+@ Peritaciones → la revisión
++ el resultado y lo que haya encontrado
 :::
 
-> **Se le hace a todos.** También a los que luego no se venden — que son la
-> mitad. Ese coste está contado dentro de lo que nos deja cada coche captado, y
-> es lo que cubre el fee de cancelación.
+> **Esto todavía no tiene pantalla propia.** El encargo no sabe si la revisión
+> está hecha, así que hoy se lleva a mano y se apunta donde se pueda. Es lo
+> siguiente que falta de este flujo.
 
-> **El sello es lo que nos diferencia.** Un anuncio sin él es un anuncio más
-> entre los de Milanuncios. Por eso va antes de publicar y no cuando aparece un
-> comprador.
+> **Se le hace a todos**, también a los que luego no se venden. Cuesta 60 € —el
+> precio de Norauto— y ese gasto es nuestro: es lo que cubre el fee de
+> cancelación.
+
+> **La garantía mecánica no es esto.** Es un producto aparte que el cliente
+> contrata o no, y **no define el sello**. Lo que hace que el coche esté
+> comprobado es la revisión del taller.
 
 ---
 
-## 4 · Se publica
+## 5 · Se publica
 
-En nuestro marketplace es un botón. En los portales es una persona.
+En nuestro marketplace es un botón. En el portal es una persona.
 
 :::flujo
-erp: Se acuerda el precio de salida con el cliente
-@ Marketplace → Análisis VO → el coche
-+ nada aquí: se mira el mercado y se le llama
 erp: Se publica en nuestro marketplace
 @ Marketplace → VO Particulares → «Publicar»
 + el precio acordado
-trabajador: Se pone a mano en los portales
-@ Portales → «Nuestros anuncios» → «Añadir publicación»
-+ el portal, el enlace del anuncio y la fecha
+trabajador: Y se pone a mano en el portal
+@ Portales → el portal donde se publique
++ el texto del anuncio y su enlace, para poder retirarlo
 :::
 
-> **El teléfono de los anuncios es el 684 717 736**, nunca el del cliente. Que
-> no le llamen a él es la mitad de lo que nos está pagando.
+> **No se publica si falta una puerta.** El botón sale apagado, pero la
+> comprobación de verdad está en el servidor y antes de escribir nada: la
+> promesa de que un anuncio nuestro lleva informe y se puede visitar tiene que
+> sostenerse venga la llamada de donde venga.
 
-> **Y en el texto va siempre esta línea:** «Informe de estado y cita en
-> popcar.es/v/MATRÍCULA». Es la única forma de que alguien entre solo, sin
-> llamar.
+> **El teléfono de los anuncios es el 684 717 736**, nunca el del cliente. Que no
+> le llamen a él es la mitad de lo que está pagando.
+
+> **En el texto va siempre `popcar.es/v/MATRÍCULA`.** En los portales no se puede
+> enlazar: solo cabe una línea de texto que alguien teclea. Esa dirección lleva
+> a la ficha del coche, y da igual cómo escriba la matrícula —con espacios, con
+> guion o en minúscula—. Si el coche ya se vendió, no da error: dice que ya no
+> está a la venta y enseña otros.
+
+> **Es un portal, no cuatro.** Cuesta entre 20 y 30 € al mes según cuál.
 
 > **El anuncio tiene que decir que el vendedor es un particular** y que nosotros
-> solo gestionamos la venta. Publicarlo desde una cuenta profesional sin decirlo
-> lo hace parecer una venta profesional, y eso arrastra doce meses de garantía
-> legal que nadie ha querido dar.
+> solo gestionamos la venta. La garantía legal la da quien vende y es propietario
+> del bien, y nosotros no lo somos en ningún momento — pero decirlo en el anuncio
+> cierra la discusión antes de que empiece.
 
-> **Apuntar dónde se ha publicado no es burocracia.** Es la lista con la que
-> después hay que retirarlo. Un portal que no está apuntado es un anuncio que se
-> queda vivo con nuestro teléfono debajo.
+> **Retirar el anuncio del portal es a mano y nadie lo vigila.** Es lo que pasó
+> con el Kia Sorento, pero en un canal que no controlamos y con nuestro teléfono
+> debajo. Lo que falta para arreglarlo está escrito y probado; falta enchufarlo.
 
 ---
 
-## 5 · El comprador que viene de fuera
+## 6 · El comprador que viene de fuera
 
-No controlamos el canal del portal: el comprador ve un teléfono y un formulario,
-y eso cae en nuestro teléfono o en nuestro buzón. Así que hay una sola página y
-tres maneras de llegar a ella.
+No controlamos el canal del portal: el comprador ve un teléfono y un enlace. Así
+que hay una sola página y dos maneras de llegar a ella.
 
 :::flujo
-cliente: Ve el anuncio en el portal y entra por el enlace
-sistema: Abre la ficha pública del coche, con el informe y las franjas
+cliente: Ve el anuncio y entra por `popcar.es/v/MATRÍCULA`
+sistema: Abre la ficha del coche, con el informe y las franjas
 cliente: O llama al teléfono del anuncio, que es el nuestro
 trabajador: Se le pregunta lo básico y se le manda el enlace
-@ Agenda → «Nueva cita a mano»
-+ nombre, teléfono y de qué portal viene
-cliente: Elige franja y pide la cita, sin cuenta y sin registrarse
+@ Agenda → la visita, cuando la pida
++ nada: la pide él desde la ficha
+cliente: Elige franja y pide la cita **sin cuenta y sin registrarse**
+correo: **Al comprador** — un enlace para confirmar que ese correo es suyo
+cliente: Pulsa el enlace y entonces sí se reserva
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y la casilla de financiación
-erp: Nos entra pendiente de confirmar, con el portal del que viene
+erp: Nos entra pendiente de confirmar
 @ Agenda → «visitas por confirmar»
 + nada: entra sola
 :::
 
-> **Sin cuenta.** Hoy, para pedir cita hay que estar registrado. Alguien que
-> llega de coches.net no se va a hacer una cuenta para ver tres huecos. Es el
-> cambio más pequeño de todo este manual y el que más gente deja pasar.
+> **Sin cuenta, pero no sin comprobar.** Pedir cita sin registrarse era el único
+> modo de que alguien de coches.net llegara a algo. Pero la sesión estaba ahí por
+> algo: sin ella, cualquiera podía reservar a nombre de otro. El enlace del
+> correo prueba lo mismo que probaba la cuenta.
 
-> **La casilla de financiación es una sola pregunta:** «¿te interesaría
-> financiarlo?», sí o no. Nada de datos económicos para ver un coche. Al que
-> diga que sí se le manda después a la plataforma de scoring.
+> **El hueco no se aparta hasta que pulsa.** Gana quien confirma primero. Al que
+> llega tarde se le dice y se le manda a elegir otra hora, que es preferible a
+> que seis peticiones falsas dejen el coche sin franjas.
 
-> **De qué portal viene se apunta siempre.** Es lo que dentro de tres meses
-> contesta qué portal merece la pena pagar. Sin eso, los cuatro cuestan lo mismo
-> y no se sabe cuál sobra.
+> **La casilla de financiación es una sola pregunta**, sí o no. Nada de datos
+> económicos para ver un coche. Al que diga que sí se le manda después a la
+> plataforma de la entidad — que está **por definir**.
 
 ---
 
-## 6 · La visita
+## 7 · La visita
 
 A partir de aquí es el mismo camino que el de concesionario, con una diferencia:
-al vendedor sí le podemos escribir, porque es cliente nuestro y tenemos su
-correo.
+al vendedor sí le podemos escribir, porque es cliente nuestro.
 
 :::flujo
 erp: Se confirma la visita
@@ -254,7 +300,6 @@ cliente: Se ven, y el cliente enseña su coche
 erp: Cuando pasa el día, se dice cómo acabó
 @ Agenda → «visitas por cerrar»
 + nada: «No fue», «Fue a verlo» o «Fue y se lo quedó»
-correo: **Al comprador** — qué tal fue, con los tres botones
 :::
 
 > El vendedor es el cliente particular, no un comercial nuestro. Nosotros no
@@ -262,57 +307,35 @@ correo: **Al comprador** — qué tal fue, con los tres botones
 
 ---
 
-## 7 · Si se vende
+## 8 · Cerrar el encargo
 
-«Fue y se lo quedó» dispara tres cosas, y una de ellas hay que hacerla a mano.
-
-:::flujo
-erp: El coche se retira de nuestro marketplace
-@ Marketplace → VO Particulares → el coche
-+ nada: se despublica solo al cerrar la visita
-erp: Y sale el aviso de retirarlo de los portales
-@ Portales → «Nuestros anuncios» → el aviso en rojo
-+ una casilla por portal, y no se cierra hasta que están todas
-erp: Los papeles y la transferencia
-@ Gestoría → el expediente → «Transferencia»
-+ ahora sí: el DNI de los dos y el contrato firmado
-erp: Y la factura de la gestión al cliente
-@ Facturación clientes → «Emitir la factura»
-+ nada: 299 €, y se puede cambiar al emitir
-:::
-
-> **El aviso de los portales es rojo y no se va solo.** Con el Kia Sorento pasó
-> que se entregó el 1 de septiembre y una semana después seguía publicado — y
-> eso era en nuestro escaparate, donde se arregla con una consulta. Aquí son
-> cuatro sitios que no controlamos, con nuestro teléfono debajo.
-
-> **La venta no acaba aquí.** Si el comprador marcó la casilla de financiación,
-> hay una segunda operación con él, y ahí está la mitad del dinero de todo esto.
-> Ese trozo todavía no está diseñado.
-
----
-
-## 8 · Si no se vende: el día 30
+Un encargo no se acaba solo. Se cierra a mano, con uno de estos tres finales, y
+cada uno dice **antes de pulsar** cuánto se le factura.
 
 :::flujo
-sistema: Llega el día 30 y el mandato vence
-correo: **Al cliente** — que el coche se va a despublicar
-erp: El coche se retira de nuestro marketplace
-@ Marketplace → VO Particulares → el coche
-+ nada: se despublica solo
-erp: Y otra vez el aviso de los portales
-@ Portales → «Nuestros anuncios» → el aviso en rojo
-+ una casilla por portal
-erp: El encargo queda cerrado y sin cobrar
-@ IDCars → el coche → «Encargo de venta» → «Vencido»
-+ nada
+erp: Se cierra desde la ficha del coche
+@ IDCars → el coche → «Encargo de venta» → «Cerrar el encargo»
++ nada: son tres botones con su importe
+sistema: Se emite la factura y el encargo queda cerrado
+erp: Y la factura queda en su sitio
+@ Facturación clientes
++ nada: sale sola, con el concepto puesto
 :::
 
-> **Esta es la rama que cuesta dinero.** Uno de cada cinco encargos acaba así:
-> no vende, no cancela, no paga, y nos ha costado 92 €. Cada punto que se le
-> quite a ese quinto son 92 € que no se pierden — y por eso avisar unos días
-> antes de que venza, para que pueda renovar, seguramente valga más que el
-> correo del día 30.
+| Cómo acabó | Qué se le factura |
+|---|---|
+| **Vendido con nosotros** | 299 € de gestión, con el IVA incluido |
+| **Se fue sin vender** | Lo que diga la penalización: 150 € o nada |
+| **Lo retiramos nosotros** | Nada. Cobrarle sería cobrarle por una decisión nuestra |
+
+> **Cuando una visita acaba en «Fue y se lo quedó»**, ese coche sale en
+> Pendientes como «vendido sin cerrar el encargo». Es lo que evita que se
+> olviden los 299 €.
+
+> **No se deshace.** Cerrar emite una factura a un cliente, así que va detrás de
+> un clic y no como tres botones a la vista.
+
+> **Y sigue faltando retirarlo del portal**, que no lo hace nadie por ti.
 
 ---
 
@@ -320,36 +343,33 @@ erp: El encargo queda cerrado y sin cobrar
 
 | No hace | Lo hace una persona |
 |---|---|
-| Publicar en coches.net, Milanuncios, Wallapop o AutoScout | Poner cada anuncio a mano y apuntarlo |
-| Retirarlos cuando el coche se vende o vence el plazo | Marcar las casillas del aviso rojo |
+| Llamar al cliente en 24 horas, que es lo que promete la web | Llamarle |
+| Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano, y apuntar dónde |
+| Saber si el taller ha revisado el coche | Llevarlo, y apuntarlo donde se pueda |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
-| Decidir el precio de salida | Mirar el mercado y acordarlo con el cliente |
-| Saber si el cliente ha puesto el coche por su cuenta | Buscar su matrícula en los portales rastreados |
-| Vender la financiación al comprador | Llamarle. Es una hora por operación y no se automatiza |
+| Cerrar el encargo | Elegir cómo acabó |
+| Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |
 
 ## Dónde está cada cosa
 
 | Qué | Dónde |
 |---|---|
-| Los encargos vivos y su cuenta atrás | **IDCars**, con filtro «gestionados por nosotros» |
-| Qué le falta a un cliente por traer | **IDCars** → el coche → «Encargo de venta» |
-| Los que vencen esta semana | **Dashboard** → Pendientes |
+| Los que piden que les vendamos el coche | **Leads**, tipo «Vender su coche» |
+| Abrirle el encargo | **Leads** → el lead → «Encargo de venta» |
+| Qué le falta por traer | **IDCars** → el coche → «Encargo de venta» |
+| El precio y la cláusula | **IDCars** → el coche → «Encargo de venta» |
+| Los que están a punto de poder irse | **Dashboard** → Pendientes |
 | Los que se quedaron sin franjas | **Dashboard** → Pendientes |
-| Las revisiones de taller pendientes | **Talleres** |
-| El grado mecánico y el sello | **Peritaciones** → la revisión |
-| Dónde está publicado cada coche | **Portales** → «Nuestros anuncios» |
-| Los que hay que retirar de los portales | **Portales**, el aviso en rojo |
-| Las visitas, como siempre | **Agenda** |
-| De qué portal vino cada comprador | **Agenda** → la visita → el origen |
-| Las gestiones sin facturar | **Facturación clientes** |
-| El contrato y la transferencia | **Gestoría** → el expediente |
+| Los vendidos sin cerrar el encargo | **Dashboard** → Pendientes |
+| Las visitas | **Agenda** |
+| Cerrar y facturar | **IDCars** → el coche → «Cerrar el encargo» |
+| La factura que sale | **Facturación clientes** |
 
 ## Lo que falta por decidir
 
 | Qué | De quién depende |
 |---|---|
-| Si al que agota los 30 días se le cobra algo o no | Ana |
-| Qué plataforma externa hace el scoring del comprador | Ana la tiene que pasar |
-| Si la revisión de taller cuesta de verdad 60 € | Validar con talleres. Si son 120, el fee de cancelación de 150 € ya no cubre el coste hundido |
-| Cuánto cuesta cada anuncio profesional en cada portal | Tiene que caber dentro de los 299 € |
-| Qué pasa con el comprador financiado después de comprar | Sin diseñar. Es la mitad del ingreso |
+| Con qué entidad financiera y **cómo nos llega si la aprueban** | Sin eso no se puede facturar la comisión, que es la línea de ingreso más grande |
+| En qué portal se publica, y con qué cuenta | Es uno, a 20-30 € al mes |
+| Si al que agota el plazo se le cobra algo | Ana |
+| Qué pasa con el comprador financiado después de comprar | Sin diseñar |
