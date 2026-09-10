@@ -39,6 +39,12 @@ import {
   lasPuertas, sePuedePublicar, loQueLeFalta, tocaLlamarle, soloLeFaltanFranjas,
   type LoQueHay,
 } from '../lib/encargo-de-venta.js';
+import {
+  MOTIVOS, COMO_ACABO, esUnMotivo, loQueSeLeFactura,
+  TIPO_DE_FACTURA, SQL_YA_EMITIDA, SQL_CIERRA,
+} from '../lib/cierre-del-encargo.js';
+import { nextProviderInvoiceId } from './provider-billing.js';
+import { guardaConIdUnico } from '../lib/series.js';
 
 export const encargosRouter = Router();
 
@@ -354,6 +360,101 @@ encargosRouter.post(
       }
       console.error('[encargos] no se ha podido crear:', msg);
       res.status(500).json({ ok: false, error: 'encargo_create_failed' });
+    }
+  }
+);
+
+/**
+ * Cerrar el encargo, y facturar lo que toque.
+ *
+ * Hasta ahora un encargo se abría y no se podía terminar: `cerrado_at` estaba
+ * en la tabla y no lo escribía nadie. Un encargo abierto para siempre acaba
+ * llenando los avisos del panel de clientes de hace meses.
+ *
+ * El orden importa: **primero la factura, después el cierre**. Si el cierre
+ * falla, la factura está y el encargo sigue abierto — se ve, y se puede
+ * reintentar sin emitir dos veces porque el guardián mira si ya existe. Al
+ * revés, el encargo quedaría cerrado y el cobro perdido, que no lo ve nadie.
+ */
+encargosRouter.post(
+  '/encargos/:id/cerrar',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const motivo = String(req.body?.motivo ?? '').trim();
+      if (!esUnMotivo(motivo)) {
+        res.status(400).json({ ok: false, error: 'motivo_no_valido', detail: `vale uno de: ${MOTIVOS.join(', ')}` });
+        return;
+      }
+
+      const r = await query(
+        `SELECT e.*, v.plate, v.brand, v.model
+           FROM erp_encargos_venta e
+           LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+          WHERE e.id = $1`,
+        [req.params.id]
+      );
+      const e = r.rows[0];
+      if (!e) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+      if (e.cerrado_at) {
+        res.status(409).json({ ok: false, error: 'ya_estaba_cerrado', detail: String(e.motivo_cierre ?? '') });
+        return;
+      }
+
+      const factura = loQueSeLeFactura(motivo, {
+        firmado_at: e.firmado_at as string | null,
+        acepto_el_precio: e.acepto_el_precio as boolean,
+      });
+
+      let facturaId: string | null = null;
+      if (factura) {
+        const ya = await query(SQL_YA_EMITIDA, [TIPO_DE_FACTURA, String(e.id)]);
+        if (ya.rows.length) {
+          facturaId = String(ya.rows[0].id);
+        } else {
+          const coche = [e.brand, e.model].filter(Boolean).join(' ')
+            + (e.plate ? ` (${String(e.plate)})` : '');
+          const nueva = await guardaConIdUnico(nextProviderInvoiceId, async (id) => {
+            await query(
+              `INSERT INTO moveadvisor_provider_invoices
+                 (id, type, provider_name, contract_id, vehicle_title,
+                  customer_name, customer_email,
+                  base_amount, invoice_amount, iva_rate, regimen, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'nacional', $11)`,
+              [
+                id, TIPO_DE_FACTURA,
+                // A un particular se le factura a él: no hay proveedor detrás.
+                String(e.cliente_nombre ?? e.cliente_email ?? 'Cliente particular'),
+                String(e.id), coche.trim() || null,
+                e.cliente_nombre, e.cliente_email,
+                factura.base, factura.total, factura.iva / 100, factura.concepto,
+              ]
+            );
+          });
+          facturaId = nueva.id;
+        }
+      }
+
+      const cerrado = await query(SQL_CIERRA, [String(e.id), motivo]);
+      if (!cerrado.rows.length) {
+        // Se le adelantó otra pestaña entre la lectura y el cierre.
+        res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' });
+        return;
+      }
+
+      res.json({
+        ok: true,
+        data: {
+          motivo,
+          como_acabo: COMO_ACABO[motivo],
+          factura: facturaId,
+          importe: factura?.total ?? 0,
+        },
+      });
+    } catch (err) {
+      console.error('[encargos] cerrar:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'encargo_cerrar_failed' });
     }
   }
 );
