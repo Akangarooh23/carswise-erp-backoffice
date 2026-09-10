@@ -13,6 +13,7 @@ import { losPendientes } from '../lib/pendientes.js';
 import { losAvisosDeEncargos } from './encargos.js';
 import { SQL_SIN_LLAMAR, losQueEsperanDeMas, reparteLosLeads } from '../lib/sin-llamar.js';
 import { losAnunciosPorRetirar } from './anuncios-portal.js';
+import { lasFacturasSinEnviar } from './provider-billing.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 import { preparaVisitas, losQueQuierenFinanciacion } from './visits.js';
 
@@ -384,7 +385,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, sinEnviar] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -547,6 +548,12 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * ni como nos llega la respuesta, el hueco no se queda vacio.
        */
       losQueQuierenFinanciacion().catch(() => ({ financiacion_sin_llamar: 0 })),
+
+      /*
+       * Y las facturas emitidas que no le han llegado al cliente. En el correo
+       * de cierre se le dice que le llegara: si nadie descarga el PDF, no sale.
+       */
+      lasFacturasSinEnviar().catch(() => ({ facturas_sin_enviar: 0 })),
     ]);
 
     res.json({
@@ -560,6 +567,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...encargos,
           ...anuncios,
           ...financiacion,
+          ...sinEnviar,
           portales_parados: portales?.valor?.n ?? 0,
           /*
            * El reparto va al final a propósito: pisa a `leads_pendientes`.

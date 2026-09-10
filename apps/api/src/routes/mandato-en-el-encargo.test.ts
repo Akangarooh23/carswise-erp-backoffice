@@ -462,3 +462,47 @@ describe('el contrato de compraventa', () => {
     assert.match(ENCARGOS, /cerrado\.rows\[0\]\?\.motivo_cierre === 'vendido'\s*\n?\s*\?\s*loQueFaltaDelContrato/);
   });
 });
+
+describe('la factura sale y se apunta que salió', () => {
+  /*
+   * El correo de cierre dice «te llega la factura por separado». Hoy eso solo
+   * pasa si alguien descarga el PDF: el envío es un efecto secundario de esa
+   * descarga.
+   *
+   * Y la columna que lo marcaba existía desde hacía tiempo, se pintaba en la
+   * pantalla de facturación y no la escribía nadie: salía vacía siempre.
+   */
+  const FACTURAS = readFileSync(join(import.meta.dirname, 'invoice-download.ts'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('se marca cuándo se envió', () => {
+    assert.match(FACTURAS, /SET cw_sent_at = NOW\(\)/);
+  });
+
+  test('y SOLO si el correo salió', () => {
+    /*
+     * Marcarlo pase lo que pase es peor que no marcarlo: diría que el cliente
+     * tiene una factura que nunca recibió, y ése es el dato que nadie vuelve a
+     * comprobar.
+     */
+    const helper = FACTURAS.slice(
+      FACTURAS.indexOf('async function sendInvoiceEmail'),
+      FACTURAS.indexOf('// ── Helper: stream PDF'),
+    );
+    const falla = helper.indexOf('return false;');
+    const marca = helper.indexOf('cw_sent_at = NOW()');
+    assert.ok(falla > 0 && marca > 0);
+    assert.ok(falla < marca, 'se marca antes de saber si el correo salió');
+  });
+
+  test('la primera vez, no cada descarga', () => {
+    // La fecha que importa es cuándo le llegó, no la última vez que alguien
+    // volvió a abrir el PDF.
+    assert.match(FACTURAS, /WHERE cw_sent_at IS NULL AND \(id = \$1 OR invoice_number = \$1\)/);
+  });
+
+  test('y que el correo falle no tumba la descarga', () => {
+    // El PDF ya lo tiene delante quien lo pidió.
+    assert.match(FACTURAS, /no ha salido la factura/);
+  });
+});

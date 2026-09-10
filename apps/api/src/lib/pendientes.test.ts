@@ -259,7 +259,7 @@ describe('y el panel reparte de verdad lo que le dan', () => {
 
   test('lo que calcula cada función acaba en las cuentas', () => {
     assert.ok(CUENTAS.length > 0, 'no encuentro la llamada a losPendientes');
-    for (const trozo of ['...encargos', '...anuncios', '...financiacion', '...visitas.rows[0]']) {
+    for (const trozo of ['...encargos', '...anuncios', '...financiacion', '...sinEnviar', '...visitas.rows[0]']) {
       assert.ok(CUENTAS.includes(trozo), `${trozo} no se mete en las cuentas del panel`);
     }
   });

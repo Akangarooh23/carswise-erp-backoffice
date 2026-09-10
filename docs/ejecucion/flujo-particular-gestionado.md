@@ -446,6 +446,21 @@ erp: Y la factura queda en su sitio
 > quedarse esperando a que alguien encuentre un carné; un hueco se rellena con
 > un bolígrafo, y un cierre que no se puede hacer se queda abierto para siempre.
 
+> **La factura se le manda al descargarla, y hasta entonces sale en
+> Pendientes.** El correo de cierre le dice al cliente «te llega la factura por
+> separado», y quien se la manda de verdad es la persona que entra a
+> **Facturación clientes** y descarga el PDF: al descargarlo sale el correo con
+> el adjunto y la factura queda marcada como enviada.
+>
+> Mientras nadie lo haga, esa factura aparece en Pendientes como **«facturas
+> emitidas sin enviar»**, con el enlace a Facturación. Antes no aparecía en
+> ningún sitio: si nadie la abría, al cliente no le llegaba nada y no había
+> forma de saberlo.
+>
+> Si el correo falla, la factura **sigue** en la lista. Se marca como enviada
+> solo cuando el envío ha salido, para que un fallo no la borre del aviso
+> justo el día que hace falta.
+
 > **Y si el coche estaba en un portal, ahí sigue.** Al despublicarse de nuestro
 > escaparate sale el aviso de retirarlo, pero quitarlo lo hace una persona.
 
@@ -462,6 +477,7 @@ erp: Y la factura queda en su sitio
 | Conseguir la firma del mandato | Recogerlo firmado y apuntarlo |
 | Cerrar el encargo | Elegir cómo acabó |
 | Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |
+| Mandarle la factura al cliente él solo | Entrar a Facturación y descargar el PDF: eso es lo que la manda. El ERP avisa de las que faltan |
 
 ## Dónde está cada cosa
 

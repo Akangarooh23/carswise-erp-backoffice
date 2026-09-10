@@ -8,22 +8,64 @@ import { config } from '../config.js';
 
 export const invoiceDownloadRouter = Router();
 
-// ── Helper: send invoice PDF by email via Resend ─────────────────────────────
-async function sendInvoiceEmail(to: string, invoiceNumber: string, pdfBytes: Uint8Array): Promise<void> {
+/**
+ * Se le manda la factura al cliente, y **se apunta que salió**.
+ *
+ * La marca es la mitad que faltaba. `cw_sent_at` existía desde hacía tiempo, se
+ * pintaba en la pantalla de facturación y no la escribía nadie: salía vacía
+ * siempre, así que no había forma de saber qué factura le había llegado a quién.
+ *
+ * Y se apunta **solo si el envío sale bien**. Marcarlo antes o pase lo que pase
+ * sería peor que no marcarlo: diría que el cliente tiene una factura que nunca
+ * recibió, y esa es la clase de dato que nadie vuelve a comprobar.
+ *
+ * Devuelve si salió, para que quien llame pueda decirlo. No lanza: el PDF ya lo
+ * tiene delante quien lo descargó, y que el correo falle no puede tumbar eso.
+ */
+async function sendInvoiceEmail(
+  to: string,
+  invoiceNumber: string,
+  pdfBytes: Uint8Array,
+  facturaId?: string,
+): Promise<boolean> {
   const html = plantilla({
     titulo: 'Tu factura está lista',
     cuerpo:
       parrafo(`Adjuntamos la factura <strong>${esc(invoiceNumber)}</strong>.`) +
       parrafo(`El detalle está en tu panel: <a href="${MARCA.sitioUrl}/panel" style="color:#111111;font-weight:600">${MARCA.sitio}/panel</a>`, 14),
   });
-  // Si falla, no se corta la descarga: el PDF ya lo tiene delante.
-  await enviar({
-    to,
-    subject: `Tu factura ${invoiceNumber} — PopCar`,
-    html,
-    alClienteSiempre: true,
-    attachments: [{ filename: `${invoiceNumber}.pdf`, content: Buffer.from(pdfBytes).toString('base64') }],
-  }).catch(() => {});
+  try {
+    await enviar({
+      to,
+      subject: `Tu factura ${invoiceNumber} — PopCar`,
+      html,
+      alClienteSiempre: true,
+      attachments: [{ filename: `${invoiceNumber}.pdf`, content: Buffer.from(pdfBytes).toString('base64') }],
+    });
+  } catch (e) {
+    console.error('[facturas] no ha salido la factura %s:', invoiceNumber, (e as Error).message);
+    return false;
+  }
+  if (facturaId) {
+    /*
+     * Por identificador **o** por número, porque cada sitio la conoce por uno.
+     *
+     * El PDF de una factura de proveedor se pide por su `id`; el de una venta,
+     * por el lead, y ahí lo único que se tiene a mano es el número. Los dos son
+     * únicos, así que una sola consulta vale para ambos y evita tener dos
+     * caminos que se pueden separar.
+     *
+     * Y solo si no estaba marcada: la fecha que importa es la primera vez que
+     * le llegó, no la última vez que alguien volvió a descargarla.
+     */
+    await query(
+      `UPDATE moveadvisor_provider_invoices
+          SET cw_sent_at = NOW(), updated_at = NOW()
+        WHERE cw_sent_at IS NULL AND (id = $1 OR invoice_number = $1)`,
+      [facturaId]
+    ).catch((e) => console.error('[facturas] sin marcar como enviada:', (e as Error).message));
+  }
+  return true;
 }
 
 // ── Helper: stream PDF to client ──────────────────────────────────────────────
@@ -102,7 +144,7 @@ invoiceDownloadRouter.get(
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
       if (inv.customer_email) {
-        sendInvoiceEmail(String(inv.customer_email), invoiceNumber!, pdf).catch(() => {});
+        sendInvoiceEmail(String(inv.customer_email), invoiceNumber!, pdf, req.params.id).catch(() => {});
       }
     } catch (err) {
       falloInterno(res, 'pdf_failed', err);
@@ -310,7 +352,7 @@ invoiceDownloadRouter.get(
 
       sendPdf(res, pdf, `${invoiceNumber}.pdf`);
       if (shouldSendVta && lead.user_email) {
-        sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf).catch(() => {});
+        sendInvoiceEmail(String(lead.user_email), invoiceNumber!, pdf, invoiceNumber!).catch(() => {});
       }
     } catch (err) {
       falloInterno(res, 'pdf_failed', err);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
+import { SQL_SIN_ENVIAR, SQL_LAS_SIN_ENVIAR } from '../lib/facturas-sin-enviar.js';
 import { requireRole } from '../middleware/auth.js';
 import { subeAlAlmacen } from '../lib/subir-al-almacen.js';
 import { prefijoAnual, siguienteDeSerie, guardaConIdUnico } from '../lib/series.js';
@@ -118,6 +119,33 @@ async function ataLaFactura(id: string, nombre: unknown): Promise<void> {
 
 
 export const providerBillingRouter = Router();
+
+/**
+ * Cuántas facturas hemos emitido que no le han llegado a nadie.
+ *
+ * En el correo de cierre del encargo se le dice al cliente «te llega la factura
+ * por separado», y hoy eso solo pasa si alguien entra aquí y descarga el PDF.
+ * Sin esto, esa promesa se rompe en silencio.
+ */
+export async function lasFacturasSinEnviar(): Promise<{ facturas_sin_enviar: number }> {
+  const r = await query(SQL_SIN_ENVIAR).catch(() => null);
+  return { facturas_sin_enviar: Number(r?.rows[0]?.n ?? 0) };
+}
+
+/** Y a quién no le ha llegado la suya. */
+providerBillingRouter.get(
+  '/provider-invoices/sin-enviar',
+  requireRole(['admin', 'operations']),
+  async (_req, res) => {
+    try {
+      const r = await query(SQL_LAS_SIN_ENVIAR).catch(() => ({ rows: [] }));
+      res.json({ ok: true, data: r.rows });
+    } catch (e) {
+      console.error('[facturas] sin enviar:', (e as Error).message);
+      res.status(500).json({ ok: false, error: 'sin_enviar_failed' });
+    }
+  }
+);
 
 /**
  * Un tipo de IVA que llega en tanto por uno, leído en tanto por ciento.

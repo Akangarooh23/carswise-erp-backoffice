@@ -52,6 +52,23 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'un gasto sin factura no se deduce',
     a: '/provider-billing', icono: 'documento', tono: 'urgente',
   },
+  /*
+   * Las que salen de aqui y no le han llegado a nadie.
+   *
+   * En el correo de cierre se le dice al cliente «te llega la factura por
+   * separado». Hoy eso solo pasa si alguien entra a Facturacion y descarga el
+   * PDF: el envio es un efecto secundario de esa descarga. Si nadie la abre, no
+   * le llega nada — y nada lo delataba.
+   *
+   * Va con los urgentes: una factura que el cliente no tiene es una factura que
+   * no va a pagar, y ademas es una promesa escrita sin cumplir.
+   */
+  {
+    clave: 'facturas_sin_enviar',
+    etiqueta: 'facturas emitidas sin enviar', una: 'factura emitida sin enviar',
+    porque: 'le dijimos que le llegaria, y una factura que no tiene no la paga',
+    a: '/billing', icono: 'sobre', tono: 'urgente',
+  },
   {
     clave: 'sin_autorepercusion',
     etiqueta: 'facturas de la UE sin decidir su tipo', una: 'factura de la UE sin decidir su tipo',
