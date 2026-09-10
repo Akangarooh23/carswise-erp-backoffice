@@ -455,11 +455,36 @@ erp: Y la factura queda en su sitio
 | Cerrar y facturar | **IDCars** → el coche → «Cerrar el encargo» |
 | La factura que sale | **Facturación clientes** |
 
+## Cómo comprobar que sigue funcionando
+
+El camino entero, en el orden en que pasan las cosas:
+
+    npm run test:flujo
+
+Recorre los trece pasos contra la base de verdad —lead, IDCar, encargo, mandato,
+las seis puertas, publicar, la visita del portal, cerrar, facturar, la
+transferencia y el aviso de retirar del portal— y comprueba en cada uno lo que
+tiene que ser cierto **y lo que todavía no**. Todo dentro de una transacción que
+se deshace: no deja ni una fila.
+
+> **Existe por un fallo concreto.** Cerrar el encargo no despublicaba el coche,
+> y como el aviso de retirar del portal mira el escaparate, no saltaba nunca: la
+> alarma montada y el sensor sin conectar. Cada pieza tenía su prueba y estaban
+> las dos bien — el hueco estaba justo entre ellas, que es donde una prueba de
+> unidad no mira.
+
+> **Las comprobaciones negativas son la mitad.** Sin fotos no se publica, con el
+> coche en el taller tampoco, y mientras el anuncio está vivo aquí no hay nada
+> que retirar allí. Una prueba que solo mira que las cosas pasen no se entera de
+> que pasan antes de tiempo.
+
+---
+
 ## Lo que falta por decidir
 
 | Qué | De quién depende |
 |---|---|
 | Con qué entidad financiera y **cómo nos llega si la aprueban** | Sin eso no se puede facturar la comisión, que es la línea de ingreso más grande |
-| En qué portal se publica, y con qué cuenta | Es uno, a 20-30 € al mes |
 | Si al que agota el plazo se le cobra algo | Ana |
 | Qué pasa con el comprador financiado después de comprar | Sin diseñar |
+| El contrato de compraventa: dónde se pide el DNI de las dos partes | Sin diseñar |
