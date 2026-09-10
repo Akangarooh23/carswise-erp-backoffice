@@ -9,6 +9,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   elCorreoDelMandato, elCorreoDePublicado, elCorreoDelCierre,
+  elCorreoDelAlta, laRutaDelAlta,
 } from './correos-del-encargo.js';
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -168,5 +169,74 @@ describe('lo que valen para cualquier coche', () => {
     });
     assert.doesNotMatch(soloTexto(c.html), /undefined|null|NaN/);
     assert.match(c.subject, /tu coche/);
+  });
+});
+
+describe('el correo del alta del coche', () => {
+  const c = () => elCorreoDelAlta({
+    ...COCHE, url: 'https://popcar.com.es/panel/vehiculos?matricula=8888LXR',
+    guia: 'https://popcar.com.es/como-subir-tu-coche',
+  });
+
+  test('lleva el enlace directo, no un «entra en tu panel»', () => {
+    /*
+     * Es lo que antes se resolvia en la llamada diciendole que buscara el
+     * sitio, que es donde se pierde la mitad de la gente que si queria
+     * hacerlo: cuelga, no lo encuentra, y lo deja para luego.
+     */
+    assert.match(c().html, /panel\/vehiculos\?matricula=8888LXR/);
+  });
+
+  test('y la guía como segunda opción, no como la principal', () => {
+    // Quien quiere hacerlo ya, pulsa. Quien quiere verlo antes, lee.
+    assert.match(c().html, /como-subir-tu-coche/);
+    assert.match(soloTexto(c().html), /paso a paso/);
+  });
+
+  test('dice qué hace falta, sin lista de la compra', () => {
+    const t = soloTexto(c().html);
+    assert.match(t, /fotos/);
+    assert.match(t, /permiso de circulación/);
+    assert.match(t, /ITV/);
+  });
+
+  test('y por qué, que es lo que hace que se haga', () => {
+    /*
+     * «Sube estos papeles» es una gestoría. Lo que mueve es entender que las
+     * fotos son el anuncio y los papeles son lo que deja enseñar el coche.
+     */
+    assert.match(soloTexto(c().html), /Por qué hacen falta/i);
+  });
+
+  test('el asunto dice de qué coche es', () => {
+    assert.match(c().subject, /Citroën C3/);
+  });
+});
+
+describe('la ruta del alta', () => {
+  test('lleva la matrícula ya puesta', () => {
+    assert.equal(
+      laRutaDelAlta('https://popcar.com.es', '8888 lxr'),
+      'https://popcar.com.es/panel/vehiculos?matricula=8888LXR',
+    );
+  });
+
+  test('la normaliza igual que PopCar', () => {
+    /*
+     * Gemela de `elAlta` en PopCar. Si se separaran, el enlace llegaria a la
+     * pantalla correcta con el campo vacio: el cliente no veria un error, solo
+     * tendria que escribir otra vez la matricula que ya escribio.
+     */
+    for (const escrita of ['8888LXR', '8888 LXR', '8888-lxr', ' 8888 lxr ']) {
+      assert.match(laRutaDelAlta('https://x.es', escrita), /matricula=8888LXR$/);
+    }
+  });
+
+  test('sin matrícula, la ruta a secas', () => {
+    assert.equal(laRutaDelAlta('https://x.es', ''), 'https://x.es/panel/vehiculos');
+  });
+
+  test('y una barra de más no deja una doble', () => {
+    assert.equal(laRutaDelAlta('https://x.es/', ''), 'https://x.es/panel/vehiculos');
   });
 });

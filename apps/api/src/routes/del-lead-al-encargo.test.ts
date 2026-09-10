@@ -89,10 +89,31 @@ describe('lo que se ve en el lead', () => {
     assert.match(BLOQUE, /Lo puso a mano,\s*\n?\s*así que confírmale cuál de estos es/);
   });
 
-  test('y el que eligió sale el primero y marcado', () => {
+  test('y el que dijo sale el primero y marcado', () => {
     // Con tres coches, el suyo tiene que estar donde se mira primero.
-    assert.match(BLOQUE, /\.sort\(\(a, b\) => Number\(b\.id === cocheElegido\) - Number\(a\.id === cocheElegido\)\)/);
-    assert.match(BLOQUE, /← el que eligió/);
+    assert.match(BLOQUE, /\.sort\(\(a, b\) => Number\(esElQueDijo\(b\)\) - Number\(esElQueDijo\(a\)\)\)/);
+    assert.match(BLOQUE, /← el que dijo/);
+  });
+
+  test('y da igual si lo eligió de la lista o dijo la matrícula', () => {
+    /*
+     * Dos maneras de saber cuál es su coche y una sola respuesta. Si solo se
+     * mirara `cocheElegido`, el que llega sin cuenta y escribe la matrícula
+     * tendría su coche perdido entre los otros tres, que es justo el caso en
+     * el que más falta hace verlo.
+     */
+    assert.match(BLOQUE, /c\.id === cocheElegido\) \|\| \(Boolean\(elSuyo\)/);
+    assert.match(BLOQUE, /llana\(c\.plate\) === llana\(matricula\)/);
+  });
+
+  test('y si esa matrícula no es de ninguno, se dice y se le puede mandar el alta', () => {
+    /*
+     * Es distinto de «no tiene coches»: puede tener tres y querer vender un
+     * cuarto que no ha subido. Sin esto, en la llamada se le ofrecerían los que
+     * sí tiene y el que quiere vender no estaría en la lista.
+     */
+    assert.match(BLOQUE, /matricula && !elSuyo &&/);
+    assert.match(BLOQUE, /alta-del-coche/);
   });
 
   test('un coche que ya tiene encargo no ofrece abrirle otro', () => {

@@ -38,6 +38,8 @@ interface Lead {
   vehicle_id: string;
   appointment_type: 'info' | 'visit' | 'question' | 'renting' | 'import' | 'venta_gestionada';
   title: string;
+  /** La matricula que escribio en el formulario de venta, si la escribio. */
+  plate?: string | null;
   meta: LeadMeta;
   status: string;
   created_at: string;
@@ -1257,6 +1259,7 @@ export default function LeadsPage() {
                   leadId={selected.id}
                   email={selected.user_email}
                   cocheQuePidio={selected.title}
+                  matricula={selected.plate ?? undefined}
                   cocheElegido={selected.vehicle_id}
                 />
               )}

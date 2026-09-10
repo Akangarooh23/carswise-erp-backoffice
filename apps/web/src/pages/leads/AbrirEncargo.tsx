@@ -34,7 +34,7 @@ const comoSeLlama = (c: Candidato) => {
 };
 
 export default function AbrirEncargo({
-  leadId, email, cocheQuePidio, cocheElegido,
+  leadId, email, cocheQuePidio, cocheElegido, matricula,
 }: {
   leadId: string;
   email: string;
@@ -48,10 +48,55 @@ export default function AbrirEncargo({
    * que coge el teléfono, que es justo quien menos lo sabe.
    */
   cocheElegido?: string;
+  /** La matrícula que escribió, ya normalizada. Puede no venir. */
+  matricula?: string;
 }) {
   const [coches, setCoches] = useState<Candidato[] | null>(null);
   const [fallo, setFallo] = useState('');
   const [abriendo, setAbriendo] = useState('');
+  const [mandando, setMandando] = useState(false);
+  const [mandado, setMandado] = useState('');
+
+  /**
+   * Cuál de sus coches es el que dijo, si alguno.
+   *
+   * Se comparan sin espacios ni guiones: «8888 LXR» en el lead y «8888-LXR» en
+   * el IDCar son el mismo coche, y compararlos en crudo diría que no.
+   */
+  const llana = (v: unknown) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const elSuyo = matricula
+    ? (coches ?? []).find((c) => llana(c.plate) === llana(matricula))
+    : undefined;
+
+  /**
+   * Si ese es el coche que dijo, por la vía que fuera.
+   *
+   * Dos maneras de saberlo y una sola respuesta: o lo eligió de su lista —y
+   * viene su identificador— o dijo la matrícula y la hemos cruzado. Para quien
+   * llama es el mismo dato, así que se pinta igual.
+   */
+  const esElQueDijo = (c: Candidato) =>
+    (Boolean(cocheElegido) && c.id === cocheElegido) || (Boolean(elSuyo) && c.id === elSuyo?.id);
+
+  async function mandaElAlta() {
+    setMandando(true);
+    setFallo('');
+    setMandado('');
+    try {
+      const r = await api.post<{ enviado_a: string }>(`/leads/${leadId}/alta-del-coche`, {});
+      if (!r.ok) {
+        setFallo(r.error === 'sin_correo'
+          ? 'Este lead no tiene correo del cliente.'
+          : 'No se ha podido mandar.');
+        return;
+      }
+      setMandado(r.data.enviado_a);
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setMandando(false);
+    }
+  }
 
   const carga = useCallback(async () => {
     try {
@@ -108,6 +153,37 @@ export default function AbrirEncargo({
         </p>
       ) : null}
 
+      {/*
+        * Si dijo una matrícula y ninguno de sus coches la tiene, ese coche
+        * todavía no existe como ficha.
+        *
+        * Es distinto de «no tiene coches»: puede tener tres y querer vender un
+        * cuarto que no ha subido. Sin esto, en la llamada se le ofrecerían los
+        * que sí tiene y el que quiere vender no estaría en la lista.
+        */}
+      {matricula && !elSuyo && (
+        <div className="rounded-md bg-white border border-violet-200 px-2.5 py-2 mb-2">
+          <p className="text-xs text-violet-800">
+            Dijo <strong>{matricula}</strong>, y ese coche todavía no tiene ficha.
+            No se le puede abrir el encargo hasta que la cree: la sube él, con sus
+            fotos y sus papeles.
+          </p>
+          <button
+            type="button"
+            onClick={() => void mandaElAlta()}
+            disabled={mandando}
+            className="mt-2 px-2.5 py-1 text-[11px] font-semibold rounded-md
+                       border border-violet-300 text-violet-700 bg-white
+                       hover:bg-violet-100 disabled:opacity-50"
+          >
+            {mandando ? 'Enviando…' : 'Mandarle el enlace para crearla'}
+          </button>
+          {mandado && (
+            <p className="text-[11px] text-emerald-700 mt-1.5">Mandado a {mandado}.</p>
+          )}
+        </div>
+      )}
+
       {coches.length === 0 ? (
         /*
          * Sin coches en su cuenta no hay nada que abrir, y decirlo es la mitad
@@ -121,18 +197,23 @@ export default function AbrirEncargo({
         </p>
       ) : (
         <ul className="space-y-1.5">
+          {/*
+            * El que dijo va primero y en negrita: lo eligiera de la lista o lo
+            * dijera por su matrícula, es el mismo dato —cuál es su coche— y en
+            * la llamada hay que verlo sin buscarlo entre los otros tres.
+            */}
           {[...coches]
-            .sort((a, b) => Number(b.id === cocheElegido) - Number(a.id === cocheElegido))
+            .sort((a, b) => Number(esElQueDijo(b)) - Number(esElQueDijo(a)))
             .map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-3">
               <a
                 href={`/idcars/${c.id}`}
                 className={`text-[13px] text-violet-900 underline underline-offset-2 ${
-                  c.id === cocheElegido ? 'font-bold' : ''
+                  esElQueDijo(c) ? 'font-bold' : ''
                 }`}
               >
                 {comoSeLlama(c)}
-                {c.id === cocheElegido && <span className="ml-1.5">← el que eligió</span>}
+                {esElQueDijo(c) && <span className="ml-1.5">← el que dijo</span>}
               </a>
               {c.encargo_id ? (
                 <span className="shrink-0 text-[11px] font-semibold text-violet-600">Ya tiene encargo</span>

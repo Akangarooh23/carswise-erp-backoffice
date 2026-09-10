@@ -6,6 +6,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { creaPedidoDeImportacion } from './pedidos.js';
 import { abrePeritacionDeImportacion, abreLasQueFalten } from './peritaciones.js';
 import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
+import { elCorreoDelAlta, laRutaDelAlta } from '../lib/correos-del-encargo.js';
 import {
   abreLosTramosQueFalten, abreElTramoAlCliente, ponAlDiaLasEtapas, laFechaQueLeHemosDicho,
   laCitaQueYaSabemos,
@@ -569,6 +570,14 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
         `SELECT id, user_email, vehicle_id,
                 lead_type           AS appointment_type,
                 vehicle_title       AS title,
+                /*
+                 * La matricula que escribio en el formulario de venta.
+                 *
+                 * Es lo que permite cruzar el lead con sus IDCars: dentro del
+                 * titulo no se puede buscar, porque ahi llega como la escribio
+                 * el. Puede venir vacia -no todos los leads la traen-.
+                 */
+                COALESCE(plate, '') AS plate,
                 status, created_at, notified_at,
                 json_build_object(
                   'name',                 contact_name,
@@ -892,6 +901,50 @@ leadsRouter.post('/leads/:id/devolver-fianza', requireRole(['admin', 'operations
     res.json({ ok: true, data: { importe: cuerpo.importe, rectificativa: cuerpo.rectificativa } });
   } catch (err) {
     falloInterno(res, 'devolucion_fianza', err);
+  }
+});
+
+/**
+ * Se le manda el enlace para dar de alta su coche.
+ *
+ * Es lo que antes se resolvía en la llamada diciéndole «entra en tu panel y
+ * súbelo», que es donde se pierde la mitad de la gente que sí quería hacerlo:
+ * cuelga, no encuentra el sitio, y lo deja para luego.
+ *
+ * Lo pulsa una persona y no sale solo, a propósito. Un correo automático
+ * pidiendo papeles se lee como una gestoría; éste se manda cuando el cliente
+ * acaba de decir que sí por teléfono, y lo único que hace es quitarle la
+ * búsqueda.
+ */
+leadsRouter.post('/leads/:id/alta-del-coche', requireRole(['admin', 'operations', 'sales']), async (req, res) => {
+  try {
+    const r = await query(
+      `SELECT id, user_email, contact_name, vehicle_title, plate
+         FROM moveadvisor_market_leads WHERE id = $1`,
+      [req.params.id]
+    );
+    const l = r.rows[0];
+    if (!l) { res.status(404).json({ ok: false, error: 'lead_no_encontrado' }); return; }
+    if (!l.user_email) {
+      res.status(400).json({ ok: false, error: 'sin_correo', detail: 'Ese lead no tiene correo' });
+      return;
+    }
+
+    const sitio = config.PUBLIC_SITE_URL;
+    const { subject, html } = elCorreoDelAlta({
+      cliente_nombre: String(l.contact_name ?? ''),
+      // Del lead solo sabemos lo que escribió: la matrícula, y a veces ni eso.
+      marca: '', modelo: '',
+      matricula: String(l.plate ?? '') || String(l.vehicle_title ?? ''),
+      url: laRutaDelAlta(sitio, String(l.plate ?? '')),
+      guia: `${sitio.replace(/\/+$/, '')}/como-subir-tu-coche`,
+    });
+
+    await alCliente(String(l.user_email), subject, html);
+    res.json({ ok: true, data: { enviado_a: String(l.user_email) } });
+  } catch (err) {
+    console.error('[leads] mandar el alta:', (err as Error).message);
+    res.status(500).json({ ok: false, error: 'alta_enviar_failed' });
   }
 });
 
