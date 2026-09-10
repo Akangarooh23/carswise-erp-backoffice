@@ -395,3 +395,70 @@ describe('el taller nos factura, y las cuentas se enteran', () => {
     assert.match(REVISIONES, /sin factura esperada/);
   });
 });
+
+describe('el contrato de compraventa', () => {
+  /*
+   * En el mandato que el cliente firma pone que hacemos el contrato y la
+   * transferencia. La transferencia ya sale sola; el contrato no existía — se
+   * prometía por escrito y no lo generaba nadie.
+   */
+  const CERRAR = (() => {
+    const desde = ENCARGOS.indexOf("'/encargos/:id/cerrar'");
+    const siguiente = ENCARGOS.indexOf('encargosRouter.', desde + 20);
+    return ENCARGOS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('el número se da al vender, no antes', () => {
+    /*
+     * Un contrato de una venta que no ha pasado no es nada, y gastaría un
+     * número de la serie.
+     */
+    assert.match(CERRAR, /motivo === 'vendido' && !e\.contrato_id/);
+    assert.match(CERRAR, /SERIE_DEL_CONTRATO/);
+  });
+
+  test('y si la serie falla, el cierre sigue', () => {
+    // Cerrar emite una factura. No puede quedarse esperando a un numero.
+    assert.match(CERRAR, /siguienteDeSerie\([\s\S]{0,200}\)\.catch\(\(\) => ''\)/);
+  });
+
+  test('los datos que faltan se guardan aparte del cierre', () => {
+    /*
+     * Cerrar no puede quedarse esperando a que alguien encuentre un carné. Se
+     * rellenan cuando se tengan, antes o después.
+     */
+    assert.match(ENCARGOS, /'\/encargos\/:id\/contrato'/);
+    assert.match(ENCARGOS, /vendedor_dni\s+= COALESCE\(\$2, vendedor_dni\)/);
+  });
+
+  test('el comprador sale de la visita que acabó en venta', () => {
+    /*
+     * Es un dato que ya tenemos. Volver a pedirlo seria pedirle a quien imprime
+     * que copie un nombre que esta dos pantallas mas alla.
+     */
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/contrato'"));
+    assert.match(trozo, /resultado = 'compro'/);
+    assert.match(trozo, /e\.comprador_nombre \?\? compra\.rows\[0\]\?\.buyer_name/);
+  });
+
+  test('pero el escrito a mano manda sobre el de la visita', () => {
+    /*
+     * Quien vino a verlo y quien firma no siempre son la misma persona. El
+     * orden del `??` es la regla entera.
+     */
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/contrato'"));
+    assert.doesNotMatch(trozo, /buyer_name \?\? [\s\S]{0,40}comprador_nombre/);
+  });
+
+  test('y se dice qué falta, sin bloquear nada', () => {
+    // El documento sale igual con los huecos: se dice para que quien imprime
+    // sepa qué va a escribir a mano.
+    assert.match(ENCARGOS, /falta_del_contrato:/);
+    assert.match(ENCARGOS, /loQueFaltaDelContrato\(\{/);
+  });
+
+  test('solo se calcula para los vendidos', () => {
+    // A quien se fue o a quien retiramos no hay contrato que hacerle.
+    assert.match(ENCARGOS, /cerrado\.rows\[0\]\?\.motivo_cierre === 'vendido'\s*\n?\s*\?\s*loQueFaltaDelContrato/);
+  });
+});

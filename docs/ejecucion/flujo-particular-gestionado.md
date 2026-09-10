@@ -406,6 +406,9 @@ sistema: Se emite la factura y el encargo queda cerrado
 sistema: Y si se vendió, se abre la transferencia
 @ Gestoría → la transferencia de titularidad
 + nada: sale sola, colgando del encargo
+erp: Y se imprime el contrato de compraventa
+@ IDCars → el coche → «Contrato de compraventa»
++ los DNI de los dos, el domicilio, el bastidor y el precio
 erp: Y la factura queda en su sitio
 @ Facturación clientes
 + nada: sale sola, con el concepto puesto
@@ -431,6 +434,17 @@ erp: Y la factura queda en su sitio
 >
 > Cuelga del **encargo**, no del lead: un encargo abierto desde la ficha del
 > IDCar no tiene lead, y aunque lo tenga, el mandato es lo que tiene la venta.
+
+> **El contrato lo hacemos nosotros, pero no somos parte.** El coche va del
+> dueño al comprador; nosotros lo redactamos, y eso lo dice el propio
+> documento. Si solo estuviera en el mandato, el comprador —que no ha firmado
+> ningún mandato— no tendría forma de saber a quién le ha comprado el coche.
+
+> **Los huecos no bloquean nada.** Los DNI, los domicilios y el bastidor no los
+> tiene el ERP: se rellenan cuando se tengan, y si falta alguno el documento
+> sale igual con la línea en blanco. Cerrar emite una factura y no puede
+> quedarse esperando a que alguien encuentre un carné; un hueco se rellena con
+> un bolígrafo, y un cierre que no se puede hacer se queda abierto para siempre.
 
 > **Y si el coche estaba en un portal, ahí sigue.** Al despublicarse de nuestro
 > escaparate sale el aviso de retirarlo, pero quitarlo lo hace una persona.
@@ -496,4 +510,4 @@ se deshace: no deja ni una fila.
 | Con qué entidad financiera y **cómo nos llega si la aprueban** | Juan. Mientras tanto, el comprador que la pide sale en Pendientes y se le llama |
 | Si al que agota el plazo se le cobra algo | Ana |
 | Qué pasa con el comprador financiado después de comprar | Sin diseñar |
-| El contrato de compraventa: dónde se pide el DNI de las dos partes | Sin diseñar |
+

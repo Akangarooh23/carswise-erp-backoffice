@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
 import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
 import MandatoDeVenta, { type ComoSeFirma } from './MandatoDeVenta.js';
+import ContratoDeCompraventa, { type Cerrado as CerradoConContrato } from './ContratoDeCompraventa.js';
 import AnunciosDePortal from './AnunciosDePortal.js';
 
 export interface Puerta {
@@ -50,12 +51,7 @@ export interface Cierre {
   importe: number;
 }
 
-export interface Cerrado {
-  id: string;
-  motivo_cierre: string;
-  cerrado_at: string;
-  cliente_nombre: string;
-}
+export type Cerrado = CerradoConContrato;
 
 export interface ElEncargo {
   encargo: Encargo | null;
@@ -71,6 +67,8 @@ export interface ElEncargo {
   mandato_firmado: boolean;
   por_que_no_firmado: string;
   como_se_firma: ComoSeFirma[];
+  /** Lo que habria que escribir a mano en el contrato si se imprime ahora. */
+  falta_del_contrato: string[];
   /** Lo que dio su tasacion gratuita, si se la ha hecho. */
   tasacion: number | null;
   penalizacion: number | null;
@@ -303,6 +301,23 @@ export default function EncargoDeVenta({
             {abriendo ? 'Abriendo…' : 'Abrir encargo de venta'}
           </button>
         </div>
+
+        {/*
+          * Y si se vendió, el contrato de compraventa.
+          *
+          * Va aquí —en la ficha del encargo ya cerrado— porque es cuando
+          * existe: antes de que haya comprador no hay contrato que hacer. Y
+          * tiene que seguir estando después de cerrar, porque el papel se firma
+          * en ese momento y a veces se reimprime al día siguiente.
+          */}
+        {datos.ultimo_cerrado?.motivo_cierre === 'vendido' && (
+          <ContratoDeCompraventa
+            cerrado={datos.ultimo_cerrado}
+            falta={datos.falta_del_contrato}
+            alGuardar={() => void carga()}
+          />
+        )}
+
         {fallo && <p className="text-xs text-red-600 mt-2">{fallo}</p>}
       </Card>
     );

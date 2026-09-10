@@ -53,6 +53,10 @@ import {
   elMandato, comoSeLlamaElFichero,
 } from '../lib/mandato-de-venta.js';
 import { prefijoAnual, siguienteDeSerie } from '../lib/series.js';
+import {
+  SERIE as SERIE_DEL_CONTRATO, elContrato, loQueFaltaDelContrato,
+  comoSeLlamaElFichero as comoSeLlamaElFicheroDelContrato,
+} from '../lib/contrato-de-compraventa.js';
 import { enviar } from '../lib/correo.js';
 import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado } from '../lib/correos-del-encargo.js';
 import { config } from '../config.js';
@@ -120,7 +124,22 @@ const ENSURE_COLUMNAS = `
     ADD COLUMN IF NOT EXISTS lead_id TEXT,
     ADD COLUMN IF NOT EXISTS mandato_id TEXT,
     ADD COLUMN IF NOT EXISTS firma_como TEXT,
-    ADD COLUMN IF NOT EXISTS firma_nota TEXT`;
+    ADD COLUMN IF NOT EXISTS firma_nota TEXT,
+    /*
+     * Y los del contrato de compraventa, que se rellenan al cerrar.
+     *
+     * El ERP no puede inventarse un DNI ni un domicilio: se piden cuando
+     * existen, que es cuando ya se sabe quien compro. Nulables porque el cierre
+     * no puede quedarse esperando a que alguien encuentre un carne.
+     */
+    ADD COLUMN IF NOT EXISTS contrato_id TEXT,
+    ADD COLUMN IF NOT EXISTS vendedor_dni TEXT,
+    ADD COLUMN IF NOT EXISTS vendedor_domicilio TEXT,
+    ADD COLUMN IF NOT EXISTS comprador_nombre TEXT,
+    ADD COLUMN IF NOT EXISTS comprador_dni TEXT,
+    ADD COLUMN IF NOT EXISTS comprador_domicilio TEXT,
+    ADD COLUMN IF NOT EXISTS bastidor TEXT,
+    ADD COLUMN IF NOT EXISTS precio_venta NUMERIC(12,2)`;
 
 const ENSURE_UNO_VIVO = `
   CREATE UNIQUE INDEX IF NOT EXISTS ux_encargo_vivo_por_coche
@@ -375,7 +394,9 @@ encargosRouter.get(
        * se hubiera guardado nada.
        */
       const cerrado = await query(
-        `SELECT id, motivo_cierre, cerrado_at, cliente_nombre, cliente_email
+        `SELECT id, motivo_cierre, cerrado_at, cliente_nombre, cliente_email,
+                contrato_id, vendedor_dni, vendedor_domicilio, comprador_nombre,
+                comprador_dni, comprador_domicilio, bastidor, precio_venta
            FROM erp_encargos_venta
           WHERE vehicle_id = $1 AND cerrado_at IS NOT NULL
           ORDER BY cerrado_at DESC LIMIT 1`,
@@ -413,6 +434,22 @@ encargosRouter.get(
            * firmado se puede anunciar igual— sino de **cobrar**: sin él, ni los
            * 299 € ni los 150 €.
            */
+          /*
+           * Y qué le falta al contrato de compraventa, si hubo venta.
+           *
+           * Se dice, no se bloquea: el documento sale igual con los huecos, y
+           * esto es para que quien va a imprimirlo sepa qué tendrá que escribir
+           * a mano antes de darlo a firmar.
+           */
+          falta_del_contrato: cerrado.rows[0]?.motivo_cierre === 'vendido'
+            ? loQueFaltaDelContrato({
+                vendedor_dni: cerrado.rows[0].vendedor_dni as string,
+                comprador_nombre: cerrado.rows[0].comprador_nombre as string,
+                comprador_dni: cerrado.rows[0].comprador_dni as string,
+                bastidor: cerrado.rows[0].bastidor as string,
+                precio: Number(cerrado.rows[0].precio_venta) || null,
+              })
+            : [],
           mandato_firmado: estaFirmado(encargo),
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
           como_se_firma: COMO_SE_FIRMA.map((c) => ({ clave: c, nombre: COMO_LO_DECIMOS[c] })),
@@ -651,6 +688,28 @@ encargosRouter.post(
        * están hechos, y que esto falle no puede hacer que la pantalla diga que
        * el encargo no se cerró.
        */
+      /*
+       * Y su número de contrato, que se da al vender y no antes.
+       *
+       * Un contrato de compraventa de una venta que no ha pasado no es nada, y
+       * gastaría un número de la serie. Se pide aquí, cuando ya hay comprador.
+       *
+       * Si la serie falla, el cierre sigue: el documento se podrá generar igual
+       * y lo único que pasa es que sale sin número, que se rellena a mano como
+       * el resto de huecos.
+       */
+      if (motivo === 'vendido' && !e.contrato_id) {
+        const contratoId = await siguienteDeSerie(
+          'erp_encargos_venta', prefijoAnual(SERIE_DEL_CONTRATO), 3, 'contrato_id',
+        ).catch(() => '');
+        if (contratoId) {
+          await query(
+            `UPDATE erp_encargos_venta SET contrato_id = $2 WHERE id = $1 AND contrato_id IS NULL`,
+            [String(e.id), contratoId]
+          ).catch((err) => console.error('[encargos] sin numero de contrato:', (err as Error).message));
+        }
+      }
+
       if (motivo === 'vendido') {
         abreLaTransferenciaDelEncargo({
           encargoId: String(e.id),
@@ -804,6 +863,122 @@ export async function avisaDeQueSePublico(
   });
   await enviar({ to: String(e.cliente_email), subject, html, alClienteSiempre: true });
 }
+
+/**
+ * Los datos que solo existen al vender: DNI, domicilios, bastidor y precio.
+ *
+ * Se guardan aparte del cierre a propósito. Cerrar emite una factura y no puede
+ * quedarse esperando a que alguien encuentre un carné; esto se rellena cuando
+ * se tenga, antes o después, y el contrato sale con lo que haya.
+ */
+encargosRouter.patch(
+  '/encargos/:id/contrato',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const b = req.body ?? {};
+      const texto = (k: string) =>
+        b[k] === undefined ? null : String(b[k]).trim();
+
+      const r = await query(
+        `UPDATE erp_encargos_venta
+            SET vendedor_dni        = COALESCE($2, vendedor_dni),
+                vendedor_domicilio  = COALESCE($3, vendedor_domicilio),
+                comprador_nombre    = COALESCE($4, comprador_nombre),
+                comprador_dni       = COALESCE($5, comprador_dni),
+                comprador_domicilio = COALESCE($6, comprador_domicilio),
+                bastidor            = COALESCE($7, bastidor),
+                precio_venta        = COALESCE($8, precio_venta),
+                updated_at = NOW()
+          WHERE id = $1
+        RETURNING *`,
+        [
+          req.params.id,
+          texto('vendedor_dni'), texto('vendedor_domicilio'),
+          texto('comprador_nombre'), texto('comprador_dni'), texto('comprador_domicilio'),
+          texto('bastidor'),
+          b.precio_venta === undefined ? null : (Number(b.precio_venta) || null),
+        ]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+      res.json({ ok: true, data: r.rows[0] });
+    } catch (err) {
+      console.error('[encargos] datos del contrato:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'contrato_patch_failed' });
+    }
+  }
+);
+
+/**
+ * El contrato de compraventa, para imprimirlo y darlo a firmar.
+ *
+ * Como el mandato: se genera cada vez con lo que hay y no se guarda copia. Lo
+ * que falta sale como una raya, no en blanco — un campo vacío se pasa por alto
+ * al imprimir y el papel se firma sin él.
+ */
+encargosRouter.get(
+  '/encargos/:id/contrato',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `SELECT e.*, v.plate, v.brand, v.model, v.year, v.mileage
+           FROM erp_encargos_venta e
+           LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+          WHERE e.id = $1`,
+        [req.params.id]
+      );
+      const e = r.rows[0];
+      if (!e) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+
+      /*
+       * Quién compró sale de la visita que acabó en venta.
+       *
+       * Es el mismo dato que ya tenemos y volver a pedirlo sería pedirle a
+       * quien imprime que copie un nombre que está dos pantallas más allá. Si
+       * se ha escrito uno a mano, ese manda: puede que quien vino a verlo y
+       * quien firma no sean la misma persona.
+       */
+      const compra = await query(
+        `SELECT buyer_name FROM vehicle_visit_bookings
+          WHERE offer_id = $1 AND resultado = 'compro'
+          ORDER BY resultado_at DESC NULLS LAST LIMIT 1`,
+        [`idcar-${String(e.vehicle_id)}`]
+      ).catch(() => ({ rows: [] }));
+
+      const doc = elContrato({
+        contrato_id: String(e.contrato_id ?? ''),
+        vendedor_nombre: String(e.cliente_nombre ?? ''),
+        vendedor_dni: String(e.vendedor_dni ?? ''),
+        vendedor_domicilio: String(e.vendedor_domicilio ?? ''),
+        comprador_nombre: String(e.comprador_nombre ?? compra.rows[0]?.buyer_name ?? ''),
+        comprador_dni: String(e.comprador_dni ?? ''),
+        comprador_domicilio: String(e.comprador_domicilio ?? ''),
+        matricula: String(e.plate ?? ''),
+        bastidor: String(e.bastidor ?? ''),
+        marca: String(e.brand ?? ''),
+        modelo: String(e.model ?? ''),
+        ano: (e.year as number | null) ?? null,
+        kilometros: (e.mileage as number | null) ?? null,
+        precio: Number(e.precio_venta) || Number(e.precio_referencia) || null,
+        fecha: e.cerrado_at ? new Date(e.cerrado_at as string) : new Date(),
+      });
+
+      res.setHeader('Content-Type', 'application/msword; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${comoSeLlamaElFicheroDelContrato(String(e.contrato_id ?? ''))}"`,
+      );
+      // La marca del principio es lo que hace que Word lea el texto en UTF-8.
+      res.send('﻿' + doc);
+    } catch (err) {
+      console.error('[encargos] contrato:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'contrato_failed' });
+    }
+  }
+);
 
 /**
  * Y se le manda para que lo firme, con el documento adjunto.
