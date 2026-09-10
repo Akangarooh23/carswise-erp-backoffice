@@ -27,6 +27,9 @@ cliente: Pide en la web que le vendamos su coche
 erp: Se le llama y se le abre el encargo sobre su coche
 @ Leads → el lead → «Encargo de venta» → «Abrir encargo»
 + nada: se pulsa sobre el coche que él eligió
+erp: Se le manda el mandato y se apunta cuándo lo firma
+@ IDCars → el coche → «Encargo de venta» → «Mandato»
++ la fecha de la firma y cómo nos consta
 erp: Se acuerda el precio y si firma la cláusula
 @ IDCars → el coche → «Encargo de venta»
 + el precio que le proponemos y la casilla de la cláusula
@@ -62,8 +65,8 @@ erp: Se cierra el encargo y se factura lo que toque
 + nada: son tres botones y cada uno dice cuánto se le factura
 :::
 
-Trece pasos. Cinco los hace el cliente, dos pasan fuera del ERP y uno es trabajo
-de persona: poner y quitar el anuncio del portal.
+Catorce pasos. Cinco los hace el cliente, dos pasan fuera del ERP y uno es
+trabajo de persona: poner y quitar el anuncio del portal.
 
 ---
 
@@ -104,6 +107,43 @@ erp: Y se le abre el encargo sobre su coche
 > **El mandato no caduca.** Se extiende hasta que él lo cancela o hasta que
 > vendemos. Los 30 días de los que se habla más abajo no son una caducidad: son
 > hasta cuándo se le puede cobrar la cancelación.
+
+---
+
+## 1b · El mandato firmado
+
+Abrir el encargo no es firmarlo. El mandato es el papel donde el cliente acepta
+el trato, y es **lo único que nos deja cobrarle**: sin él no se le factura nada,
+ni los 299 € si el coche se vende ni los 150 € si se va.
+
+:::flujo
+erp: Se descarga el mandato, hecho con lo que hay en el encargo
+@ IDCars → el coche → «Encargo de venta» → «Descargar»
++ nada: sale con su número, el coche, el precio y las condiciones
+trabajador: Se le manda, lo firma y lo devuelve
+erp: Se apunta cuándo lo firmó y cómo nos consta
+@ IDCars → el coche → «Encargo de venta» → «Ya lo ha firmado»
++ la fecha, una de las tres maneras, y dónde está el papel
+:::
+
+> **Hacen falta las dos cosas: la fecha y el cómo.** Una fecha sola es
+> exactamente lo que había antes —un dato que el ERP se escribía a sí mismo al
+> pulsar un botón— y con eso no hay nada que enseñar el día que alguien discuta
+> una factura. Las tres maneras son: lo firmó delante de nosotros, nos mandó el
+> papel firmado, o lo aceptó por correo.
+
+> **El plazo de los 30 días empieza en la fecha de la firma**, no al abrir el
+> encargo ni el día que se apunta. Si se le apunta tres semanas tarde, le quedan
+> diez días, no treinta.
+
+> **El documento no se guarda, se genera cada vez** con lo que hay en el
+> encargo. Guardando una copia, el día que se acuerde otro precio habría dos
+> papeles distintos y el que el cliente tiene delante no sería el que dice el
+> ERP. Lo que sí queda guardado es cuál firmó: su número y la fecha.
+
+> **Mientras no esté firmado sale en Pendientes**, en rojo. Ese coche se puede
+> anunciar y se puede vender igual — lo que no se puede es cobrarlo, y cuanto
+> más tarde se pida la firma más raro es pedirla.
 
 ---
 
@@ -361,6 +401,7 @@ erp: Y la factura queda en su sitio
 | Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano, y apuntar dónde |
 | Llevar el coche al taller | Llevarlo. El resultado se apunta en el encargo |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
+| Conseguir la firma del mandato | Mandárselo y recogerlo firmado |
 | Cerrar el encargo | Elegir cómo acabó |
 | Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |
 

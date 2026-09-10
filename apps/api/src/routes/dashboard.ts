@@ -521,7 +521,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        */
       losAvisosDeEncargos().catch(() => ({
         encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
-        encargos_listos: 0, encargos_rechazados: 0,
+        encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
       })),
 
       /*

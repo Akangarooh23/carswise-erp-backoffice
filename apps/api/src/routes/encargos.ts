@@ -46,6 +46,12 @@ import {
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
 import { porQueElTallerNoDeja, preparaRevisionesTaller } from './revisiones-taller.js';
+import {
+  COMO_SE_FIRMA, COMO_LO_DECIMOS, SERIE as SERIE_DEL_MANDATO,
+  esUnaFirma, estaFirmado, porQueNoEstaFirmado,
+  elMandato, comoSeLlamaElFichero,
+} from '../lib/mandato-de-venta.js';
+import { prefijoAnual, siguienteDeSerie } from '../lib/series.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
@@ -106,7 +112,10 @@ const ENSURE_COLUMNAS = `
     ADD COLUMN IF NOT EXISTS libre_desde TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS acepto_el_precio BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS precio_referencia NUMERIC(12,2),
-    ADD COLUMN IF NOT EXISTS lead_id TEXT`;
+    ADD COLUMN IF NOT EXISTS lead_id TEXT,
+    ADD COLUMN IF NOT EXISTS mandato_id TEXT,
+    ADD COLUMN IF NOT EXISTS firma_como TEXT,
+    ADD COLUMN IF NOT EXISTS firma_nota TEXT`;
 
 const ENSURE_UNO_VIVO = `
   CREATE UNIQUE INDEX IF NOT EXISTS ux_encargo_vivo_por_coche
@@ -206,10 +215,11 @@ export async function losAvisosDeEncargos(): Promise<{
   encargos_sin_franjas: number;
   encargos_listos: number;
   encargos_rechazados: number;
+  encargos_sin_firmar: number;
 }> {
   const vacio = {
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
-    encargos_listos: 0, encargos_rechazados: 0,
+    encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
   };
   await prepara();
   // La consulta de abajo lee `erp_revisiones_taller`. Si nadie la ha creado
@@ -217,7 +227,7 @@ export async function losAvisosDeEncargos(): Promise<{
   await preparaRevisionesTaller().catch(() => {});
 
   const r = await query(`
-    SELECT e.firmado_at, e.acepto_el_precio,
+    SELECT e.firmado_at, e.acepto_el_precio, e.firma_como,
            EXISTS (
              SELECT 1 FROM vehicle_visit_bookings b
               WHERE b.offer_id = 'idcar-' || e.vehicle_id AND b.resultado = 'compro'
@@ -286,6 +296,15 @@ export async function losAvisosDeEncargos(): Promise<{
 
     // Y el que el taller ha tumbado: su coche no va a salir y él no lo sabe.
     if (elTallerLoTumbo(taller)) cuenta.encargos_rechazados += 1;
+
+    /*
+     * Y el que no ha firmado el mandato.
+     *
+     * Se está trabajando para él —anuncio, taller, llamadas— y no hay nada que
+     * permita cobrárselo. Cuanto más tarde se pida la firma, más raro es
+     * pedirla.
+     */
+    if (!estaFirmado(fila)) cuenta.encargos_sin_firmar += 1;
   }
   return cuenta;
 }
@@ -385,6 +404,14 @@ encargosRouter.get(
           le_falta: loQueLeFalta(puertas),
           falta_el_taller: faltaElTaller,
           /*
+           * El mandato. No es una puerta de publicar —un coche sin mandato
+           * firmado se puede anunciar igual— sino de **cobrar**: sin él, ni los
+           * 299 € ni los 150 €.
+           */
+          mandato_firmado: estaFirmado(encargo),
+          por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
+          como_se_firma: COMO_SE_FIRMA.map((c) => ({ clave: c, nombre: COMO_LO_DECIMOS[c] })),
+          /*
            * Nada de esto caduca. Lo que se dice es qué pasaría si se fuera hoy,
            * que es lo que hace falta saber cuando se le llama.
            */
@@ -438,7 +465,18 @@ encargosRouter.post(
         return;
       }
 
-      const firmado = new Date();
+      /*
+       * El encargo nace **sin firmar**, y esto es lo que se ha arreglado.
+       *
+       * Antes aquí se escribía `new Date()` en `firmado_at`: el ERP se
+       * inventaba una fecha de firma en el momento en que alguien pulsaba un
+       * botón, y de esa fecha colgaban los 299 € y los 150 €. Ahora se abre el
+       * encargo, se le manda el mandato, y la fecha se apunta cuando de verdad
+       * lo firma. Hasta entonces no se le puede facturar nada.
+       *
+       * `libre_desde` también nace en blanco, por lo mismo: el plazo de los 30
+       * días cuenta desde la firma, y sin firma no ha empezado a correr.
+       */
       /*
        * Si firmó la cláusula del precio o no.
        *
@@ -448,22 +486,24 @@ encargosRouter.post(
        * entere.
        */
       const aceptoElPrecio = req.body?.acepto_el_precio === true;
-      const libre = libreDesde(firmado, aceptoElPrecio);
       const id = `enc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const mandatoId = await siguienteDeSerie(
+        'erp_encargos_venta', prefijoAnual(SERIE_DEL_MANDATO), 3, 'mandato_id',
+      ).catch(() => '');
 
       const r = await query(
         `INSERT INTO erp_encargos_venta
-           (id, vehicle_id, cliente_email, cliente_nombre, estado, firmado_at,
-            acepto_el_precio, libre_desde, precio_referencia,
+           (id, vehicle_id, cliente_email, cliente_nombre, estado, mandato_id,
+            acepto_el_precio, precio_referencia,
             fee_gestion, fee_cancelacion, lead_id, creado_por)
-         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9,$10,$11,$12)
+         VALUES ($1,$2,$3,$4,'recogiendo',$5,$6,$7,$8,$9,$10,$11)
          RETURNING *`,
         [
           id, vehicleId,
           String(req.body?.cliente_email ?? coche.rows[0].user_email ?? ''),
           String(req.body?.cliente_nombre ?? coche.rows[0].name ?? ''),
-          firmado.toISOString(),
-          aceptoElPrecio, libre?.toISOString() ?? null,
+          mandatoId || null,
+          aceptoElPrecio,
           Number(req.body?.precio_referencia) || null,
           FEE_DE_GESTION, FEE_DE_CANCELACION,
           String(req.body?.lead_id ?? '').trim() || null,
@@ -591,6 +631,142 @@ encargosRouter.post(
  * regla de las tres ramas no serviría de nada: todos los encargos se quedarían
  * en «no aceptó», que es donde nacen.
  */
+/**
+ * El mandato, para imprimirlo o mandárselo.
+ *
+ * Se genera cada vez con lo que hay en el encargo y no se guarda una copia: si
+ * se guardara, el día que se acuerde otro precio habría dos documentos y el que
+ * el cliente tiene delante no sería el que dice el ERP. Lo que sí queda
+ * guardado es **cuál firmó**, que es el número de mandato y la fecha.
+ */
+encargosRouter.get(
+  '/encargos/:id/mandato',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `SELECT e.*, v.plate, v.brand, v.model, v.year, v.mileage
+           FROM erp_encargos_venta e
+           LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+          WHERE e.id = $1`,
+        [req.params.id]
+      );
+      const e = r.rows[0];
+      if (!e) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+
+      const doc = elMandato({
+        mandato_id: String(e.mandato_id ?? ''),
+        cliente_nombre: String(e.cliente_nombre ?? ''),
+        cliente_email: String(e.cliente_email ?? ''),
+        matricula: String(e.plate ?? ''),
+        marca: String(e.brand ?? ''),
+        modelo: String(e.model ?? ''),
+        ano: (e.year as number | null) ?? null,
+        kilometros: (e.mileage as number | null) ?? null,
+        precio: Number(e.precio_referencia) || null,
+        acepto_el_precio: Boolean(e.acepto_el_precio),
+        // La del día en que se firma, no la de apertura: es la que va en el
+        // papel que el cliente tiene delante.
+        fecha: e.firmado_at ? new Date(e.firmado_at as string) : new Date(),
+      });
+
+      /*
+       * La marca del principio es lo que hace que Word lea el texto como UTF-8.
+       * Sin ella abre el documento con la codificación del sistema, y en un
+       * papel lleno de «matrícula» y «vehículo» se nota en la primera línea.
+       */
+      res.setHeader('Content-Type', 'application/msword; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${comoSeLlamaElFichero(String(e.mandato_id ?? ''))}"`,
+      );
+      res.send('﻿' + doc);
+    } catch (err) {
+      console.error('[encargos] mandato:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'mandato_failed' });
+    }
+  }
+);
+
+/**
+ * Se apunta que el cliente lo ha firmado.
+ *
+ * Hacen falta las dos cosas —cuándo y cómo nos consta— porque una fecha sola es
+ * exactamente lo que había antes: un dato que el ERP se escribía a sí mismo.
+ *
+ * Y aquí es donde empieza a correr el plazo de los 30 días, no al abrir el
+ * encargo: `libre_desde` se recalcula desde la fecha de firma.
+ */
+encargosRouter.post(
+  '/encargos/:id/firmado',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const como = String(req.body?.firma_como ?? '').trim();
+      if (!esUnaFirma(como)) {
+        res.status(400).json({
+          ok: false, error: 'falta_como_firmo',
+          detail: 'Hay que decir cómo nos consta que lo firmó',
+        });
+        return;
+      }
+
+      const cuando = req.body?.firmado_at ? new Date(String(req.body.firmado_at)) : new Date();
+      if (Number.isNaN(cuando.getTime())) {
+        res.status(400).json({ ok: false, error: 'fecha_no_valida' });
+        return;
+      }
+      /*
+       * Una firma en el futuro no se guarda.
+       *
+       * Un dedo de más en el año adelanta la fecha, y con ella los 30 días: al
+       * cliente se le podría cobrar la penalización durante un año entero sin
+       * que nadie viera nada raro en la pantalla.
+       */
+      if (cuando.getTime() > Date.now() + 86400000) {
+        res.status(400).json({ ok: false, error: 'fecha_en_el_futuro' });
+        return;
+      }
+
+      const actual = await query(
+        `SELECT acepto_el_precio FROM erp_encargos_venta WHERE id = $1 AND cerrado_at IS NULL`,
+        [req.params.id]
+      );
+      if (!actual.rows.length) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+
+      const libre = libreDesde(cuando, Boolean(actual.rows[0].acepto_el_precio));
+
+      const upd = await query(
+        `UPDATE erp_encargos_venta
+            SET firmado_at = $2, firma_como = $3, firma_nota = $4,
+                libre_desde = $5, updated_at = NOW()
+          WHERE id = $1 AND cerrado_at IS NULL
+        RETURNING *`,
+        [
+          req.params.id, cuando.toISOString(), como,
+          String(req.body?.firma_nota ?? '').trim(),
+          libre?.toISOString() ?? null,
+        ]
+      );
+      if (!upd.rows.length) { res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' }); return; }
+
+      res.json({
+        ok: true,
+        data: {
+          encargo: upd.rows[0],
+          penalizacion: laPenalizacion(upd.rows[0]),
+          dias_hasta_irse_gratis: diasQueQuedan(upd.rows[0].libre_desde),
+        },
+      });
+    } catch (err) {
+      console.error('[encargos] firmado:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'encargo_firmado_failed' });
+    }
+  }
+);
+
 encargosRouter.patch(
   '/encargos/:id/precio',
   requireRole(['admin', 'operations', 'sales']),

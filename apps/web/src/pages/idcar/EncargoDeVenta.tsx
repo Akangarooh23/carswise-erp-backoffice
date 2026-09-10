@@ -18,6 +18,7 @@ import { api } from '../../api/client.js';
 import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
 import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
+import MandatoDeVenta, { type ComoSeFirma } from './MandatoDeVenta.js';
 
 export interface Puerta {
   clave: string;
@@ -36,6 +37,8 @@ export interface Encargo {
   acepto_el_precio: boolean;
   precio_referencia: string | null;
   precio_acordado: string | null;
+  mandato_id: string | null;
+  firma_como: string | null;
   fee_gestion: string | null;
   fee_cancelacion: string | null;
 }
@@ -63,6 +66,10 @@ export interface ElEncargo {
   /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
   le_falta: string[];
   falta_el_taller: string;
+  /** El mandato no es puerta de publicar: es puerta de cobrar. */
+  mandato_firmado: boolean;
+  por_que_no_firmado: string;
+  como_se_firma: ComoSeFirma[];
   /** Lo que dio su tasacion gratuita, si se la ha hecho. */
   tasacion: number | null;
   penalizacion: number | null;
@@ -92,8 +99,26 @@ const euros = (v: string | null) => {
  * cuando ya no hay nada que le retenga.
  */
 function ComoVaElPlazo({
-  dias, aceptoElPrecio, penalizacion,
-}: { dias: number | null; aceptoElPrecio: boolean; penalizacion: number | null }) {
+  dias, aceptoElPrecio, penalizacion, mandatoFirmado,
+}: {
+  dias: number | null; aceptoElPrecio: boolean; penalizacion: number | null;
+  mandatoFirmado: boolean;
+}) {
+  /*
+   * Sin mandato firmado no se le cobra nada, así que no hay plazo que enseñar.
+   *
+   * Va antes que todo lo demás a propósito: la rama de abajo diría «siempre
+   * paga la penalización de 150 €», y eso sería exactamente lo que el cierre no
+   * va a facturar. Es la divergencia entre pantalla y factura que ya se evitó
+   * una vez, y la descubre el cliente.
+   */
+  if (!mandatoFirmado) {
+    return (
+      <span className="inline-block rounded-lg bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-semibold">
+        Sin mandato firmado · no se le puede facturar
+      </span>
+    );
+  }
   // El que no firmó la cláusula del precio no llega nunca a poder irse gratis.
   if (!aceptoElPrecio) {
     return (
@@ -297,10 +322,30 @@ export default function EncargoDeVenta({
           dias={datos.dias_hasta_irse_gratis}
           aceptoElPrecio={e.acepto_el_precio}
           penalizacion={datos.penalizacion}
+          mandatoFirmado={datos.mandato_firmado}
         />
       </div>
 
-      <ul className="mb-3">
+      {/*
+        * El mandato va lo primero, antes que las puertas.
+        *
+        * Las puertas son para publicar y el mandato es para cobrar, y de las
+        * dos cosas la que no se puede arreglar después es esta: pedirle la
+        * firma a alguien al que ya le hemos vendido el coche es una
+        * conversación que no se gana.
+        */}
+      <MandatoDeVenta
+        encargoId={e.id}
+        mandatoId={e.mandato_id}
+        firmado={datos.mandato_firmado}
+        firmadoAt={e.firmado_at}
+        firmaComo={e.firma_como}
+        porQueNo={datos.por_que_no_firmado}
+        comoSeFirma={datos.como_se_firma}
+        alGuardar={() => void carga()}
+      />
+
+      <ul className="mb-3 mt-4">
         {datos.puertas.map((p) => <Semaforo key={p.clave} puerta={p} />)}
       </ul>
 

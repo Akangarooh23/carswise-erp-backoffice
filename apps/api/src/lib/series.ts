@@ -34,11 +34,27 @@ export function conNumero(prefijo: string, ultimo: number, digitos = 3): string 
  * no puede tumbar la creación del siguiente, que es lo que pasaba antes —el
  * paso a entero fallaba y con él la consulta entera—.
  */
-export async function siguienteDeSerie(tabla: string, prefijo: string, digitos = 3): Promise<string> {
+export async function siguienteDeSerie(
+  tabla: string,
+  prefijo: string,
+  digitos = 3,
+  columna = 'id',
+): Promise<string> {
+  /*
+   * La tabla y la columna van pegadas a la consulta, no como parámetros:
+   * Postgres no admite un identificador parametrizado. Las dos vienen de
+   * constantes del código y no de nadie de fuera, pero se comprueban igual —el
+   * día que una salga de un sitio menos cerrado, esto ya no habrá que
+   * acordarse de añadirlo.
+   */
+  const nombre = /^[a-z_][a-z0-9_]*$/i;
+  if (!nombre.test(tabla) || !nombre.test(columna)) {
+    throw new Error(`serie: nombre no válido (${tabla}.${columna})`);
+  }
   const r = await query(
-    `SELECT COALESCE(MAX(substring(id from '[0-9]+$')::int), 0) AS ultimo
+    `SELECT COALESCE(MAX(substring(${columna} from '[0-9]+$')::int), 0) AS ultimo
        FROM ${tabla}
-      WHERE id LIKE $1 AND id ~ '[0-9]+$'`,
+      WHERE ${columna} LIKE $1 AND ${columna} ~ '[0-9]+$'`,
     [`${prefijo}%`]
   );
   return conNumero(prefijo, Number((r.rows[0] as { ultimo: number }).ultimo), digitos);

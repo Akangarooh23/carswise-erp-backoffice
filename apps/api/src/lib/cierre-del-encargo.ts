@@ -13,6 +13,7 @@
  */
 import { FEE_DE_GESTION, laPenalizacion } from './encargo-de-venta.js';
 import { laComision } from './comision-del-concesionario.js';
+import { sePuedeCobrar } from './mandato-de-venta.js';
 
 /**
  * Las tres formas de acabar.
@@ -39,6 +40,8 @@ export const COMO_ACABO: Record<Motivo, string> = {
 export interface ElEncargo {
   firmado_at?: string | Date | null;
   acepto_el_precio?: boolean | null;
+  /** Cómo nos consta que firmó el mandato. Sin esto no se le factura nada. */
+  firma_como?: unknown;
 }
 
 /**
@@ -58,6 +61,18 @@ export function loQueSeLeFactura(
   ahora: Date = new Date(),
 ): { total: number; base: number; cuota: number; iva: number; concepto: string } | null {
   if (motivo === 'retirado') return null;
+
+  /*
+   * Sin mandato firmado no se le factura nada, venda o no.
+   *
+   * Es la única regla de este flujo que va hacia el otro lado: en las demás,
+   * ante la duda se cobra —perdonar sale de la puerta equivocada porque nadie
+   * se entera—. Pero en las demás la duda es sobre *cuánto*, y aquí es sobre
+   * **si hay trato**. Antes bastaba con que alguien pulsara «Abrir encargo»
+   * para que el ERP se escribiera una fecha de firma a sí mismo y esa fecha
+   * sostuviera una factura de 299 €.
+   */
+  if (!sePuedeCobrar(encargo)) return null;
 
   if (motivo === 'vendido') {
     const c = laComision(FEE_DE_GESTION);

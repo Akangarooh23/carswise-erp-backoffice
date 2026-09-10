@@ -168,6 +168,20 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'le hemos prometido una llamada en menos de 24 horas laborables',
     a: '/leads', icono: 'telefono', tono: 'urgente',
   },
+  /*
+   * Y el encargo sin mandato firmado.
+   *
+   * Ese coche se puede anunciar y se puede vender: lo que no se puede es
+   * **cobrar**, ni los 299 € ni los 150 €. Es trabajo que ya se está haciendo y
+   * que hoy no tiene detrás nada que lo sostenga, y cuanto más tarde se pida la
+   * firma más raro es pedirla.
+   */
+  {
+    clave: 'encargos_sin_firmar',
+    etiqueta: 'encargos sin el mandato firmado', una: 'encargo sin el mandato firmado',
+    porque: 'sin él no se le puede facturar nada, ni aunque el coche se venda',
+    a: '/idcars', icono: 'documento', tono: 'urgente',
+  },
   {
     clave: 'encargos_vendidos',
     etiqueta: 'coches vendidos sin cerrar el encargo', una: 'coche vendido sin cerrar el encargo',

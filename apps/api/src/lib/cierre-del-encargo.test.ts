@@ -17,6 +17,15 @@ import { FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 const AHORA = new Date('2026-09-10T10:00:00Z');
 const firmadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
 
+/**
+ * Un encargo con el mandato firmado, que es la condicion para que haya factura.
+ *
+ * Va en un ayudante y no suelto en cada prueba para que se vea que es lo mismo
+ * en todas: lo que cada una cambia es la fecha o la clausula del precio, nunca
+ * si hay trato.
+ */
+const conMandato = (e: Record<string, unknown>) => ({ firma_como: 'en_persona', ...e });
+
 describe('las tres formas de acabar', () => {
   test('vendido, se fue, o lo retiramos nosotros', () => {
     assert.deepEqual([...MOTIVOS], ['vendido', 'se_fue', 'retirado']);
@@ -33,7 +42,7 @@ describe('las tres formas de acabar', () => {
 });
 
 describe('lo que se le factura', () => {
-  const firmoElPrecio = { firmado_at: firmadoHace(10), acepto_el_precio: true };
+  const firmoElPrecio = conMandato({ firmado_at: firmadoHace(10), acepto_el_precio: true });
 
   test('si vendió con nosotros, el fee de gestión', () => {
     const f = loQueSeLeFactura('vendido', firmoElPrecio, AHORA);
@@ -62,12 +71,12 @@ describe('lo que se le factura', () => {
 
   test('si se va después, no se le cobra nada', () => {
     // Y `null`, no una factura de 0 €: eso no existe.
-    assert.equal(loQueSeLeFactura('se_fue', { firmado_at: firmadoHace(40), acepto_el_precio: true }, AHORA), null);
-    assert.equal(seLeCobra('se_fue', { firmado_at: firmadoHace(40), acepto_el_precio: true }, AHORA), false);
+    assert.equal(loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), null);
+    assert.equal(seLeCobra('se_fue', conMandato({ firmado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), false);
   });
 
   test('el que no firmó el precio paga aunque hayan pasado meses', () => {
-    const f = loQueSeLeFactura('se_fue', { firmado_at: firmadoHace(200), acepto_el_precio: false }, AHORA);
+    const f = loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(200), acepto_el_precio: false }), AHORA);
     assert.equal(f?.total, FEE_DE_CANCELACION);
   });
 
@@ -92,10 +101,48 @@ describe('lo que se le factura', () => {
      * por separado, en pantalla pondría que ya puede irse gratis y le llegaría
      * una factura de 150 €.
      */
-    const justoAntes = { firmado_at: firmadoHace(29), acepto_el_precio: true };
-    const justoDespues = { firmado_at: firmadoHace(30), acepto_el_precio: true };
+    const justoAntes = conMandato({ firmado_at: firmadoHace(29), acepto_el_precio: true });
+    const justoDespues = conMandato({ firmado_at: firmadoHace(30), acepto_el_precio: true });
     assert.equal(loQueSeLeFactura('se_fue', justoAntes, AHORA)?.total, 150);
     assert.equal(loQueSeLeFactura('se_fue', justoDespues, AHORA), null);
+  });
+});
+
+describe('sin mandato firmado no se le factura nada', () => {
+  /*
+   * Es la regla que da la vuelta a las demás de este flujo.
+   *
+   * En las otras, ante la duda se cobra: perdonar sale de la puerta equivocada
+   * porque nadie se entera. Pero en las otras la duda es sobre *cuánto*, y en
+   * esta es sobre **si hay trato**. Antes bastaba con que alguien pulsara
+   * «Abrir encargo» para que el ERP se escribiera una fecha de firma a sí mismo
+   * y esa fecha sostuviera una factura de 299 €.
+   */
+  const sinMandato = { firmado_at: firmadoHace(10), acepto_el_precio: true };
+
+  test('ni siquiera si el coche se vendió', () => {
+    // El caso caro y el que más cuesta aceptar: se ha hecho todo el trabajo y
+    // no se puede cobrar. Cobrarlo es emitir una factura que nadie encargó.
+    assert.equal(loQueSeLeFactura('vendido', sinMandato, AHORA), null);
+    assert.equal(seLeCobra('vendido', sinMandato, AHORA), false);
+  });
+
+  test('ni la cancelación de quien se va a los dos días', () => {
+    assert.equal(loQueSeLeFactura('se_fue', sinMandato, AHORA), null);
+  });
+
+  test('una fecha de firma sola no basta', () => {
+    /*
+     * Justo el estado del que se viene: `firmado_at` puesta y nada detrás. Si
+     * eso contara, no se habría arreglado nada.
+     */
+    assert.equal(loQueSeLeFactura('vendido', { firmado_at: firmadoHace(10) }, AHORA), null);
+  });
+
+  test('en cuanto consta cómo firmó, se cobra lo de siempre', () => {
+    // La otra mitad: la regla nueva no puede dejar de cobrar a quien sí firmó.
+    const f = loQueSeLeFactura('vendido', conMandato(sinMandato), AHORA);
+    assert.equal(f?.total, FEE_DE_GESTION);
   });
 });
 
