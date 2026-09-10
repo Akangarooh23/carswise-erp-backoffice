@@ -24,6 +24,13 @@ type Booking = {
    * que en el ERP no la mira nadie: se apuntaba y se tiraba.
    */
   quiere_financiar: boolean;
+  /**
+   * De donde vino el comprador: «coches.net», «direct»…
+   *
+   * Es la unica forma de saber si el portal trae gente o solo cuesta dinero.
+   * Puede venir vacia: las visitas de antes de que se guardara no la tienen.
+   */
+  utm_source: string;
   // Dónde es la visita y por quién preguntar. Se apuntan al confirmar, pero
   // muchas veces se saben después, así que pueden llegar vacíos.
   meeting_place: string | null;
@@ -1527,7 +1534,17 @@ export default function BookingsPage() {
                                   * deja margen y la que se atiende a mano: hay que saberlo antes
                                   * de la visita, no descubrirlo en el parking.
                                   */}
-                                {b.quiere_financiar && (
+                                {/*
+                  * De donde vino. Solo cuando no es «directo»: la mayoria lo
+                  * es, y una etiqueta que sale siempre deja de leerse.
+                  */}
+                {b.utm_source && b.utm_source !== "direct" && (
+                  <span title="De donde vino este comprador"
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
+                    {b.utm_source}
+                  </span>
+                )}
+                {b.quiere_financiar && (
                                   <span title="Dijo que le interesaría financiarlo. Llámale antes de la visita."
                                         className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
                                     quiere financiar

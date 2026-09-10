@@ -35,7 +35,20 @@ const ENSURE_RESULTADO = `
      * existiría y la Agenda entera dejaría de cargar. Con IF NOT EXISTS, que
      * la pongan los dos no cuesta nada.
      */
-    ADD COLUMN IF NOT EXISTS quiere_financiar BOOLEAN NOT NULL DEFAULT FALSE`;
+    ADD COLUMN IF NOT EXISTS quiere_financiar BOOLEAN NOT NULL DEFAULT FALSE,
+    /*
+     * Y de donde vino el comprador.
+     *
+     * Las escribe PopCar, igual que la anterior. Se aseguran tambien aqui
+     * porque las consultas de la Agenda las leen: si el despliegue del ERP
+     * llegara antes, la columna no existiria y la Agenda entera dejaria de
+     * cargar.
+     */
+    ADD COLUMN IF NOT EXISTS utm_source   VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS utm_medium   VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS utm_content  VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS utm_term     VARCHAR(255) NOT NULL DEFAULT ''`;
 
 const ENSURE_RESULTADO_VALIDO = `
   DO $$
@@ -462,7 +475,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
   try {
     const r = await query(
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
-              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar,
+              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
               b.meeting_place, b.meeting_contact,
               b.resultado, b.resultado_at,
               b.status, b.created_at
@@ -1175,7 +1188,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
   try {
     let sql = `
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
-             b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar,
+             b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,
