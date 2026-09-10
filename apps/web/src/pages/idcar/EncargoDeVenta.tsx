@@ -59,6 +59,8 @@ export interface ElEncargo {
   puertas: Puerta[];
   se_puede_publicar: boolean;
   le_falta: string[];
+  /** Lo que dio su tasacion gratuita, si se la ha hecho. */
+  tasacion: number | null;
   penalizacion: number | null;
   ya_se_puede_ir_gratis: boolean;
   dias_hasta_irse_gratis: number | null;
@@ -159,7 +161,12 @@ export default function EncargoDeVenta({
       setDatos(r.data);
       // Los campos arrancan con lo que hay guardado, para que al abrir la ficha
       // se vea lo acordado y no dos casillas en blanco.
-      setPrecio(r.data.encargo?.precio_referencia ?? '');
+      /*
+       * El precio arranca con lo acordado, y si no hay nada acordado todavía,
+       * con lo que dio su tasación. Es de donde sale la conversación: se le
+       * propone ese número y él lo acepta o no.
+       */
+      setPrecio(r.data.encargo?.precio_referencia ?? (r.data.tasacion ? String(r.data.tasacion) : ''));
       setFirmoElPrecio(Boolean(r.data.encargo?.acepto_el_precio));
       alCambiar?.(r.data);
     } catch (e) {
@@ -346,6 +353,11 @@ export default function EncargoDeVenta({
             {guardando ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
+        {datos.tasacion !== null && (
+          <p className="text-[11.5px] text-brand-500 mt-2">
+            Su tasación gratuita dio <strong>{datos.tasacion.toLocaleString('es-ES')} €</strong>.
+          </p>
+        )}
         <p className="text-[11.5px] text-brand-400 mt-2 leading-snug">
           Si no la firma, se le puede cobrar la cancelación desde el primer día y siempre.
           Si la firma, solo durante los 30 días siguientes a la firma del encargo.

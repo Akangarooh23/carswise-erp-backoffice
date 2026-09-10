@@ -10,7 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION,
-  FRANJAS_MINIMAS, FOTOS_MINIMAS, LAS_CUATRO,
+  FRANJAS_MINIMAS, FOTOS_MINIMAS, LAS_PUERTAS,
   libreDesde, laPenalizacion, yaSePuedeIrGratis,
   franjasQueValen, lasPuertas, sePuedePublicar, loQueLeFalta,
   AVISAR_CON, tocaLlamarle, soloLeFaltanFranjas,
@@ -25,6 +25,7 @@ const COMPLETO: LoQueHay = {
   matricula: '8888LXR', marca: 'Seat', modelo: 'Ibiza', ano: 2019, kilometros: 74000,
   fotos: FOTOS_MINIMAS,
   papeles: ['circulation_permit', 'technical_sheet', 'itv'],
+  tasacion: 13500,
   informe: 'informe_listo',
   franjas: Array.from({ length: FRANJAS_MINIMAS }, (_, i) => enDias(i + 1)),
 };
@@ -62,11 +63,11 @@ describe('las franjas', () => {
   });
 });
 
-describe('las cuatro puertas', () => {
+describe('las cinco puertas', () => {
   test('con todo puesto, se puede publicar', () => {
     const puertas = lasPuertas(COMPLETO, AHORA);
-    assert.equal(puertas.length, 4);
-    assert.deepEqual(puertas.map((p) => p.clave), LAS_CUATRO);
+    assert.equal(puertas.length, 5);
+    assert.deepEqual(puertas.map((p) => p.clave), LAS_PUERTAS);
     assert.ok(puertas.every((p) => p.abierta), JSON.stringify(loQueLeFalta(puertas)));
     assert.equal(sePuedePublicar(puertas), true);
   });
@@ -95,6 +96,23 @@ describe('las cuatro puertas', () => {
     }
   });
 
+  test('sin tasación no se publica', () => {
+    /*
+     * El cliente tiene que hacerse la tasación gratuita: es de donde sale el
+     * precio del que luego hablamos. Sin ella no hay número que él pueda
+     * aceptar, y publicar seria poner un precio que no ha dicho nadie.
+     */
+    const puertas = lasPuertas({ ...COMPLETO, tasacion: null }, AHORA);
+    assert.equal(puertas.find((p) => p.clave === 'tasacion')?.abierta, false);
+    assert.equal(sePuedePublicar(puertas), false);
+  });
+
+  test('y una tasación a cero tampoco cuenta', () => {
+    // Es alguien que empezó el cuestionario y lo dejó.
+    assert.equal(lasPuertas({ ...COMPLETO, tasacion: 0 }, AHORA)
+      .find((p) => p.clave === 'tasacion')?.abierta, false);
+  });
+
   test('faltan fotos y lo dice contándolas', () => {
     const puertas = lasPuertas({ ...COMPLETO, fotos: FOTOS_MINIMAS - 2 }, AHORA);
     assert.match(puertas.find((p) => p.clave === 'idcar')!.falta, /2 fotos/);
@@ -103,12 +121,12 @@ describe('las cuatro puertas', () => {
   test('con un coche vacío se le puede decir todo lo que falta de una vez', () => {
     const puertas = lasPuertas({}, AHORA);
     assert.equal(sePuedePublicar(puertas), false);
-    assert.equal(loQueLeFalta(puertas).length, 4);
+    assert.equal(loQueLeFalta(puertas).length, 5);
     assert.match(loQueLeFalta(puertas)[0], /la matrícula, la marca, el modelo, el año/);
   });
 });
 
-describe('sePuedePublicar mira las cuatro por su nombre', () => {
+describe('sePuedePublicar mira las cinco por su nombre', () => {
   test('una lista vacía no autoriza nada', () => {
     /*
      * El error fácil: `puertas.every(p => p.abierta)` sobre una lista ya

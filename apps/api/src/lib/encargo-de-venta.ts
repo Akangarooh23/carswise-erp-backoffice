@@ -154,6 +154,8 @@ export interface LoQueHay {
   fotos?: number | null;
   /** Los `document_type` que ya ha subido. */
   papeles?: readonly string[] | null;
+  /** Lo que dio la tasación gratuita de ese coche, si se la ha hecho. */
+  tasacion?: number | null;
   /** El estado del informe de PopCar Check, si hay alguno. */
   informe?: string | null;
   /**
@@ -167,7 +169,7 @@ export interface LoQueHay {
 }
 
 export interface Puerta {
-  clave: 'idcar' | 'papeles' | 'informe' | 'franjas';
+  clave: 'idcar' | 'papeles' | 'tasacion' | 'informe' | 'franjas';
   nombre: string;
   abierta: boolean;
   /** Qué falta, en la frase que se le puede leer al cliente por teléfono. */
@@ -237,6 +239,12 @@ export function lasPuertas(hay: LoQueHay, ahora: Date = new Date()): Puerta[] {
       falta: faltanPapeles.length ? `Falta ${enLista(faltanPapeles)}` : '',
     },
     {
+      clave: 'tasacion',
+      nombre: 'La tasación',
+      abierta: Number(hay.tasacion ?? 0) > 0,
+      falta: 'No se la ha hecho. Es gratis y sale de su panel',
+    },
+    {
       clave: 'informe',
       nombre: 'El informe de estado',
       abierta: INFORME_HECHO.includes(String(hay.informe ?? '').trim()),
@@ -257,8 +265,14 @@ function enLista(cosas: string[]): string {
   return `${cosas.slice(0, -1).join(', ')} y ${cosas[cosas.length - 1]}`;
 }
 
-/** Las cuatro, por su nombre. */
-export const LAS_CUATRO: Puerta['clave'][] = ['idcar', 'papeles', 'informe', 'franjas'];
+/**
+ * Las puertas, por su nombre y en el orden en que se le piden.
+ *
+ * Eran cuatro y la tasación entró después: el cliente tiene que hacérsela para
+ * que haya un precio del que hablar, y sin precio acordado no se publica —
+ * publicar sería poner un número que no ha dicho nadie.
+ */
+export const LAS_PUERTAS: Puerta['clave'][] = ['idcar', 'papeles', 'tasacion', 'informe', 'franjas'];
 
 /**
  * Si el coche se puede publicar ya.
@@ -270,7 +284,7 @@ export const LAS_CUATRO: Puerta['clave'][] = ['idcar', 'papeles', 'informe', 'fr
  * nosotros.
  */
 export function sePuedePublicar(puertas: readonly Puerta[]): boolean {
-  return LAS_CUATRO.every((clave) => puertas.some((p) => p.clave === clave && p.abierta));
+  return LAS_PUERTAS.every((clave) => puertas.some((p) => p.clave === clave && p.abierta));
 }
 
 /** Lo que falta, para decírselo al cliente de una vez. */

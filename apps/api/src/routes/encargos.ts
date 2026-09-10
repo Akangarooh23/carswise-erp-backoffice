@@ -152,6 +152,20 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     [vehicleId]
   ).catch(() => ({ rows: [] }));
 
+  /*
+   * Su tasación gratuita, la más reciente con importe.
+   *
+   * Sin importe no vale: una fila a cero es alguien que empezó el cuestionario
+   * y lo dejó, y tomar eso por un precio acordado sería publicar un coche a un
+   * número que no ha dicho nadie.
+   */
+  const tasacion = await query(
+    `SELECT estimate_value FROM moveadvisor_user_valuations
+      WHERE vehicle_id = $1 AND COALESCE(estimate_value, 0) > 0
+      ORDER BY created_at DESC LIMIT 1`,
+    [vehicleId]
+  ).catch(() => ({ rows: [] }));
+
   const franjas = await query(
     `SELECT starts_at FROM vehicle_visit_availability
       WHERE offer_id = $1 AND status = 'available' AND starts_at > NOW()`,
@@ -167,6 +181,7 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     kilometros: v.mileage ?? null,
     fotos: fotos.rows[0]?.n ?? 0,
     papeles: papeles.rows.map((r) => String(r.document_type)),
+    tasacion: Number(tasacion.rows[0]?.estimate_value ?? 0) || null,
     informe: informe.rows[0]?.status ?? null,
     franjas: franjas.rows.map((r) => new Date(r.starts_at as string).toISOString()),
   };
@@ -205,6 +220,9 @@ export async function losAvisosDeEncargos(): Promise<{
            (SELECT COALESCE(array_agg(DISTINCT d.document_type), '{}')
               FROM moveadvisor_user_vehicle_documents d
              WHERE d.vehicle_id = e.vehicle_id) AS papeles,
+           (SELECT t.estimate_value FROM moveadvisor_user_valuations t
+             WHERE t.vehicle_id = e.vehicle_id AND COALESCE(t.estimate_value, 0) > 0
+             ORDER BY t.created_at DESC LIMIT 1) AS tasacion,
            (SELECT r2.status FROM moveadvisor_vehicle_condition_reports r2
              WHERE r2.vehicle_id = e.vehicle_id ORDER BY r2.created_at DESC LIMIT 1) AS informe,
            (SELECT COALESCE(array_agg(a.starts_at), '{}')
@@ -227,6 +245,7 @@ export async function losAvisosDeEncargos(): Promise<{
       kilometros: fila.mileage as number | null,
       fotos: Number(fila.fotos ?? 0),
       papeles: (fila.papeles as string[]) ?? [],
+      tasacion: Number(fila.tasacion ?? 0) || null,
       informe: fila.informe as string | null,
       franjas: ((fila.franjas as (string | Date)[]) ?? []).map((f) => new Date(f).toISOString()),
     });
@@ -307,6 +326,7 @@ encargosRouter.get(
            * Nada de esto caduca. Lo que se dice es qué pasaría si se fuera hoy,
            * que es lo que hace falta saber cuando se le llama.
            */
+          tasacion: hay.tasacion ?? null,
           penalizacion: encargo ? laPenalizacion(encargo) : null,
           ya_se_puede_ir_gratis: encargo ? yaSePuedeIrGratis(encargo) : false,
           dias_hasta_irse_gratis: encargo ? diasQueQuedan(encargo.libre_desde) : null,
