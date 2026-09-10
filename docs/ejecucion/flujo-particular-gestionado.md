@@ -394,6 +394,9 @@ erp: Se cierra desde la ficha del coche
 @ IDCars → el coche → «Encargo de venta» → «Cerrar el encargo»
 + nada: son tres botones con su importe
 sistema: Se emite la factura y el encargo queda cerrado
+sistema: Y si se vendió, se abre la transferencia
+@ Gestoría → la transferencia de titularidad
++ nada: sale sola, colgando del encargo
 erp: Y la factura queda en su sitio
 @ Facturación clientes
 + nada: sale sola, con el concepto puesto
@@ -412,7 +415,16 @@ erp: Y la factura queda en su sitio
 > **No se deshace.** Cerrar emite una factura a un cliente, así que va detrás de
 > un clic y no como tres botones a la vista.
 
-> **Y sigue faltando retirarlo del portal**, que no lo hace nadie por ti.
+> **La transferencia sale sola, y solo al vender.** Es lo que se le prometió en
+> el mandato que firmó: «cuando se vende, hacemos el contrato y la transferencia
+> en la DGT». Al que se va o al que retiramos nosotros no se le abre ninguna —
+> el coche sigue siendo suyo y no hay nada que transferir.
+>
+> Cuelga del **encargo**, no del lead: un encargo abierto desde la ficha del
+> IDCar no tiene lead, y aunque lo tenga, el mandato es lo que tiene la venta.
+
+> **Y si el coche estaba en un portal, ahí sigue.** Al despublicarse de nuestro
+> escaparate sale el aviso de retirarlo, pero quitarlo lo hace una persona.
 
 ---
 

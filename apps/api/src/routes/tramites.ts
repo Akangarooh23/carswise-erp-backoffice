@@ -73,6 +73,23 @@ const ENSURE_UNIQUE = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_lead_tipo
     ON erp_tramites (lead_id, tipo) WHERE lead_id IS NOT NULL`;
 
+/**
+ * Y del encargo de venta de un particular.
+ *
+ * Es el tercer sitio del que puede colgar un tramite, y hacia falta: el flujo
+ * gestionado cierra **encargos**, no leads, y un encargo abierto desde la ficha
+ * del IDCar no tiene lead. Colgandolo del lead, esa transferencia no se abria
+ * y no fallaba nada — `abreTramites` se salta en silencio lo que no tiene de
+ * donde colgar.
+ *
+ * Y aunque hubiera lead, el sitio correcto es el encargo: el lead es la
+ * peticion y el encargo es el mandato, que es lo que tiene el coche, el cliente
+ * y la venta.
+ */
+const ENSURE_UNIQUE_ENCARGO = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_encargo_tipo
+    ON erp_tramites (encargo_id, tipo) WHERE encargo_id IS NOT NULL`;
+
 const ENSURE_UNIQUE_PEDIDO = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_tramites_pedido_tipo
     ON erp_tramites (pedido_id, tipo) WHERE pedido_id IS NOT NULL`;
@@ -85,10 +102,12 @@ async function prepara() {
   // impuesto de matriculación en el coste del coche como si fuera gasto
   // nuestro, y son mil cuatrocientos euros de Hacienda.
   await query(`ALTER TABLE erp_tramites ADD COLUMN IF NOT EXISTS partidas JSONB NOT NULL DEFAULT '[]'::jsonb`, []).catch(() => {});
+  await query(`ALTER TABLE erp_tramites ADD COLUMN IF NOT EXISTS encargo_id TEXT`, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
   await query(ENSURE_UNIQUE_PEDIDO, []).catch(() => {});
+  await query(ENSURE_UNIQUE_ENCARGO, []).catch(() => {});
   preparado = true;
 }
 
@@ -97,7 +116,7 @@ function nt(v: unknown): string {
 }
 
 const CAMPOS = `id, tipo, estado, gestoria, vehiculo_titulo, matricula, bastidor, cliente_email,
-                pedido_id, lead_id, coste::numeric AS coste, partidas,
+                pedido_id, lead_id, encargo_id, coste::numeric AS coste, partidas,
                 fecha_enviado, fecha_resuelto,
                 notas, creado_por, created_at, updated_at`;
 
@@ -425,10 +444,40 @@ export async function abreTramitesDeVenta(datos: {
   });
 }
 
+/**
+ * Y el de vender el coche de un particular por él.
+ *
+ * Es el mismo trámite —una transferencia de titularidad— pero por otro motivo:
+ * aquí el coche nunca fue nuestro. Pasa de su dueño al comprador que le hemos
+ * encontrado, y el contrato y la transferencia los hacemos nosotros. Se lo
+ * prometemos por escrito en el mandato que firma y en la guía.
+ *
+ * Hasta ahora no lo abría nadie. `abreTramitesDeVenta` salta cuando un **lead**
+ * pasa a «Vendido», y el flujo gestionado no cierra leads: cierra encargos. Así
+ * que se cobraban los 299 € y el papel que le habíamos prometido no existía —
+ * y encima al final, cuando el cliente ya lo da por hecho.
+ */
+export async function abreLaTransferenciaDelEncargo(datos: {
+  encargoId: string;
+  vehiculoTitulo: string;
+  matricula: string;
+  clienteEmail: string;
+  creadoPor: string;
+}): Promise<string[]> {
+  return abreTramites(TRAMITES_AL_VENDER, {
+    encargoId: datos.encargoId,
+    vehiculoTitulo: datos.vehiculoTitulo,
+    matricula: datos.matricula,
+    clienteEmail: datos.clienteEmail,
+    creadoPor: datos.creadoPor,
+  });
+}
+
 /** Lo común: abrir una lista de trámites colgando de algo, sin repetir. */
 async function abreTramites(tipos: string[], datos: {
   leadId?: string;
   pedidoId?: string;
+  encargoId?: string;
   vehiculoTitulo: string;
   matricula: string;
   clienteEmail: string;
@@ -437,10 +486,31 @@ async function abreTramites(tipos: string[], datos: {
   await prepara();
   const creados: string[] = [];
 
+  /*
+   * De qué cuelga: pedido, encargo o lead, en ese orden.
+   *
+   * El encargo va antes que el lead a propósito. Un encargo puede tener lead o
+   * no —los que se abren desde la ficha del IDCar no lo tienen— y aunque lo
+   * tenga, el sitio correcto es el encargo: el lead es la petición y el encargo
+   * es el mandato, que es lo que tiene el coche, el cliente y la venta.
+   */
+  const columna = datos.pedidoId ? 'pedido_id' : datos.encargoId ? 'encargo_id' : 'lead_id';
+  const valor = datos.pedidoId ?? datos.encargoId ?? datos.leadId ?? '';
+
+  /*
+   * Sin nada de lo que colgar no se abre nada, y se dice.
+   *
+   * Esto se saltaba en silencio dentro del bucle: quien llamaba recibía una
+   * lista vacía igual que si ya estuvieran todos abiertos, y no hay forma de
+   * distinguir «ya estaban» de «no se ha abierto ninguno». Es como la
+   * transferencia del flujo gestionado no se abría sin que fallara nada.
+   */
+  if (!valor) {
+    console.error('[tramites] no se abre nada: no hay pedido, encargo ni lead del que colgar');
+    return creados;
+  }
+
   for (const tipo of tipos) {
-    const columna = datos.pedidoId ? "pedido_id" : "lead_id";
-    const valor = datos.pedidoId ?? datos.leadId ?? "";
-    if (!valor) continue;
 
     /*
      * Lo mismo por el otro lado: se mira el coche entero, no la columna.

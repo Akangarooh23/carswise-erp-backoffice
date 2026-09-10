@@ -55,6 +55,7 @@ import { prefijoAnual, siguienteDeSerie } from '../lib/series.js';
 import { enviar } from '../lib/correo.js';
 import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado } from '../lib/correos-del-encargo.js';
 import { config } from '../config.js';
+import { abreLaTransferenciaDelEncargo } from './tramites.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
@@ -610,6 +611,33 @@ encargosRouter.post(
         // Se le adelantó otra pestaña entre la lectura y el cierre.
         res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' });
         return;
+      }
+
+      /*
+       * Si se vendió, se abre la transferencia.
+       *
+       * Es lo que le prometemos por escrito en el mandato y en la guía: «cuando
+       * se vende, hacemos el contrato y la transferencia en la DGT». No la abría
+       * nadie — el trámite existe, pero salta cuando un *lead* pasa a
+       * «Vendido», y este flujo cierra encargos—. Se cobraban los 299 € y el
+       * papel prometido no existía.
+       *
+       * Cuelga del encargo y no del lead: un encargo abierto desde la ficha del
+       * IDCar no tiene lead, y aunque lo tenga, el mandato es lo que tiene la
+       * venta.
+       *
+       * Sin bloquear la respuesta y después de cerrar: el cierre y la factura ya
+       * están hechos, y que esto falle no puede hacer que la pantalla diga que
+       * el encargo no se cerró.
+       */
+      if (motivo === 'vendido') {
+        abreLaTransferenciaDelEncargo({
+          encargoId: String(e.id),
+          vehiculoTitulo: [e.brand, e.model].filter(Boolean).join(' '),
+          matricula: String(e.plate ?? ''),
+          clienteEmail: String(e.cliente_email ?? ''),
+          creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
+        }).catch((err) => console.error('[encargos] sin transferencia:', (err as Error).message));
       }
 
       /*

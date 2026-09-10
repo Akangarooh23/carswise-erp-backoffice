@@ -208,3 +208,87 @@ describe('los correos salen de verdad', () => {
     assert.match(IDCARS, /if \(!existing\.rows\.length\) \{\s*\n\s*avisaDeQueSePublico\(/);
   });
 });
+
+describe('vender abre la transferencia', () => {
+  /*
+   * En el mandato que el cliente firma pone que hacemos el contrato y la
+   * transferencia en la DGT. En la guía también. Y no la abría nadie: el
+   * trámite existe, pero salta cuando un **lead** pasa a «Vendido», y este
+   * flujo cierra encargos.
+   *
+   * Se cobraban los 299 € y el papel prometido no existía — y al final del
+   * todo, cuando el cliente ya lo da por hecho.
+   */
+  const TRAMITES = readFileSync(join(import.meta.dirname, 'tramites.ts'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  const CERRAR = (() => {
+    const desde = ENCARGOS.indexOf("'/encargos/:id/cerrar'");
+    const siguiente = ENCARGOS.indexOf('encargosRouter.', desde + 20);
+    return ENCARGOS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('al cerrar como vendido, se abre', () => {
+    assert.match(CERRAR, /if \(motivo === 'vendido'\)/);
+    assert.match(CERRAR, /abreLaTransferenciaDelEncargo\(/);
+  });
+
+  test('y solo cuando se vendió', () => {
+    /*
+     * A quien se va o a quien retiramos nosotros no hay nada que
+     * transferirle: el coche sigue siendo suyo. Abrirle una transferencia es
+     * un papel que alguien tendrá que ir a cerrar a mano.
+     */
+    const desdeElIf = CERRAR.slice(CERRAR.indexOf("if (motivo === 'vendido')"));
+    const abre = desdeElIf.indexOf('abreLaTransferenciaDelEncargo(');
+    const cierraElIf = desdeElIf.indexOf('\n      }');
+    assert.ok(abre > 0 && cierraElIf > abre, 'la llamada se ha salido del if');
+  });
+
+  test('cuelga del encargo, no del lead', () => {
+    /*
+     * Un encargo abierto desde la ficha del IDCar no tiene lead. Colgándolo
+     * del lead, esa transferencia no se abriría **y no fallaría nada**.
+     */
+    assert.match(CERRAR, /encargoId: String\(e\.id\)/);
+    assert.match(TRAMITES, /encargoId: datos\.encargoId/);
+  });
+
+  test('y el encargo es el sitio preferido sobre el lead', () => {
+    // El lead es la petición; el encargo es el mandato, que es lo que tiene el
+    // coche, el cliente y la venta.
+    assert.match(
+      TRAMITES,
+      /datos\.pedidoId \? 'pedido_id' : datos\.encargoId \? 'encargo_id' : 'lead_id'/,
+    );
+  });
+
+  test('sin nada de lo que colgar, se dice en vez de callarse', () => {
+    /*
+     * Esto se saltaba en silencio dentro del bucle: quien llamaba recibía una
+     * lista vacía igual que si ya estuvieran todos abiertos. «Ya estaban» y
+     * «no se ha abierto ninguno» son cosas muy distintas.
+     */
+    assert.match(TRAMITES, /no se abre nada: no hay pedido, encargo ni lead/);
+  });
+
+  test('no se abre dos veces la misma', () => {
+    // Cerrar dos veces, o un encargo que se reabre, no puede dejar dos
+    // transferencias del mismo coche.
+    assert.match(TRAMITES, /idx_tramites_encargo_tipo/);
+    assert.match(TRAMITES, /ON erp_tramites \(encargo_id, tipo\) WHERE encargo_id IS NOT NULL/);
+  });
+
+  test('y la columna existe y se lee', () => {
+    // Escribirla y no devolverla dejaría el trámite abierto y sin forma de
+    // saber de qué encargo es.
+    assert.match(TRAMITES, /ADD COLUMN IF NOT EXISTS encargo_id TEXT/);
+    assert.match(TRAMITES, /pedido_id, lead_id, encargo_id,/);
+  });
+
+  test('no tumba el cierre si falla', () => {
+    // El cierre y la factura ya están hechos: que esto falle no puede hacer que
+    // la pantalla diga que el encargo no se cerró.
+    assert.match(CERRAR, /sin transferencia/);
+  });
+});
