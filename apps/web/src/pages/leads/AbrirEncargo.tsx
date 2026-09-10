@@ -34,12 +34,20 @@ const comoSeLlama = (c: Candidato) => {
 };
 
 export default function AbrirEncargo({
-  leadId, email, cocheQuePidio,
+  leadId, email, cocheQuePidio, cocheElegido,
 }: {
   leadId: string;
   email: string;
   /** Lo que escribió en el formulario, para poder comparar con sus IDCars. */
   cocheQuePidio?: string;
+  /**
+   * Cuál de sus coches eligió él, si había entrado.
+   *
+   * Cuando viene, no hay nada que adivinar: «Volkswagen T-Roc R line 2022»
+   * escrito a mano no identifica un IDCar, y quien tiene que adivinarlo es el
+   * que coge el teléfono, que es justo quien menos lo sabe.
+   */
+  cocheElegido?: string;
 }) {
   const [coches, setCoches] = useState<Candidato[] | null>(null);
   const [fallo, setFallo] = useState('');
@@ -84,11 +92,21 @@ export default function AbrirEncargo({
         Encargo de venta
       </p>
 
-      {cocheQuePidio && (
+      {/*
+        * Si eligió el coche de su lista, no hay nada que adivinar y se dice.
+        * Si lo escribió a mano —porque no había entrado— se enseña lo que
+        * escribió, para poder compararlo con sus IDCars.
+        */}
+      {cocheElegido ? (
         <p className="text-xs text-violet-800 mb-2">
-          Pidió que le vendiéramos <strong>{cocheQuePidio}</strong>.
+          Eligió este coche de los suyos. <strong>No hay que adivinar cuál es.</strong>
         </p>
-      )}
+      ) : cocheQuePidio ? (
+        <p className="text-xs text-violet-800 mb-2">
+          Escribió que quería vender <strong>{cocheQuePidio}</strong>. Lo puso a mano,
+          así que confírmale cuál de estos es.
+        </p>
+      ) : null}
 
       {coches.length === 0 ? (
         /*
@@ -103,10 +121,18 @@ export default function AbrirEncargo({
         </p>
       ) : (
         <ul className="space-y-1.5">
-          {coches.map((c) => (
+          {[...coches]
+            .sort((a, b) => Number(b.id === cocheElegido) - Number(a.id === cocheElegido))
+            .map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-3">
-              <a href={`/idcars/${c.id}`} className="text-[13px] text-violet-900 underline underline-offset-2">
+              <a
+                href={`/idcars/${c.id}`}
+                className={`text-[13px] text-violet-900 underline underline-offset-2 ${
+                  c.id === cocheElegido ? 'font-bold' : ''
+                }`}
+              >
                 {comoSeLlama(c)}
+                {c.id === cocheElegido && <span className="ml-1.5">← el que eligió</span>}
               </a>
               {c.encargo_id ? (
                 <span className="shrink-0 text-[11px] font-semibold text-violet-600">Ya tiene encargo</span>

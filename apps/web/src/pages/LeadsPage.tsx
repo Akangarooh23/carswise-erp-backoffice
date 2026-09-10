@@ -1257,6 +1257,7 @@ export default function LeadsPage() {
                   leadId={selected.id}
                   email={selected.user_email}
                   cocheQuePidio={selected.title}
+                  cocheElegido={selected.vehicle_id}
                 />
               )}
 
