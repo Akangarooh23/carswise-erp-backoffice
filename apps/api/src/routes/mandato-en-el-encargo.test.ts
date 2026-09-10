@@ -91,6 +91,37 @@ describe('apuntar la firma', () => {
   });
 });
 
+describe('al cerrar se mira la firma de verdad', () => {
+  /*
+   * El fallo que esto caza, y que ya pasó una vez: el cierre le pasaba a
+   * `loQueSeLeFactura` tres campos elegidos a mano. Al añadir el mandato eso
+   * dejó de valer —faltaba `firma_como`— y la regla nueva daba «sin firmar»
+   * siempre, así que **no se facturaba nunca**, ni a quien había firmado.
+   *
+   * No rompe nada visible: el cierre funciona, el correo sale, y simplemente no
+   * se cobra. De los fallos posibles, el que menos chilla.
+   */
+  const CERRAR = (() => {
+    const desde = ENCARGOS.indexOf("'/encargos/:id/cerrar'");
+    assert.ok(desde > 0, 'no encuentro el endpoint de cerrar');
+    const siguiente = ENCARGOS.indexOf('encargosRouter.', desde + 20);
+    return ENCARGOS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('se le pasa la fila entera, no unos campos elegidos a mano', () => {
+    assert.match(CERRAR, /loQueSeLeFactura\(motivo, e\)/);
+  });
+
+  test('y no una copia recortada', () => {
+    // Reconstruir el objeto a mano es lo que hizo que se perdiera un campo.
+    assert.doesNotMatch(
+      CERRAR,
+      /loQueSeLeFactura\(motivo, \{/,
+      'vuelve a construirse un objeto a mano: se perderá el siguiente campo que se añada',
+    );
+  });
+});
+
 describe('el aviso de los que no han firmado', () => {
   test('se cuentan, o la línea de Pendientes no diría nada', () => {
     assert.match(ENCARGOS, /if \(!estaFirmado\(fila\)\) cuenta\.encargos_sin_firmar/);
@@ -103,5 +134,77 @@ describe('el aviso de los que no han firmado', () => {
      * siempre y sin que nadie lo notara.
      */
     assert.match(ENCARGOS, /SELECT e\.firmado_at, e\.acepto_el_precio, e\.firma_como/);
+  });
+});
+
+describe('los correos salen de verdad', () => {
+  /*
+   * Del encargo en adelante no salía ninguno. Escribir las plantillas y no
+   * llamarlas es el mismo silencio de antes con más código: se ve bonito en el
+   * fichero de correos y al cliente no le llega nada.
+   */
+  const IDCARS = readFileSync(join(import.meta.dirname, 'idcars.ts'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('el del mandato, con el documento adjunto', () => {
+    // Sin adjunto es un correo pidiendo que firme algo que no va dentro.
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/mandato/enviar'"));
+    assert.match(trozo, /elCorreoDelMandato\(/);
+    assert.match(trozo, /attachments:/);
+    assert.match(trozo, /comoSeLlamaElFichero\(/);
+  });
+
+  test('y sus importes salen de la fila, no de las constantes de hoy', () => {
+    /*
+     * Un mandato firmado por 299 € sigue siendo de 299 € aunque mañana se suba
+     * la tarifa. El correo tiene que decir lo que dice su papel.
+     */
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/mandato/enviar'"));
+    assert.match(trozo, /fee_gestion: Number\(e\.fee_gestion\)/);
+    assert.match(trozo, /fee_cancelacion: Number\(e\.fee_cancelacion\)/);
+  });
+
+  test('el del cierre lleva el importe que se acaba de facturar', () => {
+    // Recalcularlo aquí es como el correo y la factura acaban diciendo cifras
+    // distintas.
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/cerrar'"));
+    assert.match(trozo, /elCorreoDelCierre\(/);
+    assert.match(trozo, /importe: factura\?\.total \?\? 0/);
+  });
+
+  test('y sale después de cerrar, no antes', () => {
+    /*
+     * Antes de cerrar, un fallo del correo dejaría al cliente avisado de un
+     * cierre que no ocurrió. Después, lo peor que pasa es que no se entere por
+     * correo de algo que ya está hecho.
+     */
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/cerrar'"));
+    const cierra = trozo.indexOf('SQL_CIERRA');
+    const correo = trozo.indexOf('elCorreoDelCierre(');
+    assert.ok(cierra > 0 && correo > 0);
+    assert.ok(cierra < correo, 'se avisa del cierre antes de cerrarlo');
+  });
+
+  test('ninguno de los dos tumba la operación si falla', () => {
+    // El cierre ya está hecho y la factura emitida: que el correo reviente no
+    // puede hacer que la pantalla diga que no se cerró.
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/cerrar'"));
+    assert.match(trozo, /sin avisar del cierre/);
+  });
+
+  test('el de publicado solo si el coche lo vendemos nosotros', () => {
+    /*
+     * Un particular que publica su propio IDCar no nos ha encargado nada, y
+     * este correo le prometería que atendemos sus llamadas.
+     */
+    assert.match(ENCARGOS, /export async function avisaDeQueSePublico/);
+    const trozo = ENCARGOS.slice(ENCARGOS.indexOf('export async function avisaDeQueSePublico'));
+    assert.match(trozo, /FROM erp_encargos_venta e/);
+    assert.match(trozo, /e\.cerrado_at IS NULL/);
+  });
+
+  test('y solo la primera vez que se publica', () => {
+    // Sin esto, cada retoque del anuncio le manda otro correo.
+    assert.match(IDCARS, /if \(!existing\.rows\.length\) \{\s*\n\s*avisaDeQueSePublico\(/);
   });
 });

@@ -52,6 +52,9 @@ import {
   elMandato, comoSeLlamaElFichero,
 } from '../lib/mandato-de-venta.js';
 import { prefijoAnual, siguienteDeSerie } from '../lib/series.js';
+import { enviar } from '../lib/correo.js';
+import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado } from '../lib/correos-del-encargo.js';
+import { config } from '../config.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
@@ -563,10 +566,15 @@ encargosRouter.post(
         return;
       }
 
-      const factura = loQueSeLeFactura(motivo, {
-        firmado_at: e.firmado_at as string | null,
-        acepto_el_precio: e.acepto_el_precio as boolean,
-      });
+      /*
+       * La fila entera, no tres campos elegidos a mano.
+       *
+       * Aquí se pasaban solo `firmado_at` y `acepto_el_precio`, y al añadir el
+       * mandato eso dejó de valer: sin `firma_como` la regla nueva daba «sin
+       * firmar» siempre y **no se facturaba nunca**, ni a quien había firmado.
+       * Un fallo que no rompe nada visible — simplemente no se cobra.
+       */
+      const factura = loQueSeLeFactura(motivo, e);
 
       let facturaId: string | null = null;
       if (factura) {
@@ -602,6 +610,27 @@ encargosRouter.post(
         // Se le adelantó otra pestaña entre la lectura y el cierre.
         res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' });
         return;
+      }
+
+      /*
+       * Y se le dice cómo acabó, con el importe que acaba de calcularse.
+       *
+       * También cuando no se le cobra nada: cerrar en silencio es lo que hace
+       * que llame tres semanas después preguntando si le vamos a cobrar.
+       *
+       * Va después de cerrar y sin bloquear la respuesta: el cierre ya está
+       * hecho y la factura emitida. Si el correo falla, lo que no puede pasar
+       * es que la pantalla diga que el cierre no se hizo.
+       */
+      if (e.cliente_email) {
+        const { subject, html } = elCorreoDelCierre({
+          cliente_nombre: String(e.cliente_nombre ?? ''),
+          marca: String(e.brand ?? ''), modelo: String(e.model ?? ''),
+          matricula: String(e.plate ?? ''),
+          motivo, importe: factura?.total ?? 0, concepto: factura?.concepto ?? '',
+        });
+        enviar({ to: String(e.cliente_email), subject, html, alClienteSiempre: true })
+          .catch((err) => console.error('[encargos] sin avisar del cierre:', (err as Error).message));
       }
 
       res.json({
@@ -685,6 +714,123 @@ encargosRouter.get(
     } catch (err) {
       console.error('[encargos] mandato:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'mandato_failed' });
+    }
+  }
+);
+
+/**
+ * Le decimos al dueño que su coche ya está anunciado.
+ *
+ * Vive aquí y no en la pantalla de publicar porque la condición es de este
+ * flujo: **solo si hay encargo vivo**. Un particular que publica su propio
+ * IDCar no nos ha encargado nada, y este correo le prometería que atendemos sus
+ * llamadas.
+ *
+ * No lanza: quien la llama ya ha publicado el coche, y que el correo falle no
+ * puede deshacer eso.
+ */
+export async function avisaDeQueSePublico(
+  vehicleId: string,
+  offerId: string,
+  precio: number,
+): Promise<void> {
+  await prepara();
+  const r = await query(
+    `SELECT e.cliente_email, e.cliente_nombre, v.plate, v.brand, v.model
+       FROM erp_encargos_venta e
+       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+      WHERE e.vehicle_id = $1 AND e.cerrado_at IS NULL`,
+    [vehicleId]
+  ).catch(() => ({ rows: [] }));
+  const e = r.rows[0];
+  if (!e?.cliente_email) return;
+
+  const base = config.PUBLIC_SITE_URL.replace(/\/+$/, '');
+  const { subject, html } = elCorreoDePublicado({
+    cliente_nombre: String(e.cliente_nombre ?? ''),
+    marca: String(e.brand ?? ''), modelo: String(e.model ?? ''),
+    matricula: String(e.plate ?? ''),
+    url: `${base}/marketplace-vo/${encodeURIComponent(offerId)}`,
+    precio: precio > 0 ? precio : null,
+  });
+  await enviar({ to: String(e.cliente_email), subject, html, alClienteSiempre: true });
+}
+
+/**
+ * Y se le manda para que lo firme, con el documento adjunto.
+ *
+ * Es lo que hasta ahora había que hacer a mano: descargar el `.doc`, abrir el
+ * correo, adjuntarlo y escribir el trato de memoria. Escrito de memoria cada
+ * vez, tarde o temprano una de esas veces dice otra cosa.
+ */
+encargosRouter.post(
+  '/encargos/:id/mandato/enviar',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `SELECT e.*, v.plate, v.brand, v.model, v.year, v.mileage
+           FROM erp_encargos_venta e
+           LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+          WHERE e.id = $1 AND e.cerrado_at IS NULL`,
+        [req.params.id]
+      );
+      const e = r.rows[0];
+      if (!e) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+      if (!e.cliente_email) {
+        res.status(400).json({
+          ok: false, error: 'sin_correo',
+          detail: 'Este encargo no tiene correo del cliente',
+        });
+        return;
+      }
+
+      const precio = Number(e.precio_referencia) || null;
+      const doc = elMandato({
+        mandato_id: String(e.mandato_id ?? ''),
+        cliente_nombre: String(e.cliente_nombre ?? ''),
+        cliente_email: String(e.cliente_email ?? ''),
+        matricula: String(e.plate ?? ''),
+        marca: String(e.brand ?? ''),
+        modelo: String(e.model ?? ''),
+        ano: (e.year as number | null) ?? null,
+        kilometros: (e.mileage as number | null) ?? null,
+        precio,
+        acepto_el_precio: Boolean(e.acepto_el_precio),
+        fecha: new Date(),
+      });
+
+      const { subject, html } = elCorreoDelMandato({
+        cliente_nombre: String(e.cliente_nombre ?? ''),
+        marca: String(e.brand ?? ''), modelo: String(e.model ?? ''),
+        matricula: String(e.plate ?? ''),
+        mandato_id: String(e.mandato_id ?? ''),
+        precio,
+        /*
+         * Los importes salen de la fila, que es donde se congelaron al abrir
+         * el encargo. Un mandato firmado por 299 € sigue siendo de 299 €
+         * aunque mañana subamos la tarifa, y el correo tiene que decir lo que
+         * dice su papel — no lo que diga hoy la constante.
+         */
+        fee_gestion: Number(e.fee_gestion) || FEE_DE_GESTION,
+        fee_cancelacion: Number(e.fee_cancelacion) || FEE_DE_CANCELACION,
+      });
+
+      await enviar({
+        to: String(e.cliente_email), subject, html, alClienteSiempre: true,
+        // La marca del principio es lo que hace que Word lea el adjunto en
+        // UTF-8; sin ella las tildes salen rotas en la primera línea.
+        attachments: [{
+          filename: comoSeLlamaElFichero(String(e.mandato_id ?? '')),
+          content: Buffer.from('﻿' + doc, 'utf8').toString('base64'),
+        }],
+      });
+
+      res.json({ ok: true, data: { enviado_a: String(e.cliente_email) } });
+    } catch (err) {
+      console.error('[encargos] mandar el mandato:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'mandato_enviar_failed' });
     }
   }
 );

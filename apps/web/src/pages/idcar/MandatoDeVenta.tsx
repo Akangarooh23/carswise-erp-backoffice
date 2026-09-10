@@ -56,6 +56,8 @@ export default function MandatoDeVenta({
   const [como, setComo] = useState('');
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [mandando, setMandando] = useState(false);
+  const [mandado, setMandado] = useState('');
   const [fallo, setFallo] = useState('');
 
   async function descarga() {
@@ -67,6 +69,32 @@ export default function MandatoDeVenta({
       );
     } catch (e) {
       setFallo((e as Error).message);
+    }
+  }
+
+  /**
+   * Se le manda el mandato, con el documento adjunto.
+   *
+   * Se dice a qué dirección ha ido y no un «enviado» a secas: el correo del
+   * encargo sale del IDCar, y a veces no es el que se espera.
+   */
+  async function manda() {
+    setMandando(true);
+    setFallo('');
+    setMandado('');
+    try {
+      const r = await api.post<{ enviado_a: string }>(`/encargos/${encargoId}/mandato/enviar`, {});
+      if (!r.ok) {
+        setFallo(r.error === 'sin_correo'
+          ? 'Este encargo no tiene correo del cliente.'
+          : 'No se ha podido mandar.');
+        return;
+      }
+      setMandado(r.data.enviado_a);
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setMandando(false);
     }
   }
 
@@ -116,6 +144,22 @@ export default function MandatoDeVenta({
           >
             Descargar
           </button>
+          {/*
+            * Y mandárselo, que es lo que se hacía a mano: descargar el
+            * documento, abrir el correo, adjuntarlo y escribir el trato de
+            * memoria. Escrito de memoria cada vez, alguna dice otra cosa.
+            */}
+          {!firmado && (
+            <button
+              type="button"
+              onClick={() => void manda()}
+              disabled={mandando}
+              className="px-2.5 py-1 text-[11.5px] font-semibold rounded-lg bg-acento text-white
+                         hover:opacity-90 disabled:opacity-50"
+            >
+              {mandando ? 'Enviando…' : 'Mandárselo'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -221,6 +265,9 @@ export default function MandatoDeVenta({
         </>
       )}
 
+      {mandado && (
+        <p className="text-[12px] text-emerald-700 mt-2">Mandado a {mandado}.</p>
+      )}
       {fallo && <p className="text-[12px] text-rose-600 mt-2">{fallo}</p>}
     </div>
   );

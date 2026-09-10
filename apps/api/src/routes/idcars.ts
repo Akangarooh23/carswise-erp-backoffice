@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
-import { porQueNoSePuedePublicar } from './encargos.js';
+import { porQueNoSePuedePublicar, avisaDeQueSePublico } from './encargos.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { falloInterno } from '../lib/fallos.js';
@@ -500,6 +500,23 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
           parseFloat(String(co2 || 0)) || 0,
         ]
       );
+    }
+
+    /*
+     * Y se le dice al dueño que su coche ya está anunciado.
+     *
+     * Solo la primera vez —cuando la oferta no existía— y solo si es un coche
+     * que vendemos nosotros. Sin la primera condición, cada retoque del anuncio
+     * le mandaría otro correo; sin la segunda, se lo mandaríamos también al
+     * particular que publica su propio IDCar, y a ese no le hemos prometido
+     * atender ninguna llamada.
+     *
+     * Sin bloquear la respuesta: el anuncio ya está publicado, y que el correo
+     * falle no puede hacer que la pantalla diga que no se publicó.
+     */
+    if (!existing.rows.length) {
+      avisaDeQueSePublico(req.params.id, offerId, priceNum)
+        .catch((e) => console.error('[idcars] sin avisar de la publicación:', (e as Error).message));
     }
 
     res.json({ ok: true, offer_id: offerId });

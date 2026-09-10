@@ -48,6 +48,8 @@ erp: Con las cinco puertas abiertas, se le lleva al taller
 erp: Se publica en nuestro marketplace
 @ Marketplace → VO Particulares → «Publicar»
 + el precio de salida que se ha acordado con él
+correo: **Al cliente** — su coche ya está anunciado, con el enlace
+@ Sale solo, en cuanto se publica en **Marketplace**
 trabajador: Y a mano en el portal, con nuestro teléfono
 @ Portales → el portal donde se publique
 + el anuncio, con el enlace corto y el 684 717 736
@@ -63,10 +65,13 @@ erp: La visita se confirma y se cierra como todas
 erp: Se cierra el encargo y se factura lo que toque
 @ IDCars → el coche → «Cerrar el encargo»
 + nada: son tres botones y cada uno dice cuánto se le factura
+correo: **Al cliente** — cómo acabó y qué se le factura, o que no se le cobra
+@ Sale solo, en cuanto se cierra desde **IDCars**
 :::
 
-Catorce pasos. Cinco los hace el cliente, dos pasan fuera del ERP y uno es
-trabajo de persona: poner y quitar el anuncio del portal.
+Dieciséis pasos, de los que tres son correos que salen solos. Cinco los hace el
+cliente, dos pasan fuera del ERP y uno es trabajo de persona: poner y quitar el
+anuncio del portal.
 
 ---
 
@@ -117,10 +122,11 @@ el trato, y es **lo único que nos deja cobrarle**: sin él no se le factura nad
 ni los 299 € si el coche se vende ni los 150 € si se va.
 
 :::flujo
-erp: Se descarga el mandato, hecho con lo que hay en el encargo
-@ IDCars → el coche → «Encargo de venta» → «Descargar»
+erp: Se le manda el mandato, hecho con lo que hay en el encargo
+@ IDCars → el coche → «Encargo de venta» → «Mandárselo»
 + nada: sale con su número, el coche, el precio y las condiciones
-trabajador: Se le manda, lo firma y lo devuelve
+correo: **Al cliente** — el mandato adjunto y el trato en tres líneas
+trabajador: Lo firma y lo devuelve
 erp: Se apunta cuándo lo firmó y cómo nos consta
 @ IDCars → el coche → «Encargo de venta» → «Ya lo ha firmado»
 + la fecha, una de las tres maneras, y dónde está el papel
@@ -401,7 +407,7 @@ erp: Y la factura queda en su sitio
 | Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano, y apuntar dónde |
 | Llevar el coche al taller | Llevarlo. El resultado se apunta en el encargo |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
-| Conseguir la firma del mandato | Mandárselo y recogerlo firmado |
+| Conseguir la firma del mandato | Recogerlo firmado y apuntarlo |
 | Cerrar el encargo | Elegir cómo acabó |
 | Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |
 
