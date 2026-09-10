@@ -7,6 +7,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   MOTIVOS, COMO_ACABO, esUnMotivo, loQueSeLeFactura, seLeCobra,
   TIPO_DE_FACTURA, SQL_YA_EMITIDA, SQL_CIERRA,
@@ -132,5 +133,51 @@ describe('que no se emita dos veces', () => {
     // Sin el motivo, dentro de tres meses un encargo cerrado no dice si se
     // vendió, si se fue o si lo retiramos.
     assert.match(SQL_CIERRA, /motivo_cierre = \$2/);
+  });
+});
+
+describe('lo que la pantalla enseña antes de pulsar', () => {
+  /*
+   * El importe de cada final se calcula en el servidor y viaja a la pantalla.
+   * Si la pantalla lo repitiera con su propia cuenta, un dia enseñaria una
+   * cifra y el boton cobraria otra — y quien lo descubre es el cliente,
+   * mirando una factura que no esperaba.
+   */
+  const RUTA = readFileSync(
+    new URL('../routes/encargos.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+  const PANTALLA = readFileSync(
+    new URL('../../../web/src/pages/idcar/EncargoDeVenta.tsx', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  test('los tres finales con su importe salen del servidor', () => {
+    assert.match(RUTA, /cierres: encargo[\s\S]{0,220}loQueSeLeFactura\(m, encargo\)\?\.total/);
+  });
+
+  test('y la pantalla los pinta, no los calcula', () => {
+    /*
+     * Sin los comentarios: la regla es sobre el codigo, y el comentario que
+     * explica por que se quito un numero a mano nombra ese numero.
+     *
+     * Esto ya encontro uno de verdad: la pantalla tenia un «150» escrito como
+     * respaldo por si el servidor no mandaba importe. Una cifra inventada
+     * esperando su turno.
+     */
+    const codigo = PANTALLA
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    assert.match(codigo, /datos\.cierres\.map/);
+    for (const cuenta of ['299', '150', 'FEE_DE_GESTION', 'laPenalizacion']) {
+      assert.ok(!codigo.includes(cuenta), `la pantalla calcula el importe por su cuenta: ${cuenta}`);
+    }
+  });
+
+  test('cerrar va detras de un clic, no como tres botones sueltos', () => {
+    // Emite una factura a un cliente: no puede estar a un toque accidental
+    // mientras se mira si le faltan fotos.
+    assert.match(PANTALLA, /\{!cerrando \? \(/);
+    assert.match(PANTALLA, /No se deshace/);
   });
 });

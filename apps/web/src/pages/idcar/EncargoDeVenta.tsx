@@ -39,8 +39,23 @@ export interface Encargo {
   fee_cancelacion: string | null;
 }
 
+export interface Cierre {
+  motivo: string;
+  como_acabo: string;
+  importe: number;
+}
+
+export interface Cerrado {
+  id: string;
+  motivo_cierre: string;
+  cerrado_at: string;
+  cliente_nombre: string;
+}
+
 export interface ElEncargo {
   encargo: Encargo | null;
+  ultimo_cerrado: Cerrado | null;
+  cierres: Cierre[];
   puertas: Puerta[];
   se_puede_publicar: boolean;
   le_falta: string[];
@@ -77,7 +92,15 @@ function ComoVaElPlazo({
   if (!aceptoElPrecio) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 text-brand-500 px-2.5 py-1 text-xs font-semibold">
-        No aceptó el precio · siempre paga {penalizacion ?? 150} €
+        {/*
+          * El importe lo dice el servidor o no se dice.
+          *
+          * Aquí había un «150» escrito a mano como respaldo, y eso es una cifra
+          * inventada esperando su turno: el día que la tarifa cambie o el
+          * servidor conteste otra cosa, la pantalla seguiría diciendo 150.
+          */}
+        No aceptó el precio · siempre paga la penalización
+        {penalizacion !== null && ` de ${penalizacion} €`}
       </span>
     );
   }
@@ -123,6 +146,8 @@ export default function EncargoDeVenta({
   const [datos, setDatos] = useState<ElEncargo | null>(null);
   const [fallo, setFallo] = useState('');
   const [abriendo, setAbriendo] = useState(false);
+  const [cerrando, setCerrando] = useState(false);
+  const [enviando, setEnviando] = useState('');
 
   const carga = useCallback(async () => {
     try {
@@ -158,6 +183,28 @@ export default function EncargoDeVenta({
     }
   }
 
+  async function cierra(motivo: string) {
+    setEnviando(motivo);
+    setFallo('');
+    try {
+      const r = await api.post<{ factura: string | null; importe: number }>(
+        `/encargos/${datos?.encargo?.id}/cerrar`, { motivo },
+      );
+      if (!r.ok) {
+        setFallo(r.error === 'ya_estaba_cerrado'
+          ? 'Alguien lo ha cerrado ya. Recarga la página.'
+          : 'No se ha podido cerrar el encargo.');
+        return;
+      }
+      setCerrando(false);
+      await carga();
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setEnviando('');
+    }
+  }
+
   if (fallo && !datos) {
     return <Card><p className="text-sm text-red-600">No se ha podido leer el encargo: {fallo}</p></Card>;
   }
@@ -171,8 +218,15 @@ export default function EncargoDeVenta({
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h3 className="font-semibold text-brand-600 text-sm">Encargo de venta</h3>
+            {/*
+              * Si hubo uno y se cerró, se dice. Sin esto, en cuanto se cierra la
+              * ficha vuelve a decir «no lo gestionamos nosotros» —que es verdad—
+              * y se lee como si no se hubiera guardado nada.
+              */}
             <p className="text-xs text-brand-400 mt-1">
-              Este coche no lo gestionamos nosotros. Su dueño lo publica por su cuenta.
+              {datos.ultimo_cerrado
+                ? `Se cerró el ${fecha(datos.ultimo_cerrado.cerrado_at)} · ${datos.ultimo_cerrado.motivo_cierre}`
+                : 'Este coche no lo gestionamos nosotros. Su dueño lo publica por su cuenta.'}
             </p>
           </div>
           <button
@@ -234,6 +288,61 @@ export default function EncargoDeVenta({
           <span className="font-semibold text-brand-600">{euros(e.fee_cancelacion)}</span>
         </div>
       </div>
+
+      {/*
+        * Cerrar va detrás de un clic, no como tres botones siempre a la vista.
+        *
+        * Cerrar emite una factura a un cliente: no es algo que deba estar a un
+        * toque accidental de distancia mientras se mira si le faltan fotos.
+        */}
+      {!cerrando ? (
+        <button
+          type="button"
+          onClick={() => { setCerrando(true); setFallo(''); }}
+          className="mt-4 text-[12px] font-semibold text-brand-400 hover:text-brand-600 underline underline-offset-2"
+        >
+          Cerrar el encargo
+        </button>
+      ) : (
+        <div className="mt-4 rounded-xl border border-brand-200 p-3">
+          <p className="text-[13px] font-semibold text-brand-600 mb-1">¿Cómo ha acabado?</p>
+          <p className="text-[12px] text-brand-400 mb-3">
+            Se emite la factura y el encargo queda cerrado. No se deshace.
+          </p>
+          <div className="space-y-2">
+            {datos.cierres.map((c) => (
+              <button
+                key={c.motivo}
+                type="button"
+                disabled={enviando !== ''}
+                onClick={() => void cierra(c.motivo)}
+                className="w-full flex items-center justify-between gap-3 rounded-lg border border-brand-200
+                           px-3 py-2 text-left hover:bg-brand-50 disabled:opacity-50"
+              >
+                <span className="text-[13px] text-brand-600">{c.como_acabo}</span>
+                {/*
+                  * El importe, antes de pulsar. Lo calcula el servidor con la
+                  * misma regla que cobra: si lo repitiera la pantalla, un día
+                  * enseñaría una cifra y el botón cobraría otra.
+                  */}
+                <span className={`shrink-0 text-[12px] font-semibold ${
+                  c.importe > 0 ? 'text-brand-600' : 'text-brand-300'
+                }`}>
+                  {enviando === c.motivo ? 'Cerrando…' : c.importe > 0 ? `Se le facturan ${euros(String(c.importe))}` : 'Sin cobrar'}
+                </span>
+              </button>
+            ))}
+          </div>
+          {fallo && <p className="text-xs text-red-600 mt-2">{fallo}</p>}
+          <button
+            type="button"
+            onClick={() => setCerrando(false)}
+            className="mt-2 text-[12px] text-brand-400 hover:text-brand-600"
+          >
+            Dejarlo abierto
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

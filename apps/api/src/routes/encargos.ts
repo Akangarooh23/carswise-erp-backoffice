@@ -182,15 +182,20 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
  * captado y todavía no se han vendido ni cancelado.
  */
 export async function losAvisosDeEncargos(): Promise<{
+  encargos_vendidos: number;
   encargos_por_llamar: number;
   encargos_sin_franjas: number;
   encargos_listos: number;
 }> {
-  const vacio = { encargos_por_llamar: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
+  const vacio = { encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
   await prepara();
 
   const r = await query(`
     SELECT e.firmado_at, e.acepto_el_precio,
+           EXISTS (
+             SELECT 1 FROM vehicle_visit_bookings b
+              WHERE b.offer_id = 'idcar-' || e.vehicle_id AND b.resultado = 'compro'
+           ) AS se_vendio,
            v.plate, v.brand, v.model, v.year, v.mileage,
            (SELECT COUNT(*) FROM moveadvisor_user_vehicle_files f
              WHERE f.vehicle_id = e.vehicle_id AND f.file_type = 'photo'
@@ -224,6 +229,9 @@ export async function losAvisosDeEncargos(): Promise<{
       franjas: ((fila.franjas as (string | Date)[]) ?? []).map((f) => new Date(f).toISOString()),
     });
 
+    // Una visita de ese coche acabo en venta y el encargo sigue abierto: falta
+    // cerrarlo y emitir los 299 EUR.
+    if (fila.se_vendio) cuenta.encargos_vendidos += 1;
     if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) cuenta.encargos_por_llamar += 1;
     if (soloLeFaltanFranjas(puertas)) cuenta.encargos_sin_franjas += 1;
     if (sePuedePublicar(puertas)) cuenta.encargos_listos += 1;
@@ -267,6 +275,21 @@ encargosRouter.get(
       );
       const encargo = r.rows[0] ?? null;
 
+      /*
+       * Y el último que se cerró, si lo hubo.
+       *
+       * Sin esto, en cuanto se cierra un encargo la ficha vuelve a decir «este
+       * coche no lo gestionamos nosotros», que es verdad pero se lee como si no
+       * se hubiera guardado nada.
+       */
+      const cerrado = await query(
+        `SELECT id, motivo_cierre, cerrado_at, cliente_nombre, cliente_email
+           FROM erp_encargos_venta
+          WHERE vehicle_id = $1 AND cerrado_at IS NOT NULL
+          ORDER BY cerrado_at DESC LIMIT 1`,
+        [req.params.vehicleId]
+      ).catch(() => ({ rows: [] }));
+
       const hay = await loQueHayDe(req.params.vehicleId);
       const puertas = lasPuertas(hay);
 
@@ -274,6 +297,7 @@ encargosRouter.get(
         ok: true,
         data: {
           encargo,
+          ultimo_cerrado: cerrado.rows[0] ?? null,
           puertas,
           se_puede_publicar: sePuedePublicar(puertas),
           le_falta: loQueLeFalta(puertas),
@@ -284,6 +308,18 @@ encargosRouter.get(
           penalizacion: encargo ? laPenalizacion(encargo) : null,
           ya_se_puede_ir_gratis: encargo ? yaSePuedeIrGratis(encargo) : false,
           dias_hasta_irse_gratis: encargo ? diasQueQuedan(encargo.libre_desde) : null,
+          /*
+           * Cuánto se le cobraría en cada final, calculado aquí y no en la
+           * pantalla. Si la pantalla lo repitiera, un día enseñaría un importe
+           * y el botón cobraría otro — y el que lo descubre es el cliente.
+           */
+          cierres: encargo
+            ? MOTIVOS.map((m) => ({
+                motivo: m,
+                como_acabo: COMO_ACABO[m],
+                importe: loQueSeLeFactura(m, encargo)?.total ?? 0,
+              }))
+            : [],
         },
       });
     } catch (err) {

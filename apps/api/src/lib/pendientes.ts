@@ -157,6 +157,12 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    * punto— que **nadie puede visitar**: paga el anuncio y no convierte a nadie.
    */
   {
+    clave: 'encargos_vendidos',
+    etiqueta: 'coches vendidos sin cerrar el encargo', una: 'coche vendido sin cerrar el encargo',
+    porque: 'la visita acabó en venta y los 299 € de gestión no están facturados',
+    a: '/idcars', icono: 'euro', tono: 'urgente',
+  },
+  {
     clave: 'encargos_por_llamar',
     etiqueta: 'encargos a punto de poder irse', una: 'encargo a punto de poder irse',
     porque: 'en unos días podrá vender por su cuenta sin pagarnos nada',
