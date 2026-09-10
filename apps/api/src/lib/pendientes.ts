@@ -220,6 +220,24 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'el cliente ya lo ha traído todo y falta la revisión para poder publicar',
     a: '/idcars', icono: 'taller', tono: 'espera',
   },
+  /*
+   * Y los anuncios que siguen puestos fuera de un coche que ya no está a la
+   * venta.
+   *
+   * No es papeleo: el teléfono que sale en ese anuncio es el nuestro, así que
+   * las llamadas por un coche vendido las cogemos nosotros — y al que llama se
+   * le dice que no, que es la peor manera de conocernos. Además se sigue
+   * pagando el anuncio.
+   *
+   * Y no se apaga solo, como el del escaparate: hay que entrar a coches.net y
+   * borrarlo. Si nadie lo apuntó, nadie sabe que está.
+   */
+  {
+    clave: 'anuncios_por_retirar',
+    etiqueta: 'anuncios que hay que quitar de los portales', una: 'anuncio que hay que quitar de un portal',
+    porque: 'ese coche ya no está a la venta y las llamadas del anuncio las cogemos nosotros',
+    a: '/portales', icono: 'tabla', tono: 'urgente',
+  },
   {
     clave: 'citas_7d',
     etiqueta: 'citas de mantenimiento en 7 días', una: 'cita de mantenimiento en 7 días',

@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
 import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
 import MandatoDeVenta, { type ComoSeFirma } from './MandatoDeVenta.js';
+import AnunciosDePortal from './AnunciosDePortal.js';
 
 export interface Puerta {
   clave: string;
@@ -372,6 +373,16 @@ export default function EncargoDeVenta({
         alCambiar={setTaller}
         alGuardar={() => void carga()}
       />
+
+      {/*
+        * Y dónde está anunciado fuera.
+        *
+        * Va después del taller porque es lo que viene después: primero se puede
+        * publicar, luego se publica. Y va **dentro del encargo** y no en una
+        * pantalla suya porque la pregunta que importa —«¿sigue puesto un
+        * anuncio de un coche que ya no vendemos?»— se hace mirando el coche.
+        */}
+      <AnunciosDePortal vehicleId={vehicleId} />
 
       {/*
         * El precio y si lo ha aceptado.

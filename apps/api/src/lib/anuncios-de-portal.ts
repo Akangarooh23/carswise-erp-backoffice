@@ -64,6 +64,42 @@ export function faltaParaApuntar(a: { vehicle_id?: unknown; portal?: unknown; ur
   return '';
 }
 
+/**
+ * El enlace que se pega en el anuncio del portal.
+ *
+ * En coches.net no se puede enlazar: lo único que se puede meter es texto que
+ * alguien teclea o copia, así que la dirección tiene que ser corta y sin nada
+ * raro. `popcar.com.es/v/8888LXR` se teclea; la de la ficha
+ * —`/marketplace-vo/idcar-veh-1778144236925`— no.
+ *
+ * ## La UTM, y por qué se genera y no se escribe
+ *
+ * Sin ella, el comprador que llega de coches.net entra como «directo» y no hay
+ * manera de saber si el portal trae gente o solo cuesta dinero — que es la
+ * única pregunta que decide si se sigue pagando.
+ *
+ * Escrita a mano cada vez sale «coches.net», «Coches.net» y «cochesnet», y esas
+ * tres son tres fuentes distintas en el informe: la respuesta a «¿cuánto trae
+ * coches.net?» acaba repartida en tres filas que nadie suma.
+ *
+ * `utm_medium` va fijo en `portal` para poder preguntar por todos los portales
+ * juntos sin enumerarlos.
+ */
+export const MEDIO = 'portal';
+
+export function elEnlaceParaElPortal(
+  sitio: string,
+  matricula: string,
+  portal: string,
+): string {
+  const base = String(sitio ?? '').replace(/\/+$/, '');
+  const m = String(matricula ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!m) return '';
+  const fuente = elPortal(portal).toLowerCase();
+  const q = new URLSearchParams({ utm_source: fuente, utm_medium: MEDIO });
+  return `${base}/v/${m}?${q.toString()}`;
+}
+
 export interface AnuncioDePortal {
   portal: string;
   url: string;
@@ -107,6 +143,41 @@ export const SQL_LOS_POR_RETIRAR = `
    WHERE a.retirado_at IS NULL
      AND COALESCE(o.is_active, FALSE) = FALSE
    ORDER BY a.publicado_at ASC NULLS LAST`;
+
+export const ENSURE_TABLE = `
+  CREATE TABLE IF NOT EXISTS erp_anuncios_de_portal (
+    id            TEXT PRIMARY KEY,
+    vehicle_id    VARCHAR(64) NOT NULL,
+    portal        TEXT NOT NULL,
+    url           TEXT NOT NULL,
+    publicado_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    publicado_por TEXT NOT NULL DEFAULT '',
+    retirado_at   TIMESTAMPTZ,
+    retirado_por  TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
+
+/**
+ * Un anuncio vivo por coche y portal.
+ *
+ * Sin esto, apuntar dos veces el mismo anuncio deja dos filas y retirar una no
+ * apaga el aviso: el coche seguiría saliendo como pendiente de retirar para
+ * siempre, y la lista que no se vacía es la que se deja de mirar.
+ *
+ * Los retirados no cuentan: el mismo coche puede volver a anunciarse.
+ */
+export const ENSURE_UNO_VIVO = `
+  CREATE UNIQUE INDEX IF NOT EXISTS ux_anuncio_vivo_por_coche_y_portal
+    ON erp_anuncios_de_portal (vehicle_id, portal)
+    WHERE retirado_at IS NULL`;
+
+/** Los de un coche, vivos y retirados: el rastro también cuenta. */
+export const SQL_LOS_DEL_COCHE = `
+  SELECT id, vehicle_id, portal, url, publicado_at, publicado_por,
+         retirado_at, retirado_por
+    FROM erp_anuncios_de_portal
+   WHERE vehicle_id = $1
+   ORDER BY retirado_at IS NOT NULL, publicado_at DESC`;
 
 /**
  * Retirar uno.

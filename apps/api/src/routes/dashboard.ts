@@ -12,6 +12,7 @@ import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.j
 import { losPendientes } from '../lib/pendientes.js';
 import { losAvisosDeEncargos } from './encargos.js';
 import { SQL_SIN_LLAMAR, losQueEsperanDeMas, reparteLosLeads } from '../lib/sin-llamar.js';
+import { losAnunciosPorRetirar } from './anuncios-portal.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 import { preparaVisitas } from './visits.js';
 
@@ -383,7 +384,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -532,6 +533,12 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * una de las dos el panel diría una cosa y la pantalla otra.
        */
       query(SQL_SIN_LLAMAR).catch(vacio),
+
+      /*
+       * Y los anuncios que siguen puestos en un portal de un coche que ya no
+       * esta a la venta. No se apagan solos: hay que entrar y borrarlos.
+       */
+      losAnunciosPorRetirar().catch(() => ({ anuncios_por_retirar: 0 })),
     ]);
 
     res.json({
@@ -543,6 +550,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...contabilidad.rows[0],
           ...visitas.rows[0],
           ...encargos,
+          ...anuncios,
           portales_parados: portales?.valor?.n ?? 0,
           /*
            * El reparto va al final a propósito: pisa a `leads_pendientes`.

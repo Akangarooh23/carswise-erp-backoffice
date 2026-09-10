@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   PORTALES, elPortal, faltaParaApuntar, losQueSiguenPuestos,
   SQL_POR_RETIRAR, SQL_LOS_POR_RETIRAR, SQL_RETIRA,
+  elEnlaceParaElPortal, MEDIO, ENSURE_TABLE, ENSURE_UNO_VIVO,
 } from './anuncios-de-portal.js';
 
 describe('cómo se llama cada portal', () => {
@@ -136,5 +137,92 @@ describe('retirar uno', () => {
     // no la vez que se retiró de verdad.
     assert.match(SQL_RETIRA, /WHERE id = \$1 AND retirado_at IS NULL/);
     assert.match(SQL_RETIRA, /RETURNING id/);
+  });
+});
+
+describe('el enlace que se pega en el portal', () => {
+  const SITIO = 'https://popcar.com.es';
+
+  test('es la dirección corta, la que se puede teclear', () => {
+    /*
+     * En coches.net no se puede enlazar: solo se mete texto que alguien copia
+     * o teclea. `/marketplace-vo/idcar-veh-1778144236925` no lo teclea nadie.
+     */
+    assert.match(elEnlaceParaElPortal(SITIO, '8888LXR', 'coches.net'), /popcar\.com\.es\/v\/8888LXR/);
+  });
+
+  test('y lleva la UTM del portal, generada y no escrita a mano', () => {
+    /*
+     * Sin ella, el comprador que llega de coches.net entra como «directo» y no
+     * hay forma de saber si el portal trae gente o solo cuesta dinero — que es
+     * la única pregunta que decide si se sigue pagando.
+     */
+    const url = elEnlaceParaElPortal(SITIO, '8888LXR', 'coches.net');
+    assert.match(url, /utm_source=coches\.net/);
+    assert.match(url, new RegExp(`utm_medium=${MEDIO}`));
+  });
+
+  test('el nombre del portal se normaliza antes de meterlo', () => {
+    /*
+     * Escrito a mano salen «coches.net», «Coches.net» y «cochesnet», y en el
+     * informe son tres fuentes distintas: la respuesta a «¿cuánto trae
+     * coches.net?» se reparte en tres filas que nadie suma.
+     */
+    for (const escrito of ['coches.net', 'Coches.net', 'COCHESNET', ' coches net ']) {
+      assert.match(
+        elEnlaceParaElPortal(SITIO, '8888LXR', escrito),
+        /utm_source=coches\.net(&|$)/,
+        `«${escrito}» no acaba en la misma fuente`,
+      );
+    }
+  });
+
+  test('la matrícula también, aunque venga con espacios', () => {
+    // Quien la copia de la ficha se trae los espacios, y `/v/8888 LXR` no
+    // resuelve a nada.
+    assert.match(elEnlaceParaElPortal(SITIO, '8888 lxr', 'coches.net'), /\/v\/8888LXR\?/);
+  });
+
+  test('sin matrícula no se devuelve un enlace roto', () => {
+    /*
+     * `/v/` a secas lleva a un 400. Devolver cadena vacía deja que la pantalla
+     * no pinte el botón, que es mejor que pintarlo y que no funcione.
+     */
+    assert.equal(elEnlaceParaElPortal(SITIO, '', 'coches.net'), '');
+    assert.equal(elEnlaceParaElPortal(SITIO, '   ', 'coches.net'), '');
+  });
+
+  test('y una barra de más no deja una doble', () => {
+    assert.match(elEnlaceParaElPortal('https://popcar.com.es/', '8888LXR', 'coches.net'), /es\/v\//);
+  });
+});
+
+describe('un anuncio vivo por coche y portal', () => {
+  test('no se puede apuntar dos veces el mismo', () => {
+    /*
+     * Con dos filas, retirar una no apaga el aviso: el coche seguiría saliendo
+     * como pendiente de retirar para siempre, y una lista que no se vacía es
+     * una lista que se deja de mirar.
+     */
+    assert.match(ENSURE_UNO_VIVO, /ON erp_anuncios_de_portal \(vehicle_id, portal\)/);
+  });
+
+  test('pero el mismo coche puede estar en dos portales', () => {
+    // Es justo lo que se quiere poder apuntar: dónde está cada coche.
+    assert.match(ENSURE_UNO_VIVO, /\(vehicle_id, portal\)/);
+  });
+
+  test('y los retirados no estorban a uno nuevo', () => {
+    // Un coche que vuelve a anunciarse el mes que viene se apunta otra vez.
+    assert.match(ENSURE_UNO_VIVO, /WHERE retirado_at IS NULL/);
+  });
+
+  test('la tabla guarda quién lo puso y quién lo quitó', () => {
+    /*
+     * Es lo que convierte «alguien lo retiró» en «lo retiró Marta el martes».
+     * Sin eso, cuando un anuncio sigue puesto no hay a quién preguntar.
+     */
+    assert.match(ENSURE_TABLE, /publicado_por/);
+    assert.match(ENSURE_TABLE, /retirado_por/);
   });
 });

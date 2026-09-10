@@ -8,9 +8,10 @@ El color dice quién lo hace: azul el cliente, gris lo que pasa solo, morado un
 correo que sale, verde algo que se hace en el ERP y amarillo algo que hace una
 persona por su cuenta.
 
-> **Qué está construido y qué no.** Todo lo de este manual funciona menos una
-> cosa, marcada donde toca: **los anuncios en portales**, que se ponen y se
-> quitan a mano sin que el ERP lo sepa. Lo demás se puede recorrer entero.
+> **Qué está construido y qué no.** Todo lo de este manual funciona. Poner y
+> quitar el anuncio del portal lo sigue haciendo una persona —eso no se
+> automatiza—, pero el ERP ya sabe dónde está cada coche anunciado y avisa
+> cuando hay que ir a quitarlo.
 
 La otra opción de **Vender** —publicar él mismo su IDCar en el marketplace— es
 un camino distinto y más corto: no hay mandato, ni taller, ni portales, ni
@@ -51,8 +52,8 @@ erp: Se publica en nuestro marketplace
 correo: **Al cliente** — su coche ya está anunciado, con el enlace
 @ Sale solo, en cuanto se publica en **Marketplace**
 trabajador: Y a mano en el portal, con nuestro teléfono
-@ Portales → el portal donde se publique
-+ el anuncio, con el enlace corto y el 684 717 736
+@ IDCars → el coche → «Encargo de venta» → «Anuncios en portales»
++ el enlace del anuncio; el corto se copia de ahí, con su UTM
 cliente: Un comprador llega del portal y pide cita sin registrarse
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y si le interesaría financiarlo
@@ -278,8 +279,8 @@ erp: Se publica en nuestro marketplace
 @ Marketplace → VO Particulares → «Publicar»
 + el precio acordado
 trabajador: Y se pone a mano en el portal
-@ Portales → el portal donde se publique
-+ el texto del anuncio y su enlace, para poder retirarlo
+@ IDCars → el coche → «Encargo de venta» → «Anuncios en portales»
++ el enlace del anuncio, que es por donde se entra a borrarlo
 :::
 
 > **No se publica si falta una puerta.** El botón sale apagado, pero la
@@ -290,11 +291,27 @@ trabajador: Y se pone a mano en el portal
 > **El teléfono de los anuncios es el 684 717 736**, nunca el del cliente. Que no
 > le llamen a él es la mitad de lo que está pagando.
 
-> **En el texto va siempre `popcar.es/v/MATRÍCULA`.** En los portales no se puede
-> enlazar: solo cabe una línea de texto que alguien teclea. Esa dirección lleva
-> a la ficha del coche, y da igual cómo escriba la matrícula —con espacios, con
-> guion o en minúscula—. Si el coche ya se vendió, no da error: dice que ya no
-> está a la venta y enseña otros.
+> **El enlace se copia del ERP, no se escribe.** En los portales no se puede
+> enlazar: solo cabe una línea de texto que alguien teclea, y por eso la
+> dirección es `popcar.com.es/v/MATRÍCULA`. En el encargo hay un botón por
+> portal que lo copia entero.
+>
+> Escrito a mano se pierde lo que va detrás: la **UTM del portal**. Sin ella, el
+> comprador que llega de coches.net entra como «directo» y no hay manera de
+> saber si el portal trae gente o solo cuesta dinero — que es la única pregunta
+> que decide si se sigue pagando. Y escrita a mano sale unas veces «coches.net»
+> y otras «Coches.net», que en el informe son dos filas distintas que nadie suma.
+
+> **Si el coche ya se vendió, ese enlace no da error**: dice que ya no está a la
+> venta y enseña otros. Los anuncios viven en los portales después de la venta y
+> alguien va a pulsarlo la semana que viene.
+
+> **Cuando el coche deja de estar publicado, sale el aviso de retirarlo.** No
+> mira el estado del encargo, mira el escaparate: si el coche ya no está en
+> nuestro marketplace, tampoco puede estar en los de fuera —da igual por qué se
+> cayó—. Y no se apaga solo, como el nuestro: hay que entrar a coches.net y
+> borrarlo. El teléfono de ese anuncio es el nuestro, así que las llamadas por
+> un coche vendido las cogemos nosotros.
 
 > **Es un portal, no cuatro.** Cuesta entre 20 y 30 € al mes según cuál.
 
@@ -404,7 +421,7 @@ erp: Y la factura queda en su sitio
 | No hace | Lo hace una persona |
 |---|---|
 | Llamar al cliente en 24 horas, que es lo que promete la web | Llamarle. El ERP solo avisa cuando el plazo ya se ha pasado |
-| Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano, y apuntar dónde |
+| Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano. El ERP apunta dónde está y avisa cuándo |
 | Llevar el coche al taller | Llevarlo. El resultado se apunta en el encargo |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
 | Conseguir la firma del mandato | Recogerlo firmado y apuntarlo |
