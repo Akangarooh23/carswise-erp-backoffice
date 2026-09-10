@@ -16,6 +16,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
+import { apuntaFacturaEsperada } from './provider-billing.js';
 import {
   ESTADOS, RESULTADOS, QUE_TOCA, ETIQUETA, LO_QUE_CUESTA,
   esUnEstado, esUnResultado, elCocheEstaComprobado, porQueNoEstaComprobado,
@@ -169,6 +170,59 @@ revisionesTallerRouter.patch(
          req.body?.notas === undefined ? null : String(req.body.notas)]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
+
+      /*
+       * Hecha: el taller ya puede facturarnos.
+       *
+       * Es lo mismo que con el perito, la gestoría y el transportista, y esta
+       * era la única de las cuatro que no lo hacía. El coste se guardaba en la
+       * ficha de la revisión y de ahí no salía: las cuentas se hacen con
+       * facturas, así que esos 60 € por coche captado no aparecían en ningún
+       * sitio.
+       *
+       * Lo que eso rompía: el margen por coche salía 60 € de más, la factura
+       * del taller nunca entraba en «facturas de proveedor sin llegar» —que
+       * existe justo para que un gasto no se quede sin deducir— y, sobre todo,
+       * el gasto que **justifica** los 150 € de cancelación era el que los
+       * libros no veían.
+       *
+       * Se apunta al quedar hecha y no al dar la cita: hasta que no está hecho,
+       * el taller no tiene nada que cobrar.
+       */
+      if (estado === 'Hecha') {
+        const rev = r.rows[0] as Record<string, unknown>;
+        const coche = await query(
+          `SELECT plate, brand, model FROM moveadvisor_user_vehicles WHERE id = $1`,
+          [String(rev.vehicle_id ?? '')]
+        ).catch(() => ({ rows: [] }));
+        const v = coche.rows[0] ?? {};
+        const titulo = [v.brand, v.model].filter(Boolean).join(' ')
+          + (v.plate ? ` (${String(v.plate)})` : '');
+
+        /*
+         * El concepto lleva el día, y no es decoración.
+         *
+         * `apuntaFacturaEsperada` no duplica: reconoce el servicio por
+         * proveedor + concepto + coche. Eso está bien para que volver a pulsar
+         * no apunte dos veces, pero sin fecha el mismo coche llevado al mismo
+         * taller el año que viene se plegaría sobre la revisión del año pasado
+         * y nos comeríamos 60 € **en silencio**, que es justo el fallo que esto
+         * viene a arreglar.
+         *
+         * Con el día, dos pulsaciones del mismo día siguen siendo una sola y
+         * dos revisiones de años distintos son dos.
+         */
+        const dia = rev.hecha_at
+          ? new Date(rev.hecha_at as string).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+
+        await apuntaFacturaEsperada({
+          proveedor: String(rev.taller ?? ''),
+          concepto: `Revisión mecánica del vehículo · ${dia}`,
+          importe: (rev.coste as string | null) ?? LO_QUE_CUESTA,
+          vehiculo: titulo.trim() || String(rev.vehicle_id ?? ''),
+        }).catch((e) => console.error('[revisiones-taller] sin factura esperada:', (e as Error).message));
+      }
 
       res.json({
         ok: true,

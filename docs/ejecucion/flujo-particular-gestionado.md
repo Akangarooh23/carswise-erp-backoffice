@@ -260,6 +260,12 @@ erp: Se apunta lo que dijo el taller
 > caen en el segundo—. «No se puede vender así» no deja, y ese coche sale en
 > Pendientes: su dueño tiene un encargo firmado y hay que llamarle.
 
+> **El gasto llega a las cuentas solo.** En cuanto se apunta el resultado, la
+> factura del taller entra como esperada: sale en «facturas de proveedor sin
+> llegar» y cuenta en el margen de ese coche. Antes se guardaba el coste en la
+> ficha y de ahí no salía — el gasto que **justifica** los 150 € de cancelación
+> era justo el que los libros no veían.
+
 > **Se le hace a todos**, también a los que luego no se venden. Cuesta 60 € —el
 > precio de Norauto— y ese gasto es nuestro: es lo que cubre el fee de
 > cancelación.

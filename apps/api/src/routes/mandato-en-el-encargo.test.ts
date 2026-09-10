@@ -339,3 +339,59 @@ describe('cerrar quita el anuncio', () => {
     assert.match(CERRAR, /sin quitar el anuncio/);
   });
 });
+
+describe('el taller nos factura, y las cuentas se enteran', () => {
+  /*
+   * El coste se guardaba en la ficha de la revisión y de ahí no salía. Las
+   * cuentas se hacen con facturas, así que esos 60 € por coche captado no
+   * aparecían en ningún sitio: el margen por coche salía de más, la factura del
+   * taller nunca entraba en «facturas de proveedor sin llegar», y el gasto que
+   * **justifica** los 150 € de cancelación era el que los libros no veían.
+   *
+   * El perito, la gestoría y el transportista ya lo hacían. El taller era el
+   * único de los cuatro que no.
+   */
+  const REVISIONES = readFileSync(join(import.meta.dirname, 'revisiones-taller.ts'), 'utf8')
+    .replace(/\r\n/g, '\n');
+
+  test('se apunta la factura esperada', () => {
+    assert.match(REVISIONES, /apuntaFacturaEsperada\(\{/);
+    assert.match(REVISIONES, /proveedor: String\(rev\.taller/);
+  });
+
+  test('al quedar hecha, no al dar la cita', () => {
+    // Hasta que no está hecho, el taller no tiene nada que cobrar.
+    assert.match(REVISIONES, /if \(estado === 'Hecha'\) \{[\s\S]{0,1400}apuntaFacturaEsperada\(/);
+  });
+
+  test('con el importe de la ficha, no con la constante a secas', () => {
+    /*
+     * La constante es lo que cuesta hoy en Norauto. Si a esta revisión se le
+     * puso otro importe —otro taller, otro precio—, la factura esperada tiene
+     * que ser esa y no la de la lista.
+     */
+    assert.match(REVISIONES, /importe: \(rev\.coste as string \| null\) \?\? LO_QUE_CUESTA/);
+  });
+
+  test('y con el coche, para poder imputarla', () => {
+    // Un gasto sin coche no se puede meter en el margen de ningún coche, que
+    // es justo la pregunta que esto viene a poder contestar.
+    assert.match(REVISIONES, /vehiculo: titulo\.trim\(\)/);
+  });
+
+  test('el concepto lleva el día', () => {
+    /*
+     * `apuntaFacturaEsperada` reconoce el servicio por proveedor + concepto +
+     * coche. Sin fecha, el mismo coche llevado al mismo taller el año que viene
+     * se plegaria sobre el del año pasado y nos comeríamos 60 € en silencio —
+     * el mismo fallo que esto arregla.
+     */
+    assert.match(REVISIONES, /Revisión mecánica del vehículo · \$\{dia\}/);
+    assert.match(REVISIONES, /rev\.hecha_at/);
+  });
+
+  test('y si falla, no tumba el guardar el resultado', () => {
+    // Lo que dijo el taller ya está apuntado, y es lo que decide si se publica.
+    assert.match(REVISIONES, /sin factura esperada/);
+  });
+});
