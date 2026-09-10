@@ -181,3 +181,41 @@ describe('lo que la pantalla enseña antes de pulsar', () => {
     assert.match(PANTALLA, /No se deshace/);
   });
 });
+
+describe('acordar el precio despues, sin regalar dias', () => {
+  /*
+   * El precio se acuerda en una llamada, que puede ser tres semanas despues de
+   * firmar. Marcar la casilla no puede reiniciar el reloj de la penalizacion.
+   */
+  const RUTA = readFileSync(
+    new URL('../routes/encargos.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+  const PRECIO = RUTA.slice(RUTA.indexOf("'/encargos/:id/precio'"));
+
+  test('se puede cambiar despues del alta', () => {
+    // Sin esto la regla de las tres ramas no sirve de nada: todos los encargos
+    // se quedan en «no acepto», que es donde nacen.
+    assert.match(RUTA, /encargosRouter\.patch\(\s*'\/encargos\/:id\/precio'/);
+  });
+
+  test('los 30 dias cuentan desde la firma, no desde hoy', () => {
+    /*
+     * Contandolos desde el momento de marcar la casilla, alguien que firmo hace
+     * tres semanas volveria a tener un mes por delante, y le cobrariamos una
+     * penalizacion que ya no le corresponde.
+     */
+    assert.match(PRECIO, /libreDesde\(e\.firmado_at as string, aceptoElPrecio\)/);
+    assert.ok(!/libreDesde\(new Date\(\)/.test(PRECIO), 'el reloj se reinicia al marcar la casilla');
+  });
+
+  test('y no se toca un encargo ya cerrado', () => {
+    assert.match(PRECIO, /WHERE id = \$1 AND cerrado_at IS NULL/);
+  });
+
+  test('lo que no se manda no se borra', () => {
+    // Cambiar solo el precio no puede desmarcar la clausula, ni al reves.
+    assert.match(PRECIO, /acepta === undefined[\s\S]{0,120}Boolean\(e\.acepto_el_precio\)/);
+    assert.match(PRECIO, /precio_referencia === undefined[\s\S]{0,120}e\.precio_referencia/);
+  });
+});

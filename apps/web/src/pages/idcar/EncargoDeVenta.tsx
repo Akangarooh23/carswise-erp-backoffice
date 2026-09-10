@@ -148,12 +148,19 @@ export default function EncargoDeVenta({
   const [abriendo, setAbriendo] = useState(false);
   const [cerrando, setCerrando] = useState(false);
   const [enviando, setEnviando] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [firmoElPrecio, setFirmoElPrecio] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const carga = useCallback(async () => {
     try {
       const r = await api.get<ElEncargo>(`/encargos/coche/${vehicleId}`);
       if (!r.ok) { setFallo(r.error ?? 'no_se_ha_podido_leer'); return; }
       setDatos(r.data);
+      // Los campos arrancan con lo que hay guardado, para que al abrir la ficha
+      // se vea lo acordado y no dos casillas en blanco.
+      setPrecio(r.data.encargo?.precio_referencia ?? '');
+      setFirmoElPrecio(Boolean(r.data.encargo?.acepto_el_precio));
       alCambiar?.(r.data);
     } catch (e) {
       setFallo((e as Error).message);
@@ -180,6 +187,25 @@ export default function EncargoDeVenta({
       setFallo((e as Error).message);
     } finally {
       setAbriendo(false);
+    }
+  }
+
+  async function guardaElPrecio() {
+    setGuardando(true);
+    setFallo('');
+    try {
+      const r = await api.patch(`/encargos/${datos?.encargo?.id}/precio`, {
+        precio_referencia: precio === '' ? null : Number(precio),
+        acepto_el_precio: firmoElPrecio,
+      });
+      if (!r.ok) { setFallo('No se ha podido guardar el precio.'); return; }
+      // Se recarga entero: cambiar la cláusula cambia la penalización y los
+      // días, y eso lo calcula el servidor.
+      await carga();
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setGuardando(false);
     }
   }
 
@@ -272,6 +298,58 @@ export default function EncargoDeVenta({
         {datos.se_puede_publicar
           ? 'Lo ha traído todo. Falta la revisión del taller antes de publicar.'
           : `Le falta: ${datos.le_falta.join('; ')}`}
+      </div>
+
+      {/*
+        * El precio y si lo ha aceptado.
+        *
+        * Va aquí y no en el alta porque se acuerda en una llamada, que puede
+        * ser tres semanas después de firmar. Y es lo que decide la
+        * penalización: sin poder marcarlo, todos los encargos se quedarían en
+        * «no aceptó», que es donde nacen, y a todo el mundo le saldría que
+        * siempre paga.
+        */}
+      <div className="mt-4 rounded-xl border border-brand-200 p-3">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div>
+            <label className="block text-[11px] text-brand-300 mb-1" htmlFor="precio-ref">
+              Precio que le proponemos
+            </label>
+            <input
+              id="precio-ref"
+              type="number"
+              min="0"
+              step="100"
+              value={precio}
+              onChange={(ev) => setPrecio(ev.target.value)}
+              placeholder="13500"
+              className="w-32 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-acento"
+            />
+          </div>
+          <label className="flex items-center gap-2 pb-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={firmoElPrecio}
+              onChange={(ev) => setFirmoElPrecio(ev.target.checked)}
+              className="w-4 h-4 accent-acento"
+            />
+            <span className="text-[13px] text-brand-600">Ha firmado la cláusula del precio</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => void guardaElPrecio()}
+            disabled={guardando}
+            className="ml-auto px-3 py-1.5 text-xs font-semibold rounded-lg border border-brand-200
+                       text-brand-500 hover:bg-brand-50 disabled:opacity-50"
+          >
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+        <p className="text-[11.5px] text-brand-400 mt-2 leading-snug">
+          Si no la firma, se le puede cobrar la cancelación desde el primer día y siempre.
+          Si la firma, solo durante los 30 días siguientes a la firma del encargo.
+        </p>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-3 text-[12px]">

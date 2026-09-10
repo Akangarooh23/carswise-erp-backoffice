@@ -494,3 +494,70 @@ encargosRouter.post(
     }
   }
 );
+
+/**
+ * El precio y si lo ha aceptado.
+ *
+ * Va aparte del alta porque el precio se acuerda **después**: se le propone uno
+ * salido del mercado y él dice que sí o que no, y eso puede pasar el mismo día
+ * o tres llamadas más tarde.
+ *
+ * Y es lo que decide la penalización, así que si no se pudiera cambiar, la
+ * regla de las tres ramas no serviría de nada: todos los encargos se quedarían
+ * en «no aceptó», que es donde nacen.
+ */
+encargosRouter.patch(
+  '/encargos/:id/precio',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `SELECT * FROM erp_encargos_venta WHERE id = $1 AND cerrado_at IS NULL`,
+        [req.params.id]
+      );
+      const e = r.rows[0];
+      if (!e) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+
+      const acepta = req.body?.acepto_el_precio;
+      const aceptoElPrecio = acepta === undefined
+        ? Boolean(e.acepto_el_precio)
+        : acepta === true;
+
+      /*
+       * Los 30 días cuentan desde que firmó, no desde hoy.
+       *
+       * Si se contaran desde el momento de marcar la casilla, alguien que
+       * firmó hace tres semanas y al que se le apunta hoy volvería a tener un
+       * mes por delante — y le estaríamos cobrando una penalización que ya no
+       * le corresponde.
+       */
+      const libre = e.firmado_at ? libreDesde(e.firmado_at as string, aceptoElPrecio) : null;
+
+      const precio = req.body?.precio_referencia === undefined
+        ? (e.precio_referencia as number | null)
+        : Number(req.body.precio_referencia) || null;
+
+      const upd = await query(
+        `UPDATE erp_encargos_venta
+            SET acepto_el_precio = $2, libre_desde = $3, precio_referencia = $4, updated_at = NOW()
+          WHERE id = $1 AND cerrado_at IS NULL
+        RETURNING *`,
+        [req.params.id, aceptoElPrecio, libre?.toISOString() ?? null, precio]
+      );
+      if (!upd.rows.length) { res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' }); return; }
+
+      res.json({
+        ok: true,
+        data: {
+          encargo: upd.rows[0],
+          penalizacion: laPenalizacion(upd.rows[0]),
+          dias_hasta_irse_gratis: diasQueQuedan(upd.rows[0].libre_desde),
+        },
+      });
+    } catch (err) {
+      console.error('[encargos] precio:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'encargo_precio_failed' });
+    }
+  }
+);
