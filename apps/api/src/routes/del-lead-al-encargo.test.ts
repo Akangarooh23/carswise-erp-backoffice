@@ -77,9 +77,22 @@ describe('lo que se ve en el lead', () => {
     assert.match(BLOQUE, /pídele que entre en su panel/);
   });
 
-  test('y se recuerda qué coche pidió, para poder compararlo', () => {
-    // Lo que escribió a mano no tiene por qué coincidir con lo que subió.
-    assert.match(BLOQUE, /Pidió que le vendiéramos/);
+  test('se distingue si eligió el coche o lo escribió a mano', () => {
+    /*
+     * Son dos cosas distintas y quien está al teléfono tiene que saber en cuál
+     * está. Si lo eligió de su lista, el identificador es un dato y no hay nada
+     * que confirmar. Si lo escribió, «Volkswagen T-Roc R line 2022» es una
+     * suposición: puede tener tres coches y ese texto no identifica ninguno.
+     */
+    assert.match(BLOQUE, /cocheElegido \?/);
+    assert.match(BLOQUE, /No hay que adivinar cuál es/);
+    assert.match(BLOQUE, /Lo puso a mano,\s*\n?\s*así que confírmale cuál de estos es/);
+  });
+
+  test('y el que eligió sale el primero y marcado', () => {
+    // Con tres coches, el suyo tiene que estar donde se mira primero.
+    assert.match(BLOQUE, /\.sort\(\(a, b\) => Number\(b\.id === cocheElegido\) - Number\(a\.id === cocheElegido\)\)/);
+    assert.match(BLOQUE, /← el que eligió/);
   });
 
   test('un coche que ya tiene encargo no ofrece abrirle otro', () => {
