@@ -45,6 +45,8 @@ import {
 } from '../lib/cierre-del-encargo.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
+import { porQueElTallerNoDeja, preparaRevisionesTaller } from './revisiones-taller.js';
+import { sigueEsperandoAlTaller, elTallerLoTumbo } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
 
@@ -203,9 +205,16 @@ export async function losAvisosDeEncargos(): Promise<{
   encargos_por_llamar: number;
   encargos_sin_franjas: number;
   encargos_listos: number;
+  encargos_rechazados: number;
 }> {
-  const vacio = { encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0, encargos_listos: 0 };
+  const vacio = {
+    encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
+    encargos_listos: 0, encargos_rechazados: 0,
+  };
   await prepara();
+  // La consulta de abajo lee `erp_revisiones_taller`. Si nadie la ha creado
+  // todavía, falla entera y los cinco avisos se quedan a cero para siempre.
+  await preparaRevisionesTaller().catch(() => {});
 
   const r = await query(`
     SELECT e.firmado_at, e.acepto_el_precio,
@@ -228,9 +237,19 @@ export async function losAvisosDeEncargos(): Promise<{
            (SELECT COALESCE(array_agg(a.starts_at), '{}')
               FROM vehicle_visit_availability a
              WHERE a.offer_id = 'idcar-' || e.vehicle_id
-               AND a.status = 'available' AND a.starts_at > NOW()) AS franjas
+               AND a.status = 'available' AND a.starts_at > NOW()) AS franjas,
+           tal.estado AS taller_estado, tal.resultado AS taller_resultado
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+      -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
+      -- en dos subconsultas sueltas: con dos, un empate en la fecha podria dar
+      -- el estado de una ficha y el resultado de otra.
+      LEFT JOIN LATERAL (
+        SELECT rt.estado, rt.resultado
+          FROM erp_revisiones_taller rt
+         WHERE rt.vehicle_id = e.vehicle_id
+         ORDER BY rt.created_at DESC LIMIT 1
+      ) tal ON TRUE
      WHERE e.cerrado_at IS NULL
   `).catch(() => null);
   if (!r) return vacio;
@@ -255,7 +274,18 @@ export async function losAvisosDeEncargos(): Promise<{
     if (fila.se_vendio) cuenta.encargos_vendidos += 1;
     if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) cuenta.encargos_por_llamar += 1;
     if (soloLeFaltanFranjas(puertas)) cuenta.encargos_sin_franjas += 1;
-    if (sePuedePublicar(puertas)) cuenta.encargos_listos += 1;
+
+    /*
+     * «Listo para el taller» es justo eso: el cliente ya lo ha traído todo y lo
+     * único que falta es la revisión. En cuanto el taller dice algo el aviso se
+     * apaga solo — si no, el coche seguiría saliendo como pendiente el resto de
+     * su vida, ya publicado y ya revisado.
+     */
+    const taller = { estado: fila.taller_estado, resultado: fila.taller_resultado };
+    if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) cuenta.encargos_listos += 1;
+
+    // Y el que el taller ha tumbado: su coche no va a salir y él no lo sabe.
+    if (elTallerLoTumbo(taller)) cuenta.encargos_rechazados += 1;
   }
   return cuenta;
 }
@@ -279,8 +309,25 @@ export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string
   if (!r.rows.length) return '';
 
   const puertas = lasPuertas(await loQueHayDe(vehicleId));
-  if (sePuedePublicar(puertas)) return '';
-  return `Este coche lo vendemos nosotros y le falta: ${loQueLeFalta(puertas).join('; ')}`;
+  if (!sePuedePublicar(puertas)) {
+    return `Este coche lo vendemos nosotros y le falta: ${loQueLeFalta(puertas).join('; ')}`;
+  }
+
+  /*
+   * Y la sexta, que es la nuestra.
+   *
+   * Las cinco puertas son cosas del cliente. La revisión del taller la ponemos
+   * nosotros, y sin ella el anuncio diría que el coche está comprobado sin que
+   * nadie lo haya comprobado — que es el mismo fallo que se tapó con el informe,
+   * pero en la parte que depende de nosotros.
+   *
+   * Va después de las cinco a propósito: si le falta algo suyo, eso es lo que
+   * hay que decirle cuando se le llame, y el taller todavía no toca.
+   */
+  const taller = await porQueElTallerNoDeja(vehicleId);
+  if (taller) return `Este coche lo vendemos nosotros. ${taller}`;
+
+  return '';
 }
 
 /** El encargo de un coche, con sus puertas al día. */
@@ -314,14 +361,29 @@ encargosRouter.get(
       const hay = await loQueHayDe(req.params.vehicleId);
       const puertas = lasPuertas(hay);
 
+      /*
+       * Y la sexta, la nuestra.
+       *
+       * Solo cuenta si hay encargo vivo: un particular que publica su propio
+       * IDCar no nos ha encargado nada y no le hemos prometido revisión.
+       *
+       * Va dentro de `se_puede_publicar` y no aparte porque ese campo es el que
+       * apaga el botón de la ficha. Si aquí dijera que sí y el portero del
+       * servidor dijera que no, el botón se vería encendido y el «no» llegaría
+       * al pulsarlo — que es la peor manera de enterarse.
+       */
+      const faltaElTaller = encargo ? await porQueElTallerNoDeja(req.params.vehicleId) : '';
+
       res.json({
         ok: true,
         data: {
           encargo,
           ultimo_cerrado: cerrado.rows[0] ?? null,
           puertas,
-          se_puede_publicar: sePuedePublicar(puertas),
+          se_puede_publicar: sePuedePublicar(puertas) && !faltaElTaller,
+          /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
           le_falta: loQueLeFalta(puertas),
+          falta_el_taller: faltaElTaller,
           /*
            * Nada de esto caduca. Lo que se dice es qué pasaría si se fuera hoy,
            * que es lo que hace falta saber cuando se le llama.

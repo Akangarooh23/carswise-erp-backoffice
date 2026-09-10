@@ -156,6 +156,18 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    * El de las franjas va con los urgentes porque es un coche publicado —o a
    * punto— que **nadie puede visitar**: paga el anuncio y no convierte a nadie.
    */
+  /*
+   * A este cliente le hemos prometido, en la pagina y en el correo, que le
+   * llamamos en menos de 24 horas laborables. Un lead de esos en el cajon de
+   * «leads sin contestar» -cuyo criterio son tres dias- no tiene a nadie
+   * vigilando esa promesa.
+   */
+  {
+    clave: 'encargos_sin_llamar',
+    etiqueta: 'encargos de venta sin llamar', una: 'encargo de venta sin llamar',
+    porque: 'le hemos prometido una llamada en menos de 24 horas laborables',
+    a: '/leads', icono: 'telefono', tono: 'urgente',
+  },
   {
     clave: 'encargos_vendidos',
     etiqueta: 'coches vendidos sin cerrar el encargo', una: 'coche vendido sin cerrar el encargo',
@@ -173,6 +185,20 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     etiqueta: 'encargos sin horas para visitar', una: 'encargo sin horas para visitar',
     porque: 'lo ha traído todo y se ha quedado sin huecos: nadie puede ir a ver el coche',
     a: '/idcars', icono: 'calendario', tono: 'urgente',
+  },
+  /*
+   * Y el que el taller ha tumbado.
+   *
+   * Ese coche no se publica y su dueño no lo sabe: tiene un encargo firmado y
+   * está esperando a ver su anuncio. Es el único caso en que la respuesta no es
+   * pulsar un botón sino coger el teléfono, y por eso no puede quedarse dentro
+   * de «listos para el taller»: ahí no espera a nadie y desaparecería.
+   */
+  {
+    clave: 'encargos_rechazados',
+    etiqueta: 'coches que el taller no deja vender', una: 'coche que el taller no deja vender',
+    porque: 'su anuncio no va a salir y el cliente sigue esperándolo',
+    a: '/idcars', icono: 'aviso', tono: 'urgente',
   },
   {
     clave: 'encargos_listos',

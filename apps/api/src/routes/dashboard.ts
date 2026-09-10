@@ -11,6 +11,7 @@ import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
 import { losAvisosDeEncargos } from './encargos.js';
+import { SQL_SIN_LLAMAR, losQueEsperanDeMas, reparteLosLeads } from '../lib/sin-llamar.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 import { preparaVisitas } from './visits.js';
 
@@ -382,7 +383,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -519,8 +520,18 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * el panel diría una cosa y la ficha otra.
        */
       losAvisosDeEncargos().catch(() => ({
-        encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0, encargos_listos: 0,
+        encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
+        encargos_listos: 0, encargos_rechazados: 0,
       })),
+
+      /*
+       * Y los que piden que les vendamos el coche y siguen esperando la llamada.
+       *
+       * Se traen las fechas y se cuentan aquí: lo de «24 horas laborables» en
+       * SQL sería otra implementación del mismo cálculo, y el día que cambiara
+       * una de las dos el panel diría una cosa y la pantalla otra.
+       */
+      query(SQL_SIN_LLAMAR).catch(vacio),
     ]);
 
     res.json({
@@ -533,6 +544,17 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...visitas.rows[0],
           ...encargos,
           portales_parados: portales?.valor?.n ?? 0,
+          /*
+           * El reparto va al final a propósito: pisa a `leads_pendientes`.
+           *
+           * Esa cuenta incluye a todos los pendientes, también a los que piden
+           * que les vendamos el coche. Sin restarlos, el mismo señor saldría en
+           * dos filas y sumaría dos en el número de arriba.
+           */
+          ...reparteLosLeads(
+            Number(leads.rows[0]?.leads_pendientes ?? 0),
+            losQueEsperanDeMas(sinLlamar.rows as { created_at?: string | Date | null }[]),
+          ),
         }),
       },
     });

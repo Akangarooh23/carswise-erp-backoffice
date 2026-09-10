@@ -8,10 +8,9 @@ El color dice quién lo hace: azul el cliente, gris lo que pasa solo, morado un
 correo que sale, verde algo que se hace en el ERP y amarillo algo que hace una
 persona por su cuenta.
 
-> **Qué está construido y qué no.** Todo lo de este manual funciona menos dos
-> cosas, que van marcadas donde tocan: **la revisión del taller** —que no tiene
-> pantalla y se apunta a mano— y **los anuncios en portales**, que se ponen y se
-> quitan sin que el ERP lo sepa. Lo demás se puede recorrer entero.
+> **Qué está construido y qué no.** Todo lo de este manual funciona menos una
+> cosa, marcada donde toca: **los anuncios en portales**, que se ponen y se
+> quitan a mano sin que el ERP lo sepa. Lo demás se puede recorrer entero.
 
 La otra opción de **Vender** —publicar él mismo su IDCar en el marketplace— es
 un camino distinto y más corto: no hay mandato, ni taller, ni portales, ni
@@ -41,8 +40,8 @@ cliente: Y elige las franjas en las que puede enseñarlo
 @ IDCars → el coche → «Franjas horarias»
 + al menos seis en los próximos catorce días
 erp: Con las cinco puertas abiertas, se le lleva al taller
-@ Talleres → la revisión del coche
-+ el taller, el día y la hora. Todavía se apunta a mano
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
++ a qué taller se lleva, y después lo que dijeron
 erp: Se publica en nuestro marketplace
 @ Marketplace → VO Particulares → «Publicar»
 + el precio de salida que se ha acordado con él
@@ -77,7 +76,7 @@ no adelanta un euro.
 cliente: Rellena el formulario de «Nosotros lo vendemos por ti»
 sistema: Entra como lead de tipo «Vender su coche»
 correo: **Al cliente** — que le llamamos en menos de 24 horas laborables
-erp: Sale en la lista, y en Pendientes como lead sin contestar
+erp: Sale en la lista, y a las 24 horas laborables, en Pendientes
 @ Leads → «Solicitudes»
 + nada: llega solo
 trabajador: Se le llama. Es la promesa de la web y no la hace el sistema
@@ -85,6 +84,12 @@ erp: Y se le abre el encargo sobre su coche
 @ Leads → el lead → «Encargo de venta»
 + nada: se pulsa el botón del coche
 :::
+
+> **Las 24 horas son laborables, y tienen su propia línea en Pendientes.** Un
+> formulario que entra el viernes por la tarde no está tarde el sábado; el lunes
+> por la mañana, tampoco. Cuando el plazo se pasa, ese lead sale de «leads sin
+> contestar» —cuyo criterio son tres días— y aparece en rojo como «encargos de
+> venta sin llamar». No se cuenta dos veces: sale de un sitio y entra en otro.
 
 > **Qué coche es lo dice él, no lo adivinamos.** Si al rellenar el formulario
 > había entrado, eligió el coche de una lista con los suyos, y en el lead sale
@@ -141,6 +146,10 @@ erp: Y se marca si ha firmado la cláusula del precio
 Ninguna es opcional. Mientras falte una, el coche no se publica: salen como una
 lista con su semáforo, y el botón de publicar no deja.
 
+Estas cinco son **cosas suyas**. Hay una sexta que ponemos nosotros —la revisión
+del taller, en el apartado siguiente—, y por eso van separadas: cuando se le
+llama, lo que se le pide es esto y nada más.
+
 :::flujo
 cliente: El coche, como IDCar
 @ IDCars → el coche → «Datos del vehículo»
@@ -186,18 +195,23 @@ permite decir algo de la mecánica.
 
 :::flujo
 erp: Se le da cita en un taller de la red
-@ Talleres → la revisión
-+ el taller, el día y la hora
-correo: **Al cliente** — dónde y cuándo tiene que llevarlo
-trabajador: El taller lo revisa y devuelve el resultado
-erp: Se apunta lo que dijo
-@ Peritaciones → la revisión
-+ el resultado y lo que haya encontrado
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
++ a qué taller se lleva y qué día
+trabajador: Se le llama al cliente para decirle dónde y cuándo
+erp: Se apunta lo que dijo el taller
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
++ lo que encontraron, y cuál de los tres resultados
 :::
 
-> **Esto todavía no tiene pantalla propia.** El encargo no sabe si la revisión
-> está hecha, así que hoy se lleva a mano y se apunta donde se pueda. Es lo
-> siguiente que falta de este flujo.
+> **Es la sexta puerta, y la única nuestra.** Las cinco anteriores son cosas del
+> cliente; esta la ponemos nosotros. Mientras no esté hecha, el botón de
+> publicar sale apagado y el servidor tampoco deja: un anuncio nuestro dice que
+> el coche está comprobado, y eso no lo puede sostener una foto.
+
+> **Tres resultados, y solo uno cierra la puerta.** «Bien» y «se puede vender,
+> contando lo que tiene» dejan publicar —la mayoría de los coches de diez años
+> caen en el segundo—. «No se puede vender así» no deja, y ese coche sale en
+> Pendientes: su dueño tiene un encargo firmado y hay que llamarle.
 
 > **Se le hace a todos**, también a los que luego no se venden. Cuesta 60 € —el
 > precio de Norauto— y ese gasto es nuestro: es lo que cubre el fee de
@@ -343,9 +357,9 @@ erp: Y la factura queda en su sitio
 
 | No hace | Lo hace una persona |
 |---|---|
-| Llamar al cliente en 24 horas, que es lo que promete la web | Llamarle |
+| Llamar al cliente en 24 horas, que es lo que promete la web | Llamarle. El ERP solo avisa cuando el plazo ya se ha pasado |
 | Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano, y apuntar dónde |
-| Saber si el taller ha revisado el coche | Llevarlo, y apuntarlo donde se pueda |
+| Llevar el coche al taller | Llevarlo. El resultado se apunta en el encargo |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
 | Cerrar el encargo | Elegir cómo acabó |
 | Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { losPendientes, cuantasCosas, CATALOGO } from './pendientes.js';
 
 describe('lo que está pendiente', () => {
@@ -165,6 +165,38 @@ describe('el panel pide de verdad los avisos de encargos', () => {
     // todavía no exista en un entorno.
     assert.match(DASHBOARD, /losAvisosDeEncargos\(\)\.catch\(/);
   });
+});
+
+describe('nadie se queda sin quien le pase el número', () => {
+  /*
+   * El fallo silencioso, escrito de una vez para todo el catálogo.
+   *
+   * Añadir una entrada es fácil y se ve enseguida; acordarse de contarla en
+   * alguna parte, no. Y una entrada que nadie cuenta se queda a cero para
+   * siempre, que en una lista de pendientes es exactamente lo mismo que decir
+   * «no hay nada que hacer».
+   *
+   * Se busca la clave por todo el servidor y no solo en el panel: unas las
+   * cuenta el propio panel en SQL, otras vienen de una función de `routes/` y
+   * otras de una de `lib/`. Este fichero se excluye a propósito — aquí están
+   * todas por definición, y buscarse a sí mismo no demuestra nada.
+   */
+  const dondeEstoy = (rel: string) =>
+    new URL(rel, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+  const FUENTE = ['../routes/', './']
+    .flatMap((dir) => readdirSync(dondeEstoy(dir))
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'pendientes.ts')
+      .map((f) => readFileSync(dondeEstoy(dir) + f, 'utf8')))
+    .join('\n');
+
+  for (const p of CATALOGO) {
+    test(`alguien cuenta «${p.etiqueta}»`, () => {
+      assert.ok(
+        FUENTE.includes(p.clave),
+        `«${p.clave}» está en el catálogo y no lo calcula nadie: saldría a cero para siempre`,
+      );
+    });
+  }
 });
 
 describe('el catálogo está completo', () => {

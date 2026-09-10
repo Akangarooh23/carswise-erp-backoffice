@@ -17,6 +17,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/client.js';
 import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
+import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
 
 export interface Puerta {
   clave: string;
@@ -57,8 +58,11 @@ export interface ElEncargo {
   ultimo_cerrado: Cerrado | null;
   cierres: Cierre[];
   puertas: Puerta[];
+  /** Las seis puertas, las cinco suyas y la nuestra. Es lo que apaga el botón. */
   se_puede_publicar: boolean;
+  /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
   le_falta: string[];
+  falta_el_taller: string;
   /** Lo que dio su tasacion gratuita, si se la ha hecho. */
   tasacion: number | null;
   penalizacion: number | null;
@@ -153,6 +157,7 @@ export default function EncargoDeVenta({
   const [precio, setPrecio] = useState('');
   const [firmoElPrecio, setFirmoElPrecio] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [taller, setTaller] = useState<LoDelTaller | null>(null);
 
   const carga = useCallback(async () => {
     try {
@@ -299,13 +304,29 @@ export default function EncargoDeVenta({
         {datos.puertas.map((p) => <Semaforo key={p.clave} puerta={p} />)}
       </ul>
 
+      {/*
+        * El resumen de las seis puertas, dicho en una frase.
+        *
+        * Antes decía «falta la revisión del taller» sin mirar el taller: cuando
+        * la revisión ya estaba hecha seguía pidiéndola, y quien leía esto no
+        * podía saber si el coche estaba listo o no.
+        */}
       <div className={`rounded-lg px-3 py-2 text-[13px] ${
         datos.se_puede_publicar ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-50 text-brand-500'
       }`}>
-        {datos.se_puede_publicar
-          ? 'Lo ha traído todo. Falta la revisión del taller antes de publicar.'
-          : `Le falta: ${datos.le_falta.join('; ')}`}
+        {datos.le_falta.length > 0
+          ? `Le falta: ${datos.le_falta.join('; ')}`
+          : datos.se_puede_publicar
+            ? 'Listo para publicar.'
+            : `Lo ha traído todo. ${taller?.por_que_no || datos.falta_el_taller}.`}
       </div>
+
+      <RevisionDelTaller
+        vehicleId={vehicleId}
+        encargoId={e.id}
+        alCambiar={setTaller}
+        alGuardar={() => void carga()}
+      />
 
       {/*
         * El precio y si lo ha aceptado.

@@ -90,3 +90,55 @@ describe('el portero', () => {
     assert.match(ENCARGOS, /loQueLeFalta\(puertas\)\.join/);
   });
 });
+
+describe('la sexta puerta, que es la nuestra', () => {
+  /*
+   * Las cinco anteriores son cosas del cliente: su coche, sus papeles, su
+   * tasación, su informe, sus horas. Con solo esas, un coche al que no ha
+   * mirado ningún mecánico sale publicado con un anuncio que dice que está
+   * comprobado — el mismo fallo que se tapó con el informe de estado, pero en
+   * la parte que ponemos nosotros.
+   */
+  const PORTERO = (() => {
+    const desde = ENCARGOS.indexOf('export async function porQueNoSePuedePublicar');
+    assert.ok(desde > 0, 'no encuentro el portero');
+    const siguiente = ENCARGOS.indexOf('\nexport ', desde + 20);
+    return ENCARGOS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('el portero pregunta también al taller', () => {
+    assert.match(PORTERO, /porQueElTallerNoDeja\(vehicleId\)/);
+  });
+
+  test('y no dice que sí antes de preguntarle', () => {
+    /*
+     * El fallo que esto caza: dejar la llamada al taller después del
+     * `return ''` de las cinco puertas. Entonces la comprobación existe, se ve
+     * en el código y no se ejecuta nunca.
+     */
+    const taller = PORTERO.indexOf('porQueElTallerNoDeja(');
+    const dicheQueSi = PORTERO.lastIndexOf("return '';");
+    assert.ok(dicheQueSi > 0, 'el portero ya no devuelve cadena vacía; revisa la prueba');
+    assert.ok(taller < dicheQueSi, 'se da el visto bueno antes de preguntar al taller');
+  });
+
+  test('y le hace caso a lo que conteste', () => {
+    // Un `await` cuyo resultado no se mira es una comprobación decorativa.
+    assert.match(PORTERO, /if \(taller\) return/);
+  });
+
+  test('el aviso de «listo para el taller» se apaga cuando el taller contesta', () => {
+    /*
+     * Si se contara con `sePuedePublicar` a secas, un coche ya revisado y ya
+     * publicado seguiría saliendo como pendiente el resto de su vida, y una
+     * lista de pendientes que no se vacía nunca se deja de mirar.
+     */
+    assert.match(ENCARGOS, /sePuedePublicar\(puertas\) && sigueEsperandoAlTaller\(taller\)/);
+  });
+
+  test('y el coche que el taller tumba no se queda callado', () => {
+    // No está comprobado, pero tampoco espera a nadie: lo que necesita es una
+    // llamada al cliente, así que tiene su propia línea.
+    assert.match(ENCARGOS, /elTallerLoTumbo\(taller\)/);
+  });
+});
