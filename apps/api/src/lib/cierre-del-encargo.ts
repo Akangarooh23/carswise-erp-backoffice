@@ -125,6 +125,63 @@ export const SQL_YA_EMITIDA = `
    WHERE type = $1 AND contract_id = $2 LIMIT 1`;
 
 /**
+ * Cerrar el encargo es dejar de vender ese coche, sea cual sea el final.
+ *
+ * Los tres motivos quitan el anuncio, y no solo «vendido». La razón es el
+ * teléfono: en ese anuncio sale **el nuestro**, no el del cliente. Dejarlo
+ * puesto después de cerrar significa que seguimos cogiendo llamadas por un
+ * coche que ya no gestionamos —vendido, o que se llevó a otro sitio, o que
+ * retiramos nosotros— y a quien llama hay que decirle que no.
+ *
+ * Si después quiere publicarlo por su cuenta, puede: eso es otra acción, con su
+ * teléfono y sin nuestro anuncio.
+ *
+ * ## Por qué esto tiene que pasar aquí
+ *
+ * Hasta ahora no lo hacía nadie: ni cerrar el encargo, ni cerrar la visita como
+ * «Fue y se lo quedó». Solo se despublicaba a mano desde Marketplace. Así que
+ * el coche vendido seguía en el escaparate — y peor: el aviso de «anuncios que
+ * hay que quitar de los portales» dispara cuando el coche deja de estar activo
+ * aquí, así que **no saltaba nunca**. La alarma estaba puesta y el sensor sin
+ * conectar.
+ */
+export const SQL_QUITA_EL_ANUNCIO = `
+  UPDATE moveadvisor_marketplace_vo_offers
+     SET is_active = FALSE, updated_at = NOW()
+   WHERE id = $1
+  RETURNING id`;
+
+/**
+ * Y el vendido se marca como vendido.
+ *
+ * `sold_at` es lo que separa en el escaparate un coche que se vendió de uno que
+ * se retiró. Ponérselo a los tres diría que vendimos coches que no vendimos, y
+ * eso acaba en un informe.
+ */
+export const SQL_MARCA_VENDIDO = `
+  UPDATE moveadvisor_marketplace_vo_offers
+     SET is_active = FALSE, sold_at = NOW(), updated_at = NOW()
+   WHERE id = $1
+  RETURNING id`;
+
+/**
+ * Y la ficha del cliente deja de decir que está publicado.
+ *
+ * Son dos sitios: la oferta del marketplace y el estado del coche en su panel.
+ * Quitando solo la oferta, a él le seguiría saliendo «publicado» en su garaje y
+ * no entendería nada.
+ */
+export const SQL_YA_NO_ESTA_LISTADO = `
+  UPDATE moveadvisor_user_vehicle_states
+     SET is_listed = FALSE, updated_at = NOW()
+   WHERE vehicle_id = $1`;
+
+/** Qué consulta toca según cómo acabó. */
+export function comoSeQuitaElAnuncio(motivo: Motivo): string {
+  return motivo === 'vendido' ? SQL_MARCA_VENDIDO : SQL_QUITA_EL_ANUNCIO;
+}
+
+/**
  * Y el encargo queda cerrado.
  *
  * Solo si estaba abierto, para que dos personas mirando la misma pantalla no

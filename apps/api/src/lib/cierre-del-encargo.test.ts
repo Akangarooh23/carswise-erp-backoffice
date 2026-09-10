@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import {
   MOTIVOS, COMO_ACABO, esUnMotivo, loQueSeLeFactura, seLeCobra,
   TIPO_DE_FACTURA, SQL_YA_EMITIDA, SQL_CIERRA,
+  comoSeQuitaElAnuncio, SQL_YA_NO_ESTA_LISTADO,
 } from './cierre-del-encargo.js';
 import { FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -264,5 +265,48 @@ describe('acordar el precio despues, sin regalar dias', () => {
     // Cambiar solo el precio no puede desmarcar la clausula, ni al reves.
     assert.match(PRECIO, /acepta === undefined[\s\S]{0,120}Boolean\(e\.acepto_el_precio\)/);
     assert.match(PRECIO, /precio_referencia === undefined[\s\S]{0,120}e\.precio_referencia/);
+  });
+});
+
+describe("cerrar es dejar de vender ese coche", () => {
+  /*
+   * No lo hacía nadie: ni cerrar el encargo, ni cerrar la visita como «Fue y se
+   * lo quedó». Solo se despublicaba a mano desde Marketplace. Así que el coche
+   * vendido seguía en el escaparate y alguien podía pedir cita para verlo.
+   */
+  test("los tres finales quitan el anuncio, no solo «vendido»", () => {
+    /*
+     * La razón es el teléfono: en ese anuncio sale el **nuestro**. Dejarlo
+     * puesto después de cerrar es seguir cogiendo llamadas por un coche que ya
+     * no gestionamos, y decirle que no a quien llama.
+     */
+    for (const m of MOTIVOS) {
+      assert.match(comoSeQuitaElAnuncio(m), /SET is_active = FALSE/, m);
+    }
+  });
+
+  test("pero solo el vendido se marca como vendido", () => {
+    /*
+     * `sold_at` es lo que separa en el escaparate un coche que se vendió de uno
+     * que se retiró. Ponérselo a los tres diría que vendimos coches que no
+     * vendimos, y eso acaba en un informe.
+     */
+    assert.match(comoSeQuitaElAnuncio("vendido"), /sold_at = NOW\(\)/);
+    assert.doesNotMatch(comoSeQuitaElAnuncio("se_fue"), /sold_at/);
+    assert.doesNotMatch(comoSeQuitaElAnuncio("retirado"), /sold_at/);
+  });
+
+  test("y su garaje deja de decir que está publicado", () => {
+    // Son dos sitios. Quitando solo la oferta, a él le seguiría saliendo
+    // «publicado» en su panel y no entendería nada.
+    assert.match(SQL_YA_NO_ESTA_LISTADO, /moveadvisor_user_vehicle_states/);
+    assert.match(SQL_YA_NO_ESTA_LISTADO, /SET is_listed = FALSE/);
+  });
+
+  test("las dos consultas dicen si han cambiado algo", () => {
+    // Un anuncio que se creía quitado y sigue puesto trae la siguiente visita.
+    for (const m of MOTIVOS) {
+      assert.match(comoSeQuitaElAnuncio(m), /RETURNING id/, m);
+    }
   });
 });

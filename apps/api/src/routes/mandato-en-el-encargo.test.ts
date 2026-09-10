@@ -292,3 +292,50 @@ describe('vender abre la transferencia', () => {
     assert.match(CERRAR, /sin transferencia/);
   });
 });
+
+describe('cerrar quita el anuncio', () => {
+  /*
+   * No lo hacía nadie, y de ahí colgaba el aviso de retirar de los portales:
+   * dispara cuando el coche deja de estar activo en nuestro escaparate, así que
+   * **no saltaba nunca**. La alarma estaba puesta y el sensor sin conectar.
+   */
+  const CERRAR = (() => {
+    const desde = ENCARGOS.indexOf("'/encargos/:id/cerrar'");
+    const siguiente = ENCARGOS.indexOf('encargosRouter.', desde + 20);
+    return ENCARGOS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('se quita, acabe como acabe', () => {
+    // Fuera de cualquier `if (motivo === ...)`: en ese anuncio sale nuestro
+    // teléfono, y los tres finales significan que ya no gestionamos ese coche.
+    assert.match(CERRAR, /comoSeQuitaElAnuncio\(motivo\)/);
+  });
+
+  test('y su garaje deja de decir que está publicado', () => {
+    assert.match(CERRAR, /SQL_YA_NO_ESTA_LISTADO/);
+  });
+
+  test('con el identificador que usa el marketplace para un IDCar', () => {
+    // `idcar-<id>` es como lo escribe PopCar al publicar. Con otro, la consulta
+    // corre, no encuentra nada y no falla.
+    assert.match(CERRAR, /const offerId = `idcar-\$\{String\(e\.vehicle_id\)\}`/);
+  });
+
+  test('va antes que el correo y que la transferencia', () => {
+    /*
+     * Si algo de lo de después falla, lo que no puede quedarse es el anuncio
+     * vivo: es lo único que sigue trayendo gente a un coche que ya no está.
+     */
+    const quita = CERRAR.indexOf('comoSeQuitaElAnuncio(');
+    const correo = CERRAR.indexOf('elCorreoDelCierre(');
+    const transfer = CERRAR.indexOf('abreLaTransferenciaDelEncargo(');
+    assert.ok(quita > 0 && correo > 0 && transfer > 0);
+    assert.ok(quita < transfer, 'la transferencia va antes de quitar el anuncio');
+    assert.ok(quita < correo, 'el correo va antes de quitar el anuncio');
+  });
+
+  test('y si falla, no tumba el cierre', () => {
+    // El encargo ya está cerrado y la factura emitida.
+    assert.match(CERRAR, /sin quitar el anuncio/);
+  });
+});

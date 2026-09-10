@@ -42,6 +42,7 @@ import {
 import {
   MOTIVOS, COMO_ACABO, esUnMotivo, loQueSeLeFactura,
   TIPO_DE_FACTURA, SQL_YA_EMITIDA, SQL_CIERRA,
+  comoSeQuitaElAnuncio, SQL_YA_NO_ESTA_LISTADO,
 } from '../lib/cierre-del-encargo.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
@@ -612,6 +613,26 @@ encargosRouter.post(
         res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' });
         return;
       }
+
+      /*
+       * Se quita el anuncio, acabe como acabe.
+       *
+       * En ese anuncio sale **nuestro** teléfono. Dejarlo puesto después de
+       * cerrar significa seguir cogiendo llamadas por un coche que ya no
+       * gestionamos, y decirle que no a quien llama.
+       *
+       * No lo hacía nadie: ni esto ni cerrar la visita como «se lo quedó». Y de
+       * ahí colgaba el aviso de retirar de los portales, que dispara cuando el
+       * coche deja de estar activo aquí — así que no saltaba nunca.
+       *
+       * Va antes del correo y de la transferencia a propósito: si algo de esto
+       * falla, lo que no puede quedarse es el anuncio vivo.
+       */
+      const offerId = `idcar-${String(e.vehicle_id)}`;
+      await query(comoSeQuitaElAnuncio(motivo), [offerId])
+        .catch((err) => console.error('[encargos] sin quitar el anuncio:', (err as Error).message));
+      await query(SQL_YA_NO_ESTA_LISTADO, [String(e.vehicle_id)])
+        .catch((err) => console.error('[encargos] su garaje sigue diciendo publicado:', (err as Error).message));
 
       /*
        * Si se vendió, se abre la transferencia.
