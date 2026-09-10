@@ -48,6 +48,10 @@ facturar, en Comisiones y en Pendientes. Emitirla sigue siendo una persona
 pulsando un botón en el ERP, y esa persona ve de dónde viene el dato. Un clic
 sin comprobar no puede facturarle a un tercero.
 
+**Y emitirla tampoco la manda.** Sale de aquí cuando alguien descarga su PDF en
+Facturación clientes; hasta entonces está en Pendientes como emitida y sin
+enviar. Los pasos están en «El día en el ERP».
+
 ## Si mañana se cambia algo
 
 Lo que hay que tocar a la vez, en los dos repositorios:
