@@ -83,12 +83,31 @@ interface VentaSinComisionar {
   precio: string | number | null;
 }
 
+/**
+ * Una financiación firmada a la que no le hemos emitido la comisión.
+ *
+ * `proveedor` es la entidad con la que firmó y `financiado` lo que se financió
+ * —no el precio del coche—: son cosas distintas y confundirlas al facturar
+ * cambiaría el importe.
+ */
+interface FinanciacionSinComisionar {
+  id: string;
+  vehicle_title: string | null;
+  contact_name: string | null;
+  user_email: string | null;
+  date: string | null;
+  proveedor: string | null;
+  financiado: string | number | null;
+}
+
 export default function ComisionesPage() {
   const [comisiones, setComisiones] = useState<Comision[] | null>(null);
   const [catalogo, setCatalogo] = useState<Garantia[]>([]);
   const [fallo, setFallo] = useState('');
   const [ventas, setVentas] = useState<VentaSinComisionar[]>([]);
   const [fee, setFee] = useState(0);
+  const [financiaciones, setFinanciaciones] = useState<FinanciacionSinComisionar[]>([]);
+  const [feeFin, setFeeFin] = useState(0);
   const [emitiendo, setEmitiendo] = useState<string | null>(null);
 
 
@@ -110,6 +129,24 @@ export default function ComisionesPage() {
     api.get<{ ventas: VentaSinComisionar[]; fee: number }>('/provider-billing/pending-dealer-commissions')
       .then((r) => { if (r.ok) { setVentas(r.data.ventas); setFee(r.data.fee); } })
       .catch(() => { /* el resto de la pantalla sirve igual */ });
+    api.get<{ operaciones: FinanciacionSinComisionar[]; fee: number }>('/provider-billing/pending-financing-commissions')
+      .then((r) => { if (r.ok) { setFinanciaciones(r.data.operaciones); setFeeFin(r.data.fee); } })
+      .catch(() => { /* idem */ });
+  }
+
+  /**
+   * Emitirle la comisión a la entidad.
+   *
+   * Se recarga todo, igual que con la del concesionario: la factura nueva va a
+   * la tabla de abajo y la operación sale de esta lista. Quitarla de una sola
+   * dejaría la otra mintiendo.
+   */
+  async function emiteFinanciacion(f: FinanciacionSinComisionar) {
+    setEmitiendo(f.id);
+    const r = await api.post('/provider-billing/financing-commissions', { booking_id: f.id });
+    setEmitiendo(null);
+    if (!r.ok) { setFallo(r.error || 'No se ha podido emitir la comisión de financiación'); return; }
+    recarga();
   }
 
   async function emite(v: VentaSinComisionar) {
@@ -183,6 +220,55 @@ export default function ComisionesPage() {
                     <button type="button" disabled={emitiendo === v.id} onClick={() => emite(v)}
                             className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
                       {emitiendo === v.id ? 'Emitiendo…' : 'Emitir la factura'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </div>
+      )}
+
+      {/*
+        * Las financiaciones que ya constan firmadas y siguen sin su factura.
+        *
+        * Va aparte del bloque de arriba aunque se parezca: son dos acuerdos
+        * distintos, con proveedores distintos y con importes que no tienen por
+        * qué coincidir. Juntarlas en una tabla obligaría a mirar la columna
+        * para saber a quién se le está cobrando qué.
+        */}
+      {financiaciones.length > 0 && (
+        <div className="bg-white rounded-xl border border-acento shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-brand-100 bg-acento-tenue">
+            <h3 className="font-semibold text-acento-texto text-sm">
+              {financiaciones.length === 1
+                ? 'Una financiación sin comisionar'
+                : `${financiaciones.length} financiaciones sin comisionar`}
+            </h3>
+            <p className="text-[12.5px] text-acento-texto/85 mt-0.5">
+              Compradores que financiaron el coche. El fee es de {euros(feeFin)} por operación,
+              IVA incluido, y es <strong>provisional</strong>: no hay nada firmado con ninguna
+              entidad todavía.
+            </p>
+          </div>
+          <div className="overflow-x-auto"><table className="erp-table">
+            <thead><tr>
+              <th>Fecha</th><th>Entidad</th><th>Coche</th><th>Comprador</th>
+              <th>Se financió</th><th>Comisión</th><th></th>
+            </tr></thead>
+            <tbody>
+              {financiaciones.map((f) => (
+                <tr key={f.id}>
+                  <td>{elDia(f.date)}</td>
+                  <td className="font-medium text-brand-600">{f.proveedor}</td>
+                  <td>{f.vehicle_title || '–'}</td>
+                  <td>{f.contact_name || f.user_email || '–'}</td>
+                  <td className="tabular-nums">{euros(f.financiado)}</td>
+                  <td className="tabular-nums font-semibold">{euros(feeFin)}</td>
+                  <td>
+                    <button type="button" disabled={emitiendo === f.id} onClick={() => emiteFinanciacion(f)}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
+                      {emitiendo === f.id ? 'Emitiendo…' : 'Emitir la factura'}
                     </button>
                   </td>
                 </tr>

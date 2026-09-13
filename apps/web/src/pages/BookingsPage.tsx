@@ -28,6 +28,16 @@ type Booking = {
   financiacion_llamada_at: string | null;
   financiacion_llamada_por: string;
   /**
+   * En que quedo la financiacion, una vez que compro el coche.
+   *
+   * `null` no es «no financio»: es que todavia no se sabe, y por eso sale en
+   * Pendientes. Confundir las dos cosas cerraria la linea sin mirarla — y de
+   * la financiada sale una factura a la entidad.
+   */
+  financiacion_resultado: 'financiada' | 'no_financiada' | null;
+  financiacion_entidad: string;
+  financiacion_importe: number | null;
+  /**
    * De donde vino el comprador: «coches.net», «direct»…
    *
    * Es la unica forma de saber si el portal trae gente o solo cuesta dinero.
@@ -460,7 +470,13 @@ export default function BookingsPage() {
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
   const [porCerrar, setPorCerrar]   = useState<Booking[]>([]);
+  /** Las que compraron y no consta en que quedo su financiacion. */
+  const [finSinCerrar, setFinSinCerrar] = useState<Booking[]>([]);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  /** Qué financiación se está cerrando, y con qué datos. */
+  const [cerrandoFin, setCerrandoFin] = useState<string | null>(null);
+  const [entidadFin, setEntidadFin] = useState('');
+  const [importeFin, setImporteFin] = useState('');
   const [confirmar, setConfirmar] = useState<Booking | null>(null);
   // El mismo par de datos que pide confirmar, pero para una cita que ya lo
   // está: la dirección concreta casi nunca se sabe cuando se dice que sí.
@@ -522,6 +538,16 @@ export default function BookingsPage() {
     if (conf.ok) setBookings(conf.data?.bookings || []);
     if (pend.ok) setPendientes(pend.data?.bookings || []);
     if (cerrar.ok) setPorCerrar(cerrar.data?.bookings || []);
+    /*
+     * Y las financiaciones sin cerrar, que es a donde manda Pendientes.
+     *
+     * Va en su propia peticion y no colgando de las de arriba: son visitas ya
+     * cerradas como venta, asi que no estan en ninguna de esas tres listas y
+     * sin esto habria que buscarlas a mano entre todas.
+     */
+    api.get<any>('/visit-bookings/financiacion/sin-cerrar')
+      .then((r) => { if (r.ok) setFinSinCerrar(r.data?.compradores || []); })
+      .catch(() => { /* el resto de la Agenda sirve igual */ });
     setLoading(false);
   }, [range]);
 
@@ -736,6 +762,41 @@ export default function BookingsPage() {
       setResultado({ mal: true, texto: 'No se ha podido apuntar la llamada.' });
       return;
     }
+    load();
+  }
+
+  /**
+   * Y en qué quedó, una vez que compró el coche.
+   *
+   * Éste sí va en diálogo, al revés que el de la llamada: aquí se decide algo
+   * —de la financiada sale una factura a la entidad— y hacen falta dos datos
+   * que nadie se sabe de memoria. Un botón suelto que emitiera una comisión
+   * sin preguntar nada es cómo se cobra de más.
+   */
+  async function cierraFinanciacion(id: string, resultado: 'financiada' | 'no_financiada') {
+    const cuerpo = resultado === 'financiada'
+      ? { resultado, entidad: entidadFin.trim(), importe: Number(importeFin) || null }
+      : { resultado };
+    const r = await api.post(`/visit-bookings/${id}/financiacion-cierre`, cuerpo);
+    if (!r.ok) {
+      setResultado({
+        mal: true,
+        texto: r.error === 'falta_la_entidad'
+          ? 'Falta con qué entidad se firmó: sin eso no hay a quién facturarle la comisión.'
+          : r.error === 'ya_estaba_cerrada'
+            ? 'Esta financiación ya estaba cerrada.'
+            : 'No se ha podido apuntar.',
+      });
+      return;
+    }
+    setCerrandoFin(null);
+    setEntidadFin('');
+    setImporteFin('');
+    setResultado(
+      resultado === 'financiada'
+        ? { mal: false, texto: 'Apuntado. Ya sale en Comisiones para emitirle la factura a la entidad.' }
+        : { mal: false, texto: 'Apuntado. Deja de salir en Pendientes.' }
+    );
     load();
   }
 
@@ -989,6 +1050,52 @@ export default function BookingsPage() {
         </div>
       )}
 
+      {/*
+        * Las financiaciones sin cerrar.
+        *
+        * Es a donde manda la línea de Pendientes. Son visitas ya cerradas como
+        * venta, así que no salen en ninguno de los bloques de arriba ni en la
+        * agenda de los próximos días: sin esto habría que buscarlas a mano
+        * entre todas, y el aviso mandaría a un sitio donde no se encuentra
+        * nada.
+        */}
+      {finSinCerrar.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-amber-200 bg-amber-50">
+            <h2 className="text-sm font-bold text-amber-900">
+              {finSinCerrar.length === 1
+                ? 'Una financiación por cerrar'
+                : `${finSinCerrar.length} financiaciones por cerrar`}
+            </h2>
+            <p className="text-[12.5px] text-amber-800/85 mt-0.5 max-w-3xl">
+              Compraron el coche y dijeron que querían financiarlo. Mientras no conste con qué
+              entidad firmaron, no se le puede facturar la comisión a nadie.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {finSinCerrar.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</div>
+                  <div className="text-xs text-brand-400">
+                    {b.buyer_name || '–'}{b.buyer_phone ? ` · ${b.buyer_phone}` : ''}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setCerrandoFin(b.id); setEntidadFin(''); setImporteFin(''); }}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700"
+                  >
+                    Cerrar la financiación
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* El teléfono de quien vende, cuando no lo hay.
           Se guarda por vendedor y no por coche: es suyo, y con ponerlo una vez
           quedan cubiertos todos sus coches. Hoy hay 4.316 ofertas de
@@ -1083,6 +1190,63 @@ export default function BookingsPage() {
         </div>
       )}
 
+
+      {/*
+        * En qué quedó la financiación del que compró.
+        *
+        * Va en diálogo, al revés que el botón de «marcar llamado»: aquí se
+        * decide algo —de la financiada sale una factura a la entidad— y hacen
+        * falta dos datos que nadie se sabe de memoria.
+        */}
+      {cerrandoFin && (
+        <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
+             onClick={() => setCerrandoFin(null)} role="dialog" aria-modal="true" aria-label="Cerrar la financiación">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-brand-200 shadow-2xl"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-brand-100">
+              <h2 className="text-lg font-bold text-brand-600">¿En qué quedó la financiación?</h2>
+              <p className="text-[12.5px] text-brand-400 mt-0.5">
+                Compró el coche y dijo que le interesaba financiarlo.
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[13px] text-brand-400">
+                Si financió, de aquí sale la factura de nuestra comisión a la entidad.
+                Si no financió, se marca igual y deja de salir en Pendientes.
+              </p>
+              <label className="block text-xs font-medium text-brand-500">
+                Con qué entidad
+                <input value={entidadFin} onChange={(e) => setEntidadFin(e.target.value)} maxLength={120}
+                       placeholder="El nombre del banco, y siempre el mismo"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <label className="block text-xs font-medium text-brand-500">
+                Cuánto se financió
+                <input value={importeFin} onChange={(e) => setImporteFin(e.target.value)}
+                       inputMode="decimal" placeholder="12000"
+                       className="mt-1 w-full px-3 py-2 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento" />
+              </label>
+              <p className="text-[12px] text-brand-300">
+                Escrito siempre igual, el nombre de la entidad: es lo único que después
+                permite saber si el acuerdo con una vale la pena.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-100 flex justify-between gap-2">
+              <Boton variante="fantasma"
+                     onClick={() => cerrandoFin && cierraFinanciacion(cerrandoFin, 'no_financiada')}>
+                Al final no financió
+              </Boton>
+              <div className="flex gap-2">
+                <Boton variante="fantasma" onClick={() => setCerrandoFin(null)}>Volver</Boton>
+                <Boton variante="acento"
+                       onClick={() => cerrandoFin && cierraFinanciacion(cerrandoFin, 'financiada')}>
+                  Financió
+                </Boton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {lugar && (
         <div className="fixed inset-0 z-50 bg-brand-700/40 backdrop-blur-[2px] flex items-center justify-center px-4"
@@ -1587,6 +1751,44 @@ export default function BookingsPage() {
                                  border border-violet-200 hover:bg-violet-100"
                     >
                       quiere financiar · marcar llamado
+                    </button>
+                  )
+                )}
+
+                {/*
+                  * Y cuando además se lo quedó, en qué acabó la financiación.
+                  *
+                  * Que comprara no es que financiara: entre las dos cosas hay
+                  * una aprobación que puede no llegar. Mientras no conste, esa
+                  * operación sale en Pendientes — y de la financiada sale una
+                  * factura a la entidad, así que no se puede deducir.
+                  */}
+                {b.quiere_financiar && b.resultado === 'compro' && (
+                  b.financiacion_resultado ? (
+                    <span
+                      title={b.financiacion_resultado === 'financiada'
+                        ? `Financió con ${b.financiacion_entidad || 'una entidad'}`
+                        : 'Al final no financió'}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-50 text-brand-500 border border-brand-200"
+                    >
+                      {b.financiacion_resultado === 'financiada'
+                        ? `financió · ${b.financiacion_entidad || 'sin entidad'}`
+                        : 'no financió'}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setCerrandoFin(b.id);
+                        setEntidadFin('');
+                        setImporteFin('');
+                      }}
+                      title="Compró el coche y no consta si llegó a financiar. Sin esto no se le puede facturar a la entidad."
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800
+                                 border border-amber-300 hover:bg-amber-100"
+                    >
+                      cerrar financiación
                     </button>
                   )
                 )}

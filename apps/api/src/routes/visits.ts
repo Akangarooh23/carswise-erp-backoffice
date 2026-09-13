@@ -523,6 +523,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
       `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
               b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
              b.financiacion_llamada_at, b.financiacion_llamada_por,
+             b.financiacion_resultado, b.financiacion_entidad, b.financiacion_importe,
               b.meeting_place, b.meeting_contact,
               b.resultado, b.resultado_at,
               b.status, b.created_at
@@ -1358,6 +1359,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
       SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
              b.financiacion_llamada_at, b.financiacion_llamada_por,
+             b.financiacion_resultado, b.financiacion_entidad, b.financiacion_importe,
              b.status, b.source, b.created_at,
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,
