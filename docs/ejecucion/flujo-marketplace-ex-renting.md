@@ -214,6 +214,15 @@ erp: Y mandársela, que es descargar el PDF
 | Los coches | **Marketplace → VO Empresas Renting** |
 | El teléfono y el correo de la empresa | **Proveedores** → su ficha. El correo es al que sale su factura |
 | Las facturas emitidas que no se han mandado | **Dashboard → Pendientes**, y la lista en **Facturación clientes** |
+
+## Lo que queda pendiente
+
+> **Con Astara y Leasys no hay nada firmado**, así que el importe de la comisión
+> es el provisional de los concesionarios. Y como a ellos: sin su **CIF** no se
+> les emite, y sin su **correo** en la ficha se emite pero se queda sin mandar.
+
+La lista entera de lo que falta, con la de los demás flujos, está en **El día en
+el ERP**.
 | El de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |
 | Las visitas por confirmar | **Agenda**, bloque de arriba, con la marca «Ex-renting» |
 | El informe de DEKRA | **Agenda** → la visita → enlace «origen» |

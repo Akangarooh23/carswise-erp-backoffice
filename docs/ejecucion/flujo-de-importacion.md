@@ -309,3 +309,15 @@ tocar lo que sea.
 | Al organizar el tramo | Vendedor | Dónde y cuándo se recoge |
 | Con el tramo creado | Transportista | La recogida, con las dos puntas |
 | Al entrar en trámites | Gestoría | Los papeleos y el impuesto real |
+
+---
+
+## Lo que queda pendiente
+
+> **A la aseguradora de la garantía hay que poder facturarle.** La comisión se
+> emite, pero sale a la ficha de **Proveedores** de quien la vende: sin su CIF no
+> se emite, y sin su correo se emite y se queda sin mandar, avisando en
+> Pendientes.
+
+La lista entera de lo que falta, con la de los demás flujos, está en **El día en
+el ERP**.

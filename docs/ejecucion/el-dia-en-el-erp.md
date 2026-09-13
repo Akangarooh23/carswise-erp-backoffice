@@ -167,3 +167,46 @@ transacción que se deshace: no dejan ni una fila.
 > saltaba nunca: la alarma montada y el sensor sin conectar. Cada pieza tenía su
 > prueba y las dos estaban bien — el hueco estaba justo entre ellas, que es
 > donde una prueba de unidad no mira.
+
+---
+
+## Lo que queda pendiente
+
+Está aquí y no repartido por los cuatro manuales a propósito: lo que falta se
+mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
+
+### Roto y sabido
+
+| Qué | Dónde se nota |
+|---|---|
+| **El botón de «Nueva tasación» del panel del cliente no lleva a ningún sitio.** Navega a una sección que no existe y le deja en el inicio del panel | Le decimos «hazte la tasación, sale de tu panel» y ahí se queda. Puede conseguirla por otro camino —editando el coche, en «cómo quieres ponerle precio»— pero no es lo que le hemos dicho |
+
+### Esperando a Juan
+
+| Qué | Mientras tanto |
+|---|---|
+| Con qué entidad financiera trabajamos | El comprador que la pide sale en Pendientes y se le llama |
+| **Cómo nos llega si la aprueban** | Nada: hoy no hay forma de enterarse |
+
+### Esperando a Ana
+
+| Qué | Por qué bloquea |
+|---|---|
+| Si al que agota los 30 días se le cobra algo | El ERP da por hecho que sí; cambiarlo es una decisión, no un ajuste |
+| **CIF y razón social** de Gamboa Ocasión y VIAN | Sin eso no se les puede emitir la comisión |
+| Y su **correo** en la ficha de Proveedores | Sin él la factura se emite pero no se manda, y se queda avisando |
+| Si la guía de subir el coche va **adjunta** al correo o enlazada | Hoy va enlazada: adjuntarla obliga a una segunda copia del texto |
+
+### Sin revisar por nadie de fuera
+
+> **El mandato y el contrato de compraventa no los ha visto un abogado.** Están
+> escritos con la cabeza puesta en lo que hacemos y en decir lo que no somos,
+> pero son los dos papeles que firman personas. Es lo único de todo esto que, si
+> está mal, no se descubre hasta que alguien discute una factura.
+
+### Sin diseñar
+
+| Qué |
+|---|
+| Qué pasa con el comprador financiado después de comprar |
+| Poner y quitar el anuncio del portal: seguirá siendo a mano, y es una decisión, no una falta |

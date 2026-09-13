@@ -404,6 +404,19 @@ escribe solo al reservar. Del concesionario no.
 | El rastro de una visita | **Agenda** → Ver rastro |
 | Las ventas sin facturar | **Comisiones**, bloque de arriba |
 | Las facturas emitidas que no se han mandado | **Dashboard → Pendientes**, y la lista en **Facturación clientes** |
+
+## Lo que queda pendiente
+
+> **A Gamboa Ocasión y a VIAN no se les puede facturar todavía.** Falta su
+> **CIF y razón social** —la factura sale a nombre de la sociedad, no del
+> rótulo— y su **correo** en la ficha de Proveedores, que es a donde sale. Sin
+> el CIF no se emite; sin el correo se emite pero se queda sin mandar, avisando
+> en Pendientes.
+>
+> Y los **200 €** siguen siendo provisionales: no hay nada firmado con nadie.
+
+La lista entera de lo que falta, con la de los demás flujos, está en **El día en
+el ERP**.
 | Las visitas de un coche | **Marketplace** → la oferta → panel de visitas |
 | El teléfono del vendedor | **Agenda** → la visita → «apuntarlo». Vale para todos sus coches |
 | El teléfono de un coche suelto | **Marketplace** → la oferta → «Teléfono de quien vende» |
