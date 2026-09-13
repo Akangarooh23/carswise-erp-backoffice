@@ -158,9 +158,18 @@ export function elCorreoDePublicado(
 export function laRutaDelAlta(sitio: string, matricula: string): string {
   const base = String(sitio ?? '').replace(/\/+$/, '');
   const m = String(matricula ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  /*
+   * `/mis-coches`, no `/panel/vehiculos`.
+   *
+   * Aquélla es la lista de su garaje y **no lee la matrícula de la dirección**:
+   * el cliente abría el correo, llegaba a una lista, y tenía que buscar el
+   * botón de crear y volver a escribir la matrícula que ya nos había dado. Esta
+   * abre el formulario con la matrícula puesta — y si resulta que ese coche ya
+   * lo tiene, lo abre en vez de crear un duplicado.
+   */
   return m
-    ? `${base}/panel/vehiculos?matricula=${encodeURIComponent(m)}`
-    : `${base}/panel/vehiculos`;
+    ? `${base}/mis-coches?matricula=${encodeURIComponent(m)}`
+    : `${base}/mis-coches`;
 }
 
 /**

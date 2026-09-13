@@ -174,7 +174,7 @@ describe('lo que valen para cualquier coche', () => {
 
 describe('el correo del alta del coche', () => {
   const c = () => elCorreoDelAlta({
-    ...COCHE, url: 'https://popcar.com.es/panel/vehiculos?matricula=8888LXR',
+    ...COCHE, url: 'https://popcar.com.es/mis-coches?matricula=8888LXR',
     guia: 'https://popcar.com.es/como-subir-tu-coche',
   });
 
@@ -184,7 +184,7 @@ describe('el correo del alta del coche', () => {
      * sitio, que es donde se pierde la mitad de la gente que si queria
      * hacerlo: cuelga, no lo encuentra, y lo deja para luego.
      */
-    assert.match(c().html, /panel\/vehiculos\?matricula=8888LXR/);
+    assert.match(c().html, /mis-coches\?matricula=8888LXR/);
   });
 
   test('y la guía como segunda opción, no como la principal', () => {
@@ -217,7 +217,7 @@ describe('la ruta del alta', () => {
   test('lleva la matrícula ya puesta', () => {
     assert.equal(
       laRutaDelAlta('https://popcar.com.es', '8888 lxr'),
-      'https://popcar.com.es/panel/vehiculos?matricula=8888LXR',
+      'https://popcar.com.es/mis-coches?matricula=8888LXR',
     );
   });
 
@@ -233,10 +233,10 @@ describe('la ruta del alta', () => {
   });
 
   test('sin matrícula, la ruta a secas', () => {
-    assert.equal(laRutaDelAlta('https://x.es', ''), 'https://x.es/panel/vehiculos');
+    assert.equal(laRutaDelAlta('https://x.es', ''), 'https://x.es/mis-coches');
   });
 
   test('y una barra de más no deja una doble', () => {
-    assert.equal(laRutaDelAlta('https://x.es/', ''), 'https://x.es/panel/vehiculos');
+    assert.equal(laRutaDelAlta('https://x.es/', ''), 'https://x.es/mis-coches');
   });
 });
