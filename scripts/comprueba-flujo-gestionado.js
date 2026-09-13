@@ -47,10 +47,43 @@ function delCodigo(fichero, nombre) {
   return Number(m[1]);
 }
 
+/**
+ * Y las consultas también salen del código.
+ *
+ * Copiada aquí, la consulta seguiría pasando el día que la de verdad cambiara:
+ * estaríamos comprobando una consulta que ya no usa nadie.
+ */
+const TILDE = String.fromCharCode(96);
+function elSqlDe(fichero, nombre) {
+  const src = fs.readFileSync(path.join(RAIZ, fichero), 'utf8');
+  const abre = `export const ${nombre} = ${TILDE}`;
+  const i = src.indexOf(abre);
+  if (i < 0) throw new Error(`no encuentro ${nombre} en ${fichero}`);
+  const a = i + abre.length;
+  return src.slice(a, src.indexOf(TILDE, a));
+}
+
+/**
+ * Lo que el cliente vería en su panel, pedido al código de PopCar.
+ *
+ * Es el otro lado del mismo coche. El ERP y el panel calculan las cinco
+ * puertas por separado, en dos repositorios que no se pueden importar, y el
+ * fallo que nadie cazaría es que dijeran cosas distintas: el cliente leyendo
+ * «ya está» mientras el ERP dice que falta la ITV. Cada lado tiene sus
+ * pruebas y las dos pasarían.
+ *
+ * Si PopCar no está al lado no se puede comparar, y se dice en voz alta en vez
+ * de callar: una comprobación que desaparece sin avisar es peor que no tenerla.
+ */
+const POPCAR = path.join(RAIZ, '..', 'Mobility-Advisor', 'lib', 'puertas-del-encargo.js');
+const elPanel = fs.existsSync(POPCAR) ? require(POPCAR) : null;
+
 const LIB = 'apps/api/src/lib/encargo-de-venta.ts';
 const FOTOS = delCodigo(LIB, 'FOTOS_MINIMAS');
 const FRANJAS = delCodigo(LIB, 'FRANJAS_MINIMAS');
+const DIAS = delCodigo(LIB, 'DIAS_DE_FRANJAS');
 const FEE = delCodigo(LIB, 'FEE_DE_GESTION');
+const SQL_SIN_ENVIAR = elSqlDe('apps/api/src/lib/facturas-sin-enviar.ts', 'SQL_SIN_ENVIAR');
 const PAPELES = ['circulation_permit', 'technical_sheet', 'itv'];
 
 const COCHE = 'veh-comprueba-flujo';
@@ -205,6 +238,32 @@ const VENDIDOS_SIN_CERRAR = `
     let p = (await c.query(PUERTAS, [COCHE, OFERTA])).rows[0];
     di(Number(p.fotos) === 0, 'sin fotos NO se puede publicar');
 
+    /*
+     * Y el cliente ve lo mismo que nosotros, no una versión suya.
+     *
+     * Se le pide al código de PopCar sobre esta misma transacción, así que mira
+     * exactamente las filas que acaba de escribir esta prueba.
+     */
+    if (!elPanel) {
+      di(false, 'SIN COMPROBAR: PopCar no esta al lado, no se puede comparar el panel');
+    } else {
+      const suyas = elPanel.lasPuertas(await elPanel.loQueHayDe(c, COCHE));
+      di(suyas.length === 5 && suyas.every((x) => !x.abierta),
+        'al cliente su panel le dice que le faltan las 5');
+      /*
+       * Los números de su texto son los nuestros.
+       *
+       * No se compara la frase entera: cambiar una palabra del panel no es una
+       * regresión y no puede romper esto. Lo que no puede cambiar por su cuenta
+       * es cuántas franjas se piden y en cuántos días.
+       */
+      const franjas = suyas.find((x) => x.clave === 'franjas');
+      di(franjas.falta.includes(`0 de ${FRANJAS}`) && franjas.falta.includes(String(DIAS)),
+        `y se lo cuenta con los mismos numeros: «${franjas.falta}»`);
+      di(suyas.filter((x) => !x.abierta).every((x) => x.donde && x.donde.url),
+        'y cada una le dice donde se hace');
+    }
+
     for (let i = 0; i < FOTOS; i++) {
       await c.query(
         `INSERT INTO moveadvisor_user_vehicle_files
@@ -247,6 +306,20 @@ const VENDIDOS_SIN_CERRAR = `
     di(Number(p.tasacion) > 0, `la tasacion (${p.tasacion} EUR)`);
     di(p.informe === 'informe_listo', 'el informe terminado');
     di(Number(p.franjas) >= FRANJAS, `las ${FRANJAS} franjas`);
+
+    if (elPanel) {
+      /*
+       * Y ahora el panel tiene que decirle que ya está.
+       *
+       * Es la mitad que importa de esta comparación. Que los dos lados digan
+       * «falta todo» con el coche vacío es fácil; lo que caza una regla que se
+       * ha separado es que con todo puesto uno diga que ya está y el otro no.
+       */
+      const suyas = elPanel.lasPuertas(await elPanel.loQueHayDe(c, COCHE));
+      const cerradas = suyas.filter((x) => !x.abierta).map((x) => x.nombre);
+      di(cerradas.length === 0, `al cliente no le queda nada${cerradas.length ? ` (dice que falta: ${cerradas.join(', ')})` : ''}`);
+      di(suyas.every((x) => x.donde === null), 'y lo hecho ya no le enlaza a ningun sitio');
+    }
 
     // ── 7 · La sexta puerta: el taller ─────────────────────────────────────
     paso(7, 'La revision del taller, que es la nuestra');
@@ -327,6 +400,26 @@ const VENDIDOS_SIN_CERRAR = `
       [ENCARGO, EMAIL, Number((FEE / 1.21).toFixed(2)), FEE]
     );
     di(true, `se emite la factura de ${FEE} EUR, IVA incluido`);
+
+    /*
+     * Emitirla no es mandarla, y eso tiene que notarse.
+     *
+     * El correo de cierre le promete «te llega la factura por separado» y el
+     * envío solo pasa cuando alguien descarga el PDF. Antes no lo delataba
+     * nada: la columna del envío existía, se pintaba en la pantalla y no la
+     * escribía nadie. Aquí se comprueba que mientras no salga, la factura está
+     * en la lista — y que en cuanto se marca, se cae de ella.
+     */
+    const sinEnviar = async () => (await c.query(SQL_SIN_ENVIAR)).rows[0].n;
+    di(await sinEnviar() === 1, 'y mientras no salga, sale en Pendientes como «sin enviar»');
+
+    await c.query(
+      `UPDATE moveadvisor_provider_invoices
+          SET cw_sent_at = NOW(), updated_at = NOW()
+        WHERE cw_sent_at IS NULL AND (id = $1 OR invoice_number = $1)`,
+      ['FAC-comprueba-flujo']
+    );
+    di(await sinEnviar() === 0, 'y cuando se le manda, el aviso se apaga');
 
     await c.query(
       `UPDATE moveadvisor_marketplace_vo_offers SET is_active=FALSE, sold_at=NOW() WHERE id=$1`,

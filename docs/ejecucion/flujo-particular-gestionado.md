@@ -512,6 +512,17 @@ transferencia y el aviso de retirar del portal— y comprueba en cada uno lo que
 tiene que ser cierto **y lo que todavía no**. Todo dentro de una transacción que
 se deshace: no deja ni una fila.
 
+> **También mira el otro lado del mismo coche.** En el paso de las puertas le
+> pregunta al código de PopCar qué vería el cliente en su panel, sobre esa misma
+> transacción, y compara. El fallo que no cazaría nadie es que los dos dijeran
+> cosas distintas —él leyendo «ya está» mientras el ERP dice que falta la ITV—,
+> porque cada lado tiene sus pruebas y las dos pasarían. Si PopCar no está en la
+> carpeta de al lado, lo dice en voz alta en vez de callarse la comprobación.
+
+> **Y que emitir la factura no es mandarla.** Comprueba que mientras no sale
+> está en Pendientes como «sin enviar», y que en cuanto se marca, el aviso se
+> apaga.
+
 > **Existe por un fallo concreto.** Cerrar el encargo no despublicaba el coche,
 > y como el aviso de retirar del portal mira el escaparate, no saltaba nunca: la
 > alarma montada y el sensor sin conectar. Cada pieza tenía su prueba y estaban
