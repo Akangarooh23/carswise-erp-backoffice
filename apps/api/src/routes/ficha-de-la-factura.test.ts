@@ -77,12 +77,19 @@ describe('las que ya estaban', () => {
 });
 
 describe('las nuevas', () => {
-  test('se atan las seis veces que se crea una factura', () => {
-    // Seis sitios crean facturas. Si uno se queda fuera, sus facturas no salen
-    // en ninguna suma por proveedor y nadie lo nota: el total sale más bajo.
+  test('se atan las siete veces que se crea una factura', () => {
+    /*
+     * Siete sitios crean facturas. Si uno se queda fuera, sus facturas no salen
+     * en ninguna suma por proveedor y nadie lo nota: el total sale más bajo.
+     *
+     * Eran seis hasta que entró la comisión de financiación. Este número se
+     * sube **después** de comprobar que la nueva ata su ficha, no antes: subirlo
+     * para que la prueba deje de molestar es exactamente cómo se cuela la que
+     * no ata.
+     */
     const altas = (FUENTE.match(/await guardaConIdUnico\(nextProviderInvoiceId/g) ?? []).length;
     const atadas = (FUENTE.match(/await ataLaFactura\(/g) ?? []).length;
-    assert.equal(altas, 6, 'ha cambiado el número de sitios que crean facturas');
+    assert.equal(altas, 7, 'ha cambiado el número de sitios que crean facturas');
     assert.equal(atadas, altas, `${altas} altas y ${atadas} atadas`);
   });
 

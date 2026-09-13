@@ -10,6 +10,11 @@ import { seEsperaFactura, cualEsperaCierra, ESPERADA, CUADRADA } from '../lib/fa
 import { preparaGarantias } from './garantias.js';
 import { preparaVisitas } from './visits.js';
 import { FEE_POR_VENTA, laComision, elConcepto } from '../lib/comision-del-concesionario.js';
+import {
+  FEE_POR_FINANCIACION,
+  laComision as laComisionDeFinanciacion,
+  elConcepto as elConceptoDeFinanciacion,
+} from '../lib/comision-de-financiacion.js';
 import { elProveedorDe } from '../lib/proveedores.js';
 
 /**
@@ -884,6 +889,116 @@ providerBillingRouter.post('/provider-billing/dealer-commissions', requireRole([
     await ataLaFactura(id, proveedor);
 
     res.status(201).json({ ok: true, data: { id, invoice_amount: c.total, provider_name: proveedor } });
+  } catch (err) {
+    falloInterno(res, 'create_failed', err);
+  }
+});
+
+/**
+ * Las financiaciones cerradas cuya comisión no hemos facturado.
+ *
+ * El comprador que llegó del portal, dijo que le interesaba financiar, compró
+ * el coche y **financió de verdad**. Hasta ahora esa línea no tenía dinero por
+ * ninguna parte: era la tercera de la casa, con el fee del concesionario y la
+ * comisión de la garantía, y la única que quedaba sin arreglar. Y es la que
+ * Juan dice que deja margen.
+ *
+ * Solo las `financiada`: que comprara el coche no es que financiara, y
+ * deducirlo sería facturarle a la entidad operaciones que no existieron.
+ */
+providerBillingRouter.get('/provider-billing/pending-financing-commissions', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    await preparaVisitas().catch(() => {});
+    const r = await query(`
+      SELECT b.id, b.vehicle_title, b.buyer_name AS contact_name, b.buyer_email AS user_email,
+             b.financiacion_cerrada_at::date AS date,
+             b.financiacion_entidad AS proveedor,
+             b.financiacion_importe::numeric AS financiado
+        FROM vehicle_visit_bookings b
+       WHERE b.financiacion_resultado = 'financiada'
+         AND COALESCE(NULLIF(TRIM(b.financiacion_entidad), ''), '') <> ''
+         AND b.id::text NOT IN (
+           SELECT contract_id FROM moveadvisor_provider_invoices
+            WHERE type = 'financing_commission' AND contract_id IS NOT NULL
+         )
+       ORDER BY date DESC
+    `);
+    res.json({ ok: true, data: { operaciones: r.rows, fee: FEE_POR_FINANCIACION } });
+  } catch (err) {
+    falloInterno(res, 'pending_financing_failed', err);
+  }
+});
+
+/**
+ * Y emitirla.
+ *
+ * Mismo trato que la del concesionario: el importe llega de fuera porque no hay
+ * nada firmado con ninguna entidad, y el total es **con el IVA dentro**. Las
+ * puertas se comprueban aquí y no solo en la pantalla, porque la pantalla
+ * esconde el botón y esto es lo que manda.
+ */
+providerBillingRouter.post('/provider-billing/financing-commissions', requireRole(['admin', 'operations']), async (req, res) => {
+  const { booking_id } = req.body ?? {};
+  const importe = req.body?.amount == null ? FEE_POR_FINANCIACION : Number(req.body.amount);
+  if (!booking_id || !Number.isFinite(importe) || importe <= 0) {
+    res.status(400).json({ ok: false, error: 'missing_fields', detail: 'booking_id es obligatorio' });
+    return;
+  }
+  try {
+    await preparaVisitas().catch(() => {});
+    const vr = await query<Record<string, string>>(`
+      SELECT id, vehicle_title, buyer_name, buyer_email,
+             financiacion_resultado, financiacion_entidad,
+             financiacion_importe::numeric AS financiado
+        FROM vehicle_visit_bookings WHERE id = $1
+    `, [booking_id]);
+    const v = vr.rows[0];
+    if (!v) { res.status(404).json({ ok: false, error: 'not_found' }); return; }
+
+    // Sin financiación cerrada como «financiada» no hay comisión que cobrar.
+    if (v.financiacion_resultado !== 'financiada') {
+      res.status(409).json({
+        ok: false, error: 'sin_financiacion',
+        detail: 'esta operación no consta como financiada',
+      });
+      return;
+    }
+    const entidad = String(v.financiacion_entidad ?? '').trim();
+    if (!entidad) {
+      res.status(409).json({
+        ok: false, error: 'sin_entidad',
+        detail: 'no consta con qué entidad se firmó, así que no hay a quién facturar',
+      });
+      return;
+    }
+
+    // Y que no salga dos veces, con el mismo criterio que la lista de arriba.
+    const ya = await query(
+      `SELECT id FROM moveadvisor_provider_invoices
+        WHERE type = 'financing_commission' AND contract_id = $1 LIMIT 1`,
+      [String(v.id)]
+    );
+    if (ya.rows.length) {
+      res.status(409).json({ ok: false, error: 'ya_emitida', detail: `ya está la ${ya.rows[0].id}` });
+      return;
+    }
+
+    const c = laComisionDeFinanciacion(importe);
+    const concepto = elConceptoDeFinanciacion(v.vehicle_title, Number(v.financiado) || null);
+
+    const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevo) => {
+      await query(
+        `INSERT INTO moveadvisor_provider_invoices
+           (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email,
+            base_amount, invoice_amount, iva_rate, regimen, notes)
+         VALUES ($1, 'financing_commission', $2, $3, $4, $5, $6, $7, $8, $9, 'nacional', $10)`,
+        [nuevo, entidad, String(v.id), v.vehicle_title, v.buyer_name, v.buyer_email,
+         c.base, c.total, c.iva / 100, concepto]
+      );
+    });
+    await ataLaFactura(id, entidad);
+
+    res.status(201).json({ ok: true, data: { id, invoice_amount: c.total, provider_name: entidad } });
   } catch (err) {
     falloInterno(res, 'create_failed', err);
   }

@@ -15,7 +15,7 @@ import { SQL_SIN_LLAMAR, losQueEsperanDeMas, reparteLosLeads } from '../lib/sin-
 import { losAnunciosPorRetirar } from './anuncios-portal.js';
 import { lasFacturasSinEnviar } from './provider-billing.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
-import { preparaVisitas, losQueQuierenFinanciacion } from './visits.js';
+import { preparaVisitas, losQueQuierenFinanciacion, lasFinanciacionesSinCerrar } from './visits.js';
 
 export const dashboardRouter = Router();
 
@@ -385,7 +385,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, sinEnviar] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, financiacionSinCerrar, sinEnviar] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -550,6 +550,13 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
       losQueQuierenFinanciacion().catch(() => ({ financiacion_sin_llamar: 0 })),
 
       /*
+       * Y las que compraron el coche sin que conste en que quedo su
+       * financiacion. Del que levanta la mano avisamos antes de la visita; de
+       * este, despues de comprar — y es el que tiene dinero detras.
+       */
+      lasFinanciacionesSinCerrar().catch(() => ({ financiacion_sin_cerrar: 0 })),
+
+      /*
        * Y las facturas emitidas que no le han llegado al cliente. En el correo
        * de cierre se le dice que le llegara: si nadie descarga el PDF, no sale.
        */
@@ -567,6 +574,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...encargos,
           ...anuncios,
           ...financiacion,
+          ...financiacionSinCerrar,
           ...sinEnviar,
           portales_parados: portales?.valor?.n ?? 0,
           /*

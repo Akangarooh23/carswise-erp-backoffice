@@ -375,6 +375,21 @@ erp: Nos entra pendiente de confirmar
 > económicos para ver un coche. Al que diga que sí se le manda después a la
 > plataforma de la entidad — que está **por definir**.
 
+> **Y después de comprar, hay que cerrar la financiación.** Que se quedara el
+> coche no es que financiara: entre las dos cosas hay una aprobación que puede
+> no llegar, y puede acabar pagándolo de su bolsillo. Por eso se **apunta**, no
+> se deduce.
+>
+> Mientras no conste, esa operación sale en Pendientes como «financiaciones sin
+> cerrar». Se cierra en **Agenda**, diciendo con qué entidad se firmó y cuánto
+> se financió — o marcando que al final no financió, que también se marca: una
+> lista que no se vacía se deja de mirar.
+>
+> En cuanto consta como financiada, sale en **Comisiones** para emitirle la
+> factura a la entidad. Son **150 €** provisionales, como los 200 del
+> concesionario: no hay nada firmado con ninguna entidad todavía, así que el
+> importe se cambia al emitir.
+
 ---
 
 ## 7 · La visita

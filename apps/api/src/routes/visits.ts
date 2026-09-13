@@ -11,6 +11,12 @@ import {
   SQL_MARCA_LLAMADA, ENSURE_COLUMNAS as ENSURE_FINANCIACION,
   QUE_SE_LE_DICE, LO_QUE_FALTA,
 } from '../lib/financiacion-del-comprador.js';
+import {
+  SQL_SIN_CERRAR as SQL_FINANCIACION_SIN_CERRAR, SQL_LAS_SIN_CERRAR,
+  SQL_CIERRA as SQL_CIERRA_FINANCIACION,
+  ENSURE_COLUMNAS as ENSURE_CIERRE_FINANCIACION,
+  esUnResultado, QUE_SE_PREGUNTA, FEE_POR_FINANCIACION,
+} from '../lib/comision-de-financiacion.js';
 import { elProveedorDe, nombreComparable } from '../lib/proveedores.js';
 import { preparaProveedores } from './proveedores.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
@@ -85,6 +91,8 @@ async function prepara() {
   // Atender la financiación es trabajo de aquí, igual que el resultado de la
   // visita: PopCar pregunta y guarda la respuesta, y llamar lo hacemos nosotros.
   await query(ENSURE_FINANCIACION, []).catch(() => {});
+  // Y cómo acabó, que es lo que hasta ahora no se apuntaba en ningún sitio.
+  await query(ENSURE_CIERRE_FINANCIACION, []).catch(() => {});
   preparado = true;
 }
 
@@ -99,6 +107,23 @@ export async function losQueQuierenFinanciacion(): Promise<{ financiacion_sin_ll
   await prepara().catch(() => {});
   const r = await query(SQL_FINANCIACION_SIN_LLAMAR).catch(() => null);
   return { financiacion_sin_llamar: Number(r?.rows[0]?.n ?? 0) };
+}
+
+/**
+ * Y cuántos compraron el coche sin que se sepa en qué quedó su financiación.
+ *
+ * Es el otro extremo de la misma línea. Del que levanta la mano ya avisamos
+ * antes de la visita; del que además **se lo quedó** no quedaba nada: ni si
+ * llegó a financiar, ni con quién, ni lo que nos tenían que pagar por ello.
+ *
+ * Va aparte de la de arriba a propósito: son dos trabajos distintos en dos
+ * momentos distintos, y juntarlos en un número diría «hay cuatro cosas de
+ * financiación» sin decir si hay que llamar o que cobrar.
+ */
+export async function lasFinanciacionesSinCerrar(): Promise<{ financiacion_sin_cerrar: number }> {
+  await prepara().catch(() => {});
+  const r = await query(SQL_FINANCIACION_SIN_CERRAR).catch(() => null);
+  return { financiacion_sin_cerrar: Number(r?.rows[0]?.n ?? 0) };
 }
 
 /**
@@ -1131,6 +1156,80 @@ visitsRouter.post('/visit-bookings/:bookingId/financiacion-llamada', requireRole
   } catch (e) {
     console.error('[visitas] marcar la llamada de financiacion:', (e as Error).message);
     res.status(500).json({ ok: false, error: 'financiacion_llamada_failed' });
+  }
+});
+
+/** Los que compraron y no se sabe en qué quedó su financiación. */
+visitsRouter.get('/visit-bookings/financiacion/sin-cerrar', requireRole(ROLES), async (_req, res) => {
+  try {
+    await prepara();
+    const r = await query(SQL_LAS_SIN_CERRAR).catch(() => ({ rows: [] }));
+    res.json({
+      ok: true,
+      data: {
+        compradores: r.rows,
+        que_se_pregunta: QUE_SE_PREGUNTA,
+        fee_propuesto: FEE_POR_FINANCIACION,
+      },
+    });
+  } catch (e) {
+    console.error('[visitas] financiaciones sin cerrar:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'financiacion_sin_cerrar_failed' });
+  }
+});
+
+/**
+ * Se apunta en qué quedó: financiada o no.
+ *
+ * El «no» se apunta igual que el «sí». Dejar sin marcar al que no financió es
+ * lo que hace que una lista de pendientes no se vacíe nunca, y una lista que no
+ * se vacía se deja de mirar — y entonces tampoco se ve el que sí.
+ *
+ * La entidad y el importe solo tienen sentido si financió. Pedirlos para un
+ * «no» sería pedir datos de algo que no pasó.
+ */
+visitsRouter.post('/visit-bookings/:bookingId/financiacion-cierre', requireRole(ROLES), async (req, res) => {
+  const resultado = String(req.body?.resultado ?? '').trim();
+  if (!esUnResultado(resultado)) {
+    res.status(400).json({ ok: false, error: 'resultado_invalido' });
+    return;
+  }
+  const financiada = resultado === 'financiada';
+  const entidad = financiada ? String(req.body?.entidad ?? '').trim().slice(0, 120) : '';
+  const importeCrudo = Number(req.body?.importe);
+  const importe = financiada && Number.isFinite(importeCrudo) && importeCrudo > 0
+    ? importeCrudo
+    : null;
+
+  /*
+   * Con quién se firmó hace falta para poder facturarle.
+   *
+   * Sin entidad, la comisión no tiene destinatario: quedaría una operación
+   * financiada de la que no se puede cobrar, que es exactamente el agujero que
+   * esto viene a tapar.
+   */
+  if (financiada && !entidad) {
+    res.status(400).json({ ok: false, error: 'falta_la_entidad' });
+    return;
+  }
+
+  try {
+    await prepara();
+    const r = await query(SQL_CIERRA_FINANCIACION, [
+      req.params.bookingId,
+      resultado,
+      entidad || null,
+      importe,
+      req.actor?.name ?? req.actor?.sub ?? '',
+    ]);
+    if (!r.rows.length) {
+      res.status(409).json({ ok: false, error: 'ya_estaba_cerrada' });
+      return;
+    }
+    res.json({ ok: true, data: { id: r.rows[0].id, resultado } });
+  } catch (e) {
+    console.error('[visitas] cerrar la financiacion:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'financiacion_cierre_failed' });
   }
 });
 

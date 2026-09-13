@@ -165,6 +165,20 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     a: '/bookings', icono: 'euro', tono: 'urgente',
   },
   {
+    /*
+     * El otro extremo de la misma línea, y va aparte.
+     *
+     * Del que levanta la mano se avisa antes de la visita; de éste, después de
+     * comprar. Juntarlos en un número diría «hay cuatro cosas de financiación»
+     * sin decir si lo que toca es llamar o cobrar, que son dos trabajos
+     * distintos en dos momentos distintos.
+     */
+    clave: 'financiacion_sin_cerrar',
+    etiqueta: 'financiaciones sin cerrar', una: 'financiacion sin cerrar',
+    porque: 'compro el coche y no consta si llego a financiar ni con quien, asi que no se puede cobrar',
+    a: '/bookings', icono: 'euro', tono: 'urgente',
+  },
+  {
     clave: 'visitas_por_confirmar',
     etiqueta: 'visitas por confirmar', una: 'visita por confirmar',
     porque: 'el cliente pidió hora y sigue esperando a que llamemos',

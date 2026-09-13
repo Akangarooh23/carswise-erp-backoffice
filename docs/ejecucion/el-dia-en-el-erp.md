@@ -202,5 +202,10 @@ mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
 
 | Qué |
 |---|
-| Qué pasa con el comprador financiado después de comprar |
 | Poner y quitar el anuncio del portal: seguirá siendo a mano, y es una decisión, no una falta |
+
+> **Lo del comprador financiado ya no está sin diseñar.** Después de comprar se
+> cierra su financiación en **Agenda** —con qué entidad y cuánto—, y de ahí sale
+> la comisión que se le factura a la entidad, en **Comisiones**. Lo que sigue
+> dependiendo de Juan es el scoring y **con qué entidad**; lo que ya no depende
+> de nadie es que la operación quede apuntada y se pueda cobrar.
