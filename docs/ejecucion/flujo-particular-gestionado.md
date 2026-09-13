@@ -229,13 +229,10 @@ erp: Desde aquí se ve qué le falta y se le puede reclamar
 > estado aparente. Ni precio, ni horquilla: eso es la tasación y va por otro
 > lado.
 
-> **Ojo con la tasación: su botón está roto.** En su panel, «Nueva tasación»
-> navega a una sección que no existe y le deja en el inicio. Si te dice que no
-> encuentra dónde hacérsela, no se está equivocando.
->
-> Lo que sí funciona: que entre a su coche, en **cómo quieres ponerle precio**
-> elija «Tasación», y sale de ahí. Es lo que hay que decirle por teléfono
-> mientras no se arregle.
+> **La tasación se la hace desde su panel, y el enlace ya la abre con su coche
+> dentro.** Si llega desde «lo que te falta» de su encargo, la dirección lleva
+> la matrícula y la tasación empieza con la marca, el modelo, el año y los
+> kilómetros ya puestos: no tiene que volver a escribir lo que ya tenemos.
 
 > **Las franjas son suyas, no nuestras.** El que enseña el coche es él, en su
 > casa y a su hora.
@@ -555,11 +552,6 @@ va lo que toca a este camino.
 | Si al que agota el plazo se le cobra algo | Ana |
 | Si la guía de subir el coche va **adjunta** al correo o enlazada | Ana. Hoy va enlazada |
 | Qué pasa con el comprador financiado después de comprar | Sin diseñar |
-
-> **Y uno que está roto, no por decidir.** El botón de «Nueva tasación» del panel
-> del cliente navega a una sección que no existe y le deja en el inicio del
-> panel. Le decimos que se la haga desde ahí y ahí se queda. Está en el apartado
-> de las cinco puertas, con lo que puede hacer mientras.
 
 > **El mandato y el contrato no los ha visto un abogado.** Son los dos papeles
 > que firman personas, y es lo único de todo esto que, si está mal, no se

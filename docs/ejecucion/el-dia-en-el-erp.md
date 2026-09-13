@@ -175,12 +175,6 @@ transacción que se deshace: no dejan ni una fila.
 Está aquí y no repartido por los cuatro manuales a propósito: lo que falta se
 mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
 
-### Roto y sabido
-
-| Qué | Dónde se nota |
-|---|---|
-| **El botón de «Nueva tasación» del panel del cliente no lleva a ningún sitio.** Navega a una sección que no existe y le deja en el inicio del panel | Le decimos «hazte la tasación, sale de tu panel» y ahí se queda. Puede conseguirla por otro camino —editando el coche, en «cómo quieres ponerle precio»— pero no es lo que le hemos dicho |
-
 ### Esperando a Juan
 
 | Qué | Mientras tanto |
