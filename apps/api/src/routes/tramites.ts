@@ -17,7 +17,7 @@ import { faltaParaResolver } from '../lib/expediente-de-gestoria.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { ponAlDiaLasEtapas } from './transportes.js';
 import { requireRole } from '../middleware/auth.js';
-import { apuntaFacturaEsperada } from './provider-billing.js';
+import { apuntaFacturaEsperada, emiteLaFacturaDelTramite } from './provider-billing.js';
 import {
   ENSURE_COLUMNAS as ENSURE_COBRO, SQL_SIN_COBRAR, SQL_LOS_SIN_COBRAR, SQL_COBRA,
   loQueSeProponeCobrar, loQueDeja, QUE_SE_COBRA,
@@ -450,6 +450,38 @@ tramitesRouter.post('/tramites/:id/cobrado', requireRole(['admin', 'operations']
       res.status(409).json({ ok: false, error: 'ya_estaba_cobrado' });
       return;
     }
+
+    /*
+     * Y se le emite su factura.
+     *
+     * Aquí y no en un botón aparte: cobrar y facturar son el mismo hecho, y
+     * separarlos crearía una segunda lista de «cobrados sin facturar» que se
+     * olvidaría igual que se olvidaba ésta. Desde aquí entra sola en la
+     * maquinaria que ya existe — sale en «facturas emitidas sin enviar» hasta
+     * que alguien descargue el PDF, que es lo que se la manda.
+     *
+     * Con su propio `catch`: el cobro ya está apuntado y no puede deshacerse
+     * porque la factura falle. Si falla, queda el aviso en el log y el trámite
+     * cobrado, que es mejor que un cobro perdido.
+     */
+    const t = await query<Record<string, string>>(
+      `SELECT tipo, matricula, vehiculo_titulo, comprador_nombre, comprador_email
+         FROM erp_tramites WHERE id = $1`,
+      [req.params.id]
+    ).catch(() => ({ rows: [] as Record<string, string>[] }));
+    const suyo = t.rows[0];
+    if (suyo) {
+      await emiteLaFacturaDelTramite({
+        tramiteId: req.params.id,
+        tipo: suyo.tipo,
+        matricula: suyo.matricula,
+        vehiculo: suyo.vehiculo_titulo,
+        compradorNombre: suyo.comprador_nombre,
+        compradorEmail: suyo.comprador_email,
+        total: importe,
+      }).catch((e) => console.error('[tramites] cobrado pero sin factura:', (e as Error).message));
+    }
+
     res.json({ ok: true, data: { id: r.rows[0].id, precio: r.rows[0].precio } });
   } catch (e) {
     console.error('[tramites] apuntar el cobro:', (e as Error).message);
@@ -541,6 +573,9 @@ export async function abreLaTransferenciaDelEncargo(datos: {
   matricula: string;
   clienteEmail: string;
   creadoPor: string;
+  /** Quien compra, que es quien paga el papeleo. */
+  compradorNombre?: string;
+  compradorEmail?: string;
 }): Promise<string[]> {
   return abreTramites(TRAMITES_AL_VENDER, {
     encargoId: datos.encargoId,
@@ -548,6 +583,8 @@ export async function abreLaTransferenciaDelEncargo(datos: {
     matricula: datos.matricula,
     clienteEmail: datos.clienteEmail,
     creadoPor: datos.creadoPor,
+    compradorNombre: datos.compradorNombre,
+    compradorEmail: datos.compradorEmail,
   });
 }
 
@@ -560,6 +597,16 @@ async function abreTramites(tipos: string[], datos: {
   matricula: string;
   clienteEmail: string;
   creadoPor: string;
+  /*
+   * Quien compra, que es quien paga el papeleo.
+   *
+   * `clienteEmail` es el vendedor: es su encargo y su coche. Pero el contrato
+   * dice que los gastos del cambio de titularidad son del comprador, asi que
+   * hace falta saber a quien cobrarselo — y sin esto la columna existia y no la
+   * rellenaba nadie.
+   */
+  compradorNombre?: string;
+  compradorEmail?: string;
 }): Promise<string[]> {
   await prepara();
   const creados: string[] = [];
@@ -611,10 +658,13 @@ async function abreTramites(tipos: string[], datos: {
         () => siguienteDeSerie('erp_tramites', prefijoAnual('TRA')),
         async (nuevoId) => {
           await query(
-            `INSERT INTO erp_tramites (id, tipo, vehiculo_titulo, matricula, cliente_email, ${columna}, creado_por)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            `INSERT INTO erp_tramites (id, tipo, vehiculo_titulo, matricula, cliente_email, ${columna},
+                                       creado_por, comprador_nombre, comprador_email)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
             [nuevoId, tipo, datos.vehiculoTitulo, datos.matricula,
-             String(datos.clienteEmail).toLowerCase(), valor, datos.creadoPor]
+             String(datos.clienteEmail).toLowerCase(), valor, datos.creadoPor,
+             String(datos.compradorNombre ?? ''),
+             String(datos.compradorEmail ?? '').toLowerCase()]
           );
         }
       );

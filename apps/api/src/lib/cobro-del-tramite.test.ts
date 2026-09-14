@@ -8,10 +8,12 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   DEL_COMPRADOR, loPagaElComprador, ENSURE_COLUMNAS,
   SQL_SIN_COBRAR, SQL_LOS_SIN_COBRAR, SQL_COBRA,
-  loQueSeProponeCobrar, loQueDeja, QUE_SE_COBRA,
+  loQueSeProponeCobrar, loQueDeja, QUE_SE_COBRA, TIPO_DE_FACTURA, elConcepto,
 } from './cobro-del-tramite.js';
 
 describe('quién paga qué', () => {
@@ -133,5 +135,86 @@ describe('el guion de la pantalla', () => {
 
   test('y que esto apunta un cobro, no lo cobra', () => {
     assert.ok(QUE_SE_COBRA.some((x) => /apunta que se cobró/.test(x)));
+  });
+});
+
+/**
+ * Y su factura, que es lo que le queda a él.
+ *
+ * Cobrar sin darle papel deja el dinero apuntado en un sitio donde solo lo
+ * vemos nosotros. El contrato dice que el papeleo es suyo; la factura es la
+ * prueba de lo que pagó.
+ */
+describe('la factura del papeleo', () => {
+  test('tiene su propio tipo, no reaprovecha el de la venta', () => {
+    /*
+     * `gestion_venta` es la nuestra al VENDEDOR por vender su coche. Ésta es al
+     * COMPRADOR por el papeleo. Con un solo tipo no se podría contar ninguna de
+     * las dos por separado, y son dos personas y dos conceptos.
+     */
+    assert.equal(TIPO_DE_FACTURA, 'gestion_tramite');
+    assert.notEqual(TIPO_DE_FACTURA, 'gestion_venta');
+  });
+
+  test('el concepto dice qué papeleo y de qué coche', () => {
+    // Una línea que solo dijera «transferencia» no se puede comprobar contra
+    // nada dentro de seis meses, que es cuando alguien la discute.
+    const c = elConcepto('Transferencia de titularidad', '8888LXR');
+    assert.match(c, /Transferencia de titularidad/);
+    assert.match(c, /8888LXR/);
+  });
+
+  test('y sin matrícula no deja un separador colgando', () => {
+    const c = elConcepto('Transferencia de titularidad', null);
+    assert.equal(c, 'Transferencia de titularidad');
+    assert.doesNotMatch(c, /·\s*$|undefined|null/);
+  });
+
+  test('sin tipo tampoco dice «undefined»', () => {
+    assert.match(elConcepto(null, '8888LXR'), /^Papeleo · 8888LXR$/);
+  });
+});
+
+/**
+ * Y que las dos mitades estén enchufadas.
+ *
+ * Las reglas de arriba pueden ser perfectas y no servir de nada si el cobro no
+ * emite la factura o si la transferencia nace sin saber quién compró. Las dos
+ * cosas se saboteaban sin que fallara ninguna prueba.
+ */
+describe('las dos mitades, enchufadas', () => {
+  const lee = (f: string) =>
+    readFileSync(join(import.meta.dirname, '..', 'routes', f), 'utf8').replace(/\r\n/g, '\n');
+
+  test('apuntar el cobro emite su factura', () => {
+    /*
+     * Cobrar y facturar son el mismo hecho. Separarlos crearía una segunda
+     * lista de «cobrados sin facturar» que se olvidaría igual que se olvidaba
+     * ésta.
+     */
+    const t = lee('tramites.ts');
+    const ruta = t.slice(t.indexOf("'/tramites/:id/cobrado'"), t.indexOf('// ── El rastro'));
+    assert.ok(ruta.length > 0, 'no encuentro la ruta del cobro');
+    assert.match(ruta, /await emiteLaFacturaDelTramite\(\{/);
+  });
+
+  test('y que falle la factura no deshace el cobro', () => {
+    // El cobro ya está apuntado. Un cobro perdido es peor que una factura que
+    // hay que volver a emitir.
+    const t = lee('tramites.ts');
+    const ruta = t.slice(t.indexOf("'/tramites/:id/cobrado'"), t.indexOf('// ── El rastro'));
+    assert.match(ruta, /cobrado pero sin factura/);
+  });
+
+  test('la transferencia nace sabiendo quién compró', () => {
+    /*
+     * `cliente_email` es el vendedor: es su encargo y su coche. Sin el
+     * comprador, el cobro se queda en una lista sin destinatario y la factura
+     * no tiene a quién ir.
+     */
+    const e = lee('encargos.ts');
+    const cierre = e.slice(e.indexOf('abreLaTransferenciaDelEncargo({'));
+    assert.match(cierre.slice(0, 600), /compradorEmail:/);
+    assert.match(cierre.slice(0, 600), /compradorNombre:/);
   });
 });

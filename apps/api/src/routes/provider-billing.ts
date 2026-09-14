@@ -11,6 +11,10 @@ import { preparaGarantias } from './garantias.js';
 import { preparaVisitas } from './visits.js';
 import { FEE_POR_VENTA, laComision, elConcepto } from '../lib/comision-del-concesionario.js';
 import {
+  TIPO_DE_FACTURA as TIPO_DE_FACTURA_TRAMITE,
+  elConcepto as elConceptoDelTramite,
+} from '../lib/cobro-del-tramite.js';
+import {
   FEE_POR_FINANCIACION,
   laComision as laComisionDeFinanciacion,
   elConcepto as elConceptoDeFinanciacion,
@@ -284,6 +288,56 @@ providerBillingRouter.get('/provider-billing/invoices', requireRole(['admin', 'o
  * Una por proveedor, concepto y coche: la peritación de este Kia es una, y
  * volver a guardarla la corrige en vez de duplicarla.
  */
+/**
+ * La factura del papeleo, al comprador.
+ *
+ * El contrato dice que los gastos del cambio de titularidad son suyos, así que
+ * cuando se apunta que lo ha pagado hay que darle su papel. Se emite desde
+ * Gestoría, en el mismo gesto que el cobro: cobrar y facturar son el mismo
+ * hecho, y separarlos crearía una segunda lista de olvidos.
+ *
+ * `provider_name` lleva su nombre porque aquí no hay proveedor: le facturamos a
+ * una persona, igual que en la de gestión de venta al vendedor. Eso es lo que
+ * hace que `a-quien-se-le-manda` la mande a él y no a ninguna gestoría.
+ *
+ * Una por trámite: si ya la tiene, no se emite otra. El cobro sí puede
+ * intentarse dos veces —alguien pulsa dos veces el botón— y lo que no puede
+ * pasar es que eso le duplique la factura.
+ */
+export async function emiteLaFacturaDelTramite(datos: {
+  tramiteId: string;
+  tipo: string;
+  matricula: string;
+  vehiculo: string;
+  compradorNombre: string;
+  compradorEmail: string;
+  total: number;
+}): Promise<string | null> {
+  const ya = await query(
+    `SELECT id FROM moveadvisor_provider_invoices
+      WHERE type = $1 AND contract_id = $2 LIMIT 1`,
+    [TIPO_DE_FACTURA_TRAMITE, datos.tramiteId]
+  ).catch(() => ({ rows: [] as { id: string }[] }));
+  if (ya.rows.length) return String(ya.rows[0].id);
+
+  const c = laComisionDeFinanciacion(datos.total);
+  const concepto = elConceptoDelTramite(datos.tipo, datos.matricula);
+  const aNombreDe = String(datos.compradorNombre ?? '').trim() || 'Comprador';
+
+  const { id } = await guardaConIdUnico(nextProviderInvoiceId, async (nuevo) => {
+    await query(
+      `INSERT INTO moveadvisor_provider_invoices
+         (id, type, provider_name, contract_id, vehicle_title, customer_name, customer_email,
+          base_amount, invoice_amount, iva_rate, regimen, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'nacional', $11)`,
+      [nuevo, TIPO_DE_FACTURA_TRAMITE, aNombreDe, datos.tramiteId, datos.vehiculo,
+       aNombreDe, String(datos.compradorEmail ?? '').toLowerCase(),
+       c.base, c.total, c.iva / 100, concepto]
+    );
+  });
+  return id;
+}
+
 export async function apuntaFacturaEsperada(datos: {
   proveedor: string;
   concepto: string;

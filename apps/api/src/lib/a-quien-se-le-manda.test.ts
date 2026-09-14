@@ -107,10 +107,28 @@ describe('si no hay a quién, no se manda', () => {
   });
 });
 
-describe('las dos que son del cliente están escritas', () => {
-  test('y son esas dos, no una lista que crece sola', () => {
-    // Si alguien añade un tipo aquí, está diciendo «a este se le factura al
-    // particular». Que cueste un cambio explícito es el punto.
-    assert.deepEqual([...AL_CLIENTE], ['gestion_venta', 'vehicle_sale']);
+describe('las que son del cliente están escritas', () => {
+  test('y son esas tres, no una lista que crece sola', () => {
+    /*
+     * Si alguien añade un tipo aquí, está diciendo «a éste se le factura a un
+     * particular, no a una empresa». Que cueste un cambio explícito es el
+     * punto: el error que esto evita es que una factura de empresa acabe
+     * saliendo al correo del cliente final.
+     *
+     * `gestion_tramite` entró al cobrarle al comprador el cambio de titularidad
+     * — le facturamos a él, que es una persona, no a ninguna gestoría.
+     */
+    assert.deepEqual([...AL_CLIENTE], ['gestion_venta', 'vehicle_sale', 'gestion_tramite']);
+  });
+
+  test('y la del papeleo va al comprador, no a la gestoría', () => {
+    const a = aQuienSeLeManda({
+      type: 'gestion_tramite',
+      provider_name: 'Juan Comprador',
+      customer_email: 'comprador@ejemplo.invalid',
+      proveedor_email: 'gestoria@ejemplo.invalid',
+    });
+    assert.equal(a.email, 'comprador@ejemplo.invalid');
+    assert.equal(a.quien, 'cliente');
   });
 });

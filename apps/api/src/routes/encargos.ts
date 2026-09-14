@@ -711,12 +711,33 @@ encargosRouter.post(
       }
 
       if (motivo === 'vendido') {
+        /*
+         * Quién compró, para poder cobrarle el papeleo.
+         *
+         * `cliente_email` es el vendedor: es su encargo y su coche. Pero el
+         * contrato dice que los gastos del cambio de titularidad son del
+         * comprador, así que la transferencia tiene que nacer sabiendo a quién
+         * cobrársela — si no, el cobro se queda en una lista sin destinatario.
+         *
+         * Lo escrito a mano manda sobre la visita: puede que quien vino a verlo
+         * y quien firma no sean la misma persona, y eso ya se decidió así para
+         * el contrato.
+         */
+        const quienCompro = await query<{ buyer_name: string; buyer_email: string }>(
+          `SELECT buyer_name, buyer_email FROM vehicle_visit_bookings
+            WHERE offer_id = $1 AND resultado = 'compro'
+            ORDER BY resultado_at DESC NULLS LAST LIMIT 1`,
+          [`idcar-${String(e.vehicle_id)}`]
+        ).catch(() => ({ rows: [] as { buyer_name: string; buyer_email: string }[] }));
+
         abreLaTransferenciaDelEncargo({
           encargoId: String(e.id),
           vehiculoTitulo: [e.brand, e.model].filter(Boolean).join(' '),
           matricula: String(e.plate ?? ''),
           clienteEmail: String(e.cliente_email ?? ''),
           creadoPor: req.actor?.name ?? req.actor?.sub ?? '',
+          compradorNombre: String(e.comprador_nombre ?? quienCompro.rows[0]?.buyer_name ?? ''),
+          compradorEmail: String(quienCompro.rows[0]?.buyer_email ?? ''),
         }).catch((err) => console.error('[encargos] sin transferencia:', (err as Error).message));
       }
 

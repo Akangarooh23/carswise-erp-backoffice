@@ -55,7 +55,7 @@ export const SQL_SIN_ENVIAR = `
      AND i.cw_sent_at IS NULL
      AND COALESCE(
            CASE WHEN COALESCE(i.provider_name, '') = ''
-                  OR i.type IN ('gestion_venta', 'vehicle_sale')
+                  OR i.type IN ('gestion_venta', 'vehicle_sale', 'gestion_tramite')
                 THEN i.customer_email
                 ELSE p.email
            END, '') <> ''`;
@@ -70,7 +70,7 @@ export const SQL_LAS_SIN_ENVIAR = `
   SELECT i.id, i.invoice_number, i.type, i.provider_name,
          i.customer_name, i.customer_email, p.email AS proveedor_email,
          CASE WHEN COALESCE(i.provider_name, '') = ''
-                OR i.type IN ('gestion_venta', 'vehicle_sale')
+                OR i.type IN ('gestion_venta', 'vehicle_sale', 'gestion_tramite')
               THEN i.customer_email
               ELSE p.email
          END AS a_quien,
@@ -81,7 +81,7 @@ export const SQL_LAS_SIN_ENVIAR = `
      AND i.cw_sent_at IS NULL
      AND COALESCE(
            CASE WHEN COALESCE(i.provider_name, '') = ''
-                  OR i.type IN ('gestion_venta', 'vehicle_sale')
+                  OR i.type IN ('gestion_venta', 'vehicle_sale', 'gestion_tramite')
                 THEN i.customer_email
                 ELSE p.email
            END, '') <> ''

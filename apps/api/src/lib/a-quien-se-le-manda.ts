@@ -38,8 +38,14 @@
  * Se queda esperando.
  */
 
-/** Las que se le facturan al cliente porque no hay ninguna empresa detrás. */
-export const AL_CLIENTE = ['gestion_venta', 'vehicle_sale'] as const;
+/**
+ * Las que se le facturan al cliente porque no hay ninguna empresa detrás.
+ *
+ * `gestion_tramite` es la del papeleo al comprador: `provider_name` lleva su
+ * propio nombre, igual que en la de gestión de venta con el vendedor, porque no
+ * hay proveedor ninguno — le facturamos a una persona.
+ */
+export const AL_CLIENTE = ['gestion_venta', 'vehicle_sale', 'gestion_tramite'] as const;
 
 export interface FacturaEmitida {
   type?: unknown;

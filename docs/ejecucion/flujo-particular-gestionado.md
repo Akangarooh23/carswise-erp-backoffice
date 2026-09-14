@@ -464,6 +464,16 @@ erp: Y la factura queda en su sitio
 > cuánto por encima lo decide quien cobra, y se escribe lo que de verdad pagó.
 > Antes de esto el ERP solo guardaba el coste, así que la transferencia únicamente
 > restaba en el margen del coche.
+>
+> **Y al apuntarlo se le emite su factura**, a su nombre y por lo que pagó. Sale
+> en el mismo gesto: cobrar y facturar son lo mismo, y separarlos crearía una
+> segunda lista de olvidos. Desde ahí entra en la maquinaria de siempre — aparece
+> en «facturas emitidas sin enviar» hasta que alguien descargue su PDF, que es lo
+> que se la manda.
+>
+> Ojo con los dos papeles distintos: los **299 €** se le facturan al **vendedor**
+> por vender su coche; el papeleo, al **comprador**. Son dos facturas, dos
+> personas y dos conceptos.
 
 > **La transferencia sale sola, y solo al vender.** Es lo que se le prometió en
 > el mandato que firmó: «cuando se vende, hacemos el contrato y la transferencia

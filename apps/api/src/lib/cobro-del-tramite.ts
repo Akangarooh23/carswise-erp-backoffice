@@ -136,6 +136,29 @@ export function loQueDeja(precio: unknown, coste: unknown): number | null {
 }
 
 /**
+ * El tipo de la factura que se le emite al comprador.
+ *
+ * Con su nombre propio y no reaprovechando `gestion_venta`: aquélla es la
+ * nuestra al vendedor por vender su coche, ésta es al comprador por el papeleo.
+ * Son dos personas distintas y dos conceptos distintos, y con un solo tipo no
+ * se podría contar ninguno de los dos por separado.
+ */
+export const TIPO_DE_FACTURA = 'gestion_tramite';
+
+/**
+ * Lo que se lee en la factura.
+ *
+ * Con la matrícula dentro: una línea que solo dijera «transferencia» no se
+ * puede comprobar contra nada dentro de seis meses, que es cuando alguien la
+ * discute.
+ */
+export function elConcepto(tipo: unknown, matricula: unknown): string {
+  const que = String(tipo ?? '').trim() || 'Papeleo';
+  const cual = String(matricula ?? '').trim();
+  return cual ? `${que} · ${cual}` : que;
+}
+
+/**
  * Qué se le dice a quien va a cobrar, en la pantalla.
  *
  * Sin esto, «precio» se rellena unas veces con lo que nos cuesta y otras con lo

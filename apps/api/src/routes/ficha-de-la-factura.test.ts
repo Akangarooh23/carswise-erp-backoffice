@@ -77,20 +77,42 @@ describe('las que ya estaban', () => {
 });
 
 describe('las nuevas', () => {
-  test('se atan las siete veces que se crea una factura', () => {
+  test('se atan las que van a un proveedor, y solo ésas', () => {
     /*
-     * Siete sitios crean facturas. Si uno se queda fuera, sus facturas no salen
-     * en ninguna suma por proveedor y nadie lo nota: el total sale más bajo.
+     * Ocho sitios crean facturas y siete se atan. Si una de las que van a un
+     * proveedor se quedara fuera, sus facturas no salen en ninguna suma por
+     * proveedor y nadie lo nota: el total sale más bajo.
      *
-     * Eran seis hasta que entró la comisión de financiación. Este número se
-     * sube **después** de comprobar que la nueva ata su ficha, no antes: subirlo
-     * para que la prueba deje de molestar es exactamente cómo se cuela la que
-     * no ata.
+     * Eran seis hasta la comisión de financiación y siete hasta la del papeleo.
+     * Este número se sube **después** de comprobar qué hace la nueva, no antes:
+     * subirlo para que la prueba deje de molestar es exactamente cómo se cuela
+     * la que no ata.
+     *
+     * La octava es la del papeleo al comprador, y **no se ata a propósito**: el
+     * otro lado es una persona, no un proveedor. Es el mismo caso que la venta
+     * de vehículo, que ya se quedaba fuera por lo mismo — ponerle una ficha de
+     * proveedor sería decir que le compramos algo a quien le hemos vendido un
+     * servicio.
      */
     const altas = (FUENTE.match(/await guardaConIdUnico\(nextProviderInvoiceId/g) ?? []).length;
     const atadas = (FUENTE.match(/await ataLaFactura\(/g) ?? []).length;
-    assert.equal(altas, 7, 'ha cambiado el número de sitios que crean facturas');
-    assert.equal(atadas, altas, `${altas} altas y ${atadas} atadas`);
+    assert.equal(altas, 8, 'ha cambiado el número de sitios que crean facturas');
+    assert.equal(atadas, 7, `${altas} altas y ${atadas} atadas`);
+  });
+
+  test('y la del papeleo es la que no se ata, no otra', () => {
+    /*
+     * El número de arriba se cumpliría igual si la que faltara por atar fuera la
+     * del concesionario. Se mira cuál es: la del papeleo emite a nombre del
+     * comprador y ahí no hay ficha que buscar.
+     */
+    const suya = FUENTE.slice(
+      FUENTE.indexOf('export async function emiteLaFacturaDelTramite'),
+      FUENTE.indexOf('export async function apuntaFacturaEsperada'),
+    );
+    assert.ok(suya.length > 0, 'no encuentro la factura del papeleo');
+    assert.doesNotMatch(suya, /ataLaFactura/);
+    assert.match(suya, /TIPO_DE_FACTURA_TRAMITE/);
   });
 
   test('y atarlas no puede impedir guardarlas', () => {
