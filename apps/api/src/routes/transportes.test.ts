@@ -482,3 +482,53 @@ describe('la cita que ya sabemos', () => {
     }
   });
 });
+
+/**
+ * Y el aviso de que la entrega se movió.
+ *
+ * Es una promesa escrita en el correo anterior —«si cambia, te avisamos»— que
+ * no cumplía nadie: la fecha se editaba en la ficha como cualquier otro campo y
+ * el cliente se quedaba con el día de la primera vez.
+ */
+describe('cuando se mueve el dia de la entrega', () => {
+  const FUENTE = readFileSync(new URL('./transportes.ts', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const CAMBIO = FUENTE.slice(
+    FUENTE.indexOf('if (req.body?.entrega_prevista !== undefined'),
+    FUENTE.indexOf('Y si el coche ya ha salido, el expediente pasa'),
+  );
+
+  test('se mira si de verdad ha cambiado, no si alguien toco el campo', () => {
+    // Guardar la misma fecha no es un cambio, y un correo diciendo que algo se
+    // ha movido cuando no se ha movido es como se deja de leerlos.
+    assert.ok(CAMBIO.length > 0, 'no encuentro el aviso del cambio de fecha');
+    assert.match(CAMBIO, /hayQueAvisar\(previo\.entrega_prevista, nueva\)/);
+  });
+
+  test('solo del viaje a su casa', () => {
+    /*
+     * En el primero el coche va a matricularse a Zaragoza: ese día no es suyo y
+     * no se le ha prometido nada sobre él.
+     */
+    assert.match(CAMBIO, /Number\(previo\.tramo \?\? 1\) > 1/);
+  });
+
+  test('con los dos dias, el que se le dijo y el nuevo', () => {
+    assert.match(CAMBIO, /antes: previo\.entrega_prevista/);
+    assert.match(CAMBIO, /ahora: nueva/);
+  });
+
+  test('y si el correo no sale, queda escrito en las notas', () => {
+    // Un cliente sin avisar y nadie enterado es peor que un correo que no
+    // salió.
+    assert.match(CAMBIO, /No salió el aviso de que la entrega se movía/);
+  });
+
+  test('que falle el correo no deshace el cambio de fecha', () => {
+    // Va después del UPDATE y con su propio catch.
+    const update = FUENTE.indexOf('UPDATE erp_transportes SET ${sets.join');
+    const aviso = FUENTE.indexOf('if (req.body?.entrega_prevista !== undefined');
+    assert.ok(update > 0 && aviso > update, 'el aviso tiene que ir despues de guardar');
+    assert.match(CAMBIO, /\.catch\(async \(e: Error\)/);
+  });
+});

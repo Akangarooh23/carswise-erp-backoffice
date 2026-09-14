@@ -27,6 +27,7 @@ import {
 } from '../lib/aviso-de-recogida-al-origen.js';
 import { correoDeCocheEnCamino } from '../lib/coche-en-camino.js';
 import { correoDeCocheHaciaTuCasa } from '../lib/coche-hacia-tu-casa.js';
+import { hayQueAvisar, correoDeCambioDeEntrega } from '../lib/cambia-el-dia-de-entrega.js';
 import { abreLosTramitesQueFalten, laMatriculaQueYaTiene } from './tramites.js';
 import {
   anotaLaLlegada, puedeDarsePorEntregado, faltaPorMirarAlLlegar, type LlegoComoSalio,
@@ -1094,6 +1095,56 @@ transportesRouter.patch('/transportes/:id', requireRole(['admin', 'operations'])
       `UPDATE erp_transportes SET ${sets.join(', ')} WHERE id = $${valores.length} RETURNING ${CAMPOS}`,
       valores
     );
+
+    /*
+     * Si se ha movido el día de la entrega, hay que decírselo.
+     *
+     * Se lo prometimos con estas palabras en «tu coche sale hacia tu casa»: «el
+     * día puede moverse por tráfico o por una carga anterior. **Si cambia, te
+     * avisamos**». Y no avisaba nadie: la fecha se editaba aquí como cualquier
+     * otro campo y él se quedaba con el día de la primera vez.
+     *
+     * Solo del viaje a su casa —`tramo > 1`— y solo si ya se le había dicho una
+     * fecha: en el primer tramo el coche va a matricularse a Zaragoza y ese día
+     * no es suyo, y sin fecha anterior esto no es un cambio sino la primera
+     * noticia, que va por teléfono.
+     *
+     * Va después del UPDATE y con su propio `catch`: que el correo no salga no
+     * puede deshacer el cambio de fecha, y si falla queda escrito en las notas
+     * internas — un cliente sin avisar y nadie enterado es peor que un correo
+     * que no salió.
+     */
+    if (req.body?.entrega_prevista !== undefined && Number(previo.tramo ?? 1) > 1) {
+      const nueva = (r.rows[0] as Record<string, unknown> | undefined)?.entrega_prevista;
+      if (hayQueAvisar(previo.entrega_prevista, nueva)) {
+        const suyo = await query<Record<string, string>>(
+          `SELECT contact_name, user_email, vehicle_title
+             FROM moveadvisor_market_leads WHERE id = $1`,
+          [String(previo.lead_id ?? '')]
+        ).catch(() => ({ rows: [] as Record<string, string>[] }));
+        const cliente = suyo.rows[0];
+        if (cliente && String(cliente.user_email ?? '').trim()) {
+          const { subject, html } = correoDeCambioDeEntrega({
+            nombre: cliente.contact_name,
+            vehiculo: cliente.vehicle_title,
+            antes: previo.entrega_prevista as string | null,
+            ahora: nueva as string | null,
+            destino: String(previo.hasta ?? '').trim() || null,
+            panel: `${MARCA.sitioUrl}/panel/solicitudes`,
+          });
+          await enviar({
+            to: String(cliente.user_email), subject, html, alClienteSiempre: true,
+          }).catch(async (e: Error) => {
+            console.error('[transportes] no se ha podido avisar del cambio de fecha:', e.message);
+            const dia = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            await query(
+              `UPDATE moveadvisor_market_leads SET erp_notes = erp_notes || E'\n' || $2 WHERE id = $1`,
+              [String(previo.lead_id ?? ''), `[${dia}] No salió el aviso de que la entrega se movía: ${e.message}`]
+            ).catch(() => {});
+          });
+        }
+      }
+    }
 
     /*
      * Y si el coche ya ha salido, el expediente pasa a «En transporte».

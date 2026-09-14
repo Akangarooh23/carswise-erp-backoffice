@@ -309,6 +309,19 @@ tocar lo que sea.
 | Al organizar el tramo | Vendedor | Dónde y cuándo se recoge |
 | Con el tramo creado | Transportista | La recogida, con las dos puntas |
 | Al entrar en trámites | Gestoría | Los papeleos y el impuesto real |
+| Al moverse el día de la entrega | Cliente | Que su entrega cambia de día, con el viejo y el nuevo |
+
+> **Ese último cumple una promesa que estaba escrita y no hacía nadie.** En «tu
+> coche sale hacia tu casa» se le dice que el día puede moverse *«y si cambia,
+> te avisamos»*. La fecha se editaba en la ficha del transporte como cualquier
+> otro campo y él se quedaba con el día de la primera vez.
+>
+> **Sale solo del viaje a su casa**, no del primero: ése va a Zaragoza a
+> matricularse y ese día no es suyo. Y solo si ya se le había dado una fecha —
+> cuando no había ninguna, lo prometido es una llamada, no un correo.
+>
+> Guardar la misma fecha no manda nada: un aviso de que algo se ha movido cuando
+> no se ha movido es como se consigue que deje de leerlos.
 
 ---
 
