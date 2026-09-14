@@ -27,6 +27,7 @@ describe('el correo del mandato', () => {
   const c = () => elCorreoDelMandato({
     ...COCHE, mandato_id: 'PC-MAND-2026-001', precio: 8500,
     fee_gestion: FEE_DE_GESTION, fee_cancelacion: FEE_DE_CANCELACION,
+    panel: 'https://popcar.com.es/panel/solicitudes',
   });
 
   test('dice a qué está diciendo que sí, sin abrir el adjunto', () => {
@@ -47,6 +48,7 @@ describe('el correo del mandato', () => {
     // numero y la factura otro.
     const otro = elCorreoDelMandato({
       ...COCHE, mandato_id: 'X', precio: null, fee_gestion: 350, fee_cancelacion: 99,
+      panel: 'https://popcar.com.es/panel/solicitudes',
     });
     const t = soloTexto(otro.html);
     assert.match(t, /350 €/);
@@ -67,6 +69,7 @@ describe('el correo del mandato', () => {
     const sin = elCorreoDelMandato({
       ...COCHE, mandato_id: 'X', precio: null,
       fee_gestion: FEE_DE_GESTION, fee_cancelacion: FEE_DE_CANCELACION,
+    panel: 'https://popcar.com.es/panel/solicitudes',
     });
     assert.doesNotMatch(soloTexto(sin.html), /Precio de salida/);
   });
@@ -158,6 +161,7 @@ describe('lo que valen para cualquier coche', () => {
     const c = elCorreoDelMandato({
       ...COCHE, cliente_nombre: 'Ana & <b>Ruiz', mandato_id: 'X', precio: null,
       fee_gestion: 299, fee_cancelacion: 150,
+      panel: 'https://popcar.com.es/panel/solicitudes',
     });
     assert.match(c.html, /Ana &amp; &lt;b&gt;Ruiz/);
   });
@@ -238,5 +242,40 @@ describe('la ruta del alta', () => {
 
   test('y una barra de más no deja una doble', () => {
     assert.equal(laRutaDelAlta('https://x.es/', ''), 'https://x.es/mis-coches');
+  });
+});
+
+/**
+ * Lo que se le pide hacer con el mandato.
+ *
+ * Antes se le decía «devuélvelo firmado contestando a este correo». Entonces el
+ * papel se quedaba en una bandeja de entrada y alguien tenía que acordarse de
+ * marcarlo a mano en el ERP — y mientras tanto el encargo decía «sin firmar»
+ * con el papel firmado ya en nuestro poder.
+ */
+describe('cómo se le pide que devuelva el mandato', () => {
+  const c = () => elCorreoDelMandato({
+    ...COCHE, mandato_id: 'PC-MAND-2026-001', precio: 8500,
+    fee_gestion: FEE_DE_GESTION, fee_cancelacion: FEE_DE_CANCELACION,
+    panel: 'https://popcar.com.es/panel/solicitudes',
+  });
+
+  test('se le dice que lo suba a su panel', () => {
+    assert.match(soloTexto(c().html), /súbelo en tu panel/i);
+    assert.match(c().html, /panel\/solicitudes/);
+  });
+
+  test('y ya NO que conteste al correo', () => {
+    /*
+     * Es el cambio entero. Contestando, el papel acaba en una bandeja y el
+     * encargo sigue diciendo que no está firmado — y sin mandato firmado no se
+     * le puede facturar nada.
+     */
+    assert.doesNotMatch(soloTexto(c().html), /contestando a este correo/i);
+  });
+
+  test('y se le dice que no hace falta escribirnos', () => {
+    // Si no, sube el papel y además contesta, por si acaso.
+    assert.match(soloTexto(c().html), /no hace falta que nos escribas/i);
   });
 });

@@ -139,11 +139,26 @@ erp: Se apunta cuándo lo firmó y cómo nos consta
 + la fecha, una de las tres maneras, y dónde está el papel
 :::
 
+> **Lo normal es que lo suba él, y entonces no hay que marcar nada.** El correo
+> le dice que lo firme y lo suba en **Mis solicitudes**. En cuanto lo sube, el
+> encargo queda firmado solo, con la fecha de ese momento, y el documento
+> guardado en su ficha.
+>
+> Antes se le pedía que contestara al correo con el papel. Entonces el papel se
+> quedaba en una bandeja de entrada y alguien tenía que acordarse de marcarlo a
+> mano: mientras tanto el encargo decía «sin firmar» **con el papel firmado ya en
+> nuestro poder**, y sin mandato firmado no se le puede facturar nada.
+
 > **Hacen falta las dos cosas: la fecha y el cómo.** Una fecha sola es
 > exactamente lo que había antes —un dato que el ERP se escribía a sí mismo al
 > pulsar un botón— y con eso no hay nada que enseñar el día que alguien discuta
-> una factura. Las tres maneras son: lo firmó delante de nosotros, nos mandó el
-> papel firmado, o lo aceptó por correo.
+> una factura.
+>
+> Las cuatro maneras son: **lo subió firmado a su panel** —la buena, porque es la
+> única con papel detrás—, lo firmó delante de nosotros, nos mandó el papel
+> firmado, o lo aceptó por correo. Las tres últimas se marcan a mano desde aquí;
+> **la primera no se puede marcar**, llega sola cuando lo sube. Marcarla sería
+> decir que hay un documento que no está.
 
 > **El plazo de los 30 días empieza en la fecha de la firma**, no al abrir el
 > encargo ni el día que se apunta. Si se le apunta tres semanas tarde, le quedan

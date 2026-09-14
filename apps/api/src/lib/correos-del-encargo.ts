@@ -64,7 +64,11 @@ export interface DatosDelCorreo {
  * está diciendo que sí, y la mitad no lo abre.
  */
 export function elCorreoDelMandato(
-  d: DatosDelCorreo & { mandato_id: string; precio: number | null; fee_gestion: number; fee_cancelacion: number },
+  d: DatosDelCorreo & {
+    mandato_id: string; precio: number | null; fee_gestion: number; fee_cancelacion: number;
+    /** A dónde va a subirlo firmado. */
+    panel: string;
+  },
 ): { subject: string; html: string } {
   const coche = elCoche(d.marca, d.modelo, d.matricula);
   return {
@@ -74,8 +78,22 @@ export function elCorreoDelMandato(
       cuerpo:
         parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
         parrafo(`Te adjuntamos el mandato para que lo firmes. Es el papel donde nos `
-          + `encargas la venta de <strong>${esc(coche)}</strong>. Puedes devolverlo firmado `
-          + `contestando a este correo.`) +
+          + `encargas la venta de <strong>${esc(coche)}</strong>.`) +
+        /*
+         * Que lo suba, no que conteste al correo.
+         *
+         * Contestando, el papel se queda en una bandeja de entrada y alguien
+         * tiene que acordarse de apuntarlo a mano en el ERP — con lo cual el
+         * encargo dice «sin firmar» con el papel firmado ya en nuestro poder, y
+         * sin mandato firmado no se le puede facturar nada.
+         *
+         * Subiéndolo a su panel, el documento queda guardado y el encargo se
+         * marca solo. Y es mejor prueba: lo que hay es el papel, no una casilla
+         * que marcamos nosotros.
+         */
+        parrafo(`Cuando lo tengas firmado, <strong>súbelo en tu panel</strong> y listo: `
+          + `<a href="${esc(d.panel)}" style="color:#111111;font-weight:600">Mis solicitudes</a>. `
+          + `Nos llega al momento y no hace falta que nos escribas.`) +
         datos([
           ['Nº de mandato', esc(d.mandato_id)],
           ['Vehículo', esc(coche)],

@@ -11,6 +11,7 @@ import {
   COMO_SE_FIRMA, COMO_LO_DECIMOS, SERIE,
   esUnaFirma, estaFirmado, porQueNoEstaFirmado, sePuedeCobrar,
   lasCondiciones, elMandato, comoSeLlamaElFichero,
+  LA_QUE_SUBE_EL, laMarcamosNosotros,
 } from './mandato-de-venta.js';
 import { FEE_DE_GESTION, FEE_DE_CANCELACION, DIAS_HASTA_SALIR_GRATIS } from './encargo-de-venta.js';
 import { LO_QUE_CUESTA } from './revision-del-taller.js';
@@ -70,8 +71,15 @@ describe('cuándo está firmado', () => {
     assert.equal(esUnaFirma('me dijo que si'), false);
   });
 
-  test('las tres maneras tienen nombre', () => {
-    assert.deepEqual([...COMO_SE_FIRMA], ['en_persona', 'papel_firmado', 'por_correo']);
+  test('las cuatro maneras tienen nombre, y la primera es la buena', () => {
+    /*
+     * `subido_por_el` va la primera porque es la única con papel detrás: las
+     * otras tres son un dato que escribimos nosotros —«lo firmó delante», «me
+     * dijo que sí»— y el día que alguien discuta una factura lo único que hay
+     * es nuestra palabra.
+     */
+    assert.deepEqual([...COMO_SE_FIRMA],
+      ['subido_por_el', 'en_persona', 'papel_firmado', 'por_correo']);
     for (const c of COMO_SE_FIRMA) assert.ok(COMO_LO_DECIMOS[c], `falta cómo se dice ${c}`);
   });
 });
@@ -210,5 +218,36 @@ describe('el fichero', () => {
 
   test('y sin número, tampoco se llama «undefined»', () => {
     assert.equal(comoSeLlamaElFichero(''), 'mandato-sin-numero.doc');
+  });
+});
+
+/**
+ * La que no se marca a mano.
+ *
+ * De las cuatro, `subido_por_el` la escribe el cliente subiendo el papel a su
+ * panel. Ofrecerla en la pantalla del ERP sería dejar que alguien dijera que
+ * hay un documento que no está — y ese documento es justo lo que la hace mejor
+ * prueba que las otras tres.
+ */
+describe('cuál escribe el cliente y cuál nosotros', () => {
+  test('la que sube él no la marcamos nosotros', () => {
+    assert.equal(laMarcamosNosotros(LA_QUE_SUBE_EL), false);
+  });
+
+  test('y las otras tres sí', () => {
+    for (const otra of ['en_persona', 'papel_firmado', 'por_correo'] as const) {
+      assert.equal(laMarcamosNosotros(otra), true, otra);
+    }
+  });
+
+  test('las cuatro se saben decir en pantalla', () => {
+    // Una firma sin traducción saldría en crudo, con su nombre de columna.
+    for (const c of COMO_SE_FIRMA) {
+      assert.ok(COMO_LO_DECIMOS[c], `«${c}» no tiene texto`);
+    }
+  });
+
+  test('y la suya dice que la subió él', () => {
+    assert.match(COMO_LO_DECIMOS[LA_QUE_SUBE_EL], /subido/i);
   });
 });

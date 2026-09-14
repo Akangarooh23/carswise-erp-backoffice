@@ -42,7 +42,16 @@ import { LO_QUE_CUESTA as LO_QUE_CUESTA_EL_TALLER } from './revision-del-taller.
  * acepta. Lo que importa no es cuál sea, sino que haya **una** y que quede
  * escrito cuál.
  */
-export const COMO_SE_FIRMA = ['en_persona', 'papel_firmado', 'por_correo'] as const;
+/**
+ * Las cuatro maneras de que nos conste firmado.
+ *
+ * `subido_por_el` es la buena, y por eso es la que se le propone en el correo:
+ * lo sube él a su panel y el documento queda guardado. Las otras tres son un
+ * dato que escribimos nosotros —«me dijo que sí», «lo firmó delante»— y el día
+ * que alguien discuta una factura lo único que hay es nuestra palabra. Con el
+ * papel subido hay papel.
+ */
+export const COMO_SE_FIRMA = ['subido_por_el', 'en_persona', 'papel_firmado', 'por_correo'] as const;
 export type ComoSeFirma = (typeof COMO_SE_FIRMA)[number];
 
 export function esUnaFirma(v: unknown): v is ComoSeFirma {
@@ -51,10 +60,24 @@ export function esUnaFirma(v: unknown): v is ComoSeFirma {
 
 /** Cómo se dice en la pantalla. */
 export const COMO_LO_DECIMOS: Record<ComoSeFirma, string> = {
+  subido_por_el: 'Lo ha subido firmado a su panel',
   en_persona: 'Lo firmó delante de nosotros',
   papel_firmado: 'Nos ha mandado el papel firmado',
   por_correo: 'Lo ha aceptado por correo',
 };
+
+/**
+ * Cuál de las cuatro la escribe el cliente y no nosotros.
+ *
+ * La pantalla del ERP ofrece las tres nuestras: ésta no se marca a mano porque
+ * marcarla sería decir que subió un documento que no está. Llega sola cuando
+ * lo sube.
+ */
+export const LA_QUE_SUBE_EL: ComoSeFirma = 'subido_por_el';
+
+export function laMarcamosNosotros(v: ComoSeFirma): boolean {
+  return v !== LA_QUE_SUBE_EL;
+}
 
 /** La serie de los mandatos. Un número por encargo, para poder referirlo. */
 export const SERIE = 'PC-MAND';

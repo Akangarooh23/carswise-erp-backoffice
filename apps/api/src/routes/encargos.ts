@@ -48,7 +48,7 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
 import { porQueElTallerNoDeja, preparaRevisionesTaller } from './revisiones-taller.js';
 import {
-  COMO_SE_FIRMA, COMO_LO_DECIMOS, SERIE as SERIE_DEL_MANDATO,
+  COMO_SE_FIRMA, COMO_LO_DECIMOS, laMarcamosNosotros, SERIE as SERIE_DEL_MANDATO,
   esUnaFirma, estaFirmado, porQueNoEstaFirmado,
   elMandato, comoSeLlamaElFichero,
 } from '../lib/mandato-de-venta.js';
@@ -452,7 +452,18 @@ encargosRouter.get(
             : [],
           mandato_firmado: estaFirmado(encargo),
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
-          como_se_firma: COMO_SE_FIRMA.map((c) => ({ clave: c, nombre: COMO_LO_DECIMOS[c] })),
+          /*
+           * Solo las que marcamos nosotros.
+           *
+           * `subido_por_el` no se ofrece aquí: la escribe el cliente al subir
+           * el papel a su panel, y ponerla en esta lista sería dejar que
+           * alguien dijera que hay un documento que no está — que es justo lo
+           * que esa forma de firma viene a evitar. Sigue saliendo cuando ya ha
+           * subido, porque `COMO_LO_DECIMOS` la sabe traducir.
+           */
+          como_se_firma: COMO_SE_FIRMA
+            .filter(laMarcamosNosotros)
+            .map((c) => ({ clave: c, nombre: COMO_LO_DECIMOS[c] })),
           /*
            * Nada de esto caduca. Lo que se dice es qué pasaría si se fuera hoy,
            * que es lo que hace falta saber cuando se le llama.
@@ -1060,6 +1071,9 @@ encargosRouter.post(
          */
         fee_gestion: Number(e.fee_gestion) || FEE_DE_GESTION,
         fee_cancelacion: Number(e.fee_cancelacion) || FEE_DE_CANCELACION,
+        // Donde lo sube firmado. Antes se le pedía que contestara al correo, y
+        // entonces el papel se quedaba en una bandeja de entrada.
+        panel: `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`,
       });
 
       await enviar({
