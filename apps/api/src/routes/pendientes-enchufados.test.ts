@@ -65,6 +65,13 @@ const HACEN_FALTA: ReadonlyArray<readonly [string, string]> = [
    */
   ['/anuncios-portal/por-retirar', 'ver qué anuncios nuestros siguen puestos'],
   ['/provider-invoices/sin-enviar', 'ver qué facturas no le han llegado a nadie'],
+  /*
+   * El papeleo que paga el comprador. El contrato dice que los gastos del
+   * cambio de titularidad son suyos y el ERP guardaba solo lo que nos cuesta la
+   * gestoría: esa operación únicamente restaba.
+   */
+  ['/tramites/sin-cobrar', 'ver qué transferencias no le hemos cobrado al comprador'],
+  ['/cobrado', 'apuntar que el comprador ya pagó el papeleo'],
 ];
 
 describe('los avisos de Pendientes llevan a algo que existe', () => {
@@ -108,6 +115,7 @@ describe('y los avisos que mandan ahí', () => {
     ['financiacion_sin_cerrar', '/bookings'],
     ['anuncios_por_retirar', '/portales'],
     ['facturas_sin_enviar', '/billing'],
+    ['tramites_sin_cobrar', '/gestoria'],
   ];
 
   for (const [clave, pantalla] of AVISOS) {

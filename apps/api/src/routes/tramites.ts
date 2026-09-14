@@ -18,6 +18,10 @@ import { escritoEnLista } from '../lib/escrow.js';
 import { ponAlDiaLasEtapas } from './transportes.js';
 import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
+import {
+  ENSURE_COLUMNAS as ENSURE_COBRO, SQL_SIN_COBRAR, SQL_LOS_SIN_COBRAR, SQL_COBRA,
+  loQueSeProponeCobrar, loQueDeja, QUE_SE_COBRA,
+} from '../lib/cobro-del-tramite.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
 import {
   RECHAZADO, esEstadoTramiteValido, puedeEnviarse, notaDelCambio, TRAMITES_HABITUALES,
@@ -103,6 +107,14 @@ async function prepara() {
   // nuestro, y son mil cuatrocientos euros de Hacienda.
   await query(`ALTER TABLE erp_tramites ADD COLUMN IF NOT EXISTS partidas JSONB NOT NULL DEFAULT '[]'::jsonb`, []).catch(() => {});
   await query(`ALTER TABLE erp_tramites ADD COLUMN IF NOT EXISTS encargo_id TEXT`, []).catch(() => {});
+  /*
+   * Lo que le cobramos al comprador por el papeleo, que no es lo que nos cuesta.
+   *
+   * El contrato dice que los gastos del cambio de titularidad son suyos, y de
+   * todo eso el ERP guardaba una sola cifra: la de la gestoria. El ingreso que
+   * la compensa no existia en ningun sitio.
+   */
+  await query(ENSURE_COBRO, []).catch(() => {});
   await query(ENSURE_HISTORY, []).catch(() => {});
   await query(ENSURE_INDEX, []).catch(() => {});
   await query(ENSURE_UNIQUE, []).catch(() => {});
@@ -376,6 +388,72 @@ tramitesRouter.patch('/tramites/:id', requireRole(['admin', 'operations', 'sales
   } catch (err) {
     console.error('[tramites] cambiar:', (err as Error).message);
     res.status(500).json({ ok: false, error: 'tramites_failed' });
+  }
+});
+
+// ── Lo que el comprador nos debe por el papeleo ─────────────────────────────
+/**
+ * Cuántas transferencias están sin cobrarle al comprador.
+ *
+ * Para el panel. El contrato dice que los gastos del cambio de titularidad son
+ * suyos; el ERP guardaba solo lo que nos cuesta la gestoría, así que esa
+ * operación únicamente restaba en el margen del coche.
+ */
+export async function losTramitesSinCobrar(): Promise<{ tramites_sin_cobrar: number }> {
+  await prepara().catch(() => {});
+  const r = await query(SQL_SIN_COBRAR).catch(() => null);
+  return { tramites_sin_cobrar: Number(r?.rows[0]?.n ?? 0) };
+}
+
+/** Y cuáles son, con lo que cuestan y lo que dejarían. */
+tramitesRouter.get('/tramites/sin-cobrar', requireRole(['admin', 'support', 'operations']), async (_req, res) => {
+  try {
+    await prepara();
+    const r = await query(SQL_LOS_SIN_COBRAR).catch(() => ({ rows: [] }));
+    res.json({
+      ok: true,
+      data: {
+        tramites: (r.rows as Record<string, unknown>[]).map((t) => ({
+          ...t,
+          // Lo que se propone cobrar es el coste: un suelo, no una tarifa.
+          propuesto: loQueSeProponeCobrar(t.coste),
+          deja: loQueDeja(t.precio, t.coste),
+        })),
+        que_se_cobra: QUE_SE_COBRA,
+      },
+    });
+  } catch (e) {
+    console.error('[tramites] sin cobrar:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'tramites_sin_cobrar_failed' });
+  }
+});
+
+/**
+ * Se apunta que el comprador ya lo ha pagado, y cuánto.
+ *
+ * Esto **no cobra nada**: apunta que se cobró. Por eso pide el importe en vez
+ * de dar por bueno el propuesto — lo que entra en los libros tiene que ser lo
+ * que de verdad pagó, no lo que pensábamos cobrarle.
+ */
+tramitesRouter.post('/tramites/:id/cobrado', requireRole(['admin', 'operations']), async (req, res) => {
+  const importe = Number(req.body?.precio);
+  if (!Number.isFinite(importe) || importe <= 0) {
+    res.status(400).json({ ok: false, error: 'importe_invalido', detail: 'Hace falta lo que pagó' });
+    return;
+  }
+  try {
+    await prepara();
+    const r = await query(SQL_COBRA, [
+      req.params.id, importe, req.actor?.name ?? req.actor?.sub ?? '',
+    ]);
+    if (!r.rows.length) {
+      res.status(409).json({ ok: false, error: 'ya_estaba_cobrado' });
+      return;
+    }
+    res.json({ ok: true, data: { id: r.rows[0].id, precio: r.rows[0].precio } });
+  } catch (e) {
+    console.error('[tramites] apuntar el cobro:', (e as Error).message);
+    res.status(500).json({ ok: false, error: 'tramite_cobrado_failed' });
   }
 });
 

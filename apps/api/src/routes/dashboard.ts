@@ -17,6 +17,7 @@ import {
   reparteLosLeadsPorPlazo, losServiciosSinLlamar,
 } from '../lib/promesas-de-llamada.js';
 import { losAnunciosPorRetirar } from './anuncios-portal.js';
+import { losTramitesSinCobrar } from './tramites.js';
 import { lasFacturasSinEnviar } from './provider-billing.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
 import { preparaVisitas, losQueQuierenFinanciacion, lasFinanciacionesSinCerrar } from './visits.js';
@@ -389,7 +390,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, financiacionSinCerrar, sinEnviar, leadsPorPlazo, servicios] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, financiacionSinCerrar, sinEnviar, leadsPorPlazo, servicios, sinCobrar] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -577,6 +578,12 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
 
       // Y las solicitudes de servicio abiertas, con su promesa de 24-48 horas.
       query(SQL_SERVICIOS_ABIERTOS).catch(() => ({ rows: [] })),
+
+      /*
+       * Y las transferencias sin cobrarle al comprador. El contrato dice que el
+       * papeleo lo paga el; sin apuntarlo, esa operacion solo resta.
+       */
+      losTramitesSinCobrar().catch(() => ({ tramites_sin_cobrar: 0 })),
     ]);
 
     res.json({
@@ -592,6 +599,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...financiacion,
           ...financiacionSinCerrar,
           ...sinEnviar,
+          ...sinCobrar,
           portales_parados: portales?.valor?.n ?? 0,
           /*
            * Los encargos, con su plazo de 24 horas laborables.

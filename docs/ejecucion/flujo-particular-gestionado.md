@@ -450,6 +450,21 @@ erp: Y la factura queda en su sitio
 > **No se deshace.** Cerrar emite una factura a un cliente, así que va detrás de
 > un clic y no como tres botones a la vista.
 
+> **El papeleo lo paga el comprador, y hay que cobrárselo.** Lo dice el propio
+> contrato: «los gastos e impuestos derivados del cambio de titularidad son por
+> cuenta del comprador». Nosotros lo gestionamos y se lo cobramos a él.
+>
+> Mientras no conste cobrado, esa transferencia sale en Pendientes como
+> «transferencias sin cobrarle al comprador», y se apunta en **Gestoría**: lo que
+> pagó y ya está. **No bloquea nada** — el papeleo tiene plazos con la DGT que no
+> esperan a que alguien apunte un cobro.
+>
+> Se proponen los **honorarios de la gestoría más sus tasas** como suelo, que es
+> lo que ese trámite nos cuesta. Cobrar por debajo es pagar por hacer el trabajo;
+> cuánto por encima lo decide quien cobra, y se escribe lo que de verdad pagó.
+> Antes de esto el ERP solo guardaba el coste, así que la transferencia únicamente
+> restaba en el margen del coche.
+
 > **La transferencia sale sola, y solo al vender.** Es lo que se le prometió en
 > el mandato que firmó: «cuando se vende, hacemos el contrato y la transferencia
 > en la DGT». Al que se va o al que retiramos nosotros no se le abre ninguna —

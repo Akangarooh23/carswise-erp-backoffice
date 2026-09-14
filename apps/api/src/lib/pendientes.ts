@@ -64,6 +64,20 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    * no va a pagar, y ademas es una promesa escrita sin cumplir.
    */
   {
+    /*
+     * Lo que el comprador nos debe por el papeleo.
+     *
+     * El contrato que firman dice que los gastos del cambio de titularidad son
+     * suyos. El ERP guardaba solo lo que nos cuesta la gestoría, así que esa
+     * operación únicamente restaba: el ingreso que la compensa no estaba escrito
+     * en ningún sitio.
+     */
+    clave: 'tramites_sin_cobrar',
+    etiqueta: 'transferencias sin cobrarle al comprador', una: 'transferencia sin cobrarle al comprador',
+    porque: 'el papeleo lo paga el, lo dice el contrato, y sin apuntarlo la operacion solo resta',
+    a: '/gestoria', icono: 'euro', tono: 'urgente',
+  },
+  {
     clave: 'facturas_sin_enviar',
     etiqueta: 'facturas emitidas sin enviar', una: 'factura emitida sin enviar',
     porque: 'le dijimos que le llegaria, y una factura que no tiene no la paga',

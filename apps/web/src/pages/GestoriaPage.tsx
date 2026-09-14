@@ -96,8 +96,28 @@ function siguienteEstado(estado: string): Estado | null {
   return i >= 0 && i < ESTADOS.length - 1 ? ESTADOS[i + 1] : null;
 }
 
+/**
+ * Una transferencia que el comprador todavia no ha pagado.
+ *
+ * `coste` es lo que nos cobra la gestoria y `propuesto` lo que se sugiere
+ * cobrarle: el coste, como suelo. Cobrar por debajo es pagar por trabajar.
+ */
+interface SinCobrar {
+  id: string;
+  vehiculo_titulo: string | null;
+  matricula: string | null;
+  comprador_nombre: string | null;
+  comprador_email: string | null;
+  coste: string | number | null;
+  propuesto: number | null;
+}
+
 export default function GestoriaPage() {
   const [tramites, setTramites] = useState<Tramite[]>([]);
+  /** Las transferencias que el comprador todavia no ha pagado. */
+  const [sinCobrar, setSinCobrar] = useState<SinCobrar[]>([]);
+  const [cobros, setCobros] = useState<Record<string, string>>({});
+  const [cobrando, setCobrando] = useState<string | null>(null);
   const [habituales, setHabituales] = useState<string[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -153,6 +173,37 @@ export default function GestoriaPage() {
     }
   }
 
+  /**
+   * Se apunta que el comprador ya pagó el papeleo, y cuánto.
+   *
+   * El importe se pide en vez de dar por bueno el propuesto: lo que entra en
+   * los libros tiene que ser lo que de verdad pagó, no lo que pensábamos
+   * cobrarle.
+   */
+  async function apuntaElCobro(id: string) {
+    const escrito = (cobros[id] ?? '').replace(',', '.').trim();
+    const importe = Number(escrito);
+    if (!Number.isFinite(importe) || importe <= 0) {
+      setError('Pon lo que ha pagado antes de apuntarlo.');
+      return;
+    }
+    setCobrando(id);
+    const r = await api.post(`/tramites/${id}/cobrado`, { precio: importe });
+    setCobrando(null);
+    if (!r.ok) {
+      setError(r.error === 'ya_estaba_cobrado' ? 'Ese trámite ya constaba cobrado.' : 'No se ha podido apuntar el cobro.');
+      return;
+    }
+    setError('');
+    await cargaSinCobrar();
+    await carga();
+  }
+
+  const cargaSinCobrar = useCallback(async () => {
+    const r = await api.get<{ tramites: SinCobrar[] }>('/tramites/sin-cobrar');
+    if (r.ok && Array.isArray(r.data?.tramites)) setSinCobrar(r.data.tramites);
+  }, []);
+
   const carga = useCallback(async (): Promise<Tramite[]> => {
     setCargando(true);
     setError('');
@@ -165,6 +216,7 @@ export default function GestoriaPage() {
   }, []);
 
   useEffect(() => { void carga(); }, [carga]);
+  useEffect(() => { void cargaSinCobrar(); }, [cargaSinCobrar]);
   useEffect(() => {
     void api.get<string[]>('/tramites/habituales').then((r) => {
       if (r.ok && Array.isArray(r.data)) setHabituales(r.data);
@@ -210,6 +262,61 @@ export default function GestoriaPage() {
           </button>
         }
       />
+
+      {/*
+        * Lo que el comprador nos debe por el papeleo.
+        *
+        * El contrato que firman dice que los gastos del cambio de titularidad
+        * son suyos. El ERP guardaba solo lo que nos cuesta la gestoría, así que
+        * esa operación únicamente restaba en el margen del coche: el ingreso
+        * que la compensa no estaba escrito en ningún sitio.
+        *
+        * No bloquea nada. El papeleo tiene plazos con la DGT que no esperan a
+        * que alguien apunte un cobro.
+        */}
+      {sinCobrar.length > 0 && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-amber-200 bg-amber-50">
+            <h2 className="text-sm font-bold text-amber-900">
+              {sinCobrar.length === 1
+                ? 'Una transferencia sin cobrarle al comprador'
+                : `${sinCobrar.length} transferencias sin cobrarle al comprador`}
+            </h2>
+            <p className="text-[12.5px] text-amber-800/85 mt-0.5 max-w-3xl">
+              El papeleo lo paga él, lo dice el contrato. Mientras no se apunte, esa operación
+              solo resta: el coste de la gestoría está y el cobro no.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {sinCobrar.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">
+                    {t.vehiculo_titulo || 'Un coche'}{t.matricula ? ` · ${t.matricula}` : ''}
+                  </div>
+                  <div className="text-xs text-brand-400">
+                    {t.comprador_nombre || t.comprador_email || 'Sin comprador apuntado'}
+                    {t.coste != null ? ` · nos cuesta ${Number(t.coste).toFixed(2)} €` : ' · sin tarifa de gestoría'}
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  <input
+                    value={cobros[t.id] ?? (t.propuesto != null ? String(t.propuesto) : '')}
+                    onChange={(e) => setCobros((p) => ({ ...p, [t.id]: e.target.value }))}
+                    inputMode="decimal"
+                    placeholder="Lo que pagó"
+                    className="w-28 px-2 py-1.5 text-sm border border-brand-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-acento"
+                  />
+                  <button type="button" disabled={cobrando === t.id} onClick={() => void apuntaElCobro(t.id)}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
+                    {cobrando === t.id ? 'Apuntando…' : 'Ya lo ha pagado'}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">{error}</div>
