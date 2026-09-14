@@ -55,15 +55,54 @@ function diasDesde(v: string | null): number | null {
   return Math.floor((Date.now() - d.getTime()) / 86400000);
 }
 
+/**
+ * Un anuncio nuestro que sigue puesto en un portal con el coche ya vendido.
+ *
+ * No tiene nada que ver con los 800.000 de arriba: aquéllos son de otros y se
+ * rastrean para saber precios; éste es nuestro, con nuestro teléfono debajo.
+ */
+interface PorRetirar {
+  id: string;
+  portal: string;
+  url: string;
+  plate: string | null;
+  brand: string | null;
+  model: string | null;
+}
+
 export default function PortalesPage() {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [fallo, setFallo] = useState('');
+  const [porRetirar, setPorRetirar] = useState<PorRetirar[]>([]);
+  const [retirando, setRetirando] = useState<string | null>(null);
+
+  function cargaPorRetirar() {
+    api.get<PorRetirar[]>('/anuncios-portal/por-retirar')
+      .then((r) => { if (r.ok) setPorRetirar(r.data || []); })
+      .catch(() => { /* el análisis de portales sirve igual */ });
+  }
 
   useEffect(() => {
     api.get<Datos>('/portales/analisis')
       .then((r) => { if (r.ok) setDatos(r.data); else setFallo('No se pudo cargar el análisis'); })
       .catch(() => setFallo('Error de conexión'));
+    cargaPorRetirar();
   }, []);
+
+  /**
+   * Se apunta que ya se ha quitado.
+   *
+   * Solo apaga el aviso: quitarlo de verdad es entrar al portal, y por eso el
+   * enlace va delante del botón. Marcarlo sin haberlo quitado deja el anuncio
+   * vivo y sin nada que lo recuerde, que es peor que no tener el aviso.
+   */
+  async function retira(id: string) {
+    setRetirando(id);
+    const r = await api.post(`/anuncios-portal/${id}/retirar`, {});
+    setRetirando(null);
+    if (!r.ok) { setFallo('No se ha podido apuntar que está quitado'); return; }
+    cargaPorRetirar();
+  }
 
   if (fallo)  return <div className="text-red-500 text-sm pt-4">{fallo}</div>;
   if (!datos) return <div className="text-brand-300 text-sm pt-4">Cargando portales…</div>;
@@ -84,6 +123,65 @@ export default function PortalesPage() {
     <div className="space-y-6">
       <PageHeader title="Portales"
         subtitle="Los anuncios que se rastrean para saber a qué precio está el mercado. No son nuestro stock." />
+
+      {/*
+        * Nuestros anuncios que hay que quitar de los portales.
+        *
+        * Es a donde manda la línea de Pendientes, y hasta ahora aquí no había
+        * nada: el aviso decía «3 anuncios que hay que quitar» y te dejaba en
+        * una pantalla de precios de mercado. Retirarlos se podía, pero solo
+        * entrando coche a coche desde su encargo — o sea, sabiendo ya cuáles
+        * son, que es justo lo que el aviso venía a decirte.
+        *
+        * Es el caso del Kia Sorento: vendido, y su anuncio vivo con nuestro
+        * teléfono debajo.
+        */}
+      {porRetirar.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-amber-200 bg-amber-50">
+            <h2 className="text-sm font-bold text-amber-900">
+              {porRetirar.length === 1
+                ? 'Un anuncio nuestro que hay que quitar'
+                : `${porRetirar.length} anuncios nuestros que hay que quitar`}
+            </h2>
+            <p className="text-[12.5px] text-amber-800/85 mt-0.5 max-w-3xl">
+              Esos coches ya no están a la venta en nuestro escaparate, así que tampoco pueden
+              estarlo fuera. El teléfono de esos anuncios es el nuestro: las llamadas por un coche
+              vendido las cogemos nosotros.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {porRetirar.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">
+                    {[a.brand, a.model].filter(Boolean).join(' ') || 'Un coche'}
+                    {a.plate ? ` · ${a.plate}` : ''}
+                  </div>
+                  <div className="text-xs text-brand-400">{a.portal}</div>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  {/*
+                    * El enlace del anuncio va delante del botón: primero se
+                    * entra al portal y se borra, y solo después se marca aquí.
+                    * Al revés se apaga el aviso de algo que sigue puesto.
+                    */}
+                  {a.url && (
+                    <a href={a.url} target="_blank" rel="noreferrer"
+                       className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50">
+                      Abrir el anuncio
+                    </a>
+                  )}
+                  <button type="button" disabled={retirando === a.id} onClick={() => retira(a.id)}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
+                    {retirando === a.id ? 'Apuntando…' : 'Ya lo he quitado'}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {parados.length > 0 && (
         <div className="flex items-start gap-2.5 rounded-xl border border-acento bg-acento-tenue px-4 py-3">

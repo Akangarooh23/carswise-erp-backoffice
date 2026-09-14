@@ -93,6 +93,21 @@ const eur = (n: number) =>
     maximumFractionDigits: 2,
   });
 
+/**
+ * Una factura que emitimos y que no le ha llegado a quien se le cobra.
+ *
+ * `a_quien` es la direccion a la que sale, que no siempre es la del cliente:
+ * la comision del concesionario va al concesionario.
+ */
+interface FacturaSinEnviar {
+  id: string;
+  invoice_number: string | null;
+  provider_name: string | null;
+  customer_name: string | null;
+  vehicle_title: string | null;
+  a_quien: string | null;
+}
+
 export default function BillingPage() {
   const [summary, setSummary]   = useState<BillingSummary | null>(null);
   const [cobros, setCobros] = useState<ResumenCobros | null>(null);
@@ -107,10 +122,19 @@ export default function BillingPage() {
   const [loading, setLoading]   = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<{ id: string; msg: string } | null>(null);
+  const [sinEnviar, setSinEnviar] = useState<FacturaSinEnviar[]>([]);
+
+  /** Las emitidas a las que no les consta el envío. */
+  function cargaSinEnviar() {
+    api.get<FacturaSinEnviar[]>('/provider-invoices/sin-enviar')
+      .then((r) => { if (r.ok) setSinEnviar(r.data || []); })
+      .catch(() => { /* el resto de la pantalla sirve igual */ });
+  }
 
   useEffect(() => {
     api.get<BillingSummary>('/billing/summary').then((r) => { if (r.ok) setSummary(r.data); });
     api.get<ResumenCobros>('/billing/invoices/stats').then((r) => { if (r.ok) setCobros(r.data); });
+    cargaSinEnviar();
   }, []);
 
   useEffect(() => { setPage(1); }, [tab]);
@@ -156,6 +180,66 @@ export default function BillingPage() {
         title="Facturación clientes"
         subtitle="Suscripciones cobradas por PopCar · Ventas y rentings gestionados por el proveedor"
       />
+
+      {/*
+        * Las que se emitieron y no le han llegado a nadie.
+        *
+        * Es a donde manda la línea de Pendientes, y aquí no había nada: el
+        * aviso decía «2 facturas emitidas sin enviar» y te dejaba delante de la
+        * tabla entera, con la columna «Enviado» a la derecha del todo, para que
+        * las buscaras tú. Mandar cada una es descargar su PDF, y sin saber
+        * cuáles son eso no se puede hacer.
+        */}
+      {sinEnviar.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-amber-200 bg-amber-50">
+            <h2 className="text-sm font-bold text-amber-900">
+              {sinEnviar.length === 1
+                ? 'Una factura emitida sin enviar'
+                : `${sinEnviar.length} facturas emitidas sin enviar`}
+            </h2>
+            <p className="text-[12.5px] text-amber-800/85 mt-0.5 max-w-3xl">
+              Le dijimos que le llegaría, y una factura que no tiene no la paga. Se manda
+              descargando su PDF: al descargarlo sale el correo con el adjunto.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {sinEnviar.map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">
+                    {f.invoice_number || f.id} · {f.provider_name || f.customer_name || '–'}
+                  </div>
+                  <div className="text-xs text-brand-400">
+                    {f.vehicle_title || '–'}
+                    {/* A quién va de verdad, que no siempre es el cliente. */}
+                    {f.a_quien ? ` · sale a ${f.a_quien}` : ''}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <button
+                    disabled={downloadingId === f.id}
+                    onClick={async () => {
+                      setPdfError(null);
+                      setDownloadingId(f.id);
+                      try {
+                        await descargaConSesion(`/invoices/provider/${f.id}/pdf`, `${f.invoice_number ?? f.id}.pdf`);
+                        cargaSinEnviar();
+                        setRefreshKey((k) => k + 1);
+                      } catch (e) {
+                        setPdfError({ id: f.id, msg: (e as Error).message });
+                      }
+                      setDownloadingId(null);
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60">
+                    {downloadingId === f.id ? 'Mandando…' : 'Descargar y mandar'}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Summary */}
       {summary && (

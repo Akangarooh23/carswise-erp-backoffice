@@ -1,5 +1,5 @@
 /**
- * Que lo de la financiación esté enchufado a una pantalla.
+ * Que cada aviso de Pendientes tenga una pantalla donde atenderlo.
  *
  * ## Por qué existe
  *
@@ -54,9 +54,20 @@ const HACEN_FALTA: ReadonlyArray<readonly [string, string]> = [
   ['financiacion-cierre', 'cerrar una financiación desde la Agenda'],
   ['/provider-billing/pending-financing-commissions', 'ver las comisiones de financiación pendientes'],
   ['/provider-billing/financing-commissions', 'emitirle la factura a la entidad'],
+  /*
+   * Éstas dos salieron del mismo barrido que la de financiación, y tenían el
+   * mismo fallo: la ruta escrita y ninguna pantalla llamándola.
+   *
+   * La de los anuncios es la del Kia Sorento: el aviso decía «3 anuncios que
+   * hay que quitar» y te dejaba en una pantalla de precios de mercado.
+   * Retirarlos se podía, pero solo entrando coche a coche desde su encargo —
+   * o sea, sabiendo ya cuáles son, que es lo que el aviso venía a decirte.
+   */
+  ['/anuncios-portal/por-retirar', 'ver qué anuncios nuestros siguen puestos'],
+  ['/provider-invoices/sin-enviar', 'ver qué facturas no le han llegado a nadie'],
 ];
 
-describe('la financiación está enchufada a una pantalla', () => {
+describe('los avisos de Pendientes llevan a algo que existe', () => {
   test('el web se lee entero', () => {
     // Si esto quedara vacío, todas las comprobaciones de abajo pasarían sin
     // mirar nada — que es peor que no tenerlas.
@@ -80,17 +91,34 @@ describe('la financiación está enchufada a una pantalla', () => {
  * enchufadas y esta prueba seguiría en verde mientras el aviso deja de salir.
  * Se mira aquí porque las dos cosas son la misma promesa.
  */
-describe('y el aviso que las manda ahí', () => {
+describe('y los avisos que mandan ahí', () => {
   const CATALOGO = readFileSync(
     join(import.meta.dirname, '..', 'lib', 'pendientes.ts'), 'utf8'
   );
 
-  test('«financiacion_sin_cerrar» sigue en el catálogo de Pendientes', () => {
-    assert.match(CATALOGO, /clave: 'financiacion_sin_cerrar'/);
-  });
+  /**
+   * Cada aviso con la pantalla a la que manda.
+   *
+   * Si alguien quitara una línea del catálogo, las rutas de arriba seguirían
+   * enchufadas y esta prueba seguiría en verde mientras el aviso deja de salir.
+   * Y si le cambiara el destino, la pantalla que tiene el botón dejaría de ser
+   * la que se abre. Las dos cosas son la misma promesa.
+   */
+  const AVISOS: ReadonlyArray<readonly [string, string]> = [
+    ['financiacion_sin_cerrar', '/bookings'],
+    ['anuncios_por_retirar', '/portales'],
+    ['facturas_sin_enviar', '/billing'],
+  ];
 
-  test('y lleva a la Agenda, que es donde está el botón', () => {
-    const trozo = CATALOGO.slice(CATALOGO.indexOf("clave: 'financiacion_sin_cerrar'"));
-    assert.match(trozo.slice(0, 400), /a: '\/bookings'/);
-  });
+  for (const [clave, pantalla] of AVISOS) {
+    test(`«${clave}» sigue en el catálogo y lleva a ${pantalla}`, () => {
+      const i = CATALOGO.indexOf(`clave: '${clave}'`);
+      assert.ok(i > 0, `«${clave}» ya no está en el catálogo de Pendientes`);
+      assert.match(
+        CATALOGO.slice(i, i + 400),
+        new RegExp(`a: '${pantalla.replace('/', '\\/')}'`),
+        `«${clave}» ya no manda a ${pantalla}, que es donde está el botón`
+      );
+    });
+  }
 });
