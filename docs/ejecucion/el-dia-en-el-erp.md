@@ -45,6 +45,23 @@ erp: Las facturas que nos tienen que llegar a nosotros
 > sea uno solo. Ordenado por cantidad, cuarenta citas taparían la factura que no
 > se puede deducir.
 
+> **Cada plazo que prometemos por escrito tiene su línea, y mide lo prometido.**
+>
+> | Lo que dice la web o el correo | Cuándo avisa |
+> |---|---|
+> | «Te llamamos en menos de dos horas laborables» | «leads a los que toca llamar ya», a las 2 horas laborables |
+> | — | «leads que se han enfriado», a los tres días: ésos ya no compran |
+> | «Te llamamos en menos de 24 horas laborables» (encargo de venta) | «encargos de venta sin llamar» |
+> | «Te llamamos en 24-48 horas hábiles» (servicios) | «solicitudes de servicio sin llamar», a las 24 |
+>
+> **Laborables quiere decir laborables**: un formulario del viernes por la tarde
+> no está tarde el sábado. Y los de servicio avisan a las **24**, no a las 48:
+> avisar en el extremo largo sería avisar cuando ya se ha incumplido.
+>
+> Nadie sale en dos líneas a la vez. El que lleva cuatro días sale solo en la de
+> fríos, y los encargos se excluyen de las listas de leads porque tienen su
+> propio plazo.
+
 ---
 
 ## Los cuatro caminos

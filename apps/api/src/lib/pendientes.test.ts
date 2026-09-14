@@ -259,19 +259,21 @@ describe('y el panel reparte de verdad lo que le dan', () => {
 
   test('lo que calcula cada función acaba en las cuentas', () => {
     assert.ok(CUENTAS.length > 0, 'no encuentro la llamada a losPendientes');
-    for (const trozo of ['...encargos', '...anuncios', '...financiacion', '...sinEnviar', '...visitas.rows[0]']) {
+    for (const trozo of ['...encargos', '...anuncios', '...financiacion', '...financiacionSinCerrar',
+                         '...sinEnviar', '...visitas.rows[0]',
+                         'servicios_sin_llamar:', 'encargos_sin_llamar:']) {
       assert.ok(CUENTAS.includes(trozo), `${trozo} no se mete en las cuentas del panel`);
     }
   });
 
   test('y el reparto de leads va el último, porque pisa', () => {
     /*
-     * `reparteLosLeads` reescribe `leads_pendientes`. Si se colara antes del
+     * `reparteLosLeadsPorPlazo` reescribe `leads_pendientes`. Si se colara antes del
      * spread de `leads.rows[0]`, ese lo pisaría a él y volveríamos a contar al
      * mismo señor dos veces.
      */
     const leads = CUENTAS.indexOf('...leads.rows[0]');
-    const reparte = CUENTAS.indexOf('...reparteLosLeads(');
+    const reparte = CUENTAS.indexOf('...reparteLosLeadsPorPlazo(');
     assert.ok(leads >= 0 && reparte > 0, 'falta alguno de los dos');
     assert.ok(reparte > leads, 'el reparto se aplica antes que el spread que pisa');
   });

@@ -112,10 +112,37 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     a: '/portales', icono: 'tabla', tono: 'espera',
   },
   {
+    /*
+     * A quién le debemos una llamada ahora mismo.
+     *
+     * La web promete «te llamamos en menos de dos horas». Antes esto no lo
+     * medía nadie: la línea de abajo contaba todo lo pendiente sin mirar la
+     * hora, así que el que acababa de entrar salía igual que el de hace tres
+     * semanas — y un número que nunca está a cero se deja de mirar.
+     */
+    clave: 'leads_sin_llamar',
+    etiqueta: 'leads a los que toca llamar ya', una: 'lead al que toca llamar ya',
+    porque: 'la web le prometio una llamada en menos de dos horas laborables',
+    a: '/leads', icono: 'megafono', tono: 'urgente',
+  },
+  {
     clave: 'leads_pendientes',
-    etiqueta: 'leads sin contestar', una: 'lead sin contestar',
-    porque: 'un lead frío a los tres días ya no compra',
+    etiqueta: 'leads que se han enfriado', una: 'lead que se ha enfriado',
+    porque: 'lleva mas de tres dias sin contestar y a los tres dias ya no compra',
     a: '/leads', icono: 'megafono', tono: 'espera',
+  },
+  {
+    /*
+     * Y el otro plazo que prometemos por escrito.
+     *
+     * «Te llamamos en 24-48 horas hábiles», dice el correo del servicio. Había
+     * pantalla donde verlas y ninguna línea que avisara: la promesa se cumplía
+     * si alguien se acordaba de entrar.
+     */
+    clave: 'servicios_sin_llamar',
+    etiqueta: 'solicitudes de servicio sin llamar', una: 'solicitud de servicio sin llamar',
+    porque: 'se le prometio una llamada en 24-48 horas habiles y ya han pasado las primeras 24',
+    a: '/colas/servicios', icono: 'llave-inglesa', tono: 'urgente',
   },
   {
     clave: 'leads_reagendar',

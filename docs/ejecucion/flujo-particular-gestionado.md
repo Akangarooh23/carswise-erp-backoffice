@@ -99,9 +99,12 @@ erp: Y se le abre el encargo sobre su coche
 
 > **Las 24 horas son laborables, y tienen su propia línea en Pendientes.** Un
 > formulario que entra el viernes por la tarde no está tarde el sábado; el lunes
-> por la mañana, tampoco. Cuando el plazo se pasa, ese lead sale de «leads sin
-> contestar» —cuyo criterio son tres días— y aparece en rojo como «encargos de
-> venta sin llamar». No se cuenta dos veces: sale de un sitio y entra en otro.
+> por la mañana, tampoco. Cuando el plazo se pasa, ese lead aparece en rojo como
+> «encargos de venta sin llamar».
+>
+> **No se cuenta dos veces.** Las listas de leads excluyen por tipo a los de
+> venta gestionada, porque a ellos se les promete otra cosa: si entraran, el
+> mismo señor tendría dos avisos con dos plazos distintos.
 
 > **Qué coche es lo dice él, no lo adivinamos.** Si al rellenar el formulario
 > había entrado, eligió el coche de una lista con los suyos, y en el lead sale

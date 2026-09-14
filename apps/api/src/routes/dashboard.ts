@@ -11,7 +11,11 @@ import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
 import { losAvisosDeEncargos } from './encargos.js';
-import { SQL_SIN_LLAMAR, losQueEsperanDeMas, reparteLosLeads } from '../lib/sin-llamar.js';
+import { SQL_SIN_LLAMAR, losQueEsperanDeMas } from '../lib/sin-llamar.js';
+import {
+  SQL_LEADS_PENDIENTES, SQL_SERVICIOS_ABIERTOS,
+  reparteLosLeadsPorPlazo, losServiciosSinLlamar,
+} from '../lib/promesas-de-llamada.js';
 import { losAnunciosPorRetirar } from './anuncios-portal.js';
 import { lasFacturasSinEnviar } from './provider-billing.js';
 import { leeKpi, KPI } from '../lib/kpis-guardados.js';
@@ -385,7 +389,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
     // el panel primero se encontraria la cuenta a cero para siempre: la
     // consulta falla, el panel se traga el fallo y un cero no chilla.
     await preparaVisitas();
-    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, financiacionSinCerrar, sinEnviar] = await Promise.all([
+    const [leads, citas, usuarios, peritaciones, facturas, importacion, comisiones, contabilidad, portales, visitas, encargos, sinLlamar, anuncios, financiacion, financiacionSinCerrar, sinEnviar, leadsPorPlazo, servicios] = await Promise.all([
       query(`
         SELECT COUNT(*) FILTER (WHERE status = 'Pendiente')::int            AS leads_pendientes,
                COUNT(*) FILTER (WHERE status = 'Reagendar solicitado')::int AS leads_reagendar
@@ -561,6 +565,18 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * de cierre se le dice que le llegara: si nadie descarga el PDF, no sale.
        */
       lasFacturasSinEnviar().catch(() => ({ facturas_sin_enviar: 0 })),
+
+      /*
+       * Las fechas de los leads que esperan llamada, para repartirlos por plazo.
+       *
+       * Se traen las fechas y no la cuenta porque «laborables» en SQL sería otra
+       * implementación del mismo cálculo, y el día que cambiara una de las dos
+       * el panel diría una cosa y la pantalla otra.
+       */
+      query(SQL_LEADS_PENDIENTES).catch(() => ({ rows: [] })),
+
+      // Y las solicitudes de servicio abiertas, con su promesa de 24-48 horas.
+      query(SQL_SERVICIOS_ABIERTOS).catch(() => ({ rows: [] })),
     ]);
 
     res.json({
@@ -578,15 +594,29 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...sinEnviar,
           portales_parados: portales?.valor?.n ?? 0,
           /*
-           * El reparto va al final a propósito: pisa a `leads_pendientes`.
+           * Los encargos, con su plazo de 24 horas laborables.
            *
-           * Esa cuenta incluye a todos los pendientes, también a los que piden
-           * que les vendamos el coche. Sin restarlos, el mismo señor saldría en
-           * dos filas y sumaría dos en el número de arriba.
+           * Ya no hace falta restarlos de `leads_pendientes`: la consulta de
+           * los leads los excluye por tipo, así que el mismo señor no puede
+           * caer en las dos listas.
            */
-          ...reparteLosLeads(
-            Number(leads.rows[0]?.leads_pendientes ?? 0),
-            losQueEsperanDeMas(sinLlamar.rows as { created_at?: string | Date | null }[]),
+          encargos_sin_llamar: losQueEsperanDeMas(
+            sinLlamar.rows as { created_at?: string | Date | null }[],
+          ),
+          /*
+           * Y el reparto de los demás, que va al final porque pisa a
+           * `leads_pendientes`.
+           *
+           * La cuenta que viene de arriba son **todos** los pendientes, sin
+           * mirar la hora: contaba igual al que acaba de entrar que al de hace
+           * tres semanas. Ésta los parte en los dos plazos que de verdad
+           * prometemos — dos horas laborables y tres días.
+           */
+          ...reparteLosLeadsPorPlazo(
+            leadsPorPlazo.rows as { created_at?: string | Date | null }[],
+          ),
+          servicios_sin_llamar: losServiciosSinLlamar(
+            servicios.rows as { created_at?: string | Date | null }[],
           ),
         }),
       },
