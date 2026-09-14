@@ -389,9 +389,9 @@ erp: Nos entra pendiente de confirmar
 > lista que no se vacía se deja de mirar.
 >
 > En cuanto consta como financiada, sale en **Comisiones** para emitirle la
-> factura a la entidad. Son **150 €** provisionales, como los 200 del
-> concesionario: no hay nada firmado con ninguna entidad todavía, así que el
-> importe se cambia al emitir.
+> factura a la entidad. Son **150 € por operación**, y son provisionales igual
+> que los **200 € por coche** del concesionario: no hay nada firmado con ninguna
+> entidad todavía, así que el importe se cambia al emitir.
 
 ---
 
