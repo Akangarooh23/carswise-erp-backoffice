@@ -207,6 +207,29 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     [`idcar-${vehicleId}`]
   ).catch(() => ({ rows: [] }));
 
+  /*
+   * Los papeles del seguro y las facturas de revisión.
+   *
+   * Cuelgan del seguro y del mantenimiento, no del coche, así que hay que pasar
+   * por la tabla de en medio. Se cuentan **ficheros**: una compañía y un número
+   * de póliza escritos a mano no prueban nada.
+   */
+  const seguros = await query(
+    `SELECT COUNT(*)::int AS n
+       FROM moveadvisor_user_insurance_documents d
+       JOIN moveadvisor_user_insurances i ON i.id = d.insurance_id
+      WHERE i.vehicle_id = $1`,
+    [vehicleId]
+  ).catch(() => ({ rows: [{ n: 0 }] }));
+
+  const mantenimientos = await query(
+    `SELECT COUNT(*)::int AS n
+       FROM moveadvisor_user_maintenance_invoices f
+       JOIN moveadvisor_user_maintenances m ON m.id = f.maintenance_id
+      WHERE m.vehicle_id = $1`,
+    [vehicleId]
+  ).catch(() => ({ rows: [{ n: 0 }] }));
+
   const v = coche.rows[0] ?? {};
   return {
     matricula: v.plate ?? null,
@@ -219,6 +242,8 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     tasacion: Number(tasacion.rows[0]?.estimate_value ?? 0) || null,
     informe: informe.rows[0]?.status ?? null,
     franjas: franjas.rows.map((r) => new Date(r.starts_at as string).toISOString()),
+    seguros: seguros.rows[0]?.n ?? 0,
+    mantenimientos: mantenimientos.rows[0]?.n ?? 0,
   };
 }
 
@@ -272,6 +297,17 @@ export async function losAvisosDeEncargos(): Promise<{
               FROM vehicle_visit_availability a
              WHERE a.offer_id = 'idcar-' || e.vehicle_id
                AND a.status = 'available' AND a.starts_at > NOW()) AS franjas,
+           -- Los papeles del seguro y las facturas de revisión, como en la ficha.
+           -- Sin estas dos, aquí esas puertas saldrían siempre cerradas y el
+           -- panel diría que le falta algo que ya ha subido.
+           (SELECT COUNT(*)::int
+              FROM moveadvisor_user_insurance_documents sd
+              JOIN moveadvisor_user_insurances si ON si.id = sd.insurance_id
+             WHERE si.vehicle_id = e.vehicle_id) AS seguros,
+           (SELECT COUNT(*)::int
+              FROM moveadvisor_user_maintenance_invoices mf
+              JOIN moveadvisor_user_maintenances mm ON mm.id = mf.maintenance_id
+             WHERE mm.vehicle_id = e.vehicle_id) AS mantenimientos,
            tal.estado AS taller_estado, tal.resultado AS taller_resultado
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
@@ -301,6 +337,8 @@ export async function losAvisosDeEncargos(): Promise<{
       tasacion: Number(fila.tasacion ?? 0) || null,
       informe: fila.informe as string | null,
       franjas: ((fila.franjas as (string | Date)[]) ?? []).map((f) => new Date(f).toISOString()),
+      seguros: Number(fila.seguros ?? 0),
+      mantenimientos: Number(fila.mantenimientos ?? 0),
     });
 
     // Una visita de ese coche acabo en venta y el encargo sigue abierto: falta

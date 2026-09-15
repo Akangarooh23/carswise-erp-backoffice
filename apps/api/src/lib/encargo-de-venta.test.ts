@@ -28,6 +28,8 @@ const COMPLETO: LoQueHay = {
   tasacion: 13500,
   informe: 'informe_listo',
   franjas: Array.from({ length: FRANJAS_MINIMAS }, (_, i) => enDias(i + 1)),
+  seguros: 1,
+  mantenimientos: 1,
 };
 
 describe('las franjas', () => {
@@ -63,10 +65,11 @@ describe('las franjas', () => {
   });
 });
 
-describe('las cinco puertas', () => {
+describe('las puertas', () => {
   test('con todo puesto, se puede publicar', () => {
     const puertas = lasPuertas(COMPLETO, AHORA);
-    assert.equal(puertas.length, 5);
+    // Cuantas sean: la lista de claves es la que manda, y se compara entera.
+    assert.equal(puertas.length, LAS_PUERTAS.length);
     assert.deepEqual(puertas.map((p) => p.clave), LAS_PUERTAS);
     assert.ok(puertas.every((p) => p.abierta), JSON.stringify(loQueLeFalta(puertas)));
     assert.equal(sePuedePublicar(puertas), true);
@@ -121,12 +124,45 @@ describe('las cinco puertas', () => {
   test('con un coche vacío se le puede decir todo lo que falta de una vez', () => {
     const puertas = lasPuertas({}, AHORA);
     assert.equal(sePuedePublicar(puertas), false);
-    assert.equal(loQueLeFalta(puertas).length, 5);
+    // Todas cerradas, todas con su frase: ninguna se queda muda.
+    assert.equal(loQueLeFalta(puertas).length, LAS_PUERTAS.length);
     assert.match(loQueLeFalta(puertas)[0], /la matrícula, la marca, el modelo, el año/);
   });
 });
 
-describe('sePuedePublicar mira las cinco por su nombre', () => {
+describe('el seguro y el mantenimiento, con papel', () => {
+  test('sin papeles subidos no se publica', () => {
+    /*
+     * Es una decisión de Ana, tomada sabiendo lo que cuesta: cada puerta nueva
+     * se la cobras a los que sí iban a vender. Lo que se gana es que el coche
+     * salga al mercado con historial, que es lo primero que pregunta quien
+     * compra y de lo poco que mueve el precio.
+     */
+    for (const sin of [{ seguros: 0 }, { mantenimientos: 0 }]) {
+      const puertas = lasPuertas({ ...COMPLETO, ...sin }, AHORA);
+      assert.equal(sePuedePublicar(puertas), false, JSON.stringify(sin));
+    }
+  });
+
+  test('se cuentan ficheros, no lo que escribió a mano', () => {
+    /*
+     * Una compañía y un número de póliza se teclean de memoria y no prueban
+     * nada; lo que hace falta el día del traspaso es el papel.
+     */
+    const puertas = lasPuertas({ ...COMPLETO, seguros: 0, mantenimientos: 0 }, AHORA);
+    assert.equal(puertas.find((p) => p.clave === 'seguro')?.abierta, false);
+    assert.equal(puertas.find((p) => p.clave === 'mantenimiento')?.abierta, false);
+  });
+
+  test('y sin datos salen cerradas, que es el lado prudente', () => {
+    // Pedirle algo que quizá ya tiene es mejor que decirle que está listo.
+    const puertas = lasPuertas({}, AHORA);
+    assert.equal(puertas.find((p) => p.clave === 'seguro')?.abierta, false);
+    assert.equal(puertas.find((p) => p.clave === 'mantenimiento')?.abierta, false);
+  });
+});
+
+describe('sePuedePublicar mira todas por su nombre', () => {
   test('una lista vacía no autoriza nada', () => {
     /*
      * El error fácil: `puertas.every(p => p.abierta)` sobre una lista ya

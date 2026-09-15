@@ -2,7 +2,7 @@
  * El encargo de venta de un particular: «nosotros lo vendemos por ti».
  *
  * Lo que existe no es el anuncio, es el **encargo**. El anuncio llega tarde —
- * solo cuando están las cuatro puertas y el coche tiene sello— y hay muchas
+ * solo cuando están todas las puertas y el coche tiene sello— y hay muchas
  * cosas que pasan antes: alguien a medio traer sus papeles es el mejor cliente
  * que vamos a tener, y sin una fila que lo represente no se le puede ni ver ni
  * llamar.
@@ -166,10 +166,20 @@ export interface LoQueHay {
    * gastan, y por eso hay un aviso de «se quedó sin franjas».
    */
   franjas?: readonly string[] | null;
+  /**
+   * Cuántos papeles del seguro ha subido.
+   *
+   * Se cuentan los ficheros y no los datos de la póliza: una compañía y un
+   * número se escriben de memoria y no prueban nada, y lo que hace falta al
+   * traspasar el coche es el papel.
+   */
+  seguros?: number | null;
+  /** Cuántas facturas de mantenimiento ha subido. */
+  mantenimientos?: number | null;
 }
 
 export interface Puerta {
-  clave: 'idcar' | 'papeles' | 'tasacion' | 'informe' | 'franjas';
+  clave: 'idcar' | 'papeles' | 'tasacion' | 'informe' | 'franjas' | 'seguro' | 'mantenimiento';
   nombre: string;
   abierta: boolean;
   /** Qué falta, en la frase que se le puede leer al cliente por teléfono. */
@@ -195,9 +205,9 @@ export function franjasQueValen(
 }
 
 /**
- * Las cuatro puertas, en el orden en que se le piden al cliente.
+ * Las puertas, en el orden en que se le piden al cliente.
  *
- * Se devuelven siempre las cuatro, abiertas o no, porque la pantalla enseña la
+ * Se devuelven siempre todas, abiertas o no, porque la pantalla enseña la
  * lista entera con su semáforo: lo que hace falta saber no es «¿puedo
  * publicar?» sino «¿qué le pido cuando le llame?».
  */
@@ -256,6 +266,26 @@ export function lasPuertas(hay: LoQueHay, ahora: Date = new Date()): Puerta[] {
       abierta: libres >= FRANJAS_MINIMAS,
       falta: `Tiene ${libres} de ${FRANJAS_MINIMAS} en los próximos ${DIAS_DE_FRANJAS} días`,
     },
+    /*
+     * El seguro y el mantenimiento, con papel.
+     *
+     * Se cuentan ficheros subidos y no los datos escritos: una compañía y un
+     * número de póliza se teclean de memoria y no prueban nada. El historial de
+     * revisiones es de lo poco que mueve el precio y es lo primero que pregunta
+     * quien compra; el del seguro hace falta el día del traspaso.
+     */
+    {
+      clave: 'seguro',
+      nombre: 'El seguro',
+      abierta: Number(hay.seguros ?? 0) > 0,
+      falta: 'No ha subido ningún papel del seguro',
+    },
+    {
+      clave: 'mantenimiento',
+      nombre: 'El mantenimiento',
+      abierta: Number(hay.mantenimientos ?? 0) > 0,
+      falta: 'No ha subido ninguna factura de revisión',
+    },
   ];
 }
 
@@ -272,14 +302,16 @@ function enLista(cosas: string[]): string {
  * que haya un precio del que hablar, y sin precio acordado no se publica —
  * publicar sería poner un número que no ha dicho nadie.
  */
-export const LAS_PUERTAS: Puerta['clave'][] = ['idcar', 'papeles', 'tasacion', 'informe', 'franjas'];
+export const LAS_PUERTAS: Puerta['clave'][] = [
+  'idcar', 'papeles', 'tasacion', 'informe', 'franjas', 'seguro', 'mantenimiento',
+];
 
 /**
  * Si el coche se puede publicar ya.
  *
- * Se comprueba que estén **las cuatro por su clave**, y no que «todas las que
+ * Se comprueba que estén **todas por su clave**, y no que «todas las que
  * me han pasado» estén abiertas: con lo segundo, pasarle una lista ya filtrada
- * —o una lista vacía— diría que sí. Las cuatro puertas y nada más: el sello del
+ * —o una lista vacía— diría que sí. Las de la lista y nada más: el sello del
  * taller es otra cosa y va aparte, porque quien lo cierra no es el cliente sino
  * nosotros.
  */

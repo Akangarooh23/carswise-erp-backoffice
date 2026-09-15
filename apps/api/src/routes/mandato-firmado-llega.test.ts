@@ -102,7 +102,14 @@ describe('lo que guarda PopCar', () => {
      * descarga del ERP pediría `.../object/vehicle-files/https://...`.
      */
     assert.match(src, /const camino = `mandatos\//);
-    assert.match(src, /SQL_GUARDA_DOCUMENTO, \[encargoId, nombre, tipo, camino/);
+    /*
+     * El segundo parámetro es el nombre con el que se ve el papel y cambió de
+     * `nombre` a `comoSeLlama` al empezar a renombrarlos —«Mandato firmado ·
+     * 8888LXR.docx» en vez de lo que traía el móvil—. Lo que aquí se protege no
+     * es cómo se llame esa variable sino que en el **cuarto** hueco, la ruta,
+     * vaya `camino` y no la URL pública.
+     */
+    assert.match(src, /SQL_GUARDA_DOCUMENTO, \[encargoId, [A-Za-z]+, tipo, camino/);
   });
 
   test('y lo cuelga del encargo, con el papel que el ERP busca', (t) => {
