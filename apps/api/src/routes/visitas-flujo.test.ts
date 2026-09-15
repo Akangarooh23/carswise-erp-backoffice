@@ -47,10 +47,23 @@ const SECCIONES = [
 // no puede ni leer, y con 'b-1' el rastro contestaba 400.
 const CITA = '3f1a6f5e-9c2b-4d7a-8e10-5b6c7d8e9f01';
 const CLIENTE = 'cliente@example.com';
-const HORA_PEDIDA = '2026-09-15T08:00:00.000Z';
+/**
+ * Las horas van contadas desde hoy, no escritas.
+ *
+ * Estaban puestas a mano —«2026-09-15T08:00»— y eran el futuro el día que se
+ * escribió esta prueba. Llegado ese día, la visita pasó a estar en el pasado y
+ * la comprobación de que **una visita que no ha llegado no se puede cerrar**
+ * empezó a fallar sola: el servidor devolvía 200 donde se esperaba 409.
+ *
+ * No se rompió nada; se rompió el calendario. Contadas desde `Date.now()` la
+ * prueba dice lo mismo cualquier día.
+ */
+const enDias = (n: number) => new Date(Date.now() + n * 24 * 3600 * 1000).toISOString();
+
+const HORA_PEDIDA = enDias(3);
 /** Una hora que ya paso, para las visitas que se cierran. */
 const AYER = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
-const OTRAS_HORAS = ['2026-09-17T08:00:00.000Z', '2026-09-18T14:00:00.000Z'];
+const OTRAS_HORAS = [enDias(5), enDias(6)];
 
 // ── El estado que va guardando la base simulada ─────────────────────────────
 interface Fila { [k: string]: unknown }

@@ -23,7 +23,21 @@ import { esAmbito, papelesEsperados, papelesQueFaltan } from '../lib/documentos.
 
 export const documentosRouter = Router();
 
-const BUCKET = 'vehicle-files';
+/**
+ * Los papeles van a un cajón privado, no al de las fotos.
+ *
+ * `vehicle-files` es **público**: sus ficheros se sirven por URL directa porque
+ * son las fotos de los anuncios, y así tiene que ser. Pero aquí dentro hay
+ * permisos de circulación, fichas técnicas, ITV y mandatos firmados — papeles
+ * con el nombre, la matrícula y la firma de una persona.
+ *
+ * Con el bucket público, esta ruta pedía sesión y el fichero era alcanzable sin
+ * ella: bastaba la URL. `erp-documentos` es privado, así que la única forma de
+ * leerlo es por aquí, que es lo que ya se creía que pasaba.
+ *
+ * Se cambió con la tabla a cero: no hay nada que migrar.
+ */
+const BUCKET = 'erp-documentos';
 
 const ENSURE_TABLE = `
   CREATE TABLE IF NOT EXISTS erp_documentos (

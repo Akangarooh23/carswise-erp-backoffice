@@ -88,15 +88,15 @@ describe('la pantalla lo ofrece', () => {
  * Es la mitad que no se puede comprobar desde aquí con un tipo, porque vive en
  * otro repositorio. Se lee su fichero.
  */
-describe('lo que guarda PopCar', () => {
-  const POPCAR = join(
-    import.meta.dirname, '..', '..', '..', '..', '..',
-    'Mobility-Advisor', 'lib', 'api', 'mandato-firmado-handler.js',
-  );
+const POPCAR_HANDLER = join(
+  import.meta.dirname, '..', '..', '..', '..', '..',
+  'Mobility-Advisor', 'lib', 'api', 'mandato-firmado-handler.js',
+);
 
+describe('lo que guarda PopCar', () => {
   test('guarda la ruta del almacén, no la URL pública', (t) => {
-    if (!existsSync(POPCAR)) return t.skip('PopCar no está al lado');
-    const src = readFileSync(POPCAR, 'utf8');
+    if (!existsSync(POPCAR_HANDLER)) return t.skip('PopCar no está al lado');
+    const src = readFileSync(POPCAR_HANDLER, 'utf8');
     /*
      * `uploadBase64ToSupabase` devuelve la URL pública. Si se guardara eso, la
      * descarga del ERP pediría `.../object/vehicle-files/https://...`.
@@ -106,9 +106,50 @@ describe('lo que guarda PopCar', () => {
   });
 
   test('y lo cuelga del encargo, con el papel que el ERP busca', (t) => {
-    if (!existsSync(POPCAR)) return t.skip('PopCar no está al lado');
-    const lib = readFileSync(join(POPCAR, '..', '..', 'mandato-firmado.js'), 'utf8');
+    if (!existsSync(POPCAR_HANDLER)) return t.skip('PopCar no está al lado');
+    const lib = readFileSync(join(POPCAR_HANDLER, '..', '..', 'mandato-firmado.js'), 'utf8');
     assert.match(lib, /const AMBITO = 'encargo'/);
     assert.match(lib, /const PAPEL = 'mandato_firmado'/);
+  });
+});
+
+/**
+ * Y que el papel no acabe en un cajón público.
+ *
+ * `vehicle-files` es público —ahí van las fotos de los anuncios, y así tiene
+ * que ser—, pero un mandato firmado lleva el nombre, la matrícula y la firma de
+ * una persona. Con el bucket público, la ruta del ERP pedía sesión y el fichero
+ * era alcanzable sin ella: bastaba la dirección.
+ *
+ * Se cambió con la tabla a cero documentos: no había nada que migrar.
+ */
+describe('los papeles van a un cajón privado', () => {
+  const DOCS = lee('documentos.ts').replace(/\r\n/g, '\n');
+
+  test('el ERP los lee del bucket privado', () => {
+    assert.match(DOCS, /const BUCKET = 'erp-documentos'/);
+  });
+
+  test('y no del de las fotos', () => {
+    /*
+     * Si volviera a `vehicle-files`, la sesión que pide esta ruta dejaría de
+     * significar nada: el fichero se bajaría por URL directa.
+     */
+    assert.doesNotMatch(DOCS, /const BUCKET = 'vehicle-files'/);
+  });
+
+  test('PopCar sube ahí también', (t) => {
+    if (!existsSync(POPCAR_HANDLER)) return t.skip('PopCar no está al lado');
+    const src = readFileSync(POPCAR_HANDLER, 'utf8');
+    assert.match(src, /uploadBase64ToSupabase\(contenido, tipo, camino, BUCKET_PRIVADO\)/);
+  });
+
+  test('y los dos nombran el mismo cajón', (t) => {
+    if (!existsSync(POPCAR_HANDLER)) return t.skip('PopCar no está al lado');
+    // Dos nombres distintos y el ERP buscaría el fichero donde no está.
+    const storage = readFileSync(join(POPCAR_HANDLER, '..', '..', 'supabaseStorage.js'), 'utf8');
+    const m = storage.match(/BUCKET_PRIVADO\s*=\s*'([^']+)'/);
+    assert.ok(m, 'no encuentro el bucket privado en PopCar');
+    assert.match(DOCS, new RegExp(`const BUCKET = '${m[1]}'`));
   });
 });
