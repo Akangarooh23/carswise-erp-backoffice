@@ -403,6 +403,21 @@ encargosRouter.get(
         [req.params.vehicleId]
       ).catch(() => ({ rows: [] }));
 
+      /*
+       * El mandato firmado que subió el cliente a su panel.
+       *
+       * Se busca por el encargo vivo. Si hay más de uno —porque subió una foto
+       * borrosa y luego el PDF— vale el último: es el que quiso que tuviéramos.
+       */
+      const elPapelFirmado = encargo?.id
+        ? (await query<{ id: string; nombre: string; created_at: string }>(
+            `SELECT id, nombre, created_at FROM erp_documentos
+              WHERE ambito = 'encargo' AND ambito_id = $1 AND papel = 'mandato_firmado'
+              ORDER BY created_at DESC LIMIT 1`,
+            [String(encargo.id)]
+          ).catch(() => ({ rows: [] }))).rows[0] ?? null
+        : null;
+
       const hay = await loQueHayDe(req.params.vehicleId);
       const puertas = lasPuertas(hay);
 
@@ -452,6 +467,15 @@ encargosRouter.get(
             : [],
           mandato_firmado: estaFirmado(encargo),
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
+          /*
+           * El papel que subió él, si lo subió.
+           *
+           * Sin esto, «Descargar» seguía dando el mandato en blanco —que se
+           * genera cada vez— y el que tiene la firma se quedaba guardado sin
+           * que nadie pudiera verlo. El documento en blanco se regenera cuando
+           * haga falta; el firmado es el único que no.
+           */
+          mandato_subido: elPapelFirmado,
           /*
            * Solo las que marcamos nosotros.
            *

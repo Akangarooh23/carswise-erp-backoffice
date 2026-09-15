@@ -66,6 +66,14 @@ export interface ElEncargo {
   /** El mandato no es puerta de publicar: es puerta de cobrar. */
   mandato_firmado: boolean;
   por_que_no_firmado: string;
+  /**
+   * El papel que subió el cliente a su panel, si lo subió.
+   *
+   * El mandato de al lado se genera cada vez con lo que hay en el encargo, así
+   * que sale en blanco. Éste tiene su firma y es el único que no se puede
+   * volver a hacer.
+   */
+  mandato_subido: { id: string; nombre: string } | null;
   como_se_firma: ComoSeFirma[];
   /** Lo que habria que escribir a mano en el contrato si se imprime ahora. */
   falta_del_contrato: string[];
@@ -358,6 +366,7 @@ export default function EncargoDeVenta({
         firmaComo={e.firma_como}
         porQueNo={datos.por_que_no_firmado}
         comoSeFirma={datos.como_se_firma}
+        mandatoSubido={datos.mandato_subido ?? null}
         alGuardar={() => void carga()}
       />
 

@@ -39,6 +39,7 @@ export default function MandatoDeVenta({
   firmaComo,
   porQueNo,
   comoSeFirma,
+  mandatoSubido,
   alGuardar,
 }: {
   encargoId: string;
@@ -48,6 +49,8 @@ export default function MandatoDeVenta({
   firmaComo: string | null;
   porQueNo: string;
   comoSeFirma: ComoSeFirma[];
+  /** El papel que subio el cliente a su panel, si lo subio. */
+  mandatoSubido: { id: string; nombre: string } | null;
   /** Para releer el encargo: la firma mueve el plazo y lo que se le factura. */
   alGuardar: () => void;
 }) {
@@ -66,6 +69,25 @@ export default function MandatoDeVenta({
       await descargaConSesion(
         `/encargos/${encargoId}/mandato`,
         `mandato-${(mandatoId ?? 'sin-numero').toLowerCase()}.doc`,
+      );
+    } catch (e) {
+      setFallo((e as Error).message);
+    }
+  }
+
+  /**
+   * El papel que firmo, que es el unico que no se puede regenerar.
+   *
+   * El de al lado se hace cada vez con lo que hay en el encargo, asi que sale
+   * en blanco. Este tiene su firma y solo existe una copia.
+   */
+  async function descargaElFirmado() {
+    if (!mandatoSubido) return;
+    setFallo('');
+    try {
+      await descargaConSesion(
+        `/documentos/encargo/${encargoId}/${mandatoSubido.id}`,
+        mandatoSubido.nombre || 'mandato-firmado',
       );
     } catch (e) {
       setFallo((e as Error).message);
@@ -136,13 +158,32 @@ export default function MandatoDeVenta({
         </h4>
         <div className="flex items-center gap-2">
           {mandatoId && <span className="text-[11.5px] text-brand-400">{mandatoId}</span>}
+          {/*
+            * El que firmó, cuando lo ha subido él.
+            *
+            * Va delante y en negro: es el que tiene la firma. El de al lado se
+            * genera cada vez con lo que hay en el encargo —está en blanco— y
+            * hasta ahora era el único que se podía descargar, así que «Descargar»
+            * daba el papel sin firmar con el firmado ya guardado.
+            */}
+          {mandatoSubido && (
+            <button
+              type="button"
+              onClick={() => void descargaElFirmado()}
+              className="px-2.5 py-1 text-[11.5px] font-bold rounded-lg bg-brand-600 text-white
+                         hover:bg-brand-700"
+            >
+              El que firmó
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void descarga()}
+            title={mandatoSubido ? 'El documento en blanco, generado ahora' : undefined}
             className="px-2.5 py-1 text-[11.5px] font-semibold rounded-lg border border-brand-200
                        text-brand-500 hover:bg-brand-50"
           >
-            Descargar
+            {mandatoSubido ? 'El de siempre' : 'Descargar'}
           </button>
           {/*
             * Y mandárselo, que es lo que se hacía a mano: descargar el

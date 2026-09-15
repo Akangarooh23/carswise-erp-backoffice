@@ -16,7 +16,14 @@
  * antes de tenerlo aparcado, no el día que la gestoría lo pide.
  */
 
-export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte', 'peritacion'] as const;
+/**
+ * De qué puede colgar un documento.
+ *
+ * `encargo` entró con el mandato firmado que sube el cliente desde su panel.
+ * Sin él, ese papel se guardaba y no se podía ni listar ni descargar: el ámbito
+ * no pasaba la validación y el ERP seguía ofreciendo el mandato en blanco.
+ */
+export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte', 'peritacion', 'encargo'] as const;
 export type Ambito = (typeof AMBITOS)[number];
 
 export function esAmbito(v: string): v is Ambito {
