@@ -195,6 +195,8 @@ export function elCorreoDeLaCitaDelTaller(
     direccion: string;
     dia: string;
     hora: string;
+    /** Su panel, que es donde puede pedir que se la cambiemos o anularla. */
+    panel: string;
   },
 ): { subject: string; html: string } {
   const coche = elCoche(d.marca, d.modelo, d.matricula);
@@ -218,7 +220,21 @@ export function elCorreoDeLaCitaDelTaller(
           'Es la revisión mecánica que nos permite anunciar el coche como comprobado. '
           + 'Sin ella el anuncio no puede decirlo, y es justo lo que hace que un '
           + 'comprador se fíe y no regatee a ciegas. Se le hace a todos los coches.') +
-        parrafo('Si ese día no te viene bien, contesta a este correo y lo cambiamos.'),
+        /*
+         * Y qué hacer si ese día no puede, con el sitio exacto.
+         *
+         * Antes decía «contesta a este correo». Una respuesta se queda en una
+         * bandeja de entrada: la cita seguía en pie en el ERP, nadie la movía y
+         * el día señalado el coche no aparecía. Desde su panel queda apuntado en
+         * la propia cita y sale el aviso solo, sin que nadie tenga que leer nada.
+         *
+         * El enlace lleva a sus solicitudes, que es donde está esta misma cita:
+         * «entra en tu panel y búscalo» es donde se pierde la mitad de la gente.
+         */
+        parrafo(`Si ese día no te viene bien, dínoslo desde tu panel: en `
+          + `${enlace('tus solicitudes', d.panel)}, justo debajo de esta cita, puedes `
+          + `pedir que te la cambiemos o anularla. Te llamamos nosotros.`) +
+        boton('Ver mi cita', d.panel),
     }),
   };
 }

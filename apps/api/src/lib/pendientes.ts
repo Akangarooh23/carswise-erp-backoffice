@@ -302,6 +302,19 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'su anuncio no va a salir y el cliente sigue esperándolo',
     a: '/idcars', icono: 'aviso', tono: 'urgente',
   },
+  /*
+   * Y la cita del taller que el cliente no puede cumplir.
+   *
+   * Lo dice desde su panel, así que llega sin que nadie llame. Va con los
+   * urgentes porque tiene fecha: si nadie lo mira antes del día, se pierde la
+   * cita igual que si no lo hubiera dicho —y encima habiéndolo dicho—.
+   */
+  {
+    clave: 'citas_taller_que_pide_mover',
+    etiqueta: 'citas de taller que el cliente no puede', una: 'cita de taller que el cliente no puede',
+    porque: 'lo ha pedido desde su panel y esa cita se pierde si nadie la mueve',
+    a: '/idcars', icono: 'taller', tono: 'urgente',
+  },
   {
     clave: 'encargos_listos',
     etiqueta: 'encargos listos para el taller', una: 'encargo listo para el taller',

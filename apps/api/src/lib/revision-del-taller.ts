@@ -165,7 +165,49 @@ export const ENSURE_TABLE = `
 export const ENSURE_COLUMNAS = `
   ALTER TABLE erp_revisiones_taller
     ADD COLUMN IF NOT EXISTS direccion  TEXT NOT NULL DEFAULT '',
-    ADD COLUMN IF NOT EXISTS avisado_at TIMESTAMPTZ`;
+    ADD COLUMN IF NOT EXISTS avisado_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS cliente_pidio    TEXT,
+    ADD COLUMN IF NOT EXISTS cliente_pidio_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS cliente_motivo   TEXT NOT NULL DEFAULT ''`;
+
+/**
+ * Lo que el cliente puede pedir sobre su cita, desde su panel.
+ *
+ * Dos cosas y no más: que se la cambiemos o que se la quitemos. No hay «elegir
+ * otra hora» —las horas las da el taller por teléfono, no las tenemos— y por eso
+ * lo que se recoge es la intención y el motivo, y lo demás es una llamada.
+ *
+ * Que pueda decirlo desde el panel es lo que evita el caso peor: el que no puede
+ * ir, no contesta al correo y sencillamente no aparece. Eso nos cuesta la cita,
+ * retrasa su anuncio y no lo sabe nadie hasta que llama el taller.
+ */
+export const LO_QUE_PUEDE_PEDIR = ['cambio', 'cancelar'] as const;
+export type LoQuePidio = (typeof LO_QUE_PUEDE_PEDIR)[number];
+
+export function esLoQuePuedePedir(v: unknown): v is LoQuePidio {
+  return (LO_QUE_PUEDE_PEDIR as readonly string[]).includes(String(v ?? '').trim());
+}
+
+/** Dicho para quien lo lee en el ERP y tiene que coger el teléfono. */
+export const LO_QUE_PIDIO: Record<LoQuePidio, string> = {
+  cambio: 'El cliente pide que le cambiemos la cita',
+  cancelar: 'El cliente pide que le anulemos la cita',
+};
+
+/**
+ * Si este coche tiene una petición del cliente sin atender.
+ *
+ * Una revisión ya hecha no cuenta: si pidió el cambio y el coche acabó pasando
+ * por el taller, lo que pidió ya no espera a nadie. Sin esto, el aviso se
+ * quedaría encendido para siempre sobre algo que ya ocurrió.
+ */
+export function elClienteEsperaRespuesta(
+  r: { estado?: unknown; cliente_pidio?: unknown } | null | undefined,
+): boolean {
+  if (!r) return false;
+  if (String(r.estado ?? '').trim() === 'Hecha') return false;
+  return esLoQuePuedePedir(r.cliente_pidio);
+}
 
 /**
  * Todos los clientes están en España.

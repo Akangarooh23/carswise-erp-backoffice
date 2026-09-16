@@ -23,6 +23,7 @@ import {
   ENSURE_TABLE, ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
   elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
 } from '../lib/revision-del-taller.js';
+import { config } from '../config.js';
 import { enviar } from '../lib/correo.js';
 import { elCorreoDeLaCitaDelTaller } from '../lib/correos-del-encargo.js';
 
@@ -173,6 +174,18 @@ revisionesTallerRouter.patch(
        * el taller propone otra. Sin poder editarlos, la única salida era cerrar
        * la revisión y abrir otra, y eso apunta una factura de más.
        */
+      /*
+       * Guardar la cita da por atendido lo que pidió el cliente.
+       *
+       * Si pidió otra hora y se le pone otra hora, la petición ya no espera a
+       * nadie: dejarla encendida obligaría a un segundo botón de «ya está» que
+       * alguien se olvidaría de pulsar, y el aviso viviría para siempre.
+       *
+       * Solo cuando se toca la cita de verdad. Apuntar el resultado del taller
+       * no atiende nada: son dos cosas distintas.
+       */
+      const tocaLaCita = req.body?.cita_at !== undefined;
+
       const r = await query(
         `UPDATE erp_revisiones_taller
             SET estado    = COALESCE($2, estado),
@@ -181,6 +194,11 @@ revisionesTallerRouter.patch(
                 taller    = COALESCE($5, taller),
                 direccion = COALESCE($6, direccion),
                 cita_at   = COALESCE($7, cita_at),
+                cliente_pidio    = CASE WHEN $8 THEN NULL ELSE cliente_pidio END,
+                cliente_pidio_at = CASE WHEN $8 THEN NULL ELSE cliente_pidio_at END,
+                -- El motivo se queda escrito: es lo que dijo, y sirve para
+                -- saber por qué se movió esta cita cuando se mire dentro de un
+                -- mes. Lo que se apaga es el aviso, no lo que contó.
                 hecha_at  = CASE WHEN $2 = 'Hecha' THEN NOW() ELSE hecha_at END,
                 updated_at = NOW()
           WHERE id = $1
@@ -189,7 +207,8 @@ revisionesTallerRouter.patch(
          req.body?.notas === undefined ? null : String(req.body.notas),
          req.body?.taller === undefined ? null : String(req.body.taller).trim() || null,
          req.body?.direccion === undefined ? null : String(req.body.direccion).trim(),
-         req.body?.cita_at === undefined ? null : req.body.cita_at || null]
+         req.body?.cita_at === undefined ? null : req.body.cita_at || null,
+         tocaLaCita]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
 
@@ -317,6 +336,9 @@ revisionesTallerRouter.post(
         direccion: String(rev.direccion ?? ''),
         dia: elDiaDeLaCita(cita),
         hora: laHoraDeLaCita(cita),
+        // Donde puede pedir que se la cambiemos o anularla: es la misma
+        // pantalla donde se le enseña esta cita.
+        panel: `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`,
       });
 
       // `alClienteSiempre`: un desvío de pruebas olvidado en producción dejaría
@@ -333,6 +355,47 @@ revisionesTallerRouter.post(
       const msg = (err as Error).message;
       console.error('[revisiones-taller] avisar:', msg);
       res.status(502).json({ ok: false, error: 'No se ha podido enviar el correo' });
+    }
+  }
+);
+
+/**
+ * Se anula la cita y el coche vuelve a estar sin fecha.
+ *
+ * Es la respuesta a «no voy a poder llevarlo»: la ficha se queda —el coche
+ * sigue necesitando la revisión para poder publicarse— pero sin día, sin hora y
+ * sin el aviso de que se le dijo. Lo que había antes era cerrar la revisión y
+ * abrir otra, y eso apunta una segunda factura de 60 € que nadie ha pedido.
+ *
+ * Lo que pidió el cliente se da por atendido: para eso se pulsa esto.
+ */
+revisionesTallerRouter.post(
+  '/revisiones-taller/:id/anular-cita',
+  requireRole(['admin', 'operations', 'support']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `UPDATE erp_revisiones_taller
+            SET estado = 'Por llevar',
+                cita_at = NULL,
+                avisado_at = NULL,
+                cliente_pidio = NULL,
+                cliente_pidio_at = NULL,
+                updated_at = NOW()
+          WHERE id = $1 AND estado <> 'Hecha'
+        RETURNING *`,
+        [req.params.id]
+      );
+      if (!r.rows.length) {
+        // O no existe, o ya está hecha: una revisión hecha no se desanda.
+        res.status(409).json({ ok: false, error: 'Esa revisión ya está hecha o no existe' });
+        return;
+      }
+      res.json({ ok: true, data: { revision: r.rows[0] } });
+    } catch (err) {
+      console.error('[revisiones-taller] anular cita:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'anular_cita_failed' });
     }
   }
 );

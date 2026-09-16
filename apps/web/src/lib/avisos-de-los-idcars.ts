@@ -32,6 +32,7 @@ export const NOMBRE_CORTO: Record<string, string> = {
   encargos_listos: 'Falta la revisión',
   encargos_rechazados: 'El taller lo tumbó',
   encargos_sin_firmar: 'Mandato sin firmar',
+  citas_taller_que_pide_mover: 'No puede ir al taller',
 };
 
 /**
@@ -48,6 +49,7 @@ const URGENTES = new Set([
   'encargos_sin_franjas',
   'encargos_rechazados',
   'encargos_sin_firmar',
+  'citas_taller_que_pide_mover',
 ]);
 
 export function esUrgente(aviso: string): boolean {

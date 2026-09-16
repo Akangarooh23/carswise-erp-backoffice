@@ -25,6 +25,7 @@ import {
   sigueEsperandoAlTaller, elTallerLoTumbo,
   ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
   elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
+  LO_QUE_PUEDE_PEDIR, LO_QUE_PIDIO, esLoQuePuedePedir, elClienteEsperaRespuesta,
 } from './revision-del-taller.js';
 
 describe('por dónde va', () => {
@@ -248,5 +249,55 @@ describe('cuándo se le puede mandar la cita', () => {
       porQueNoSeLePuedeAvisar({ taller: 'Norauto Alcobendas', cita_at: '2026-09-22T08:00:00Z', direccion: '' }),
       '',
     );
+  });
+});
+
+describe('cuando el cliente no puede ir', () => {
+  test('la tabla guarda qué pidió, cuándo y por qué', () => {
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS cliente_pidio\b/);
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS cliente_pidio_at/);
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS cliente_motivo/);
+  });
+
+  test('solo puede pedir dos cosas', () => {
+    /*
+     * Cambiarla o quitarla. No hay «elige otra hora»: las horas las da el taller
+     * por teléfono y no las tenemos, así que un calendario prometería algo que
+     * no se puede cumplir.
+     */
+    assert.deepEqual([...LO_QUE_PUEDE_PEDIR], ['cambio', 'cancelar']);
+    for (const p of LO_QUE_PUEDE_PEDIR) assert.ok(LO_QUE_PIDIO[p], `falta cómo se dice ${p}`);
+  });
+
+  test('y lo que no es una de las dos no cuela', () => {
+    assert.equal(esLoQuePuedePedir('cambio'), true);
+    assert.equal(esLoQuePuedePedir(' cancelar '), true);
+    for (const raro of ['borrar', 'Cambio', '', null, undefined, 42]) {
+      assert.equal(esLoQuePuedePedir(raro), false, String(raro));
+    }
+  });
+
+  test('con una petición viva, alguien tiene que contestar', () => {
+    assert.equal(
+      elClienteEsperaRespuesta({ estado: 'En el taller', cliente_pidio: 'cambio' }),
+      true,
+    );
+  });
+
+  test('pero una revisión ya hecha no espera a nadie', () => {
+    /*
+     * Pidió el cambio y el coche acabó pasando por el taller igual. Sin esto, el
+     * aviso se quedaría encendido para siempre sobre algo que ya ocurrió — y un
+     * aviso que no se apaga es un aviso que se deja de mirar.
+     */
+    assert.equal(
+      elClienteEsperaRespuesta({ estado: 'Hecha', cliente_pidio: 'cancelar' }),
+      false,
+    );
+  });
+
+  test('y sin petición, nada', () => {
+    assert.equal(elClienteEsperaRespuesta({ estado: 'En el taller', cliente_pidio: null }), false);
+    assert.equal(elClienteEsperaRespuesta(null), false);
   });
 });

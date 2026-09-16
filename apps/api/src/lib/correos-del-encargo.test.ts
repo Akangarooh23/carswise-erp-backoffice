@@ -281,13 +281,14 @@ describe('cómo se le pide que devuelva el mandato', () => {
 });
 
 describe('el correo de la cita del taller', () => {
-  const c = (extra: Partial<{ taller: string; direccion: string; dia: string; hora: string }> = {}) =>
+  const c = (extra: Partial<{ taller: string; direccion: string; dia: string; hora: string; panel: string }> = {}) =>
     elCorreoDeLaCitaDelTaller({
       ...COCHE,
       taller: 'Norauto Alcobendas',
       direccion: 'Av. de España 12, Alcobendas',
       dia: 'martes, 22 de septiembre',
       hora: '10:30',
+      panel: 'https://popcar.com.es/panel/solicitudes',
       ...extra,
     });
 
@@ -328,8 +329,22 @@ describe('el correo de la cita del taller', () => {
   });
 
   test('y deja una salida si ese día no le viene bien', () => {
-    // Sin esto, el que no puede ir simplemente no va, y nadie se entera hasta
-    // que el taller llama.
-    assert.match(soloTexto(c().html), /contesta a este correo/i);
+    /*
+     * Sin esto, el que no puede ir simplemente no va, y nadie se entera hasta
+     * que el taller llama.
+     *
+     * Y la salida es **su panel**, no contestar al correo: una respuesta se
+     * queda en una bandeja de entrada, y mientras tanto la cita sigue en pie en
+     * el ERP y nadie la mueve. Desde el panel queda apuntado en la propia cita
+     * y el aviso sale solo.
+     */
+    const t = soloTexto(c().html);
+    assert.match(t, /tu panel/i);
+    assert.match(t, /cambiemos|anularla/i);
+    assert.match(c().html, /https:\/\/popcar\.com\.es\/panel\/solicitudes/);
+  });
+
+  test('y ya no se le manda contestar al correo', () => {
+    assert.doesNotMatch(soloTexto(c().html), /contesta a este correo/i);
   });
 });

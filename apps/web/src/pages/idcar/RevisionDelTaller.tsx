@@ -31,6 +31,11 @@ export interface Revision {
   coste: string | null;
   /** Cuándo se le mandó la cita al cliente por última vez. */
   avisado_at: string | null;
+  /** Qué ha pedido el cliente desde su panel: 'cambio', 'cancelar' o nada. */
+  cliente_pidio: string | null;
+  cliente_pidio_at: string | null;
+  /** Y por qué, con sus palabras. Puede venir vacío. */
+  cliente_motivo: string;
 }
 
 export interface LoDelTaller {
@@ -196,6 +201,31 @@ export default function RevisionDelTaller({
   }
 
   /**
+   * Se le quita la cita: vuelve a estar sin fecha, pero sigue haciendo falta.
+   *
+   * Es la respuesta a «no voy a poder llevarlo». La ficha se queda —el coche
+   * necesita la revisión para poder publicarse— y lo que desaparece es el día.
+   * Cerrarla y abrir otra apuntaría una segunda factura de 60 € que nadie ha
+   * pedido.
+   */
+  async function anulaLaCita() {
+    if (!datos?.revision) return;
+    setGuardando('anular');
+    setFallo('');
+    setEnviado('');
+    try {
+      const r = await api.post<unknown>(`/revisiones-taller/${datos.revision.id}/anular-cita`, {});
+      if (!r.ok) { setFallo(r.error ?? 'No se ha podido anular.'); return; }
+      await carga();
+      alGuardar?.();
+    } catch (err) {
+      setFallo((err as Error).message);
+    } finally {
+      setGuardando('');
+    }
+  }
+
+  /**
    * Los cuatro campos de la cita, que son los mismos al darla y al corregirla.
    *
    * Escritos una vez: con dos copias, la dirección habría acabado estando solo
@@ -333,6 +363,32 @@ export default function RevisionDelTaller({
         </>
       )}
 
+      {/*
+        * Lo que ha pedido el cliente, encima de todo lo demás.
+        *
+        * Es lo único de esta caja que llega de fuera y tiene a alguien
+        * esperando. Si estuviera debajo de los campos, se vería después de
+        * haberlos tocado — y lo que hay que hacer depende de lo que pidió.
+        */}
+      {rev && rev.estado !== 'Hecha' && (rev.cliente_pidio === 'cambio' || rev.cliente_pidio === 'cancelar') && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-[13px] font-semibold text-red-700">
+            {rev.cliente_pidio === 'cambio'
+              ? 'El cliente pide que le cambiemos la cita'
+              : 'El cliente pide que le anulemos la cita'}
+            {rev.cliente_pidio_at ? ` · ${cuandoConHora(rev.cliente_pidio_at)}` : ''}
+          </p>
+          {rev.cliente_motivo && (
+            <p className="text-[12.5px] text-red-700/90 mt-1">«{rev.cliente_motivo}»</p>
+          )}
+          <p className="text-[11.5px] text-red-700/75 mt-1">
+            {rev.cliente_pidio === 'cambio'
+              ? 'Ponle otro día aquí abajo y vuelve a enviárselo: con eso se da por resuelto.'
+              : 'Anula la cita aquí abajo y llámale para buscar otro momento. El coche sigue necesitando la revisión.'}
+          </p>
+        </div>
+      )}
+
       {rev && rev.estado !== 'Hecha' && (
         <>
           {/*
@@ -354,6 +410,20 @@ export default function RevisionDelTaller({
             >
               {guardando === 'cita' ? 'Guardando…' : 'Guardar cita'}
             </button>
+            {/* Quitar el día sin cerrar la revisión: el coche la sigue
+                necesitando para poder publicarse. */}
+            {rev.cita_at && (
+              <button
+                type="button"
+                onClick={() => void anulaLaCita()}
+                disabled={guardando !== ''}
+                title="Quita el día y la hora. La revisión sigue pendiente."
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-rose-200
+                           text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+              >
+                {guardando === 'anular' ? 'Anulando…' : 'Anular la cita'}
+              </button>
+            )}
             <div className="ml-auto text-right">
               <button
                 type="button"

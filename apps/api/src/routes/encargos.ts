@@ -61,7 +61,7 @@ import { enviar } from '../lib/correo.js';
 import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado } from '../lib/correos-del-encargo.js';
 import { config } from '../config.js';
 import { abreLaTransferenciaDelEncargo } from './tramites.js';
-import { sigueEsperandoAlTaller, elTallerLoTumbo } from '../lib/revision-del-taller.js';
+import { sigueEsperandoAlTaller, elTallerLoTumbo, elClienteEsperaRespuesta } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
 
@@ -265,6 +265,8 @@ export interface AvisosDeEncargos {
   encargos_listos: number;
   encargos_rechazados: number;
   encargos_sin_firmar: number;
+  /** El cliente ha dicho desde su panel que no puede ir al taller ese día. */
+  citas_taller_que_pide_mover: number;
 }
 
 /**
@@ -324,14 +326,16 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
               FROM moveadvisor_user_maintenance_invoices mf
               JOIN moveadvisor_user_maintenances mm ON mm.id = mf.maintenance_id
              WHERE mm.vehicle_id = e.vehicle_id) AS mantenimientos,
-           tal.estado AS taller_estado, tal.resultado AS taller_resultado
+           tal.estado AS taller_estado, tal.resultado AS taller_resultado,
+           -- Lo que el cliente ha pedido sobre su cita desde su panel.
+           tal.cliente_pidio AS taller_cliente_pidio
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
       -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
       -- en dos subconsultas sueltas: con dos, un empate en la fecha podria dar
       -- el estado de una ficha y el resultado de otra.
       LEFT JOIN LATERAL (
-        SELECT rt.estado, rt.resultado
+        SELECT rt.estado, rt.resultado, rt.cliente_pidio
           FROM erp_revisiones_taller rt
          WHERE rt.vehicle_id = e.vehicle_id
          ORDER BY rt.created_at DESC LIMIT 1
@@ -378,6 +382,16 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
     if (elTallerLoTumbo(taller)) avisos.push('encargos_rechazados');
 
     /*
+     * Y el que ha dicho, desde su panel, que no puede ir ese día.
+     *
+     * Tiene fecha: si nadie lo mira antes de la cita, se pierde igual que si no
+     * lo hubiera dicho — y encima habiéndolo dicho, que es peor.
+     */
+    if (elClienteEsperaRespuesta({ estado: fila.taller_estado, cliente_pidio: fila.taller_cliente_pidio })) {
+      avisos.push('citas_taller_que_pide_mover');
+    }
+
+    /*
      * Y el que no ha firmado el mandato.
      *
      * Se está trabajando para él —anuncio, taller, llamadas— y no hay nada que
@@ -409,6 +423,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
   const cuenta: AvisosDeEncargos = {
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
+    citas_taller_que_pide_mover: 0,
   };
   for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
   return cuenta;
