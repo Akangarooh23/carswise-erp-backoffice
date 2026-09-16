@@ -1509,6 +1509,46 @@ encargosRouter.patch(
       );
       if (!upd.rows.length) { res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' }); return; }
 
+      /*
+       * Y el precio acordado es **el** precio: también en el anuncio.
+       *
+       * Del mismo coche había tres cifras distintas y ninguna se hablaba con
+       * las otras: la acordada aquí, la que el dueño escribió en su panel, y la
+       * que se congeló en el escaparate el día que se publicó. El resultado fue
+       * un anuncio en marcha a 16.600 € con el papel firmado a 17.900 — y, como
+       * el precio del coche estaba en blanco, el mismo coche no salía en el
+       * listado del marketplace aunque su ficha se abriera.
+       *
+       * En un encargo el precio lo acordamos nosotros con él y queda firmado,
+       * así que aquí manda éste. Los coches sin encargo no se tocan: ese precio
+       * es del dueño y lo pone en su panel.
+       *
+       * Sin transacción a propósito: si una de las dos fallara, lo peor que
+       * queda es lo de antes —dos cifras distintas— y se arregla volviendo a
+       * darle a Guardar. Envolverlo obligaría a pasar el pool entero por aquí
+       * para proteger algo que no deja nada a medias.
+       */
+      if (precio && precio > 0) {
+        const cocheId = String(upd.rows[0].vehicle_id ?? '');
+        await query(
+          `UPDATE moveadvisor_user_vehicles SET price = $2, updated_at = NOW() WHERE id = $1`,
+          [cocheId, String(precio)]
+        ).catch((err) => console.error('[encargos] precio del coche:', (err as Error).message));
+
+        /*
+         * Y el anuncio, si ya está puesto.
+         *
+         * `WHERE id = 'idcar-…'` sin más: si no está publicado no hay fila y no
+         * pasa nada. Al publicarlo después, saldrá con el precio de arriba.
+         */
+        await query(
+          `UPDATE moveadvisor_marketplace_vo_offers
+              SET price = $2, updated_at = NOW()
+            WHERE id = $1`,
+          [`idcar-${cocheId}`, precio]
+        ).catch((err) => console.error('[encargos] precio del anuncio:', (err as Error).message));
+      }
+
       res.json({
         ok: true,
         data: {
