@@ -142,3 +142,65 @@ describe('la sexta puerta, que es la nuestra', () => {
     assert.match(ENCARGOS, /elTallerLoTumbo\(taller\)/);
   });
 });
+
+describe('sin mandato firmado no se publica', () => {
+  /*
+   * Aquí ponía «el mandato no es puerta de publicar: es puerta de cobrar», y esa
+   * frase describía un agujero. Sin mandato firmado se podía sacar el coche de
+   * alguien en coches.net —con nuestro teléfono en el anuncio— sin que constara
+   * por escrito que nos ha autorizado a venderlo. Y si se vendía, no había con
+   * qué cobrarle los 299 €.
+   */
+  const PORTERO = (() => {
+    const desde = ENCARGOS.indexOf('export async function porQueNoSePuedePublicar');
+    assert.ok(desde > 0, 'no encuentro el portero');
+    return ENCARGOS.slice(desde, ENCARGOS.indexOf('\n}', desde));
+  })();
+
+  test('el portero lo comprueba', () => {
+    assert.match(PORTERO, /if \(!estaFirmado\(/);
+  });
+
+  test('y lo comprueba lo primero', () => {
+    /*
+     * Es lo único que decide si estamos autorizados a trabajar en ese coche. Lo
+     * demás es qué le falta al anuncio; esto es si hay anuncio que hacer.
+     */
+    const mandato = PORTERO.indexOf('estaFirmado(');
+    const puertas = PORTERO.indexOf('lasPuertas(');
+    const taller = PORTERO.indexOf('porQueElTallerNoDeja(');
+    assert.ok(mandato > 0 && puertas > 0 && taller > 0, 'falta alguna de las tres');
+    assert.ok(mandato < puertas, 'las puertas del cliente se miran antes que el mandato');
+    assert.ok(puertas < taller, 'el taller se mira antes que lo del cliente');
+  });
+
+  test('trae de la base lo que hace falta para saberlo', () => {
+    /*
+     * El fallo silencioso de esta familia: llamar a `estaFirmado` sobre una fila
+     * que no trae `firma_como`. Saldrían todos como sin firmar y no se podría
+     * publicar ninguno.
+     */
+    assert.match(PORTERO, /SELECT id, firmado_at, firma_como FROM erp_encargos_venta/);
+  });
+
+  test('y el botón de la ficha dice lo mismo que el portero', () => {
+    // Si la ficha dijera que sí y el servidor que no, el botón se vería
+    // encendido y el «no» llegaría al pulsarlo.
+    assert.match(ENCARGOS, /se_puede_publicar: estaFirmado\(encargo\) && sePuedePublicar\(puertas\) && !faltaElTaller/);
+  });
+
+  test('pero la cláusula del precio no bloquea', () => {
+    /*
+     * Firmarla o no cambia lo que paga si se retira —150 € siempre, o gratis a
+     * los 30 días—, no si podemos publicar. Son dos cosas distintas, y meterlas
+     * en la misma puerta dejaría fuera a los que Juan puso dentro a propósito.
+     */
+    assert.doesNotMatch(PORTERO, /acepto_el_precio/);
+  });
+
+  test('y un particular sin encargo sigue publicando lo suyo', () => {
+    // No nos ha encargado nada: pedirle un mandato sería romper lo que ya
+    // funcionaba para arreglar lo que no le toca.
+    assert.match(PORTERO, /if \(!r\.rows\.length\) return '';/);
+  });
+});

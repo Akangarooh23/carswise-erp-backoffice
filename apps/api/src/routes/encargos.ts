@@ -462,10 +462,32 @@ export async function losAvisosDeEncargos(): Promise<AvisosDeEncargos> {
 export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string> {
   await prepara();
   const r = await query(
-    `SELECT id FROM erp_encargos_venta WHERE vehicle_id = $1 AND cerrado_at IS NULL`,
+    `SELECT id, firmado_at, firma_como FROM erp_encargos_venta
+      WHERE vehicle_id = $1 AND cerrado_at IS NULL`,
     [vehicleId]
   ).catch(() => ({ rows: [] }));
   if (!r.rows.length) return '';
+
+  /*
+   * El mandato, y va el primero.
+   *
+   * Aquí ponía «el mandato no es puerta de publicar: es puerta de cobrar», y
+   * esa frase describía un agujero. Sin mandato firmado se podía sacar el coche
+   * de alguien en coches.net —con nuestro teléfono en el anuncio— sin que
+   * constara por escrito que nos ha autorizado a venderlo, y si se vendía no
+   * había con qué cobrarle los 299 €.
+   *
+   * Va delante de lo demás porque es lo único que decide si estamos autorizados
+   * a trabajar en ese coche. Lo otro es qué le falta al anuncio; esto es si hay
+   * anuncio que hacer.
+   *
+   * La cláusula del precio sigue sin bloquear: firmarla o no cambia lo que paga
+   * si se retira, no si podemos publicar. Son dos cosas distintas y meterlas en
+   * la misma puerta dejaría fuera a los que Juan puso dentro a propósito.
+   */
+  if (!estaFirmado(r.rows[0])) {
+    return `Este coche lo vendemos nosotros y ${porQueNoEstaFirmado(r.rows[0]).toLowerCase()}`;
+  }
 
   const puertas = lasPuertas(await loQueHayDe(vehicleId));
   if (!sePuedePublicar(puertas)) {
@@ -576,14 +598,24 @@ encargosRouter.get(
           encargo,
           ultimo_cerrado: cerrado.rows[0] ?? null,
           puertas,
-          se_puede_publicar: sePuedePublicar(puertas) && !faltaElTaller,
+          /*
+           * Las mismas tres condiciones que el portero del servidor, en el
+           * mismo orden.
+           *
+           * Si aquí dijera que sí y allí que no, el botón se vería encendido y
+           * el «no» llegaría al pulsarlo — que es la peor manera de enterarse.
+           */
+          se_puede_publicar: estaFirmado(encargo) && sePuedePublicar(puertas) && !faltaElTaller,
           /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
           le_falta: loQueLeFalta(puertas),
           falta_el_taller: faltaElTaller,
           /*
-           * El mandato. No es una puerta de publicar —un coche sin mandato
-           * firmado se puede anunciar igual— sino de **cobrar**: sin él, ni los
-           * 299 € ni los 150 €.
+           * El mandato. Es puerta de publicar **y** de cobrar.
+           *
+           * De cobrar siempre lo fue: sin él, ni los 299 € ni los 150 €. Y de
+           * publicar desde que se vio lo que permitía lo contrario: sacar el
+           * coche de alguien en coches.net —con nuestro teléfono en el anuncio—
+           * sin que constara por escrito que nos ha autorizado a venderlo.
            */
           /*
            * Y qué le falta al contrato de compraventa, si hubo venta.
