@@ -9,16 +9,18 @@
  *
  * ## Qué se manda y qué no
  *
- * Cuatro. No es una lista corta por prudencia: es que **cada correo de más hace
+ * Cinco. No es una lista corta por prudencia: es que **cada correo de más hace
  * que se lean menos los de verdad**, y los que hay son los que le piden algo o
  * le cuentan algo que no puede saber por su cuenta.
  *
  *   1. **Crea la ficha de tu coche**, con el enlace directo y su matrícula ya
  *      puesta. Lo pulsa una persona después de la llamada.
  *   2. **El mandato**, para que lo firme. Es el que desbloquea poder cobrar.
- *   3. **Su anuncio ya está publicado**, con el enlace. Lleva días trayendo
+ *   3. **La cita del taller**: dónde, qué día y a qué hora tiene que llevarlo.
+ *      Lo pulsa una persona, igual que el primero.
+ *   4. **Su anuncio ya está publicado**, con el enlace. Lleva días trayendo
  *      papeles y fotos sin ver nada a cambio.
- *   4. **Cómo acabó**, con lo que se le factura si se le factura algo.
+ *   5. **Cómo acabó**, con lo que se le factura si se le factura algo.
  *
  * Lo que no se manda: nada de «te faltan tres cosas». Reclamar lo que falta es
  * una llamada —hay que convencerle, no informarle— y un correo automático
@@ -161,6 +163,62 @@ export function elCorreoDePublicado(
          * a este correo llega al mismo sitio.
          */
         parrafo('Cualquier cosa, contesta a este correo.'),
+    }),
+  };
+}
+
+/**
+ * La cita del taller, para que la sepa quien tiene que llevar el coche.
+ *
+ * La revisión mecánica es lo único de las seis puertas que ponemos nosotros, y
+ * hasta ahora la cita vivía entera dentro del ERP: el taller y el día se
+ * apuntaban en la ficha y al cliente se le decía por teléfono, si alguien se
+ * acordaba. Una cita que solo existe en una llamada es una cita a la que se
+ * falta.
+ *
+ * Por eso lleva la **dirección** y la **hora**: sin ellas el correo obliga a
+ * llamar para preguntar, y entonces no ha ahorrado nada. La dirección puede no
+ * estar —hay talleres que todo el mundo ubica— y entonces no se inventa: se
+ * calla esa línea.
+ *
+ * Lo pulsa una persona. No sale solo al dar la cita: se da cita muchas veces
+ * antes de tenerla confirmada con el taller, y un correo por cada intento es
+ * exactamente lo que hace que dejen de leerse.
+ *
+ * Aquí no se habla de dinero. Los 60 € son lo que nos cuesta a nosotros, no lo
+ * que paga él, y meterlos en este correo le haría creer que va a pagarlos.
+ */
+export function elCorreoDeLaCitaDelTaller(
+  d: DatosDelCorreo & {
+    taller: string;
+    /** Puede venir vacía: entonces no sale la línea. */
+    direccion: string;
+    dia: string;
+    hora: string;
+  },
+): { subject: string; html: string } {
+  const coche = elCoche(d.marca, d.modelo, d.matricula);
+  const filas: [string, string][] = [
+    ['Taller', esc(d.taller)],
+    ...(d.direccion.trim() ? ([['Dirección', esc(d.direccion)]] as [string, string][]) : []),
+    ['Día', esc(d.dia)],
+    ['Hora', esc(d.hora)],
+  ];
+
+  return {
+    subject: `Cita en el taller para ${coche}`,
+    html: plantilla({
+      titulo: 'Tu coche tiene cita en el taller',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
+        parrafo(`Ya tenemos cita para la revisión de <strong>${esc(coche)}</strong>. `
+          + `Solo hay que acercarlo, lo miran ellos y nosotros recogemos el resultado.`) +
+        datos(filas) +
+        aviso('Por qué se le hace',
+          'Es la revisión mecánica que nos permite anunciar el coche como comprobado. '
+          + 'Sin ella el anuncio no puede decirlo, y es justo lo que hace que un '
+          + 'comprador se fíe y no regatee a ciegas. Se le hace a todos los coches.') +
+        parrafo('Si ese día no te viene bien, contesta a este correo y lo cambiamos.'),
     }),
   };
 }

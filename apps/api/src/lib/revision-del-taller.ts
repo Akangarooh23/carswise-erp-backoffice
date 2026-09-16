@@ -150,6 +150,65 @@ export const ENSURE_TABLE = `
   )`;
 
 /**
+ * Lo que hace falta para que el cliente pueda ir.
+ *
+ * La ficha tenía el taller y el día, y con eso basta para nuestras cuentas. Para
+ * el que tiene que llevar el coche, no: le falta **dónde** está ese taller y a
+ * qué **hora** le esperan. El día ya viaja en `cita_at`, que es TIMESTAMPTZ y
+ * siempre pudo llevar la hora; lo que no se guardaba en ningún sitio era la
+ * dirección, y `avisado_at` es lo que separa «se lo hemos dicho» de «lo sabemos
+ * nosotros».
+ *
+ * Va en un ALTER aparte y no dentro del CREATE: la tabla ya existe en
+ * producción, y un `CREATE TABLE IF NOT EXISTS` no toca una tabla que está.
+ */
+export const ENSURE_COLUMNAS = `
+  ALTER TABLE erp_revisiones_taller
+    ADD COLUMN IF NOT EXISTS direccion  TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS avisado_at TIMESTAMPTZ`;
+
+/**
+ * Todos los clientes están en España.
+ *
+ * Sin zona se usa la del servidor, y en Vercel es UTC: a una cita de las 10:00
+ * el correo le pondría las 08:00. El ERP la enseñaría bien —eso lo pinta el
+ * navegador— así que las dos pantallas dirían cosas distintas y solo se vería
+ * mirando el correo que le llega al cliente. Ya pasó con las visitas.
+ */
+export const ZONA = 'Europe/Madrid';
+
+/** «lunes, 22 de septiembre», en la hora del cliente. */
+export function elDiaDeLaCita(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: ZONA,
+  });
+}
+
+/** «10:30», o cadena vacía si la cita se guardó sin hora. */
+export function laHoraDeLaCita(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-ES', {
+    hour: '2-digit', minute: '2-digit', timeZone: ZONA,
+  });
+}
+
+/**
+ * Si a esta cita se le puede avisar al cliente.
+ *
+ * Hace falta el taller y el día: un correo que diga «tu coche tiene cita» sin
+ * decir cuándo obliga a llamar para preguntar, y entonces el correo ha hecho
+ * trabajo de más. La dirección no se exige —hay talleres que todo el mundo
+ * ubica— pero se manda si está.
+ */
+export function porQueNoSeLePuedeAvisar(
+  r: { taller?: unknown; cita_at?: unknown } | null | undefined,
+): string {
+  if (!r) return 'No hay ninguna cita que contarle';
+  if (!String(r.taller ?? '').trim()) return 'Falta a qué taller se lleva';
+  if (!r.cita_at) return 'Falta el día de la cita';
+  return '';
+}
+
+/**
  * Una revisión viva por coche.
  *
  * Sin esto, dar cita dos veces deja dos fichas y la que decide si se publica es

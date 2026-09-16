@@ -20,8 +20,11 @@ import { apuntaFacturaEsperada } from './provider-billing.js';
 import {
   ESTADOS, RESULTADOS, QUE_TOCA, ETIQUETA, LO_QUE_CUESTA,
   esUnEstado, esUnResultado, elCocheEstaComprobado, porQueNoEstaComprobado,
-  ENSURE_TABLE, ENSURE_UNA_VIVA, SQL_LA_DEL_COCHE,
+  ENSURE_TABLE, ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
+  elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
 } from '../lib/revision-del-taller.js';
+import { enviar } from '../lib/correo.js';
+import { elCorreoDeLaCitaDelTaller } from '../lib/correos-del-encargo.js';
 
 export const revisionesTallerRouter = Router();
 
@@ -30,6 +33,8 @@ async function prepara(): Promise<void> {
   if (listo) return;
   await query(ENSURE_TABLE);
   await query(ENSURE_UNA_VIVA).catch(() => {});
+  // Las de la cita del cliente: la tabla ya existía sin ellas.
+  await query(ENSURE_COLUMNAS).catch(() => {});
   listo = true;
 }
 
@@ -76,6 +81,8 @@ revisionesTallerRouter.get(
           que_toca: r ? QUE_TOCA[r.estado as keyof typeof QUE_TOCA] ?? '' : '',
           comprobado: elCocheEstaComprobado(r),
           por_que_no: porQueNoEstaComprobado(r),
+          // Por qué no se le puede mandar la cita al cliente, si es que no.
+          falta_para_avisar: porQueNoSeLePuedeAvisar(r),
           lo_que_cuesta: LO_QUE_CUESTA,
         },
       });
@@ -100,14 +107,15 @@ revisionesTallerRouter.post(
 
       const r = await query(
         `INSERT INTO erp_revisiones_taller
-           (id, vehicle_id, encargo_id, estado, taller, cita_at, coste, creado_por)
-         VALUES ($1,$2,$3,'En el taller',$4,$5,$6,$7)
+           (id, vehicle_id, encargo_id, estado, taller, direccion, cita_at, coste, creado_por)
+         VALUES ($1,$2,$3,'En el taller',$4,$5,$6,$7,$8)
          RETURNING *`,
         [
           `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           vehicleId,
           String(req.body?.encargo_id ?? '').trim() || null,
           taller,
+          String(req.body?.direccion ?? '').trim(),
           req.body?.cita_at || null,
           Number(req.body?.coste) || LO_QUE_CUESTA,
           req.actor?.name ?? req.actor?.sub ?? '',
@@ -157,17 +165,31 @@ revisionesTallerRouter.patch(
         return;
       }
 
+      /*
+       * El taller, la dirección y la cita también se corrigen aquí.
+       *
+       * Se apuntan al dar cita, pero la dirección se sabe muchas veces después
+       * —se la dan por teléfono al confirmar— y la hora cambia sola en cuanto
+       * el taller propone otra. Sin poder editarlos, la única salida era cerrar
+       * la revisión y abrir otra, y eso apunta una factura de más.
+       */
       const r = await query(
         `UPDATE erp_revisiones_taller
             SET estado    = COALESCE($2, estado),
                 resultado = COALESCE($3, resultado),
                 notas     = COALESCE($4, notas),
+                taller    = COALESCE($5, taller),
+                direccion = COALESCE($6, direccion),
+                cita_at   = COALESCE($7, cita_at),
                 hecha_at  = CASE WHEN $2 = 'Hecha' THEN NOW() ELSE hecha_at END,
                 updated_at = NOW()
           WHERE id = $1
         RETURNING *`,
         [req.params.id, estado || null, resultado || null,
-         req.body?.notas === undefined ? null : String(req.body.notas)]
+         req.body?.notas === undefined ? null : String(req.body.notas),
+         req.body?.taller === undefined ? null : String(req.body.taller).trim() || null,
+         req.body?.direccion === undefined ? null : String(req.body.direccion).trim(),
+         req.body?.cita_at === undefined ? null : req.body.cita_at || null]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
 
@@ -231,6 +253,86 @@ revisionesTallerRouter.patch(
     } catch (err) {
       console.error('[revisiones-taller] actualizar:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'revision_update_failed' });
+    }
+  }
+);
+
+/**
+ * Se le manda la cita al cliente.
+ *
+ * Hasta ahora la cita se quedaba dentro del ERP: taller y día apuntados en la
+ * ficha, y al dueño del coche se le decía por teléfono si alguien se acordaba.
+ * Una cita que solo existe en una llamada es una cita a la que se falta, y el
+ * que no aparece retrasa la publicación de su propio anuncio.
+ *
+ * Lo pulsa una persona y no sale solo al dar la cita: se apunta una cita muchas
+ * veces antes de tenerla cerrada con el taller, y un correo por cada intento es
+ * lo que hace que dejen de leerse los que importan.
+ *
+ * Se puede mandar más de una vez —la hora cambia, el cliente lo borra— y por eso
+ * `avisado_at` guarda **el último** envío y no el primero.
+ */
+revisionesTallerRouter.post(
+  '/revisiones-taller/:id/avisar',
+  requireRole(['admin', 'operations', 'support']),
+  async (req, res) => {
+    try {
+      await prepara();
+      const r = await query(
+        `SELECT rt.*, e.cliente_email, e.cliente_nombre,
+                v.plate, v.brand, v.model
+           FROM erp_revisiones_taller rt
+           LEFT JOIN moveadvisor_user_vehicles v ON v.id = rt.vehicle_id
+           LEFT JOIN erp_encargos_venta e
+                  ON e.vehicle_id = rt.vehicle_id AND e.cerrado_at IS NULL
+          WHERE rt.id = $1`,
+        [req.params.id]
+      );
+      const rev = r.rows[0] as Record<string, unknown> | undefined;
+      if (!rev) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
+
+      const falta = porQueNoSeLePuedeAvisar(rev);
+      if (falta) { res.status(400).json({ ok: false, error: falta }); return; }
+
+      /*
+       * Sin correo no se manda nada, y se dice cuál es el problema.
+       *
+       * El encargo puede no tenerlo —los que entran por teléfono a veces solo
+       * dejan un móvil—. Contestar «enviado» en ese caso sería lo peor de los
+       * dos mundos: nadie recibe la cita y en la pantalla queda dicho que sí.
+       */
+      const correo = String(rev.cliente_email ?? '').trim();
+      if (!correo) {
+        res.status(400).json({ ok: false, error: 'El encargo no tiene correo del cliente' });
+        return;
+      }
+
+      const cita = String(rev.cita_at);
+      const { subject, html } = elCorreoDeLaCitaDelTaller({
+        cliente_nombre: String(rev.cliente_nombre ?? ''),
+        marca: String(rev.brand ?? ''),
+        modelo: String(rev.model ?? ''),
+        matricula: String(rev.plate ?? ''),
+        taller: String(rev.taller ?? ''),
+        direccion: String(rev.direccion ?? ''),
+        dia: elDiaDeLaCita(cita),
+        hora: laHoraDeLaCita(cita),
+      });
+
+      // `alClienteSiempre`: un desvío de pruebas olvidado en producción dejaría
+      // al cliente sin enterarse de su propia cita, y el envío saldría bien.
+      await enviar({ to: correo, subject, html, alClienteSiempre: true });
+
+      const g = await query(
+        `UPDATE erp_revisiones_taller SET avisado_at = NOW(), updated_at = NOW()
+          WHERE id = $1 RETURNING *`,
+        [req.params.id]
+      );
+      res.json({ ok: true, data: { revision: g.rows[0], enviado_a: correo } });
+    } catch (err) {
+      const msg = (err as Error).message;
+      console.error('[revisiones-taller] avisar:', msg);
+      res.status(502).json({ ok: false, error: 'No se ha podido enviar el correo' });
     }
   }
 );

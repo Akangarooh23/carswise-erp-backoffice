@@ -9,7 +9,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   elCorreoDelMandato, elCorreoDePublicado, elCorreoDelCierre,
-  elCorreoDelAlta, laRutaDelAlta,
+  elCorreoDelAlta, laRutaDelAlta, elCorreoDeLaCitaDelTaller,
 } from './correos-del-encargo.js';
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -277,5 +277,59 @@ describe('cómo se le pide que devuelva el mandato', () => {
   test('y se le dice que no hace falta escribirnos', () => {
     // Si no, sube el papel y además contesta, por si acaso.
     assert.match(soloTexto(c().html), /no hace falta que nos escribas/i);
+  });
+});
+
+describe('el correo de la cita del taller', () => {
+  const c = (extra: Partial<{ taller: string; direccion: string; dia: string; hora: string }> = {}) =>
+    elCorreoDeLaCitaDelTaller({
+      ...COCHE,
+      taller: 'Norauto Alcobendas',
+      direccion: 'Av. de España 12, Alcobendas',
+      dia: 'martes, 22 de septiembre',
+      hora: '10:30',
+      ...extra,
+    });
+
+  test('dice las cuatro cosas que hacen falta para ir', () => {
+    /*
+     * Dónde, en qué dirección, qué día y a qué hora. Si falta una, el cliente
+     * tiene que llamar para preguntarla y el correo no ha ahorrado nada — que
+     * es como estaba antes, cuando la cita se le contaba por teléfono o no se
+     * le contaba.
+     */
+    const t = soloTexto(c().html);
+    assert.match(t, /Norauto Alcobendas/);
+    assert.match(t, /Av\. de España 12/);
+    assert.match(t, /22 de septiembre/);
+    assert.match(t, /10:30/);
+  });
+
+  test('y se sabe de qué coche habla', () => {
+    assert.match(c().subject, /Citroën C3/);
+  });
+
+  test('sin dirección, no se inventa ninguna', () => {
+    // Hay talleres que todo el mundo ubica. Lo que no puede salir es la palabra
+    // «Dirección» con un hueco detrás.
+    const t = soloTexto(c({ direccion: '' }).html);
+    assert.doesNotMatch(t, /Dirección/);
+    assert.match(t, /Norauto Alcobendas/);
+  });
+
+  test('no habla de dinero', () => {
+    /*
+     * Los 60 € son lo que nos cuesta a nosotros y se le hace vendan o no.
+     * Decirlos aquí le haría creer que los paga él, y la siguiente llamada es
+     * para preguntar si se le va a cobrar la revisión.
+     */
+    const t = soloTexto(c().html);
+    assert.doesNotMatch(t, /€|euros|precio|cuesta \d/i);
+  });
+
+  test('y deja una salida si ese día no le viene bien', () => {
+    // Sin esto, el que no puede ir simplemente no va, y nadie se entera hasta
+    // que el taller llama.
+    assert.match(soloTexto(c().html), /contesta a este correo/i);
   });
 });

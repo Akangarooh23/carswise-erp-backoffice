@@ -6,13 +6,25 @@
  * anuncio de uno de Milanuncios, y es la única puerta que no depende del
  * cliente.
  */
+/*
+ * El servidor de producción va en UTC, y esta prueba también.
+ *
+ * Sin esto, las de la hora pasaban por accidente en un portátil español: la
+ * zona del sistema ya era la de Madrid, así que daba igual pedirla o no. Se
+ * comprobó quitándole la zona al código —la prueba siguió en verde— y eso es
+ * justo el fallo que se escapó con las visitas: en Vercel, a una cita de las
+ * 10:00 el correo le ponía las 08:00.
+ */
+process.env.TZ = 'UTC';
+
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ESTADOS, RESULTADOS, QUE_TOCA, ETIQUETA, LO_QUE_CUESTA,
   esUnEstado, esUnResultado, elCocheEstaComprobado, porQueNoEstaComprobado,
   sigueEsperandoAlTaller, elTallerLoTumbo,
-  ENSURE_UNA_VIVA, SQL_LA_DEL_COCHE,
+  ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
+  elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
 } from './revision-del-taller.js';
 
 describe('por dónde va', () => {
@@ -162,5 +174,79 @@ describe('una revisión viva por coche', () => {
 
   test('y se lee la más reciente', () => {
     assert.match(SQL_LA_DEL_COCHE, /ORDER BY created_at DESC LIMIT 1/);
+  });
+});
+
+describe('la cita que se le cuenta al cliente', () => {
+  test('la tabla guarda dónde está el taller y si ya se le dijo', () => {
+    /*
+     * La ficha tenía taller y día, que es lo que nos hace falta a nosotros. Al
+     * que tiene que llevar el coche le falta la dirección, y a quien atiende el
+     * encargo le falta saber si alguien se lo ha dicho ya.
+     */
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS direccion/);
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS avisado_at/);
+  });
+
+  test('y se añaden con ALTER, que la tabla ya existe', () => {
+    // Un CREATE TABLE IF NOT EXISTS no toca una tabla que está: en producción
+    // las columnas nuevas no habrían aparecido nunca.
+    assert.match(ENSURE_COLUMNAS, /ALTER TABLE erp_revisiones_taller/);
+  });
+
+  test('el día y la hora salen en la de España, no en la del servidor', () => {
+    /*
+     * En Vercel el servidor va en UTC. A una cita de las 10:00 el correo le
+     * pondría las 08:00, y la pantalla la enseñaría bien —eso lo pinta el
+     * navegador—, así que las dos dirían cosas distintas y solo se vería
+     * mirando el correo que le llega al cliente. Ya pasó con las visitas.
+     *
+     * Las 08:00 de Madrid en septiembre son las 06:00 en UTC.
+     */
+    const cita = '2026-09-22T06:00:00.000Z';
+    assert.equal(laHoraDeLaCita(cita), '08:00');
+    assert.match(elDiaDeLaCita(cita), /22 de septiembre/);
+  });
+
+  test('y el día no se va al anterior con una cita de madrugada', () => {
+    // 00:30 de Madrid es el día anterior en UTC.
+    const cita = '2026-09-21T22:30:00.000Z';
+    assert.match(elDiaDeLaCita(cita), /22 de septiembre/);
+    assert.equal(laHoraDeLaCita(cita), '00:30');
+  });
+});
+
+describe('cuándo se le puede mandar la cita', () => {
+  test('con taller y día, sí', () => {
+    assert.equal(porQueNoSeLePuedeAvisar({ taller: 'Norauto', cita_at: '2026-09-22T08:00:00Z' }), '');
+  });
+
+  test('sin día no: le diría que tiene cita sin decirle cuándo', () => {
+    // Y entonces tiene que llamar para preguntar, con lo que el correo no ha
+    // ahorrado nada.
+    assert.equal(
+      porQueNoSeLePuedeAvisar({ taller: 'Norauto', cita_at: null }),
+      'Falta el día de la cita',
+    );
+  });
+
+  test('sin taller tampoco', () => {
+    assert.equal(
+      porQueNoSeLePuedeAvisar({ taller: '  ', cita_at: '2026-09-22T08:00:00Z' }),
+      'Falta a qué taller se lleva',
+    );
+  });
+
+  test('y sin revisión, menos', () => {
+    assert.match(porQueNoSeLePuedeAvisar(null), /No hay ninguna cita/);
+  });
+
+  test('la dirección no se exige', () => {
+    // Hay talleres que todo el mundo ubica. Se manda si está, y si no, esa
+    // línea no sale: lo que no se hace es inventarla.
+    assert.equal(
+      porQueNoSeLePuedeAvisar({ taller: 'Norauto Alcobendas', cita_at: '2026-09-22T08:00:00Z', direccion: '' }),
+      '',
+    );
   });
 });
