@@ -19,6 +19,7 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import { falloInterno } from '../lib/fallos.js';
 import { recalculaPortalesParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
+import { recuerdaLasCitasDelTaller } from '../lib/recuerda-las-citas-del-taller.js';
 
 export const cronRouter = Router();
 
@@ -67,5 +68,26 @@ cronRouter.get('/cron/kpis', async (req, res) => {
     });
   } catch (err) {
     falloInterno(res, 'cron_kpis_failed', err);
+  }
+});
+
+/**
+ * Los recordatorios de las citas del taller.
+ *
+ * Va aparte de los KPI y no dentro: son dos cosas con horarios distintos —los
+ * números se recalculan de madrugada y un recordatorio a las cuatro de la
+ * mañana llega enterrado bajo el correo de la noche— y, sobre todo, esto manda
+ * correos a clientes. Si un día falla el recálculo, lo que no puede pasar es
+ * que se queden sin recordar las citas del día siguiente.
+ */
+cronRouter.get('/cron/recordatorios-taller', async (req, res) => {
+  if (!autorizado(req)) {
+    res.status(401).json({ ok: false, error: 'no_autorizado' });
+    return;
+  }
+  try {
+    res.json({ ok: true, data: await recuerdaLasCitasDelTaller() });
+  } catch (err) {
+    falloInterno(res, 'cron_recordatorios_taller_failed', err);
   }
 });

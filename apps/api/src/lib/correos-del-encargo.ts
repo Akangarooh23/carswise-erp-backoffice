@@ -240,6 +240,49 @@ export function elCorreoDeLaCitaDelTaller(
 }
 
 /**
+ * Y el recordatorio, el día de antes.
+ *
+ * Uno solo. La cita se le contó cuando se cerró, y entre medias pasan días: el
+ * que la apuntó en el calendario no lo necesita, pero el que no, no vuelve a
+ * mirar aquel correo. Es el mismo caso que la visita del comprador, y ahí el
+ * recordatorio es lo que separa una cita de una cita a la que se falta.
+ *
+ * Es **más corto** que el primero a propósito: quien lo lee ya sabe lo que es y
+ * por qué se le hace. Lo que necesita son cuatro datos y la salida por si no
+ * puede — repetirle la explicación entera hace que se lea en diagonal, y en
+ * diagonal se pierde la hora.
+ */
+export function elRecordatorioDeLaCitaDelTaller(
+  d: DatosDelCorreo & {
+    taller: string;
+    direccion: string;
+    dia: string;
+    hora: string;
+    panel: string;
+  },
+): { subject: string; html: string } {
+  const coche = elCoche(d.marca, d.modelo, d.matricula);
+  const filas: [string, string][] = [
+    ['Taller', esc(d.taller)],
+    ...(d.direccion.trim() ? ([['Dirección', esc(d.direccion)]] as [string, string][]) : []),
+    ['Día', esc(d.dia)],
+    ['Hora', esc(d.hora)],
+  ];
+
+  return {
+    subject: `Recordatorio: ${coche} tiene taller el ${d.dia}`,
+    html: plantilla({
+      titulo: 'Te recordamos la cita del taller',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
+        parrafo(`Es la revisión de <strong>${esc(coche)}</strong>. Solo hay que acercarlo.`) +
+        datos(filas) +
+        parrafo(`Si no vas a poder, dínoslo desde ${enlace('tu panel', d.panel)} y te llamamos.`),
+    }),
+  };
+}
+
+/**
  * La ruta donde el cliente da de alta su coche, con la matrícula ya puesta.
  *
  * Gemela de `elAlta` en `src/utils/encargoDeVentaWeb.js` de PopCar: la pantalla

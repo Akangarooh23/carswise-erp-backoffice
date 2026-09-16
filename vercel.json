@@ -10,7 +10,8 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/kpis", "schedule": "0 4 * * *" }
+    { "path": "/api/cron/kpis", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/recordatorios-taller", "schedule": "0 7 * * *" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },

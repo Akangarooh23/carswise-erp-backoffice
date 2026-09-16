@@ -26,6 +26,7 @@ import {
   ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
   elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
   LO_QUE_PUEDE_PEDIR, LO_QUE_PIDIO, esLoQuePuedePedir, elClienteEsperaRespuesta,
+  elRecordatorioToca, SQL_CANDIDATAS_A_RECORDATORIO, CUANTO_ANTES_SE_RECUERDA_MS,
 } from './revision-del-taller.js';
 
 describe('por dónde va', () => {
@@ -299,5 +300,108 @@ describe('cuando el cliente no puede ir', () => {
   test('y sin petición, nada', () => {
     assert.equal(elClienteEsperaRespuesta({ estado: 'En el taller', cliente_pidio: null }), false);
     assert.equal(elClienteEsperaRespuesta(null), false);
+  });
+});
+
+describe('el recordatorio de la cita', () => {
+  /*
+   * La cita se le cuenta cuando se cierra, y entre medias pasan días. El que la
+   * apuntó en su calendario no necesita nada; el que no, no vuelve a abrir aquel
+   * correo — y el día señalado el coche no aparece.
+   */
+  const AHORA = new Date('2026-09-17T06:00:00.000Z');
+  const viva = (extra: Record<string, unknown> = {}) => ({
+    estado: 'En el taller',
+    // Mañana a las 18:00 de Madrid: treinta y seis horas justas de margen.
+    cita_at: '2026-09-18T16:00:00.000Z',
+    avisado_at: '2026-09-10T09:00:00.000Z',
+    recordado_at: null,
+    cliente_pidio: null,
+    ...extra,
+  });
+
+  test('el día de antes, sí', () => {
+    assert.equal(elRecordatorioToca(viva(), AHORA), true);
+  });
+
+  test('y el mismo día también, que es el que más falta hace', () => {
+    // Una cita cerrada con poca antelación no tiene día de antes.
+    assert.equal(elRecordatorioToca(viva({ cita_at: '2026-09-17T14:00:00.000Z' }), AHORA), true);
+  });
+
+  test('pero no cuatro días antes', () => {
+    // Un recordatorio que llega demasiado pronto es el que hay que recordar.
+    assert.equal(elRecordatorioToca(viva({ cita_at: '2026-09-21T10:00:00.000Z' }), AHORA), false);
+  });
+
+  test('ni dos veces', () => {
+    // El segundo correo de lo mismo enseña a no leer el primero.
+    assert.equal(elRecordatorioToca(viva({ recordado_at: '2026-09-17T05:00:00.000Z' }), AHORA), false);
+  });
+
+  test('ni de una cita que ya pasó', () => {
+    assert.equal(elRecordatorioToca(viva({ cita_at: '2026-09-16T10:00:00.000Z' }), AHORA), false);
+  });
+
+  test('ni de una que no se le ha contado', () => {
+    // No se recuerda algo que nunca se dijo: sería la primera noticia.
+    assert.equal(elRecordatorioToca(viva({ avisado_at: null }), AHORA), false);
+  });
+
+  test('ni justo después de habérsela contado', () => {
+    /*
+     * Dar la cita a las 9:00 para el día siguiente dispararía el recordatorio en
+     * la pasada siguiente: dos correos casi seguidos diciendo lo mismo.
+     */
+    assert.equal(elRecordatorioToca(viva({ avisado_at: '2026-09-17T05:00:00.000Z' }), AHORA), false);
+  });
+
+  test('ni si ya nos ha pedido cambiarla', () => {
+    /*
+     * «No olvides llevarlo mañana» después de haberle dicho «te llamamos» es
+     * contradecirnos, y el que lo lee ya no sabe a qué atenerse.
+     */
+    assert.equal(elRecordatorioToca(viva({ cliente_pidio: 'cambio' }), AHORA), false);
+    assert.equal(elRecordatorioToca(viva({ cliente_pidio: 'cancelar' }), AHORA), false);
+  });
+
+  test('ni de una revisión ya hecha', () => {
+    assert.equal(elRecordatorioToca(viva({ estado: 'Hecha' }), AHORA), false);
+  });
+
+  test('y una fecha rota no manda nada', () => {
+    assert.equal(elRecordatorioToca(viva({ cita_at: 'el jueves' }), AHORA), false);
+    assert.equal(elRecordatorioToca(null, AHORA), false);
+  });
+});
+
+describe('a quién se le pregunta', () => {
+  test('la consulta ya descarta lo que no puede tocar', () => {
+    // Traerse la tabla entera para descartarlas en JavaScript sería pedirle a la
+    // base todas las revisiones de la historia una vez al día.
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /r\.estado <> 'Hecha'/);
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /r\.avisado_at IS NOT NULL/);
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /r\.recordado_at IS NULL/);
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /r\.cita_at > NOW\(\)/);
+  });
+
+  test('y trae a quién escribirle', () => {
+    // Sin el correo del encargo no hay a quién mandárselo, y la consulta sería
+    // un paseo por la tabla para no hacer nada.
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /e\.cliente_email/);
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /e\.cerrado_at IS NULL/);
+  });
+
+  test('la ventana de la consulta y la de la regla dicen lo mismo', () => {
+    /*
+     * Si la consulta mirase 24 horas y la regla 36, las citas de entre medias no
+     * las vería nadie: la regla diría que sí y la consulta no las traería.
+     */
+    assert.equal(CUANTO_ANTES_SE_RECUERDA_MS / (60 * 60 * 1000), 36);
+    assert.match(SQL_CANDIDATAS_A_RECORDATORIO, /INTERVAL '36 hours'/);
+  });
+
+  test('y la tabla guarda que ya se recordó', () => {
+    assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS recordado_at/);
   });
 });

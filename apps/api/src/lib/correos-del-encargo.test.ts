@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   elCorreoDelMandato, elCorreoDePublicado, elCorreoDelCierre,
   elCorreoDelAlta, laRutaDelAlta, elCorreoDeLaCitaDelTaller,
+  elRecordatorioDeLaCitaDelTaller,
 } from './correos-del-encargo.js';
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -346,5 +347,61 @@ describe('el correo de la cita del taller', () => {
 
   test('y ya no se le manda contestar al correo', () => {
     assert.doesNotMatch(soloTexto(c().html), /contesta a este correo/i);
+  });
+});
+
+describe('el recordatorio de la cita del taller', () => {
+  const r = (extra: Partial<{ direccion: string }> = {}) =>
+    elRecordatorioDeLaCitaDelTaller({
+      ...COCHE,
+      taller: 'Norauto Alcobendas',
+      direccion: 'Av. de España 12, Alcobendas',
+      dia: 'martes, 22 de septiembre',
+      hora: '10:30',
+      panel: 'https://popcar.com.es/panel/solicitudes',
+      ...extra,
+    });
+
+  test('dice cuándo y dónde, que es para lo que está', () => {
+    const t = soloTexto(r().html);
+    assert.match(t, /Norauto Alcobendas/);
+    assert.match(t, /Av\. de España 12/);
+    assert.match(t, /22 de septiembre/);
+    assert.match(t, /10:30/);
+  });
+
+  test('se nota en el asunto que es un recordatorio', () => {
+    /*
+     * Es el segundo correo de la misma cita. Con un asunto igual al primero, el
+     * que ya lo leyó lo da por leído y no lo abre — y este es el que llega el
+     * día de antes.
+     */
+    assert.match(r().subject, /Recordatorio/i);
+    assert.match(r().subject, /22 de septiembre/);
+  });
+
+  test('y es más corto que el primero', () => {
+    /*
+     * Quien lo lee ya sabe lo que es y por qué se le hace. Repetirle la
+     * explicación entera hace que se lea en diagonal, y en diagonal se pierde
+     * la hora.
+     */
+    const primero = soloTexto(elCorreoDeLaCitaDelTaller({
+      ...COCHE, taller: 'Norauto Alcobendas', direccion: 'Av. de España 12, Alcobendas',
+      dia: 'martes, 22 de septiembre', hora: '10:30',
+      panel: 'https://popcar.com.es/panel/solicitudes',
+    }).html);
+    assert.ok(soloTexto(r().html).length < primero.length,
+      'el recordatorio es igual de largo que el correo de la cita');
+  });
+
+  test('y deja la misma salida: su panel', () => {
+    const t = soloTexto(r().html);
+    assert.match(t, /tu panel/i);
+    assert.match(r().html, /https:\/\/popcar\.com\.es\/panel\/solicitudes/);
+  });
+
+  test('sin dirección, no se inventa ninguna', () => {
+    assert.doesNotMatch(soloTexto(r({ direccion: '' }).html), /Dirección/);
   });
 });

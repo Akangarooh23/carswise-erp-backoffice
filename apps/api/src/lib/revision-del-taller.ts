@@ -168,7 +168,96 @@ export const ENSURE_COLUMNAS = `
     ADD COLUMN IF NOT EXISTS avisado_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS cliente_pidio    TEXT,
     ADD COLUMN IF NOT EXISTS cliente_pidio_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS cliente_motivo   TEXT NOT NULL DEFAULT ''`;
+    ADD COLUMN IF NOT EXISTS cliente_motivo   TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS recordado_at     TIMESTAMPTZ`;
+
+/**
+ * Cuánto antes se le recuerda la cita.
+ *
+ * Treinta y seis horas, que con una pasada por la mañana es «el día de antes»
+ * para cualquier hora del día siguiente: una cita mañana a las 18:00 entra en
+ * la pasada de hoy a las 6:00.
+ *
+ * Y de paso cubre el mismo día. Una cita que se cierra con poca antelación no
+ * tiene día de antes, y ese es justo el que más falta hace recordar.
+ */
+export const CUANTO_ANTES_SE_RECUERDA_MS = 36 * 60 * 60 * 1000;
+
+/**
+ * Y cuánto tiene que haber pasado desde que se le contó.
+ *
+ * Tres horas. Sin esto, dar la cita a las 9:00 para el día siguiente dispararía
+ * el recordatorio en la pasada siguiente: dos correos casi seguidos diciendo lo
+ * mismo, que es como se enseña a no leerlos.
+ */
+const DESDE_QUE_SE_LE_DIJO_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Si a esta cita le toca recordatorio ahora.
+ *
+ * Se manda **uno solo**, el día de antes —o el mismo día si no hubo día de
+ * antes—. Dos recordatorios de lo mismo es spam nuestro, y el segundo enseña a
+ * no leer el primero.
+ *
+ * Y no se le recuerda:
+ *
+ * - si no se le ha contado la cita todavía (`avisado_at`): no se recuerda algo
+ *   que nunca se dijo;
+ * - si ya nos ha pedido cambiarla o anularla: decirle «no olvides llevarlo
+ *   mañana» después de haberle dicho «te llamamos» es contradecirnos;
+ * - si la revisión ya está hecha o la cita ya pasó.
+ */
+export function elRecordatorioToca(
+  r: {
+    estado?: unknown;
+    cita_at?: unknown;
+    avisado_at?: unknown;
+    recordado_at?: unknown;
+    cliente_pidio?: unknown;
+  } | null | undefined,
+  ahora: Date = new Date(),
+): boolean {
+  if (!r) return false;
+  if (String(r.estado ?? '').trim() === 'Hecha') return false;
+  if (!r.avisado_at) return false;
+  if (r.recordado_at) return false;
+  if (esLoQuePuedePedir(r.cliente_pidio)) return false;
+  if (!r.cita_at) return false;
+
+  const cita = new Date(r.cita_at as string).getTime();
+  if (!Number.isFinite(cita)) return false;
+
+  const falta = cita - ahora.getTime();
+  if (falta <= 0) return false;
+  if (falta > CUANTO_ANTES_SE_RECUERDA_MS) return false;
+
+  const avisado = new Date(r.avisado_at as string).getTime();
+  if (Number.isFinite(avisado) && ahora.getTime() - avisado < DESDE_QUE_SE_LE_DIJO_MS) return false;
+
+  return true;
+}
+
+/**
+ * Las que pueden tocar, para no traerse la tabla entera.
+ *
+ * Filtra en SQL lo que es barato y seguro de filtrar ahí —lo que ya pasó, lo
+ * hecho, lo ya recordado— y deja la decisión a `elRecordatorioToca`, que es
+ * donde está escrita la regla y donde se puede probar sin base de datos.
+ */
+export const SQL_CANDIDATAS_A_RECORDATORIO = `
+  SELECT r.*, e.cliente_email, e.cliente_nombre,
+         v.plate, v.brand, v.model
+    FROM erp_revisiones_taller r
+    LEFT JOIN moveadvisor_user_vehicles v ON v.id = r.vehicle_id
+    LEFT JOIN erp_encargos_venta e
+           ON e.vehicle_id = r.vehicle_id AND e.cerrado_at IS NULL
+   WHERE r.estado <> 'Hecha'
+     AND r.avisado_at IS NOT NULL
+     AND r.recordado_at IS NULL
+     AND r.cita_at IS NOT NULL
+     AND r.cita_at > NOW()
+     AND r.cita_at < NOW() + INTERVAL '36 hours'
+   ORDER BY r.cita_at`;
 
 /**
  * Lo que el cliente puede pedir sobre su cita, desde su panel.
