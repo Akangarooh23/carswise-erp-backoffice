@@ -14,7 +14,7 @@
  * vendemos por ti».
  */
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '../../api/client.js';
+import { api, descargaConSesion } from '../../api/client.js';
 import { loQueFaltaEnPantalla } from '../../lib/lo-que-falta-del-precio.js';
 import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
@@ -68,6 +68,8 @@ export interface ClausulaDelPrecio {
   firmada_at: string | null;
   aceptada: boolean;
   precio: number | null;
+  /** El papel que subió él firmado, que es el único que no se regenera. */
+  subida: { id: string; nombre: string } | null;
 }
 
 export interface ElEncargo {
@@ -236,6 +238,21 @@ export default function EncargoDeVenta({
       setFallo((e as Error).message);
     } finally {
       setGuardando(false);
+    }
+  }
+
+  /** Se baja el papel que firmó, que es el único del que hay una sola copia. */
+  async function descargaElPrecioFirmado() {
+    const doc = datos?.clausula_precio?.subida;
+    if (!doc || !datos?.encargo?.id) return;
+    setFallo('');
+    try {
+      await descargaConSesion(
+        `/documentos/encargo/${datos.encargo.id}/${doc.id}`,
+        doc.nombre || 'precio-firmado',
+      );
+    } catch (e) {
+      setFallo((e as Error).message);
     }
   }
 
@@ -565,6 +582,22 @@ export default function EncargoDeVenta({
                            text-acento hover:bg-amber-50 disabled:opacity-50"
               >
                 {clausula.enviada_at ? 'Volver a mandárselo' : 'Mandarle el precio'}
+              </button>
+            )}
+            {/*
+              * El papel que firmó, que es el único que no se puede regenerar.
+              *
+              * El documento en blanco se hace cada vez con lo que hay en el
+              * encargo; éste tiene su firma y solo existe una copia.
+              */}
+            {clausula.subida && (
+              <button
+                type="button"
+                onClick={() => void descargaElPrecioFirmado()}
+                className="ml-auto px-3 py-1.5 text-xs font-semibold rounded-lg border border-brand-200
+                           text-brand-500 hover:bg-brand-50"
+              >
+                Descargar el firmado
               </button>
             )}
           </div>

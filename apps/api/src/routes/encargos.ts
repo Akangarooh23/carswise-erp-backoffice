@@ -62,7 +62,7 @@ import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado, elCorreoDel
 import { config } from '../config.js';
 import {
   SERIE as SERIE_DEL_PRECIO, ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_PRECIO,
-  laClausula, porQueNoSeLePuedePedir, estaAceptada,
+  laClausula, porQueNoSeLePuedePedir, estaAceptada, PAPEL_FIRMADO as PAPEL_DEL_PRECIO,
   comoSeLlamaElFichero as comoSeLlamaElFicheroDelPrecio,
 } from '../lib/clausula-del-precio.js';
 import { abreLaTransferenciaDelEncargo } from './tramites.js';
@@ -609,6 +609,21 @@ encargosRouter.get(
           ).catch(() => ({ rows: [] }))).rows[0] ?? null
         : null;
 
+      /*
+       * Y el del precio, buscado igual que el mandato.
+       *
+       * Si subió dos —una foto borrosa y luego el PDF— vale el último: es el que
+       * quiso que tuviéramos.
+       */
+      const elPrecioFirmado = encargo?.id
+        ? (await query<{ id: string; nombre: string }>(
+            `SELECT id, nombre FROM erp_documentos
+              WHERE ambito = 'encargo' AND ambito_id = $1 AND papel = $2
+              ORDER BY created_at DESC LIMIT 1`,
+            [String(encargo.id), PAPEL_DEL_PRECIO]
+          ).catch(() => ({ rows: [] }))).rows[0] ?? null
+        : null;
+
       const hay = await loQueHayDe(req.params.vehicleId);
       const puertas = lasPuertas(hay);
 
@@ -690,6 +705,14 @@ encargosRouter.get(
             firmada_at: encargo.clausula_firmada_at ?? null,
             aceptada: estaAceptada(encargo),
             precio: Number(encargo.precio_referencia) || null,
+            /*
+             * Y el papel que subió él, para poder bajárselo.
+             *
+             * Es el único que no se puede regenerar: el de al lado se hace cada
+             * vez con lo que hay en el encargo y sale en blanco. Éste tiene su
+             * firma y solo existe una copia.
+             */
+            subida: elPrecioFirmado,
           } : null,
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
           /*
