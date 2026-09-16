@@ -322,6 +322,21 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     a: '/idcars', icono: 'taller', tono: 'espera',
   },
   /*
+   * Y el precio de salida, que es lo siguiente al taller.
+   *
+   * Va con los urgentes aunque no bloquee publicar: mientras no lo acepte por
+   * escrito, la cancelación son 150 € desde el día uno y para siempre. Es decir,
+   * que no mandárselo le cuesta dinero **a él**, y el día que lo descubra la
+   * conversación es nuestra.
+   */
+  {
+    clave: 'encargos_sin_mandar_el_precio',
+    etiqueta: 'encargos a los que falta mandarles el precio',
+    una: 'encargo al que falta mandarle el precio',
+    porque: 'ya está el taller y hasta que no lo acepte por escrito no puede irse sin pagar',
+    a: '/idcars', icono: 'euro', tono: 'urgente',
+  },
+  /*
    * Y los anuncios que siguen puestos fuera de un coche que ya no está a la
    * venta.
    *

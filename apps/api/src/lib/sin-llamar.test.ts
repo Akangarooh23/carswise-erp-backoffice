@@ -7,6 +7,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   HORAS_PARA_LLAMAR, horasLaborablesDesde, seLePasoElPlazo,
   losQueEsperanDeMas, reparteLosLeads, SQL_SIN_LLAMAR,
@@ -157,7 +158,52 @@ describe('a quién se pregunta', () => {
      * el dia que cambiara una de las dos el panel diria una cosa y la pantalla
      * otra.
      */
-    assert.match(SQL_SIN_LLAMAR, /SELECT created_at/);
+    assert.match(SQL_SIN_LLAMAR, /SELECT l\.created_at/);
     assert.doesNotMatch(SQL_SIN_LLAMAR, /COUNT\(/);
+  });
+
+  test('y no los que ya tienen un encargo abierto', () => {
+    /*
+     * Abrir un encargo es la prueba de que se le llamó: nadie abre uno sin haber
+     * hablado con el dueño del coche.
+     *
+     * Sin esto, un señor con el mandato firmado, el coche en el taller y el
+     * anuncio publicado seguía contando como «le hemos prometido una llamada en
+     * menos de 24 horas laborables» — porque nadie se acordó de tocar el lead. Y
+     * un aviso que no se apaga es un aviso que se deja de mirar.
+     */
+    assert.match(SQL_SIN_LLAMAR, /NOT EXISTS \(/);
+    assert.match(SQL_SIN_LLAMAR, /FROM erp_encargos_venta e/);
+    assert.match(SQL_SIN_LLAMAR, /e\.cerrado_at IS NULL/);
+  });
+
+  test('se le busca por su lead y por su correo', () => {
+    /*
+     * Por el lead cuando el encargo se abrió desde él, que es lo normal; y por
+     * el correo para los que se abrieron de otra forma. Con una sola de las dos,
+     * la mitad de los casos seguirían contando.
+     */
+    assert.match(SQL_SIN_LLAMAR, /e\.lead_id = l\.id/);
+    assert.match(SQL_SIN_LLAMAR, /lower\(COALESCE\(e\.cliente_email, ''\)\) = lower\(COALESCE\(l\.user_email, ''\)\)/);
+  });
+});
+
+describe('y el lead deja de estar pendiente al abrir el encargo', () => {
+  /*
+   * Las dos mitades del mismo arreglo. Ésta es la que evita que vuelva a pasar;
+   * la de arriba, la que apaga los que ya se quedaron así.
+   */
+  const RUTA = readFileSync(
+    new URL('../routes/encargos.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+
+  test('se marca «Contactado» al abrirlo', () => {
+    assert.match(RUTA, /UPDATE moveadvisor_market_leads\s*\n?\s*SET status = 'Contactado'/);
+  });
+
+  test('pero solo si estaba pendiente', () => {
+    // Uno que ya iba por «Vendido» no retrocede.
+    assert.match(RUTA, /WHERE id = \$1 AND status = 'Pendiente'/);
   });
 });

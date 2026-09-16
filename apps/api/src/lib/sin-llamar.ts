@@ -120,7 +120,26 @@ export function reparteLosLeads(
  * las dos el panel diría una cosa y la pantalla otra.
  */
 export const SQL_SIN_LLAMAR = `
-  SELECT created_at
-    FROM moveadvisor_market_leads
-   WHERE lead_type = 'venta_gestionada'
-     AND status = 'Pendiente'`;
+  SELECT l.created_at
+    FROM moveadvisor_market_leads l
+   WHERE l.lead_type = 'venta_gestionada'
+     AND l.status = 'Pendiente'
+     /*
+      * Y sin encargo abierto.
+      *
+      * Abrir un encargo es la prueba de que se le llamó: nadie abre uno sin
+      * haber hablado con el dueño del coche. Al abrirlo, el lead pasa a
+      * «Contactado» — pero eso empezó a hacerse tarde, y los encargos de antes
+      * se quedaron con su lead en «Pendiente» para siempre.
+      *
+      * Así que se mira lo que **es verdad**, no lo que quedó apuntado: un señor
+      * con el mandato firmado, el coche en el taller y el anuncio publicado
+      * seguía contando como «le hemos prometido una llamada en menos de 24
+      * horas». Un aviso que no se apaga es un aviso que se deja de mirar.
+      */
+     AND NOT EXISTS (
+       SELECT 1 FROM erp_encargos_venta e
+        WHERE e.cerrado_at IS NULL
+          AND (e.lead_id = l.id
+               OR lower(COALESCE(e.cliente_email, '')) = lower(COALESCE(l.user_email, '')))
+     )`;

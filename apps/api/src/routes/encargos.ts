@@ -274,6 +274,8 @@ export interface AvisosDeEncargos {
   encargos_sin_firmar: number;
   /** El cliente ha dicho desde su panel que no puede ir al taller ese día. */
   citas_taller_que_pide_mover: number;
+  /** Ya se puede pedir el precio de salida y todavía no se le ha mandado. */
+  encargos_sin_mandar_el_precio: number;
 }
 
 /**
@@ -335,7 +337,9 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
              WHERE mm.vehicle_id = e.vehicle_id) AS mantenimientos,
            tal.estado AS taller_estado, tal.resultado AS taller_resultado,
            -- Lo que el cliente ha pedido sobre su cita desde su panel.
-           tal.cliente_pidio AS taller_cliente_pidio
+           tal.cliente_pidio AS taller_cliente_pidio,
+           -- Y el precio de salida: si hay cifra y si ya se le mandó el papel.
+           e.precio_referencia, e.clausula_enviada_at, e.clausula_firmada_at
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
       -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
@@ -399,6 +403,27 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
     }
 
     /*
+     * Y el precio de salida, que es lo siguiente al taller.
+     *
+     * Se avisa cuando ya se puede pedir y todavía no se le ha mandado el papel.
+     * No bloquea publicar, pero mientras no lo acepte por escrito la cancelación
+     * son 150 € desde el día uno y para siempre: no mandárselo le cuesta dinero
+     * a él, y el día que lo descubra la conversación es nuestra.
+     *
+     * Se apaga al mandarlo, no al firmarlo: lo segundo depende de él, y un aviso
+     * que solo se apaga cuando conteste un tercero se queda encendido semanas.
+     */
+    if (!fila.clausula_enviada_at && !fila.clausula_firmada_at
+        && porQueNoSeLePuedePedir({
+          mandato_firmado: estaFirmado(fila),
+          taller_hecho: !sigueEsperandoAlTaller(taller),
+          taller_lo_tumbo: elTallerLoTumbo(taller),
+          precio: Number(fila.precio_referencia) || null,
+        }) === '') {
+      avisos.push('encargos_sin_mandar_el_precio');
+    }
+
+    /*
      * Y el que no ha firmado el mandato.
      *
      * Se está trabajando para él —anuncio, taller, llamadas— y no hay nada que
@@ -431,6 +456,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
     citas_taller_que_pide_mover: 0,
+    encargos_sin_mandar_el_precio: 0,
   };
   for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
   return cuenta;
@@ -786,6 +812,30 @@ encargosRouter.post(
           req.actor?.name ?? req.actor?.sub ?? '',
         ]
       );
+
+      /*
+       * Y el lead deja de estar pendiente de llamada.
+       *
+       * Nadie abre un encargo sin haber hablado antes con el dueño del coche:
+       * abrirlo **es** la prueba de que se le llamó. Sin esto, el lead se queda
+       * en «Pendiente» para siempre y el panel sigue diciendo «le hemos
+       * prometido una llamada en menos de 24 horas laborables» con el mandato
+       * firmado, el coche en el taller y el anuncio ya publicado.
+       *
+       * Solo desde «Pendiente»: uno que ya iba por «Vendido» no retrocede.
+       *
+       * Con `catch`: que el lead no se pueda tocar no puede impedir abrir el
+       * encargo, que es lo que de verdad se ha pedido aquí.
+       */
+      const leadId = String(req.body?.lead_id ?? '').trim();
+      if (leadId) {
+        await query(
+          `UPDATE moveadvisor_market_leads
+              SET status = 'Contactado'
+            WHERE id = $1 AND status = 'Pendiente'`,
+          [leadId]
+        ).catch((e) => console.error('[encargos] lead sin marcar:', (e as Error).message));
+      }
 
       res.status(201).json({ ok: true, data: r.rows[0], dias: DIAS_HASTA_SALIR_GRATIS });
     } catch (err) {

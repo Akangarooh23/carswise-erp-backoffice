@@ -87,3 +87,41 @@ describe('y mientras tanto no se pierde', () => {
     assert.match(ENCARGOS, /SELECT rt\.estado, rt\.resultado, rt\.cliente_pidio/);
   });
 });
+
+describe('y el aviso de mandarle el precio', () => {
+  /*
+   * El taller ya contestó y hay precio: lo siguiente es que lo acepte por
+   * escrito. No bloquea publicar, pero mientras no lo firme la cancelación son
+   * 150 € desde el día uno y para siempre — o sea que no mandárselo le cuesta
+   * dinero a él, y el día que lo descubra la conversación es nuestra.
+   */
+  test('se cuenta cuando ya se puede pedir y no se ha mandado', () => {
+    assert.match(ENCARGOS, /avisos\.push\('encargos_sin_mandar_el_precio'\)/);
+    assert.match(ENCARGOS, /!fila\.clausula_enviada_at && !fila\.clausula_firmada_at/);
+  });
+
+  test('con la misma regla que decide si se puede pedir', () => {
+    /*
+     * Y no con una copia en SQL. Si fueran dos, el panel diría que toca mandarlo
+     * y el botón de la ficha estaría apagado diciendo que todavía no.
+     */
+    assert.match(ENCARGOS, /porQueNoSeLePuedePedir\(\{[\s\S]{0,300}\}\) === ''/);
+  });
+
+  test('y la consulta trae lo que hace falta para saberlo', () => {
+    // Contarlo sobre una fila sin estas columnas daría cero siempre.
+    assert.match(ENCARGOS, /e\.precio_referencia, e\.clausula_enviada_at, e\.clausula_firmada_at/);
+  });
+
+  test('se apaga al mandarlo, no al firmarlo', () => {
+    /*
+     * Lo segundo depende de él. Un aviso que solo se apaga cuando conteste un
+     * tercero se queda encendido semanas, y entonces deja de mirarse.
+     */
+    const bloque = ENCARGOS.slice(
+      ENCARGOS.indexOf("!fila.clausula_enviada_at"),
+      ENCARGOS.indexOf("avisos.push('encargos_sin_mandar_el_precio')"),
+    );
+    assert.doesNotMatch(bloque, /estaAceptada\(/);
+  });
+});
