@@ -153,17 +153,28 @@ describe('el panel pide de verdad los avisos de encargos', () => {
   ).replace(/\r\n/g, '\n');
 
   test('llama a quien los calcula', () => {
-    assert.match(DASHBOARD, /losAvisosDeEncargos\(\)/);
+    // Se piden los coches y no las cuentas: de la misma lista salen el número y
+    // el enlace al coche, así que no pueden decir cosas distintas.
+    assert.match(DASHBOARD, /losEncargosConAvisos\(\)/);
   });
 
   test('y mete el resultado en las cuentas', () => {
-    assert.match(DASHBOARD, /losPendientes\(\{[\s\S]{0,400}\.\.\.encargos,/);
+    assert.match(DASHBOARD, /losPendientes\(\{[\s\S]{0,400}\.\.\.cuentaLosAvisos\(encargos\),/);
+  });
+
+  test('y dice a qué coche lleva cada aviso', () => {
+    /*
+     * El segundo argumento. Sin él, «1 encargo listo para el taller» vuelve a
+     * llevar a la lista de todos los IDCars, que es donde no hay forma de saber
+     * cuál de ellos es.
+     */
+    assert.match(DASHBOARD, /\}, losCochesPorAviso\(encargos\)\)/);
   });
 
   test('si falla, el panel entero no se cae', () => {
     // El resto de pendientes no puede desaparecer porque la tabla de encargos
     // todavía no exista en un entorno.
-    assert.match(DASHBOARD, /losAvisosDeEncargos\(\)\.catch\(/);
+    assert.match(DASHBOARD, /losEncargosConAvisos\(\)\.catch\(/);
   });
 });
 
@@ -259,7 +270,7 @@ describe('y el panel reparte de verdad lo que le dan', () => {
 
   test('lo que calcula cada función acaba en las cuentas', () => {
     assert.ok(CUENTAS.length > 0, 'no encuentro la llamada a losPendientes');
-    for (const trozo of ['...encargos', '...anuncios', '...financiacion', '...financiacionSinCerrar',
+    for (const trozo of ['...cuentaLosAvisos(encargos)', '...anuncios', '...financiacion', '...financiacionSinCerrar',
                          '...sinEnviar', '...visitas.rows[0]',
                          'servicios_sin_llamar:', 'encargos_sin_llamar:']) {
       assert.ok(CUENTAS.includes(trozo), `${trozo} no se mete en las cuentas del panel`);
@@ -276,5 +287,44 @@ describe('y el panel reparte de verdad lo que le dan', () => {
     const reparte = CUENTAS.indexOf('...reparteLosLeadsPorPlazo(');
     assert.ok(leads >= 0 && reparte > 0, 'falta alguno de los dos');
     assert.ok(reparte > leads, 'el reparto se aplica antes que el spread que pisa');
+  });
+});
+
+describe('el aviso lleva al coche cuando es uno solo', () => {
+  /*
+   * Esto es lo que se veía: «1 encargo listo para el taller» y, al pulsarlo, la
+   * lista entera de IDCars. Todos los coches iguales, ninguna pista de cuál era.
+   * Con doscientos coches el aviso deja de servir para nada.
+   */
+  test('con un coche, se va a su ficha', () => {
+    const [p] = losPendientes({ encargos_listos: 1 }, { encargos_listos: ['veh-123'] });
+    assert.equal(p.a, '/idcars/veh-123');
+  });
+
+  test('con varios, a la lista, que es donde salen marcados', () => {
+    // Llevar al primero de seis sería elegir por quien mira.
+    const [p] = losPendientes({ encargos_listos: 2 }, { encargos_listos: ['veh-1', 'veh-2'] });
+    assert.equal(p.a, '/idcars');
+  });
+
+  test('sin saber de qué coche es, se queda como estaba', () => {
+    // La mayoría de los pendientes no son de un coche: facturas, citas, leads.
+    const [p] = losPendientes({ encargos_listos: 1 });
+    assert.equal(p.a, '/idcars');
+  });
+
+  test('y un id raro no rompe la dirección', () => {
+    const [p] = losPendientes({ encargos_listos: 1 }, { encargos_listos: ['veh 1/2'] });
+    assert.equal(p.a, '/idcars/veh%201%2F2');
+  });
+
+  test('cada aviso lleva al suyo, no al del vecino', () => {
+    const lista = losPendientes(
+      { encargos_listos: 1, encargos_sin_firmar: 1 },
+      { encargos_listos: ['veh-taller'], encargos_sin_firmar: ['veh-firma'] },
+    );
+    const porClave = Object.fromEntries(lista.map((p) => [p.clave, p.a]));
+    assert.equal(porClave.encargos_listos, '/idcars/veh-taller');
+    assert.equal(porClave.encargos_sin_firmar, '/idcars/veh-firma');
   });
 });

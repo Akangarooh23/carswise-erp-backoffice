@@ -342,12 +342,28 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
  * una lista que se deja de leer, y lo que se quiere saber de esta pantalla es
  * exactamente qué hay que hacer.
  */
-export function losPendientes(cuentas: Record<string, unknown> | null | undefined): Pendiente[] {
+export function losPendientes(
+  cuentas: Record<string, unknown> | null | undefined,
+  /**
+   * Qué coches hay detrás de cada aviso, si se sabe.
+   *
+   * Cuando hay **uno solo**, el aviso lleva a su ficha en vez de a la lista de
+   * todos. Es la diferencia entre «1 encargo listo para el taller → aquí lo
+   * tienes» y «1 encargo listo para el taller → búscalo entre doscientos»,
+   * que es lo que había.
+   *
+   * Con varios se sigue yendo a la lista, que es donde cada uno sale marcado:
+   * llevar al primero de seis sería elegir por quien mira.
+   */
+  cochesPorAviso?: Record<string, string[]> | null,
+): Pendiente[] {
   const salida: Pendiente[] = [];
   for (const p of CATALOGO) {
     const n = Number(cuentas?.[p.clave] ?? 0);
     if (!Number.isFinite(n) || n <= 0) continue;
-    salida.push({ ...p, n: Math.round(n) });
+    const coches = cochesPorAviso?.[p.clave] ?? [];
+    const a = coches.length === 1 && coches[0] ? `${p.a}/${encodeURIComponent(coches[0])}` : p.a;
+    salida.push({ ...p, a, n: Math.round(n) });
   }
   return salida;
 }

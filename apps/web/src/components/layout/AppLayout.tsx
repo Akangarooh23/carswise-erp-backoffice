@@ -8,6 +8,7 @@ import AyudaAtajos from '../ui/AyudaAtajos.js';
 import { useAtajos } from '../../hooks/useAtajos.js';
 import type { Expediente } from '../../lib/expedientes-importacion.js';
 import { pendientesPorPantalla } from '../../lib/pasos-de-la-importacion.js';
+import { cuantosCochesEsperan, type IdCarConAvisos } from '../../lib/avisos-de-los-idcars.js';
 
 interface LeadStats { pending: number; }
 
@@ -33,6 +34,14 @@ export default function AppLayout() {
    * aquí otra fuente haría que la última en contestar borrara a la otra.
    */
   const [facturasSinLlegar, setFacturasSinLlegar] = useState(0);
+  /**
+   * Y los IDCars que esperan algo, que tampoco caben en «pendientes».
+   *
+   * Son **coches**, no cosas por hacer: un coche con el mandato sin firmar y sin
+   * horas de visita es una ficha a la que entrar, no dos. El número del panel
+   * cuenta lo otro, y las dos preguntas son distintas.
+   */
+  const [idcarsQueEsperan, setIdcarsQueEsperan] = useState(0);
   const [toast, setToast]               = useState<string | null>(null);
 
   // Los atajos. El hook se llama siempre, tambien sin sesion: React exige que
@@ -63,6 +72,16 @@ export default function AppLayout() {
       // puede deducir, y hasta ahora solo se veía entrando en la pantalla.
       api.get<{ recibidas?: { esperando_n?: number } }>('/provider-billing/summary')
         .then((v) => { if (v.ok) setFacturasSinLlegar(Number(v.data?.recibidas?.esperando_n) || 0); })
+        .catch(() => {});
+
+      /*
+       * Y los coches que vendemos por su dueño y esperan algo.
+       *
+       * Sin esto, IDCars era la única pantalla con trabajo dentro y sin número
+       * fuera: había que entrar al panel, leer el aviso y entrar a buscarlo.
+       */
+      api.get<{ coches?: IdCarConAvisos[] }>('/encargos/avisos-por-coche')
+        .then((v) => { if (v.ok) setIdcarsQueEsperan(cuantosCochesEsperan(v.data?.coches ?? [])); })
         .catch(() => {});
 
       api.get<Expediente[]>('/leads?type=import&limit=100')
@@ -113,6 +132,7 @@ export default function AppLayout() {
                pendientes={{
                  ...pendientes,
                  ...(facturasSinLlegar ? { '/provider-billing': facturasSinLlegar } : {}),
+                 ...(idcarsQueEsperan ? { '/idcars': idcarsQueEsperan } : {}),
                }} />
 
       <main className="flex-1 overflow-y-auto min-w-0">

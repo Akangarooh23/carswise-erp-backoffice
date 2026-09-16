@@ -258,25 +258,41 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
  * Traerlos todos se puede porque son pocos: los vivos son los que se han
  * captado y todavía no se han vendido ni cancelado.
  */
-export async function losAvisosDeEncargos(): Promise<{
+export interface AvisosDeEncargos {
   encargos_vendidos: number;
   encargos_por_llamar: number;
   encargos_sin_franjas: number;
   encargos_listos: number;
   encargos_rechazados: number;
   encargos_sin_firmar: number;
-}> {
-  const vacio = {
-    encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
-    encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
-  };
+}
+
+/**
+ * Y lo mismo dicho por coche, que es lo que hace falta para ir a arreglarlo.
+ *
+ * El panel decía «1 encargo listo para el taller» y llevaba a la lista entera de
+ * IDCars, donde no hay forma de saber cuál de todos es. Con dos coches ya es
+ * adivinar; con doscientos, el aviso no sirve para nada.
+ *
+ * Sale del **mismo recorrido** que las cuentas, no de una segunda consulta: si
+ * fueran dos, un día el panel diría uno y la lista marcaría otro.
+ */
+export interface EncargoConAvisos {
+  vehicle_id: string;
+  matricula: string;
+  coche: string;
+  /** Las claves de aviso de este coche, las mismas que cuenta el panel. */
+  avisos: (keyof AvisosDeEncargos)[];
+}
+
+export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
   await prepara();
   // La consulta de abajo lee `erp_revisiones_taller`. Si nadie la ha creado
   // todavía, falla entera y los cinco avisos se quedan a cero para siempre.
   await preparaRevisionesTaller().catch(() => {});
 
   const r = await query(`
-    SELECT e.firmado_at, e.acepto_el_precio, e.firma_como,
+    SELECT e.vehicle_id, e.firmado_at, e.acepto_el_precio, e.firma_como,
            EXISTS (
              SELECT 1 FROM vehicle_visit_bookings b
               WHERE b.offer_id = 'idcar-' || e.vehicle_id AND b.resultado = 'compro'
@@ -322,9 +338,9 @@ export async function losAvisosDeEncargos(): Promise<{
       ) tal ON TRUE
      WHERE e.cerrado_at IS NULL
   `).catch(() => null);
-  if (!r) return vacio;
+  if (!r) return [];
 
-  const cuenta = { ...vacio };
+  const salida: EncargoConAvisos[] = [];
   for (const fila of r.rows) {
     const puertas = lasPuertas({
       matricula: fila.plate as string | null,
@@ -341,11 +357,13 @@ export async function losAvisosDeEncargos(): Promise<{
       mantenimientos: Number(fila.mantenimientos ?? 0),
     });
 
+    const avisos: (keyof AvisosDeEncargos)[] = [];
+
     // Una visita de ese coche acabo en venta y el encargo sigue abierto: falta
     // cerrarlo y emitir los 299 EUR.
-    if (fila.se_vendio) cuenta.encargos_vendidos += 1;
-    if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) cuenta.encargos_por_llamar += 1;
-    if (soloLeFaltanFranjas(puertas)) cuenta.encargos_sin_franjas += 1;
+    if (fila.se_vendio) avisos.push('encargos_vendidos');
+    if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
+    if (soloLeFaltanFranjas(puertas)) avisos.push('encargos_sin_franjas');
 
     /*
      * «Listo para el taller» es justo eso: el cliente ya lo ha traído todo y lo
@@ -354,10 +372,10 @@ export async function losAvisosDeEncargos(): Promise<{
      * su vida, ya publicado y ya revisado.
      */
     const taller = { estado: fila.taller_estado, resultado: fila.taller_resultado };
-    if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) cuenta.encargos_listos += 1;
+    if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) avisos.push('encargos_listos');
 
     // Y el que el taller ha tumbado: su coche no va a salir y él no lo sabe.
-    if (elTallerLoTumbo(taller)) cuenta.encargos_rechazados += 1;
+    if (elTallerLoTumbo(taller)) avisos.push('encargos_rechazados');
 
     /*
      * Y el que no ha firmado el mandato.
@@ -366,9 +384,54 @@ export async function losAvisosDeEncargos(): Promise<{
      * permita cobrárselo. Cuanto más tarde se pida la firma, más raro es
      * pedirla.
      */
-    if (!estaFirmado(fila)) cuenta.encargos_sin_firmar += 1;
+    if (!estaFirmado(fila)) avisos.push('encargos_sin_firmar');
+
+    // Los que no esperan nada no salen: la lista es de trabajo por hacer.
+    if (!avisos.length) continue;
+
+    salida.push({
+      vehicle_id: String(fila.vehicle_id ?? ''),
+      matricula: String(fila.plate ?? ''),
+      coche: [fila.brand, fila.model].filter(Boolean).join(' '),
+      avisos,
+    });
   }
+  return salida;
+}
+
+/**
+ * Los mismos avisos, contados para el panel.
+ *
+ * Cuenta sobre la lista de arriba en vez de recorrer otra vez los encargos: una
+ * segunda pasada sería otra copia de las seis reglas.
+ */
+export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEncargos {
+  const cuenta: AvisosDeEncargos = {
+    encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
+    encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
+  };
+  for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
   return cuenta;
+}
+
+/**
+ * Y qué coches hay detrás de cada aviso.
+ *
+ * Es lo que permite que el panel lleve **al coche** cuando solo hay uno, en vez
+ * de a la lista de todos. Con varios sigue llevando a la lista, que es donde
+ * cada uno sale marcado.
+ */
+export function losCochesPorAviso(coches: readonly EncargoConAvisos[]): Record<string, string[]> {
+  const mapa: Record<string, string[]> = {};
+  for (const c of coches) {
+    for (const a of c.avisos) (mapa[a] ??= []).push(c.vehicle_id);
+  }
+  return mapa;
+}
+
+/** Las cuentas solas, para quien no necesita saber de qué coche son. */
+export async function losAvisosDeEncargos(): Promise<AvisosDeEncargos> {
+  return cuentaLosAvisos(await losEncargosConAvisos().catch(() => []));
 }
 
 /**
@@ -410,6 +473,26 @@ export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string
 
   return '';
 }
+
+/**
+ * Qué espera cada coche, para marcarlo donde se mira.
+ *
+ * Lo leen dos sitios: el número rojo de IDCars en el menú y la propia lista de
+ * IDCars, que sin esto enseña doscientos coches iguales y no dice cuál es el que
+ * tiene algo pendiente. Es la misma cuenta del panel, coche a coche.
+ */
+encargosRouter.get(
+  '/encargos/avisos-por-coche',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (_req, res) => {
+    try {
+      res.json({ ok: true, data: { coches: await losEncargosConAvisos() } });
+    } catch (err) {
+      console.error('[encargos] avisos por coche:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'avisos_por_coche_failed' });
+    }
+  }
+);
 
 /** El encargo de un coche, con sus puertas al día. */
 encargosRouter.get(

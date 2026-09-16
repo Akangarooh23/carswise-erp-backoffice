@@ -10,7 +10,7 @@ import { margenPorCoche } from '../lib/margen-por-coche.js';
 import { elTramo } from '../lib/tiempos.js';
 import { elEmbudo, dondeSePierde, SQL_HONDURA, SQL_QUIEN } from '../lib/embudo.js';
 import { losPendientes } from '../lib/pendientes.js';
-import { losAvisosDeEncargos } from './encargos.js';
+import { losEncargosConAvisos, cuentaLosAvisos, losCochesPorAviso } from './encargos.js';
 import { SQL_SIN_LLAMAR, losQueEsperanDeMas } from '../lib/sin-llamar.js';
 import {
   SQL_LEADS_PENDIENTES, SQL_SERVICIOS_ABIERTOS,
@@ -526,10 +526,12 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * reescribir las puertas en SQL, y el día que cambiara una de las dos
        * el panel diría una cosa y la ficha otra.
        */
-      losAvisosDeEncargos().catch(() => ({
-        encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
-        encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
-      })),
+      /*
+       * Se traen los coches, no las cuentas: el aviso tiene que poder llevar a
+       * la ficha del que lo provoca cuando es uno solo. De la misma lista salen
+       * las dos cosas, así que no pueden decir cosas distintas.
+       */
+      losEncargosConAvisos().catch(() => []),
 
       /*
        * Y los que piden que les vendamos el coche y siguen esperando la llamada.
@@ -594,7 +596,7 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           ...peritaciones.rows[0], ...facturas.rows[0], ...importacion.rows[0], ...comisiones.rows[0],
           ...contabilidad.rows[0],
           ...visitas.rows[0],
-          ...encargos,
+          ...cuentaLosAvisos(encargos),
           ...anuncios,
           ...financiacion,
           ...financiacionSinCerrar,
@@ -626,7 +628,8 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
           servicios_sin_llamar: losServiciosSinLlamar(
             servicios.rows as { created_at?: string | Date | null }[],
           ),
-        }),
+        // Y a qué coche lleva cada aviso de encargo, si lleva a uno solo.
+        }, losCochesPorAviso(encargos)),
       },
     });
   } catch (err) {

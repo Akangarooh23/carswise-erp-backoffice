@@ -124,7 +124,9 @@ describe('al cerrar se mira la firma de verdad', () => {
 
 describe('el aviso de los que no han firmado', () => {
   test('se cuentan, o la línea de Pendientes no diría nada', () => {
-    assert.match(ENCARGOS, /if \(!estaFirmado\(fila\)\) cuenta\.encargos_sin_firmar/);
+    // Se apunta en la lista del coche; el panel cuenta sobre esa lista, así que
+    // lo que no se apunte aquí no lo cuenta nadie.
+    assert.match(ENCARGOS, /if \(!estaFirmado\(fila\)\) avisos\.push\('encargos_sin_firmar'\)/);
   });
 
   test('y la consulta trae el dato que hace falta para saberlo', () => {
@@ -133,7 +135,7 @@ describe('el aviso de los que no han firmado', () => {
      * fila que no trae `firma_como`. Saldrían todos como sin firmar, para
      * siempre y sin que nadie lo notara.
      */
-    assert.match(ENCARGOS, /SELECT e\.firmado_at, e\.acepto_el_precio, e\.firma_como/);
+    assert.match(ENCARGOS, /SELECT e\.vehicle_id, e\.firmado_at, e\.acepto_el_precio, e\.firma_como/);
   });
 });
 

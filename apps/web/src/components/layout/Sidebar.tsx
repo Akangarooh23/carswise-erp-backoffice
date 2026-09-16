@@ -165,6 +165,10 @@ export default function Sidebar({
             {(pendientes[item.to] ?? 0) > 0 && (
               <span title={item.to === '/provider-billing'
                 ? `${pendientes[item.to]} factura${pendientes[item.to] > 1 ? 's' : ''} de proveedor sin llegar`
+                // En IDCars lo que se cuenta son coches, no tareas: uno con dos
+                // cosas pendientes es una ficha a la que entrar, no dos.
+                : item.to === '/idcars'
+                ? `${pendientes[item.to]} coche${pendientes[item.to] > 1 ? 's' : ''} con algo pendiente`
                 : `${pendientes[item.to]} cosa${pendientes[item.to] > 1 ? 's' : ''} por hacer`}
                     className="ml-auto min-w-[20px] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-tight">
                 {pendientes[item.to] > 99 ? '99+' : pendientes[item.to]}

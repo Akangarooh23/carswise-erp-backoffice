@@ -7,6 +7,9 @@ import { Pagination } from '../components/ui/Pagination.js';
 import type { IdCar } from '../types/index.js';
 import Icono, { type NombreIcono } from '../components/ui/Icono.js';
 import { StatCard } from '../components/ui/Card.js';
+import {
+  NOMBRE_CORTO, esUrgente, porCoche, type IdCarConAvisos,
+} from '../lib/avisos-de-los-idcars.js';
 
 /** El resumen de arriba. La antigüedad sale del mismo año que enseña la tabla. */
 interface Resumen {
@@ -42,6 +45,14 @@ export default function IdCarsPage() {
   const [q, setQ]             = useState('');
   const [loading, setLoading] = useState(true);
   const [resumen, setResumen] = useState<Resumen | null>(null);
+  /**
+   * Qué espera cada coche, para marcarlo en su fila.
+   *
+   * Sin esto, el panel avisaba de «1 encargo listo para el taller», traía aquí y
+   * aquí todos los coches se ven iguales: la única forma de encontrarlo era
+   * abrirlos uno a uno. Es la misma cuenta que hace el panel, coche a coche.
+   */
+  const [avisos, setAvisos] = useState<Record<string, string[]>>({});
 
   const load = useCallback(async (p = page) => {
     setLoading(true);
@@ -55,6 +66,11 @@ export default function IdCarsPage() {
   // El resumen no depende del filtro ni de la página: se pide una vez.
   useEffect(() => {
     api.get<Resumen>('/idcars/stats/summary').then((r) => { if (r.ok) setResumen(r.data); });
+    // Y lo que espera cada coche, que tampoco depende de la página: son los
+    // encargos vivos, que son pocos.
+    api.get<{ coches?: IdCarConAvisos[] }>('/encargos/avisos-por-coche')
+      .then((r) => { if (r.ok) setAvisos(porCoche(r.data?.coches ?? [])); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => { setPage(1); }, [q]);
@@ -101,6 +117,30 @@ export default function IdCarsPage() {
                       <Link to={`/idcars/${v.id}`} className="font-medium text-acento-texto hover:underline text-sm">
                         {[v.brand, v.model].filter(Boolean).join(' ') || '(sin datos)'}
                       </Link>
+                      {/*
+                        * Lo que espera este coche, debajo de su nombre.
+                        *
+                        * Debajo y no en una columna aparte: una columna más
+                        * estaría vacía en casi todas las filas, y lo que hay que
+                        * ver de un vistazo es cuál de todos tiene algo.
+                        *
+                        * Rojo solo lo que cuesta dinero o tiene a alguien
+                        * esperando una llamada — mismo criterio que el panel—.
+                        * «Falta la revisión» es trabajo nuestro en marcha.
+                        */}
+                      {(avisos[v.id] ?? []).length > 0 && (
+                        <span className="flex flex-wrap gap-1 mt-1">
+                          {avisos[v.id].map((a) => (
+                            <span key={a}
+                                  className={'inline-block px-1.5 py-0.5 rounded text-[10.5px] font-semibold border ' +
+                                    (esUrgente(a)
+                                      ? 'bg-red-50 text-red-700 border-red-200'
+                                      : 'bg-acento-tenue text-acento-texto border-acento')}>
+                              {NOMBRE_CORTO[a] ?? a}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </td>
                     <td>
                       {v.owner_name ? (
