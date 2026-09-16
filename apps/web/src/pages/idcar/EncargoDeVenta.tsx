@@ -53,8 +53,25 @@ export interface Cierre {
 
 export type Cerrado = CerradoConContrato;
 
+/**
+ * La cláusula del precio: qué falta para poder pedírsela y por dónde va.
+ *
+ * `falta` vacío quiere decir que ya se le puede mandar. Viene con la frase
+ * hecha —«antes tiene que pasar por el taller»— porque quien mira esta ficha
+ * tiene que saber qué falta sin ir a buscarlo.
+ */
+export interface ClausulaDelPrecio {
+  falta: string;
+  clausula_id: string | null;
+  enviada_at: string | null;
+  firmada_at: string | null;
+  aceptada: boolean;
+  precio: number | null;
+}
+
 export interface ElEncargo {
   encargo: Encargo | null;
+  clausula_precio: ClausulaDelPrecio | null;
   ultimo_cerrado: Cerrado | null;
   cierres: Cierre[];
   puertas: Puerta[];
@@ -190,6 +207,42 @@ export default function EncargoDeVenta({
   const [firmoElPrecio, setFirmoElPrecio] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [taller, setTaller] = useState<LoDelTaller | null>(null);
+  const [avisoClausula, setAvisoClausula] = useState('');
+
+  /** Lo que sabe el servidor de la cláusula del precio de este encargo. */
+  const clausula = datos?.clausula_precio ?? null;
+
+  /**
+   * Se le manda el documento del precio para que lo firme.
+   *
+   * No se marca nada aquí: lo que enciende «aceptó el precio» es que él suba el
+   * papel firmado desde su panel. Mandarlo y darlo por aceptado sería volver al
+   * dato que el ERP se escribe a sí mismo.
+   */
+  async function mandaLaClausula() {
+    if (!datos?.encargo?.id) return;
+    setGuardando(true);
+    setFallo('');
+    setAvisoClausula('');
+    try {
+      const r = await api.post<{ enviado_a: string }>(
+        `/encargos/${datos.encargo.id}/clausula-precio/enviar`, {}
+      );
+      if (!r.ok) { setFallo(r.error ?? 'No se ha podido enviar.'); return; }
+      setAvisoClausula(`Enviado a ${r.data.enviado_a}`);
+      await carga();
+    } catch (e) {
+      setFallo((e as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  /** El día y la hora, como se lee de un vistazo. */
+  const cuandoConHoraLarga = (s: string | null) =>
+    s ? new Date(s).toLocaleString('es-ES', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    }) : '–';
 
   const carga = useCallback(async () => {
     try {
@@ -435,6 +488,13 @@ export default function EncargoDeVenta({
                          focus:outline-none focus:ring-2 focus:ring-acento"
             />
           </div>
+          {/*
+            * La casilla se queda para los casos de siempre —lo firmó delante,
+            * lo dijo por teléfono— pero la vía buena es el documento: lo manda
+            * el botón de abajo y la enciende él al subirlo firmado. Marcarla a
+            * mano es otra vez un dato que el ERP se escribe a sí mismo, que es
+            * lo que se quitó para la firma del mandato.
+            */}
           <label className="flex items-center gap-2 pb-1.5 cursor-pointer">
             <input
               type="checkbox"
@@ -463,6 +523,50 @@ export default function EncargoDeVenta({
           Si no la firma, se le puede cobrar la cancelación desde el primer día y siempre.
           Si la firma, solo durante los 30 días siguientes a la firma del encargo.
         </p>
+
+        {/*
+          * Mandarle el documento para que lo firme.
+          *
+          * Va después del taller y no antes: el precio se fija con lo que diga
+          * —un coche «con reparos» no vale lo mismo que uno limpio—, y pedirle
+          * que acepte una cifra antes de saberlo es pedirle que acepte una que
+          * vamos a tener que cambiar. Mientras no toque, el botón dice por qué.
+          */}
+        {clausula && (
+          <div className="mt-3 pt-3 border-t border-brand-100 flex items-end gap-2 flex-wrap">
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-semibold text-brand-600">
+                {clausula.aceptada
+                  ? 'Ha aceptado el precio por escrito'
+                  : clausula.enviada_at
+                  ? 'Se le ha mandado el documento del precio'
+                  : 'Mándale el documento del precio'}
+              </p>
+              <p className="text-[11.5px] text-brand-400 mt-0.5">
+                {clausula.aceptada
+                  ? `Firmado el ${cuandoConHoraLarga(clausula.firmada_at)}${clausula.clausula_id ? ` · ${clausula.clausula_id}` : ''}`
+                  : clausula.falta
+                  ? clausula.falta
+                  : clausula.enviada_at
+                  ? `Enviado el ${cuandoConHoraLarga(clausula.enviada_at)}. Lo sube firmado desde su panel.`
+                  : 'Lo firma y lo sube desde su panel, como el mandato.'}
+              </p>
+            </div>
+            {!clausula.aceptada && (
+              <button
+                type="button"
+                onClick={() => void mandaLaClausula()}
+                disabled={guardando || clausula.falta !== ''}
+                title={clausula.falta || 'Le llega por correo con el documento adjunto'}
+                className="ml-auto px-3 py-1.5 text-xs font-semibold rounded-lg border border-acento
+                           text-acento hover:bg-amber-50 disabled:opacity-50"
+              >
+                {clausula.enviada_at ? 'Volver a mandárselo' : 'Mandarle el precio'}
+              </button>
+            )}
+          </div>
+        )}
+        {avisoClausula && <p className="text-[12px] text-brand-500 mt-2">{avisoClausula}</p>}
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-3 text-[12px]">

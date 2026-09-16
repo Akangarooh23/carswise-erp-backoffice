@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   elCorreoDelMandato, elCorreoDePublicado, elCorreoDelCierre,
   elCorreoDelAlta, laRutaDelAlta, elCorreoDeLaCitaDelTaller,
-  elRecordatorioDeLaCitaDelTaller,
+  elRecordatorioDeLaCitaDelTaller, elCorreoDelPrecioDeSalida,
 } from './correos-del-encargo.js';
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -403,5 +403,51 @@ describe('el recordatorio de la cita del taller', () => {
 
   test('sin dirección, no se inventa ninguna', () => {
     assert.doesNotMatch(soloTexto(r({ direccion: '' }).html), /Dirección/);
+  });
+});
+
+describe('el correo del precio de salida', () => {
+  const c = () => elCorreoDelPrecioDeSalida({
+    ...COCHE,
+    clausula_id: 'PC-PRECIO-2026-0001',
+    precio: 13500,
+    dias_para_irse: DIAS_HASTA_SALIR_GRATIS,
+    fee_cancelacion: FEE_DE_CANCELACION,
+    panel: 'https://popcar.com.es/panel/solicitudes',
+  });
+
+  test('el precio va en el asunto', () => {
+    // Es el dato por el que se abre o no se abre este correo.
+    assert.match(c().subject, /13\.500 €/);
+  });
+
+  test('dice por qué le interesa firmarlo, no lo que le pedimos', () => {
+    /*
+     * Aceptar el precio por escrito es lo único que le abre la puerta de irse
+     * sin pagar nada. Un correo que dijera «firma este papel» sin decir eso
+     * parece papeleo nuestro, y el papeleo del vendedor se queda sin firmar.
+     */
+    const t = soloTexto(c().html);
+    assert.match(t, new RegExp(`${DIAS_HASTA_SALIR_GRATIS} días`));
+    assert.match(t, /sin pagar nada/);
+    assert.match(t, new RegExp(String(FEE_DE_CANCELACION)));
+  });
+
+  test('y que es después del taller, que es de donde sale el precio', () => {
+    assert.match(soloTexto(c().html), /revisión del taller/i);
+  });
+
+  test('lo sube a su panel, no contesta al correo', () => {
+    // Una respuesta se queda en una bandeja de entrada y el ERP sigue diciendo
+    // que no lo ha aceptado.
+    const t = soloTexto(c().html);
+    assert.match(t, /súbelo desde tu panel/i);
+    assert.match(c().html, /https:\/\/popcar\.com\.es\/panel\/solicitudes/);
+  });
+
+  test('pero si no está de acuerdo, se le deja contestar', () => {
+    // Es un precio, no un trámite: el que no está de acuerdo tiene que poder
+    // decirlo sin buscar el teléfono.
+    assert.match(soloTexto(c().html), /contesta a este correo/i);
   });
 });

@@ -46,7 +46,7 @@ import {
 } from '../lib/cierre-del-encargo.js';
 import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
-import { porQueElTallerNoDeja, preparaRevisionesTaller } from './revisiones-taller.js';
+import { porQueElTallerNoDeja, preparaRevisionesTaller, laRevisionDe } from './revisiones-taller.js';
 import {
   COMO_SE_FIRMA, COMO_LO_DECIMOS, laMarcamosNosotros, SERIE as SERIE_DEL_MANDATO,
   esUnaFirma, estaFirmado, porQueNoEstaFirmado,
@@ -58,8 +58,13 @@ import {
   comoSeLlamaElFichero as comoSeLlamaElFicheroDelContrato,
 } from '../lib/contrato-de-compraventa.js';
 import { enviar } from '../lib/correo.js';
-import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado } from '../lib/correos-del-encargo.js';
+import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado, elCorreoDelPrecioDeSalida } from '../lib/correos-del-encargo.js';
 import { config } from '../config.js';
+import {
+  SERIE as SERIE_DEL_PRECIO, ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_PRECIO,
+  laClausula, porQueNoSeLePuedePedir, estaAceptada,
+  comoSeLlamaElFichero as comoSeLlamaElFicheroDelPrecio,
+} from '../lib/clausula-del-precio.js';
 import { abreLaTransferenciaDelEncargo } from './tramites.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo, elClienteEsperaRespuesta } from '../lib/revision-del-taller.js';
 
@@ -151,6 +156,8 @@ async function prepara(): Promise<void> {
   if (listo) return;
   await query(ENSURE_TABLE);
   await query(ENSURE_COLUMNAS).catch(() => {});
+  // Las de la cláusula del precio, que llegaron después.
+  await query(ENSURE_COLUMNAS_DEL_PRECIO).catch(() => {});
   await query(ENSURE_UNO_VIVO).catch(() => {});
   listo = true;
 }
@@ -591,6 +598,9 @@ encargosRouter.get(
        * al pulsarlo — que es la peor manera de enterarse.
        */
       const faltaElTaller = encargo ? await porQueElTallerNoDeja(req.params.vehicleId) : '';
+      // La revisión entera, no solo si deja publicar: la cláusula del precio
+      // necesita saber si está hecha y si el taller lo tumbó, que no es lo mismo.
+      const revisionDelTaller = encargo ? await laRevisionDe(req.params.vehicleId) : null;
 
       res.json({
         ok: true,
@@ -634,6 +644,27 @@ encargosRouter.get(
               })
             : [],
           mandato_firmado: estaFirmado(encargo),
+          /*
+           * Y la cláusula del precio: qué falta para poder pedírsela, si ya se
+           * le mandó y si ya la firmó.
+           *
+           * Va aquí y no en una llamada aparte porque la ficha la necesita para
+           * decidir si enseña el botón, y dos llamadas para pintar una caja son
+           * dos oportunidades de que una llegue y la otra no.
+           */
+          clausula_precio: encargo ? {
+            falta: porQueNoSeLePuedePedir({
+              mandato_firmado: estaFirmado(encargo),
+              taller_hecho: !sigueEsperandoAlTaller(revisionDelTaller),
+              taller_lo_tumbo: elTallerLoTumbo(revisionDelTaller),
+              precio: Number(encargo.precio_referencia) || null,
+            }),
+            clausula_id: encargo.clausula_id ?? null,
+            enviada_at: encargo.clausula_enviada_at ?? null,
+            firmada_at: encargo.clausula_firmada_at ?? null,
+            aceptada: estaAceptada(encargo),
+            precio: Number(encargo.precio_referencia) || null,
+          } : null,
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
           /*
            * El papel que subió él, si lo subió.
@@ -1462,6 +1493,151 @@ encargosRouter.get(
     } catch (err) {
       console.error('[encargos] candidatos:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'candidatos_failed' });
+    }
+  }
+);
+
+/**
+ * La cláusula del precio: se descarga, se manda y se sabe si toca.
+ *
+ * Es el papel que dice a qué precio sale el coche, y va **después del taller**
+ * porque el precio se fija con lo que diga. El porqué completo está en
+ * `lib/clausula-del-precio.ts`.
+ */
+async function loDelPrecio(encargoId: string) {
+  await prepara();
+  const r = await query(
+    `SELECT e.*, v.plate, v.brand, v.model,
+            tal.estado AS taller_estado, tal.resultado AS taller_resultado
+       FROM erp_encargos_venta e
+       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+       LEFT JOIN LATERAL (
+         SELECT rt.estado, rt.resultado FROM erp_revisiones_taller rt
+          WHERE rt.vehicle_id = e.vehicle_id
+          ORDER BY rt.created_at DESC LIMIT 1
+       ) tal ON TRUE
+      WHERE e.id = $1 AND e.cerrado_at IS NULL`,
+    [encargoId]
+  );
+  const e = r.rows[0];
+  if (!e) return null;
+  return {
+    e,
+    estado: {
+      mandato_firmado: estaFirmado(e),
+      taller_hecho: String(e.taller_estado ?? '') === 'Hecha',
+      taller_lo_tumbo: elTallerLoTumbo({ estado: e.taller_estado, resultado: e.taller_resultado }),
+      precio: Number(e.precio_referencia) || null,
+      firmada_at: (e.clausula_firmada_at as string | null) ?? null,
+    },
+  };
+}
+
+/** El documento, para imprimirlo o mirarlo antes de mandarlo. */
+encargosRouter.get(
+  '/encargos/:id/clausula-precio',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      const lo = await loDelPrecio(req.params.id);
+      if (!lo) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+
+      const falta = porQueNoSeLePuedePedir(lo.estado);
+      if (falta) { res.status(409).json({ ok: false, error: falta }); return; }
+
+      const doc = laClausula({
+        clausula_id: String(lo.e.clausula_id ?? `${SERIE_DEL_PRECIO}-${String(lo.e.id).slice(-6)}`),
+        cliente_nombre: String(lo.e.cliente_nombre ?? ''),
+        cliente_email: String(lo.e.cliente_email ?? ''),
+        matricula: String(lo.e.plate ?? ''),
+        marca: String(lo.e.brand ?? ''),
+        modelo: String(lo.e.model ?? ''),
+        precio: lo.estado.precio ?? 0,
+        fecha: new Date(),
+      });
+
+      res.setHeader('Content-Type', 'application/msword; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${comoSeLlamaElFicheroDelPrecio(String(lo.e.clausula_id ?? ''))}"`,
+      );
+      res.send('﻿' + doc);
+    } catch (err) {
+      console.error('[encargos] clausula del precio:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'clausula_precio_failed' });
+    }
+  }
+);
+
+/**
+ * Se le manda para que la firme.
+ *
+ * Con su número, que se guarda la primera vez: mandarla dos veces no cambia el
+ * documento, y el que él tiene delante y el que dice el ERP tienen que ser el
+ * mismo cuando alguien pregunte por teléfono.
+ */
+encargosRouter.post(
+  '/encargos/:id/clausula-precio/enviar',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      const lo = await loDelPrecio(req.params.id);
+      if (!lo) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
+      if (!lo.e.cliente_email) {
+        res.status(400).json({ ok: false, error: 'Este encargo no tiene correo del cliente' });
+        return;
+      }
+
+      const falta = porQueNoSeLePuedePedir(lo.estado);
+      if (falta) { res.status(409).json({ ok: false, error: falta }); return; }
+
+      const numero = String(lo.e.clausula_id ?? '')
+        || `${prefijoAnual(SERIE_DEL_PRECIO)}${String(lo.e.id).slice(-4).toUpperCase()}`;
+      const precio = lo.estado.precio ?? 0;
+
+      const doc = laClausula({
+        clausula_id: numero,
+        cliente_nombre: String(lo.e.cliente_nombre ?? ''),
+        cliente_email: String(lo.e.cliente_email ?? ''),
+        matricula: String(lo.e.plate ?? ''),
+        marca: String(lo.e.brand ?? ''),
+        modelo: String(lo.e.model ?? ''),
+        precio,
+        fecha: new Date(),
+      });
+
+      const { subject, html } = elCorreoDelPrecioDeSalida({
+        cliente_nombre: String(lo.e.cliente_nombre ?? ''),
+        marca: String(lo.e.brand ?? ''), modelo: String(lo.e.model ?? ''),
+        matricula: String(lo.e.plate ?? ''),
+        clausula_id: numero,
+        precio,
+        dias_para_irse: DIAS_HASTA_SALIR_GRATIS,
+        fee_cancelacion: Number(lo.e.fee_cancelacion) || FEE_DE_CANCELACION,
+        panel: `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`,
+      });
+
+      await enviar({
+        to: String(lo.e.cliente_email), subject, html, alClienteSiempre: true,
+        attachments: [{
+          filename: comoSeLlamaElFicheroDelPrecio(numero),
+          content: Buffer.from('﻿' + doc, 'utf8').toString('base64'),
+        }],
+      });
+
+      await query(
+        `UPDATE erp_encargos_venta
+            SET clausula_id = COALESCE(clausula_id, $2),
+                clausula_enviada_at = NOW(),
+                updated_at = NOW()
+          WHERE id = $1`,
+        [req.params.id, numero]
+      );
+
+      res.json({ ok: true, data: { enviado_a: String(lo.e.cliente_email), clausula_id: numero } });
+    } catch (err) {
+      console.error('[encargos] mandar la clausula del precio:', (err as Error).message);
+      res.status(502).json({ ok: false, error: 'No se ha podido enviar el correo' });
     }
   }
 );

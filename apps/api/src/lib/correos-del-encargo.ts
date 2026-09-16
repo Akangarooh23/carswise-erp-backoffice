@@ -18,9 +18,11 @@
  *   2. **El mandato**, para que lo firme. Es el que desbloquea poder cobrar.
  *   3. **La cita del taller**: dónde, qué día y a qué hora tiene que llevarlo.
  *      Lo pulsa una persona, igual que el primero.
- *   4. **Su anuncio ya está publicado**, con el enlace. Lleva días trayendo
+ *   4. **El precio de salida**, para que lo acepte por escrito. Es el que le
+ *      abre la única puerta que tiene para irse sin pagar nada.
+ *   5. **Su anuncio ya está publicado**, con el enlace. Lleva días trayendo
  *      papeles y fotos sin ver nada a cambio.
- *   5. **Cómo acabó**, con lo que se le factura si se le factura algo.
+ *   6. **Cómo acabó**, con lo que se le factura si se le factura algo.
  *
  * Lo que no se manda: nada de «te faltan tres cosas». Reclamar lo que falta es
  * una llamada —hay que convencerle, no informarle— y un correo automático
@@ -235,6 +237,64 @@ export function elCorreoDeLaCitaDelTaller(
           + `${enlace('tus solicitudes', d.panel)}, justo debajo de esta cita, puedes `
           + `pedir que te la cambiemos o anularla. Te llamamos nosotros.`) +
         boton('Ver mi cita', d.panel),
+    }),
+  };
+}
+
+/**
+ * El precio de salida, para que lo acepte por escrito.
+ *
+ * Sale después del taller, que es cuando el precio se puede fijar de verdad: un
+ * coche que sale «con reparos» no vale lo mismo que uno limpio, y pedirle que
+ * acepte una cifra antes de saberlo es pedirle que acepte una que vamos a tener
+ * que cambiar.
+ *
+ * ## Se cuenta como lo que es: algo que le conviene a él
+ *
+ * Aceptar el precio por escrito es lo único que le abre la puerta de retirar el
+ * encargo sin pagar nada pasados los treinta días. Sin firmarlo, irse cuesta
+ * 150 € siempre. Un correo que dijera «firma este papel» sin decir eso parece
+ * papeleo nuestro, y el papeleo del vendedor se queda sin firmar.
+ */
+export function elCorreoDelPrecioDeSalida(
+  d: DatosDelCorreo & {
+    clausula_id: string;
+    precio: number;
+    dias_para_irse: number;
+    fee_cancelacion: number;
+    /** Donde lo sube firmado. */
+    panel: string;
+  },
+): { subject: string; html: string } {
+  const coche = elCoche(d.marca, d.modelo, d.matricula);
+  return {
+    subject: `El precio de salida de ${coche}: ${euros(d.precio)}`,
+    html: plantilla({
+      titulo: 'El precio al que sale tu coche',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
+        parrafo(`Ya está la revisión del taller, así que podemos cerrar el precio. `
+          + `Proponemos sacar <strong>${esc(coche)}</strong> a <strong>${euros(d.precio)}</strong>.`) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Precio de salida', euros(d.precio)],
+          ['Documento', esc(d.clausula_id)],
+        ]) +
+        /*
+         * Lo que gana firmándolo, y con su cifra.
+         *
+         * Es la única de las condiciones que juega a su favor, y la que hace que
+         * este correo no se lea como papeleo. Sin ella, firmar es un favor que
+         * nos hace.
+         */
+        aviso('Por qué te interesa firmarlo',
+          `Aceptando el precio por escrito puedes retirar el encargo <strong>sin pagar nada</strong> `
+          + `pasados ${d.dias_para_irse} días desde que firmaste el mandato. Sin esta aceptación, `
+          + `retirarlo cuesta ${euros(d.fee_cancelacion)} en cualquier momento.`) +
+        parrafo(`Te adjuntamos el documento. Fírmalo y súbelo desde tu panel: `
+          + `${enlace('tus solicitudes', d.panel)}. No hace falta que nos escribas.`) +
+        boton('Subir el precio firmado', d.panel) +
+        parrafo('Si no estás de acuerdo con el precio, contesta a este correo y lo hablamos.'),
     }),
   };
 }
