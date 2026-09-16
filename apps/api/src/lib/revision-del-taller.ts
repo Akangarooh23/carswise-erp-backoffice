@@ -200,7 +200,8 @@ export function laHoraDeLaCita(iso: string): string {
  * ubica— pero se manda si está.
  */
 export function porQueNoSeLePuedeAvisar(
-  r: { taller?: unknown; cita_at?: unknown } | null | undefined,
+  /** La dirección entra y no se mira: está aquí para que se lea que no se exige. */
+  r: { taller?: unknown; cita_at?: unknown; direccion?: unknown } | null | undefined,
 ): string {
   if (!r) return 'No hay ninguna cita que contarle';
   if (!String(r.taller ?? '').trim()) return 'Falta a qué taller se lleva';
