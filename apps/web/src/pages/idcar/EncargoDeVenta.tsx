@@ -15,6 +15,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/client.js';
+import { loQueFaltaEnPantalla } from '../../lib/lo-que-falta-del-precio.js';
 import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
 import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
@@ -546,7 +547,9 @@ export default function EncargoDeVenta({
                 {clausula.aceptada
                   ? `Firmado el ${cuandoConHoraLarga(clausula.firmada_at)}${clausula.clausula_id ? ` · ${clausula.clausula_id}` : ''}`
                   : clausula.falta
-                  ? clausula.falta
+                  /* Con el número escrito y sin guardar, lo que falta no es
+                     acordar el precio: es darle a Guardar. */
+                  ? loQueFaltaEnPantalla(clausula.falta, precio, datos.encargo?.precio_referencia)
                   : clausula.enviada_at
                   ? `Enviado el ${cuandoConHoraLarga(clausula.enviada_at)}. Lo sube firmado desde su panel.`
                   : 'Lo firma y lo sube desde su panel, como el mandato.'}
