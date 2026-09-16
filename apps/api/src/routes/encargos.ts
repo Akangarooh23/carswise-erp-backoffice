@@ -1754,3 +1754,25 @@ encargosRouter.post(
     }
   }
 );
+
+/**
+ * El precio acordado con el dueño, si este coche lo vendemos nosotros.
+ *
+ * `null` cuando no hay encargo vivo o cuando todavía no se ha acordado nada: son
+ * dos casos distintos para quien llama —uno es «no es asunto nuestro» y el otro
+ * «aún no»— pero los dos significan lo mismo aquí, que no hay cifra que imponer.
+ *
+ * Lo usa el publicar: el precio de un encargo se acuerda con él y se firma, así
+ * que manda sobre el que haya quedado en el panel del coche.
+ */
+export async function elPrecioAcordadoDe(vehicleId: string): Promise<number | null> {
+  await prepara();
+  const r = await query(
+    `SELECT precio_referencia FROM erp_encargos_venta
+      WHERE vehicle_id = $1 AND cerrado_at IS NULL
+      ORDER BY created_at DESC LIMIT 1`,
+    [vehicleId]
+  ).catch(() => ({ rows: [] }));
+  const precio = Number(r.rows[0]?.precio_referencia);
+  return Number.isFinite(precio) && precio > 0 ? precio : null;
+}

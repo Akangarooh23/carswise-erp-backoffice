@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
-import { porQueNoSePuedePublicar, avisaDeQueSePublico } from './encargos.js';
+import { porQueNoSePuedePublicar, avisaDeQueSePublico, elPrecioAcordadoDe } from './encargos.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { falloInterno } from '../lib/fallos.js';
@@ -408,7 +408,21 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
     }
     const v = vehicle.rows[0];
 
-    const { price, title, brand, model, year, mileage, fuel, color, notes, cv, co2 } = v;
+    const { title, brand, model, year, mileage, fuel, color, notes, cv, co2 } = v;
+
+    /*
+     * El precio acordado manda sobre el del panel.
+     *
+     * Si el coche lo vendemos nosotros, el precio se acuerda con el dueño y él
+     * lo firma: ése es el que tiene que salir en el anuncio. El del panel lo
+     * escribió él antes de todo esto y puede estar viejo — o vacío, que es lo
+     * que dejaba un coche con el papel firmado a 17.900 € sin poder publicarse
+     * por «falta el precio».
+     *
+     * Sin encargo no hay nada que imponer: ese precio es suyo.
+     */
+    const acordado = await elPrecioAcordadoDe(req.params.id);
+    const price = acordado ?? v.price;
 
     const missing: string[] = [];
     if (!brand?.toString().trim())  missing.push('marca');

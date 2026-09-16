@@ -79,3 +79,47 @@ describe('y con cuidado', () => {
     for (const e of escrituras) assert.match(e.slice(0, 400), /\.catch\(/);
   });
 });
+
+describe('y al publicar, manda el acordado', () => {
+  /*
+   * Lo otro solo actúa al pulsar Guardar, y eso es «de ahora en adelante»: el
+   * coche que ya estaba publicado se quedaba con el precio de hace un mes hasta
+   * que alguien se acordara de tocarlo.
+   *
+   * Peor todavía: con el precio del panel vacío, publicar fallaba con «falta el
+   * precio» aunque hubiera un papel firmado a 17.900 €.
+   */
+  const IDCARS = readFileSync(join(import.meta.dirname, 'idcars.ts'), 'utf8').replace(/\r\n/g, '\n');
+  const PUBLICAR = (() => {
+    const desde = IDCARS.indexOf("idcarsRouter.post('/idcars/:id/publish'");
+    assert.ok(desde > 0, 'no encuentro el endpoint de publicar');
+    const siguiente = IDCARS.indexOf('idcarsRouter.', desde + 20);
+    return IDCARS.slice(desde, siguiente > 0 ? siguiente : undefined);
+  })();
+
+  test('se pregunta por el acordado', () => {
+    assert.match(PUBLICAR, /await elPrecioAcordadoDe\(req\.params\.id\)/);
+  });
+
+  test('y gana al del panel', () => {
+    assert.match(PUBLICAR, /const price = acordado \?\? v\.price/);
+  });
+
+  test('se pregunta antes de exigir que haya precio', () => {
+    /*
+     * Al revés no serviría de nada: publicar se caería con «falta el precio»
+     * antes de mirar si hay uno acordado, que es justo el caso que esto arregla.
+     */
+    const pregunta = PUBLICAR.indexOf('elPrecioAcordadoDe(');
+    const exige = PUBLICAR.indexOf("missing.push('precio')");
+    assert.ok(pregunta > 0 && exige > 0, 'falta alguno de los dos');
+    assert.ok(pregunta < exige, 'se exige el precio antes de mirar el acordado');
+  });
+
+  test('sin encargo, el precio sigue siendo el del dueño', () => {
+    // `elPrecioAcordadoDe` devuelve null y el `??` deja pasar el del panel.
+    const RUTA_ENC = readFileSync(join(import.meta.dirname, 'encargos.ts'), 'utf8');
+    assert.match(RUTA_ENC, /export async function elPrecioAcordadoDe[\s\S]{0,600}cerrado_at IS NULL/);
+    assert.match(RUTA_ENC, /Number\.isFinite\(precio\) && precio > 0 \? precio : null/);
+  });
+});
