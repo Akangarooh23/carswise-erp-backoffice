@@ -5,6 +5,10 @@ import { porQueNoSePuedePublicar, avisaDeQueSePublico, apuntaQueSePublico, elPre
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { falloInterno } from '../lib/fallos.js';
+import {
+  CAMPOS, GEMELAS, limpiaLosCambios, loQueVaAlAnuncio,
+  ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_COCHE, type ElAnuncio,
+} from '../lib/caracteristicas-del-coche.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -408,27 +412,14 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
     }
     const v = vehicle.rows[0];
 
-    const { title, brand, model, version, year, mileage, fuel, color, notes, cv, co2 } = v;
+    const { brand, model, year } = v;
 
     /*
-     * El anuncio se llama marca + modelo + versión, no como lo llame él.
-     *
-     * `title` es el **alias** del coche en su garaje: «Prueba», «el de mi
-     * madre», «Coche familiar». Sirve para que se reconozca entre los suyos y no
-     * tiene nada que ver con lo que tiene que leer un comprador — y era lo que
-     * salía en la ficha pública, con ese nombre y todo.
-     *
-     * El alias solo se usa si no hay ni marca ni modelo, que es un coche a medio
-     * rellenar y de todas formas no se puede publicar: publicar los exige.
-     *
-     * Es la misma regla que ya usaba el listado del marketplace. Estaban
-     * escritas las dos y decían cosas distintas: el listado enseñaba «Volkswagen
-     * T-Roc R-Line» y la ficha, «Prueba».
+     * Lo que el comprador lee del coche, con las mismas reglas que al corregirlo
+     * desde la ficha: el título es marca + modelo + versión y no el alias de su
+     * garaje («Prueba»), la potencia con su número, la cilindrada la suya.
      */
-    const titulo = [brand, model, version]
-      .map((t) => String(t ?? '').trim())
-      .filter(Boolean)
-      .join(' ') || String(title ?? '').trim();
+    const anuncio = loQueVaAlAnuncio(v);
 
     /*
      * El precio acordado manda sobre el del panel.
@@ -499,60 +490,40 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
         resolvedImageUrls = JSON.stringify(reordered);
       }
 
+      await llevaLasCaracteristicasAlAnuncio(req.params.id, anuncio);
       await query(
         `UPDATE moveadvisor_marketplace_vo_offers SET
-          title = $1, brand = $2, model = $3, year = $4, price = $5, mileage = $6,
-          fuel = $7, color = $8, description = $9, image_url = $10, image_urls = $11,
-          version = $13,
+          price = $1, image_url = $2, image_urls = $3,
           seller_type = 'particular', is_active = TRUE, updated_at = NOW()
-         WHERE id = $12`,
-        [
-          titulo || `${brand} ${model} ${year}`,
-          brand || '', model || '',
-          Number(year) || 0, priceNum, Number(mileage) || 0,
-          fuel || '', color || '', notes || '',
-          resolvedImageUrl, resolvedImageUrls, offerId,
-          // La versión, que es la mitad de lo que distingue un coche de otro:
-          // un T-Roc «R-Line 1.5 eTSI» no es el mismo coche que un T-Roc a secas.
-          String(version ?? '').trim() || null,
-        ]
+         WHERE id = $4`,
+        [priceNum, resolvedImageUrl, resolvedImageUrls, offerId]
       );
     } else {
       await query(
         `INSERT INTO moveadvisor_marketplace_vo_offers
            (id, title, brand, model, version, year, price, mileage, fuel, color, description,
             image_url, image_urls, seller, seller_type, location, power, displacement,
+            transmission, body_type, doors, seats,
             has_guarantee_seal, portal_score, warranty_months,
             available_for_purchase, renting_available, renting_km_year,
             has_stock_management, is_active, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$16,$5,$6,$7,$8,$9,$10,$11,$12,$13,'particular','',
-                 $14,$15, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'particular',$15,
+                 $16,$17,$18,$19,$20,$21, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
         [
           offerId,
-          titulo || `${brand} ${model} ${year}`,
-          brand || '', model || '',
-          Number(year) || 0, priceNum, Number(mileage) || 0,
-          fuel || '', color || '', notes || '',
+          anuncio.title || `${brand} ${model} ${year}`,
+          anuncio.brand, anuncio.model, anuncio.version,
+          anuncio.year, priceNum, anuncio.mileage,
+          anuncio.fuel, anuncio.color, anuncio.description,
           imageUrl, imageUrls, seller,
-          `${cv || ''} CV`.trim(),
-          parseFloat(String(co2 || 0)) || 0,
-          String(version ?? '').trim() || null,
+          anuncio.location,
+          // Antes aquí iban «CV» a secas y, en la cilindrada, el CO₂.
+          anuncio.power, anuncio.displacement,
+          anuncio.transmission, anuncio.body_type, anuncio.doors, anuncio.seats,
         ]
       );
     }
 
-    /*
-     * Y se le dice al dueño que su coche ya está anunciado.
-     *
-     * Solo la primera vez —cuando la oferta no existía— y solo si es un coche
-     * que vendemos nosotros. Sin la primera condición, cada retoque del anuncio
-     * le mandaría otro correo; sin la segunda, se lo mandaríamos también al
-     * particular que publica su propio IDCar, y a ese no le hemos prometido
-     * atender ninguna llamada.
-     *
-     * Sin bloquear la respuesta: el anuncio ya está publicado, y que el correo
-     * falle no puede hacer que la pantalla diga que no se publicó.
-     */
     /*
      * Y si el coche es de un encargo, que ha pasado lo que decía el mandato.
      *
@@ -583,33 +554,109 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
   }
 });
 
+/**
+ * Las características del anuncio, puestas al día con lo que hay en el coche.
+ *
+ * Todo menos el precio, las fotos y si está activo: el precio de un encargo va
+ * por lo firmado y las fotos se leen vivas. Si el coche no está publicado no hay
+ * fila y no pasa nada. Devuelve si había anuncio.
+ */
+async function llevaLasCaracteristicasAlAnuncio(vehicleId: string, a: ElAnuncio): Promise<boolean> {
+  const r = await query(
+    `UPDATE moveadvisor_marketplace_vo_offers SET
+       title = $2, brand = $3, model = $4, version = $5, year = $6, mileage = $7,
+       fuel = $8, color = $9, power = $10, displacement = $11, transmission = $12,
+       body_type = $13, doors = $14, seats = $15, location = $16, description = $17,
+       updated_at = NOW()
+     WHERE id = $1
+     RETURNING id`,
+    [
+      `idcar-${vehicleId}`, a.title, a.brand, a.model, a.version, a.year, a.mileage,
+      a.fuel, a.color, a.power, a.displacement, a.transmission,
+      a.body_type, a.doors, a.seats, a.location, a.description,
+    ]
+  );
+  return r.rows.length > 0;
+}
+
+/** Si este coche lo vendemos nosotros: entonces su precio no se toca desde aquí. */
+async function tieneEncargoVivo(vehicleId: string): Promise<boolean> {
+  const r = await query(
+    `SELECT 1 FROM erp_encargos_venta WHERE vehicle_id = $1 AND cerrado_at IS NULL LIMIT 1`,
+    [vehicleId]
+  ).catch(() => ({ rows: [] }));
+  return r.rows.length > 0;
+}
+
+let columnasListas = false;
+
+/**
+ * Corregir las características del coche.
+ *
+ * Las reglas —qué se toca, cómo se limpia, qué llega al anuncio— están en
+ * `lib/caracteristicas-del-coche.ts`. Aquí solo se escribe: el coche con sus
+ * columnas gemelas a la vez, y después el anuncio si lo hay.
+ */
 idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (req, res) => {
-  const ALLOWED = [
-    'title', 'brand', 'model', 'version', 'year', 'plate', 'fuel', 'mileage',
-    'color', 'body_type', 'transmission_type', 'cv', 'price', 'notes',
-    'vehicle_location', 'environmental_label', 'seats', 'doors', 'co2',
-  ];
-  const fields: Record<string, unknown> = {};
-  for (const key of ALLOWED) {
-    if (req.body && key in req.body) fields[key] = req.body[key] ?? null;
-  }
-  if (!Object.keys(fields).length) {
-    res.status(400).json({ ok: false, error: 'no_fields_to_update' });
-    return;
-  }
-  const keys   = Object.keys(fields);
-  const values = keys.map((k) => fields[k]);
-  const set    = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   try {
+    if (!columnasListas) {
+      await query(ENSURE_COLUMNAS_DEL_COCHE).catch(() => {});
+      columnasListas = true;
+    }
+
+    const cuerpo = (req.body ?? {}) as Record<string, unknown>;
+    const hayEncargo = await tieneEncargoVivo(req.params.id);
+    const { campos, errores } = limpiaLosCambios(cuerpo, { hayEncargo });
+
+    // Las notas van aparte: son la descripción del anuncio y no se validan.
+    if ('notes' in cuerpo) campos.notes = String(cuerpo.notes ?? '').slice(0, 5000);
+
+    if (Object.keys(errores).length) {
+      res.status(400).json({ ok: false, error: 'datos_no_validos', errores, detail: Object.values(errores).join('. ') });
+      return;
+    }
+    if (!Object.keys(campos).length) {
+      res.status(400).json({ ok: false, error: 'no_fields_to_update' });
+      return;
+    }
+
+    /*
+     * Y sus gemelas con tipo, en la misma sentencia. Si no, el ERP seguiría
+     * enseñando los kilómetros viejos: lee `mileage_km`, no `mileage`.
+     */
+    const escribir: Record<string, unknown> = { ...campos };
+    for (const [clave, { columna, tipo }] of Object.entries(GEMELAS)) {
+      if (!(clave in campos)) continue;
+      const valor = campos[clave];
+      escribir[columna] = valor === null ? null
+        : tipo === 'DATE' ? valor
+        : Number(valor);
+    }
+
+    const claves = Object.keys(escribir);
+    const set = claves.map((k, i) => `${k} = $${i + 1}`).join(', ');
     const result = await query(
-      `UPDATE moveadvisor_user_vehicles SET ${set}, updated_at = NOW() WHERE id = $${keys.length + 1} RETURNING *`,
-      [...values, req.params.id]
+      `UPDATE moveadvisor_user_vehicles SET ${set}, updated_at = NOW() WHERE id = $${claves.length + 1} RETURNING *`,
+      [...claves.map((k) => escribir[k]), req.params.id]
     );
     if (!result.rows.length) { res.status(404).json({ ok: false, error: 'idcar_not_found' }); return; }
-    res.json({ ok: true, data: result.rows[0] });
+
+    /*
+     * Y el anuncio, si está publicado: corregir el coche es corregir lo que lee
+     * el comprador. Con su `catch`, porque el coche ya está guardado.
+     */
+    const anuncioAlDia = await llevaLasCaracteristicasAlAnuncio(req.params.id, loQueVaAlAnuncio(result.rows[0]))
+      .catch((err) => { console.error('[idcars] características del anuncio:', (err as Error).message); return false; });
+
+    res.json({ ok: true, data: result.rows[0], anuncio_actualizado: anuncioAlDia });
   } catch (err) {
     falloInterno(res, 'idcar_update_failed', err);
   }
+});
+
+/** Lo que el formulario necesita saber para pintar los campos. */
+idcarsRouter.get('/idcars/campos/caracteristicas', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
+  res.json({ ok: true, data: { campos: CAMPOS } });
 });
 
 idcarsRouter.patch('/idcars/:id/photos/reorder', requireRole(['admin', 'operations', 'support']), async (req, res) => {
