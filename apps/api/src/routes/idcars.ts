@@ -408,7 +408,27 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
     }
     const v = vehicle.rows[0];
 
-    const { title, brand, model, year, mileage, fuel, color, notes, cv, co2 } = v;
+    const { title, brand, model, version, year, mileage, fuel, color, notes, cv, co2 } = v;
+
+    /*
+     * El anuncio se llama marca + modelo + versión, no como lo llame él.
+     *
+     * `title` es el **alias** del coche en su garaje: «Prueba», «el de mi
+     * madre», «Coche familiar». Sirve para que se reconozca entre los suyos y no
+     * tiene nada que ver con lo que tiene que leer un comprador — y era lo que
+     * salía en la ficha pública, con ese nombre y todo.
+     *
+     * El alias solo se usa si no hay ni marca ni modelo, que es un coche a medio
+     * rellenar y de todas formas no se puede publicar: publicar los exige.
+     *
+     * Es la misma regla que ya usaba el listado del marketplace. Estaban
+     * escritas las dos y decían cosas distintas: el listado enseñaba «Volkswagen
+     * T-Roc R-Line» y la ficha, «Prueba».
+     */
+    const titulo = [brand, model, version]
+      .map((t) => String(t ?? '').trim())
+      .filter(Boolean)
+      .join(' ') || String(title ?? '').trim();
 
     /*
      * El precio acordado manda sobre el del panel.
@@ -483,35 +503,40 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
         `UPDATE moveadvisor_marketplace_vo_offers SET
           title = $1, brand = $2, model = $3, year = $4, price = $5, mileage = $6,
           fuel = $7, color = $8, description = $9, image_url = $10, image_urls = $11,
+          version = $13,
           seller_type = 'particular', is_active = TRUE, updated_at = NOW()
          WHERE id = $12`,
         [
-          title || `${brand} ${model} ${year}`,
+          titulo || `${brand} ${model} ${year}`,
           brand || '', model || '',
           Number(year) || 0, priceNum, Number(mileage) || 0,
           fuel || '', color || '', notes || '',
           resolvedImageUrl, resolvedImageUrls, offerId,
+          // La versión, que es la mitad de lo que distingue un coche de otro:
+          // un T-Roc «R-Line 1.5 eTSI» no es el mismo coche que un T-Roc a secas.
+          String(version ?? '').trim() || null,
         ]
       );
     } else {
       await query(
         `INSERT INTO moveadvisor_marketplace_vo_offers
-           (id, title, brand, model, year, price, mileage, fuel, color, description,
+           (id, title, brand, model, version, year, price, mileage, fuel, color, description,
             image_url, image_urls, seller, seller_type, location, power, displacement,
             has_guarantee_seal, portal_score, warranty_months,
             available_for_purchase, renting_available, renting_km_year,
             has_stock_management, is_active, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'particular','',
+         VALUES ($1,$2,$3,$4,$16,$5,$6,$7,$8,$9,$10,$11,$12,$13,'particular','',
                  $14,$15, FALSE, 0, 0, TRUE, FALSE, 0, FALSE, TRUE, NOW(), NOW())`,
         [
           offerId,
-          title || `${brand} ${model} ${year}`,
+          titulo || `${brand} ${model} ${year}`,
           brand || '', model || '',
           Number(year) || 0, priceNum, Number(mileage) || 0,
           fuel || '', color || '', notes || '',
           imageUrl, imageUrls, seller,
           `${cv || ''} CV`.trim(),
           parseFloat(String(co2 || 0)) || 0,
+          String(version ?? '').trim() || null,
         ]
       );
     }
