@@ -66,9 +66,9 @@ cliente: Un comprador llega del portal y pide cita
 erp: Si dijo que quiere financiar, sale en Pendientes para llamarle
 @ Agenda → la visita → «quiere financiar · marcar llamado»
 + nada: se pulsa cuando ya se le ha llamado
-erp: La visita se confirma, y le llega al comprador y al vendedor
-@ Agenda → la visita → «Confirmar»
-+ dónde es y por quién preguntar
+cliente: El vendedor la confirma o propone otra hora, desde su correo
+@ En PopCar, no en el ERP — sale en **Agenda** como «esperando al vendedor»
++ dónde es la visita, u otras horas para elegir
 erp: Y cuando pasa el día, se dice cómo acabó
 @ Agenda → «visitas por cerrar» → «Fue y se lo quedó»
 + nada: son botones
@@ -527,11 +527,12 @@ correo: **Al comprador sin cuenta** — un enlace para confirmar que ese correo 
 cliente: Pulsa el enlace y entonces sí se reserva
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y la casilla de financiación
-correo: **Al comprador** — «hemos recibido tu solicitud», todavía sin calendario
-correo: **Al equipo** — que hay una visita por confirmar
-erp: Nos entra pendiente de confirmar
-@ Agenda → «visitas por confirmar»
-+ nada: entra sola
+correo: **Al comprador** — «hemos recibido tu solicitud», con la franja y todavía sin calendario
+correo: **Al vendedor** — «alguien quiere ver tu coche»: día, franja y nombre, con su enlace para contestar
+correo: **Al equipo** — que hay una visita pedida, que la confirma el vendedor
+erp: Nos entra, esperando al vendedor
+@ Agenda → «visitas esperando al vendedor»
++ nada: solo se sigue
 :::
 
 > **Con cuenta no hay enlace.** Si ha entrado en PopCar, su correo ya está
@@ -539,10 +540,16 @@ erp: Nos entra pendiente de confirmar
 > directamente «hemos recibido tu solicitud». El enlace es solo para el que
 > llega sin cuenta.
 
-> **Al vendedor no se le escribe todavía.** Una visita pendiente es una
-> solicitud que no hemos filtrado, y a él le prometimos filtrarlas. Antes le
-> llegaba «alguien ha reservado» con el teléfono del comprador en cuanto
-> alguien pulsaba; ahora se le escribe desde el ERP al confirmarla.
+> **La visita la confirma el vendedor, no la Agenda.** Es quien enseña el coche,
+> en su casa y a su hora, y quien sabe si esa mañana puede. Confirmar desde el
+> ERP es para concesionario, renting e importación, donde hay que llamar a
+> alguien. Al vendedor le llega el nombre de quien quiere verlo y lo que
+> escribió, **no su teléfono ni su correo**: la conversación pasa por nosotros.
+
+> **Si no contesta en un día, vuelve a ser nuestra.** Mientras tanto no enciende
+> el número rojo de Agenda ni sale en Pendientes. Pasadas 24 horas sube a
+> «visitas por confirmar», y entonces sí hay que llamarle. Se puede confirmar o
+> proponer horas por él desde la Agenda, como con un concesionario.
 
 > **Los correos se esperan antes de contestar.** En Vercel, un correo lanzado
 > sin esperar se corta en cuanto la página responde, y no deja error en ningún
@@ -581,15 +588,24 @@ erp: Nos entra pendiente de confirmar
 
 ## 7 · La visita
 
-A partir de aquí es el mismo camino que el de concesionario, con una diferencia:
-al vendedor sí le podemos escribir, porque es cliente nuestro.
+La diferencia con el concesionario está en quién contesta: aquí la visita la
+confirma el vendedor, desde el enlace de su correo o desde **Mis coches** en su
+panel. Tiene tres respuestas.
 
 :::flujo
-erp: Se confirma la visita
-@ Agenda → la visita → «Confirmar»
-+ dónde es y por quién preguntar
-correo: **Al comprador** — la cita confirmada, con el calendario
-correo: **Al vendedor** — día, hora, dónde y el nombre de quien viene, con el calendario
+cliente: **Me viene bien**: la confirma y dice dónde es
+@ En PopCar, no en el ERP — la visita pasa a confirmada en **Agenda**
++ la dirección —sale la ubicación del coche— y por quién preguntar
+correo: **Al comprador** — la cita confirmada, con la franja, dónde y el calendario
+correo: **Al vendedor** — la misma, con su calendario
+cliente: **No puedo**: propone hasta tres horas
+@ En PopCar, no en el ERP — queda en el rastro de la visita en **Agenda**
++ el día y la hora de cada una
+correo: **Al comprador** — las horas, cada una con su botón; al elegir, queda confirmada
+cliente: **Ninguna**: la rechaza
+@ En PopCar, no en el ERP — la visita se cancela en **Agenda**
++ nada
+correo: **Al comprador** — que esa no puede ser, con el enlace para elegir otra
 correo: **Al comprador** — el recordatorio, el día antes y esa mañana
 cliente: Se ven, y el cliente enseña su coche
 erp: Cuando pasa el día, se dice cómo acabó
@@ -601,17 +617,27 @@ erp: Cuando pasa el día, se dice cómo acabó
 > vamos a la visita.
 
 > **Al vendedor le llega el nombre, no el teléfono ni el correo del comprador.**
-> Que no le llamen directamente es parte de lo que paga, y si a esa hora no
-> puede, contesta al correo y la movemos nosotros. Su correo va aparte del del
-> comprador: si falla uno, el otro sale igual.
+> Que no le llamen directamente es parte de lo que paga. Su correo va aparte
+> del del comprador: si falla uno, el otro sale igual.
+
+> **Los correos dicen la franja entera**, «de 10:00 a 14:00», y no solo la hora
+> de empezar: poner «10:00» a secas hacía creer que la cita era a las diez en
+> punto.
+
+> **El enlace del vendedor es su llave.** No hace falta que inicie sesión, igual
+> que el comprador con el suyo. Nada se aplica al abrirlo —los lectores de
+> correo abren los enlaces solos—: se confirma al pulsar.
+
+> **La lista de visitas de un coche solo la ve su dueño**, con su sesión. Antes
+> la podía pedir cualquiera que supiera el identificador del anuncio, y traía el
+> correo y el teléfono de cada comprador y la llave para cancelar sus visitas.
 
 > **El recordatorio es solo para el comprador**, por correo y al móvil. Al
 > vendedor no se le recuerda la visita.
 
-> **Si el comprador cancela una visita que seguía pendiente, al vendedor no se
-> le dice nada**: no sabía de ella. Se entera el equipo. Si ya estaba
-> confirmada, al vendedor le llega la cancelación con el nombre del comprador y
-> sin su correo.
+> **Si el comprador la cancela, al vendedor se le dice**, pendiente o
+> confirmada, porque sabía de ella desde que se pidió: con el nombre y sin el
+> correo del comprador.
 
 ---
 

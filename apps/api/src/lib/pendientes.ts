@@ -222,7 +222,7 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
   {
     clave: 'visitas_por_confirmar',
     etiqueta: 'visitas por confirmar', una: 'visita por confirmar',
-    porque: 'el cliente pidió hora y sigue esperando a que llamemos',
+    porque: 'el cliente pidió hora y sigue esperando: a que llamemos, o a que conteste el particular que tiene el coche, que lleva más de un día sin hacerlo',
     a: '/bookings', icono: 'calendario', tono: 'urgente',
   },
   {

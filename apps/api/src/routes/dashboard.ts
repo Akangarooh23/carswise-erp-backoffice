@@ -499,7 +499,13 @@ dashboardRouter.get('/dashboard/pendientes', requireRole(['admin', 'operations',
        * aquí en SQL porque contarlas trayéndolas costaría traerlas todas.
        */
       query(`
-        SELECT COUNT(*) FILTER (WHERE b.status = 'pending')::int AS visitas_por_confirmar,
+        SELECT COUNT(*) FILTER (
+                 WHERE b.status = 'pending'
+                   -- Las de un particular las confirma él. Solo cuentan aquí si
+                   -- lleva un día sin contestar: entonces sí hay que llamarle.
+                   AND NOT (b.seller_email IS NOT NULL AND b.offer_id LIKE 'idcar-%'
+                            AND b.created_at > NOW() - INTERVAL '24 hours')
+               )::int AS visitas_por_confirmar,
                COUNT(*) FILTER (
                  WHERE b.status = 'confirmed' AND b.starts_at < NOW() AND b.resultado IS NULL
                )::int AS visitas_sin_cerrar,

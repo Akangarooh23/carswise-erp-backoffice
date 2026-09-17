@@ -6,6 +6,7 @@ import Icono from '../components/ui/Icono.js';
 import Boton from '../components/ui/Boton.js';
 import { comoSeLlama, elQueVende, alQueVende } from '../lib/quien-vende.js';
 import { RESULTADOS, COMO_ACABO, TONO, comoAcabo, estaSinCerrar } from '../lib/resultado-de-la-visita.js';
+import { nosTocaContestarla, laConfirmaElVendedor, horasSinContestar } from '../lib/visita-del-particular.js';
 
 type Booking = {
   id: string;
@@ -52,6 +53,8 @@ type Booking = {
   source: string;
   slot_source: string;
   created_at: string;
+  /** Si es el coche de un particular: entonces la confirma él, no la Agenda. */
+  la_confirma_el_vendedor?: boolean;
   // Quién vende. De un concesionario o un profesional, `seller` es el nombre y
   // el teléfono está en el anuncio; de un particular, `seller` es su correo.
   // Puede faltar: la oferta puede haberse despublicado y la visita sigue.
@@ -469,6 +472,15 @@ export default function BookingsPage() {
   const [motivo, setMotivo] = useState('');
   const [resultado, setResultado] = useState<{ mal: boolean; texto: string } | null>(null);
   const [pendientes, setPendientes] = useState<Booking[]>([]);
+  /*
+   * Las que nos toca contestar, y las que contesta el dueño.
+   *
+   * En el coche de un particular la visita la confirma él desde su correo:
+   * aquí se enseña aparte, para seguirla. Si pasa un día sin contestar, vuelve
+   * arriba, porque entonces sí hay que llamarle.
+   */
+  const nuestras = pendientes.filter((b) => nosTocaContestarla(b));
+  const delVendedor = pendientes.filter((b) => !nosTocaContestarla(b));
   const [porCerrar, setPorCerrar]   = useState<Booking[]>([]);
   /** Las que compraron y no consta en que quedo su financiacion. */
   const [finSinCerrar, setFinSinCerrar] = useState<Booking[]>([]);
@@ -920,24 +932,78 @@ export default function BookingsPage() {
         </div>
       )}
 
+      {/*
+        * Las que contesta el dueño del coche.
+        *
+        * No son trabajo nuestro: le ha llegado el correo y las confirma él,
+        * propone otra hora o las rechaza. Se enseñan para saber que existen y
+        * cuánto llevan esperando; al pasar un día sin contestar suben al bloque
+        * de arriba.
+        */}
+      {delVendedor.length > 0 && (
+        <div className="rounded-xl border border-brand-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-brand-100">
+            <h2 className="text-sm font-bold text-brand-600">
+              {delVendedor.length === 1 ? 'Una visita esperando al vendedor' : `${delVendedor.length} visitas esperando al vendedor`}
+            </h2>
+            <p className="text-[12.5px] text-brand-400 mt-0.5 max-w-3xl">
+              Son coches de particulares: la visita la confirma su dueño desde el correo, o propone otra hora. No hay que hacer nada salvo que no conteste.
+            </p>
+          </div>
+          <ul className="divide-y divide-brand-100">
+            {delVendedor.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                <div className="shrink-0 text-center w-16">
+                  <div className="text-base font-bold text-brand-600 leading-none tabular-nums">{fmtTime(b.starts_at)}</div>
+                  <div className="text-[10px] text-brand-400 tabular-nums">{fmtDate(b.starts_at)}</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-600 text-sm truncate">{b.vehicle_title || b.offer_id}</div>
+                  <div className="text-xs text-brand-400">
+                    {b.buyer_name || '–'} · pedida hace {horasSinContestar(b) ?? '?'} h
+                  </div>
+                </div>
+                <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded bg-brand-50 text-brand-500 border border-brand-200">
+                  {laConfirmaElVendedor(b) ? 'Esperando al vendedor' : 'Pendiente'}
+                </span>
+                <button onClick={() => verRastro(b)}
+                        className="px-2 py-1 text-[11px] font-bold text-brand-400 underline underline-offset-2">
+                  {rastroDe === b.id ? 'Ocultar' : 'Ver'} rastro
+                </button>
+                {rastroDe === b.id && (
+                  <div className="w-full mt-1 rounded-lg border border-brand-200 bg-white px-4 py-3">
+                    <PanelDelRastro
+                      b={b} pasos={rastro}
+                      alApuntar={(evento, texto) => apuntaPaso(b, evento, texto)}
+                      nota={notaNueva} alEscribirNota={setNotaNueva}
+                      guardandoNota={guardandoNota} alGuardarNota={() => guardaNota(b)}
+                    />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Las pendientes van arriba y no dentro del listado: son trabajo por
           hacer, y una lista donde se mezclan con las cerradas no se despacha. */}
-      {pendientes.length > 0 && (
+      {nuestras.length > 0 && (
         <div className="rounded-xl border border-acento bg-acento-tenue overflow-hidden">
           <div className="px-4 py-3 border-b border-acento/50">
             <h2 className="text-sm font-bold text-acento-texto">
-              {pendientes.length === 1 ? 'Una visita por confirmar' : `${pendientes.length} visitas por confirmar`}
+              {nuestras.length === 1 ? 'Una visita por confirmar' : `${nuestras.length} visitas por confirmar`}
             </h2>
             {/* En singular cuando hay una: el titular ya dice cuántas, y decir
                 «cayeron» de una sola se lee como un descuido. */}
             <p className="text-[12.5px] text-acento-texto/85 mt-0.5 max-w-3xl">
-              {pendientes.length === 1
+              {nuestras.length === 1
                 ? 'El cliente ha pedido esta hora y todavía no se la hemos dado: lo sabe, y no ha recibido calendario. Llama a quien tiene el coche y confírmala o proponle otra.'
                 : 'Los clientes han pedido estas horas y todavía no se las hemos dado: lo saben, y no han recibido calendario. Llama a quien tiene el coche y confírmalas o proponles otra.'}
             </p>
           </div>
           <ul className="divide-y divide-acento/40">
-            {pendientes.map((b) => (
+            {nuestras.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div className="shrink-0 text-center w-16">
                   <div className="text-lg font-black text-acento-texto leading-none tabular-nums">{fmtTime(b.starts_at)}</div>
@@ -1582,7 +1648,7 @@ export default function BookingsPage() {
           cuarta dice cuánto hay pendiente, que es lo que hay que despachar. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Por confirmar', value: pendientes.length, color: 'text-acento-texto', bg: 'bg-acento-tenue', border: 'border-acento' },
+          { label: 'Por confirmar', value: nuestras.length, color: 'text-acento-texto', bg: 'bg-acento-tenue', border: 'border-acento' },
           { label: 'Confirmadas hoy', value: todayCount, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },
           { label: 'Esta semana', value: weekCount, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },
           { label: range === 'all' ? 'Total' : 'Período', value: bookings.length, color: 'text-brand-500', bg: 'bg-brand-50', border: 'border-brand-100' },

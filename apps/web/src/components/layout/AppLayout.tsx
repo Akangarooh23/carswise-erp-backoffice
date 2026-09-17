@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { nosTocaContestarla, type VisitaPendiente } from '../../lib/visita-del-particular.js';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../store/auth.js';
 import { api } from '../../api/client.js';
@@ -60,8 +61,10 @@ export default function AppLayout() {
       api.get<{ bookings?: unknown[] }>('/all-bookings?status=pending')
         .then((v) => {
           if (!v.ok) return;
-          const lista = v.data?.bookings ?? [];
-          setVisitasPorConfirmar(lista.length);
+          // Las de un particular las contesta él: solo cuentan si lleva un día
+          // sin hacerlo.
+          const lista = (v.data?.bookings ?? []) as VisitaPendiente[];
+          setVisitasPorConfirmar(lista.filter((b) => nosTocaContestarla(b)).length);
         })
         .catch(() => {});
 

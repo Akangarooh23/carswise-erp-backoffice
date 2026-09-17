@@ -1447,6 +1447,15 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
              b.meeting_place, b.meeting_contact,
              b.resultado, b.resultado_at,
              /*
+              * Si la confirma el vendedor y no nosotros.
+              *
+              * En el coche de un particular la visita la contesta su dueño
+              * desde el correo: confirma, propone otra hora o la rechaza. Aquí
+              * se enseña para seguirla, no para despacharla — salvo que no
+              * conteste.
+              */
+             (b.seller_email IS NOT NULL AND b.offer_id LIKE 'idcar-%') AS la_confirma_el_vendedor,
+             /*
               * Quién dijo cómo acabó.
               *
               * Lo puede decir un trabajador que ha hablado con el

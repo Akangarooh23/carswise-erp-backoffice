@@ -114,9 +114,11 @@ erp: Y mandarla, que es descargar el PDF
 ### Toda visita se aprueba por teléfono
 
 > El horario publicado no es un compromiso de quien vende. Confirmar una visita
-> sin llamar es concertar una cita que la otra parte no sabe que tiene. La única
-> excepción es el particular gestionado, que enseña su propio coche en las
-> franjas que ha puesto él.
+> sin llamar es concertar una cita que la otra parte no sabe que tiene.
+>
+> **La excepción es el coche de un particular**: la visita la confirma él desde
+> su correo, o propone otra hora. En la Agenda sale aparte, «esperando al
+> vendedor», y solo pasa a ser trabajo nuestro si lleva un día sin contestar.
 
 ### Los portales son a mano, y nadie los vigila salvo el aviso
 
