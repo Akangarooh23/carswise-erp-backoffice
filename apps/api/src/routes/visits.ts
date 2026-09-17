@@ -764,9 +764,13 @@ export async function aplicaHoraElegida(
     // El hueco de la hora nueva. Si ya existe uno libre a esa hora se aprovecha,
     // y si no se crea: así no se llena la tabla de duplicados cuando se mueve una
     // visita a un hueco que ya estaba publicado.
+    // Solo un hueco de una hora. Una franja del vendedor que empieza a esa hora
+    // dura más —«de 10:00 a 14:00»—, y marcarla ocupada cerraría toda la mañana:
+    // la visita es a una hora y las demás siguen libres.
     const existente = await query(
       `SELECT id FROM vehicle_visit_availability
-        WHERE offer_id = $1 AND starts_at = $2 AND status = 'available' LIMIT 1`,
+        WHERE offer_id = $1 AND starts_at = $2 AND status = 'available'
+          AND ends_at - starts_at <= INTERVAL '1 hour' LIMIT 1`,
       [reserva.offer_id, inicio.toISOString()]
     );
     const nuevoHueco = existente.rows.length
