@@ -67,6 +67,12 @@ import {
   comoSeLlamaElFichero as comoSeLlamaElFicheroDelPrecio,
 } from '../lib/clausula-del-precio.js';
 import { abreLaTransferenciaDelEncargo } from './tramites.js';
+import {
+  ENSURE_COLUMNAS as ENSURE_COLUMNAS_DE_LA_VENTA, EN_CURSO, ANULADA,
+  enQuePasoEsta, QUE_TOCA, porQueNoSeDecideLaFinanciacion, porQueNoPagaEl, porQueNoSeAnula,
+  correoFinanciacionAprobada, correoFinanciacionDenegada,
+  correoVentaAnuladaAlComprador, correoVentaAnuladaAlVendedor,
+} from '../lib/venta-en-curso.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo, elClienteEsperaRespuesta } from '../lib/revision-del-taller.js';
 
 export const encargosRouter = Router();
@@ -160,6 +166,8 @@ async function prepara(): Promise<void> {
   await query(ENSURE_COLUMNAS).catch(() => {});
   // Las de la cláusula del precio, que llegaron después.
   await query(ENSURE_COLUMNAS_DEL_PRECIO).catch(() => {});
+  // Y las de la venta en curso, que llegaron después.
+  await query(ENSURE_COLUMNAS_DE_LA_VENTA).catch(() => {});
   await query(ENSURE_UNO_VIVO).catch(() => {});
   listo = true;
 }
@@ -278,6 +286,12 @@ export interface AvisosDeEncargos {
   citas_taller_que_pide_mover: number;
   /** Ya se puede pedir el precio de salida y todavía no se le ha mandado. */
   encargos_sin_mandar_el_precio: number;
+  /** Hay comprador y ha pedido financiar: la entidad todavía no ha contestado. */
+  ventas_financiacion_en_estudio: number;
+  /** Le han denegado la financiación: o lo paga él o se anula. */
+  ventas_financiacion_denegada: number;
+  /** Hay comprador y falta que entre el importe. */
+  ventas_esperando_ingreso: number;
 }
 
 /**
@@ -341,7 +355,8 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
            -- Lo que el cliente ha pedido sobre su cita desde su panel.
            tal.cliente_pidio AS taller_cliente_pidio,
            -- Y el precio de salida: si hay cifra y si ya se le mandó el papel.
-           e.precio_referencia, e.clausula_enviada_at, e.clausula_firmada_at, e.clausula_precio
+           e.precio_referencia, e.clausula_enviada_at, e.clausula_firmada_at, e.clausula_precio,
+           e.venta_estado, e.financiacion_estado
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
       -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
@@ -378,7 +393,15 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
 
     // Una visita de ese coche acabo en venta y el encargo sigue abierto: falta
     // cerrarlo y emitir los 299 EUR.
-    if (fila.se_vendio) avisos.push('encargos_vendidos');
+    /*
+     * Pero no si la venta está en curso: entonces no falta «cerrarlo», falta
+     * la financiación, el ingreso o la gestoría, y cada cosa tiene su aviso.
+     */
+    const paso = enQuePasoEsta(fila);
+    if (fila.se_vendio && !paso) avisos.push('encargos_vendidos');
+    if (paso === 'financiacion_en_estudio') avisos.push('ventas_financiacion_en_estudio');
+    if (paso === 'financiacion_denegada') avisos.push('ventas_financiacion_denegada');
+    if (paso === 'esperando_ingreso') avisos.push('ventas_esperando_ingreso');
     if (tocaLlamarle({ publicado_at: fila.publicado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
     if (soloLeFaltanFranjas(puertas)) avisos.push('encargos_sin_franjas');
 
@@ -463,6 +486,9 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
     citas_taller_que_pide_mover: 0,
     encargos_sin_mandar_el_precio: 0,
+    ventas_financiacion_en_estudio: 0,
+    ventas_financiacion_denegada: 0,
+    ventas_esperando_ingreso: 0,
   };
   for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
   return cuenta;
@@ -741,6 +767,32 @@ encargosRouter.get(
           } : null,
           por_que_no_firmado: encargo ? porQueNoEstaFirmado(encargo) : '',
           /*
+           * La venta en curso, si hay comprador.
+           *
+           * Con sus datos para el contrato y en qué paso está, que es lo que
+           * dice qué botón toca.
+           */
+          venta: encargo && encargo.venta_estado === EN_CURSO ? {
+            paso: enQuePasoEsta(encargo),
+            que_toca: QUE_TOCA[enQuePasoEsta(encargo) as keyof typeof QUE_TOCA] ?? '',
+            iniciada_at: encargo.venta_iniciada_at ?? null,
+            comprador: {
+              nombre: encargo.comprador_nombre ?? '',
+              dni: encargo.comprador_dni ?? '',
+              domicilio: encargo.comprador_domicilio ?? '',
+              email: encargo.comprador_email ?? '',
+              telefono: encargo.comprador_telefono ?? '',
+            },
+            financia: Boolean(encargo.venta_financia),
+            financiacion: {
+              estado: encargo.financiacion_estado ?? null,
+              entidad: encargo.financiacion_entidad ?? '',
+              importe: Number(encargo.financiacion_importe) || null,
+              decidida_at: encargo.financiacion_decidida_at ?? null,
+            },
+            precio: Number(encargo.precio_venta) || Number(encargo.precio_referencia) || null,
+          } : null,
+          /*
            * El papel que subió él, si lo subió.
            *
            * Sin esto, «Descargar» seguía dando el mandato en blanco —que se
@@ -911,6 +963,176 @@ encargosRouter.post(
  * reintentar sin emitir dos veces porque el guardián mira si ya existe. Al
  * revés, el encargo quedaría cerrado y el cobro perdido, que no lo ve nadie.
  */
+/** Quién lo apunta, para el rastro de la visita. */
+const quien = (req: unknown) => (req as { actor?: { sub?: string } }).actor?.sub ?? 'desconocido';
+
+/** La venta en curso de un encargo, con lo que hace falta para escribir. */
+async function laVentaDe(encargoId: string) {
+  await prepara();
+  const r = await query(
+    `SELECT e.*, v.brand, v.model, v.plate
+       FROM erp_encargos_venta e
+       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+      WHERE e.id = $1 AND e.cerrado_at IS NULL`,
+    [encargoId]
+  );
+  return r.rows[0] ?? null;
+}
+
+const elCoche = (e: Record<string, unknown>) =>
+  [e.brand, e.model].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ') || String(e.plate ?? 'el coche');
+
+const datosDelCorreo = (e: Record<string, unknown>) => ({
+  comprador_nombre: String(e.comprador_nombre ?? ''),
+  coche: elCoche(e),
+  precio: Number(e.precio_venta) || Number(e.precio_referencia) || null,
+  entidad: String(e.financiacion_entidad ?? ''),
+  importe: Number(e.financiacion_importe) || null,
+  vendedor_nombre: String(e.cliente_nombre ?? ''),
+  sitio: config.PUBLIC_SITE_URL.replace(/\/+$/, ''),
+  oferta_id: `idcar-${String(e.vehicle_id ?? '')}`,
+});
+
+/**
+ * La entidad contesta: aprobada o denegada.
+ *
+ * Aprobada se apunta también en la visita —entidad e importe—, que es de donde
+ * sale la comisión que se le factura en Comisiones. Así no hay dos sitios donde
+ * decir con quién se financió.
+ */
+encargosRouter.post(
+  '/encargos/:id/venta/financiacion',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const resultado = String(req.body?.resultado ?? '').trim();
+      const entidad = String(req.body?.entidad ?? '').trim().slice(0, 120);
+      const importe = Number(req.body?.importe) > 0 ? Number(req.body.importe) : null;
+      const falta = porQueNoSeDecideLaFinanciacion(e, resultado, entidad);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      const aprobada = resultado === 'aprobada';
+      await query(
+        `UPDATE erp_encargos_venta
+            SET financiacion_estado = $2, financiacion_entidad = $3, financiacion_importe = $4,
+                financiacion_decidida_at = NOW(), updated_at = NOW()
+          WHERE id = $1`,
+        [e.id, resultado, aprobada ? entidad : null, aprobada ? importe : null]
+      );
+      if (aprobada && e.venta_booking_id) {
+        await query(
+          `UPDATE vehicle_visit_bookings
+              SET financiacion_resultado = 'financiada', financiacion_entidad = $2,
+                  financiacion_importe = $3, financiacion_cerrada_at = NOW(),
+                  financiacion_cerrada_por = $4, updated_at = NOW()
+            WHERE id = $1`,
+          [e.venta_booking_id, entidad, importe, quien(req)]
+        ).catch((err) => console.error('[venta] financiación en la visita:', (err as Error).message));
+      }
+
+      const d = datosDelCorreo({ ...e, financiacion_entidad: entidad, financiacion_importe: importe });
+      const correo = aprobada ? correoFinanciacionAprobada(d) : correoFinanciacionDenegada(d);
+      let avisado = false;
+      if (e.comprador_email) {
+        await enviar({ to: String(e.comprador_email), subject: correo.subject, html: correo.html, alClienteSiempre: true, movil: correo.movil })
+          .then(() => { avisado = true; })
+          .catch((err) => console.error('[venta] correo de la financiación:', (err as Error).message));
+      }
+      res.json({ ok: true, data: { financiacion_estado: resultado, comprador_avisado: avisado } });
+    } catch (err) {
+      console.error('[venta] financiación:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_financiacion_failed' });
+    }
+  }
+);
+
+/** Denegada la financiación, el comprador dice que lo paga él entero. */
+encargosRouter.post(
+  '/encargos/:id/venta/sin-financiar',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const falta = porQueNoPagaEl(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+      await query(
+        `UPDATE erp_encargos_venta
+            SET financiacion_estado = 'sin_financiacion', venta_financia = FALSE, updated_at = NOW()
+          WHERE id = $1`,
+        [e.id]
+      );
+      if (e.venta_booking_id) {
+        await query(
+          `UPDATE vehicle_visit_bookings
+              SET financiacion_resultado = 'no_financiada', financiacion_cerrada_at = NOW(),
+                  financiacion_cerrada_por = $2, updated_at = NOW()
+            WHERE id = $1`,
+          [e.venta_booking_id, quien(req)]
+        ).catch((err) => console.error('[venta] sin financiar en la visita:', (err as Error).message));
+      }
+      res.json({ ok: true, data: { financiacion_estado: 'sin_financiacion' } });
+    } catch (err) {
+      console.error('[venta] sin financiar:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_sin_financiar_failed' });
+    }
+  }
+);
+
+/**
+ * La venta no sigue: se anula y el coche vuelve a estar a la venta.
+ *
+ * La visita pasa a «fue» —fue, lo vio y al final no lo compró—, que es lo que
+ * apaga «vendido sin cerrar el encargo». Y el anuncio se vuelve a publicar.
+ */
+encargosRouter.post(
+  '/encargos/:id/venta/anular',
+  requireRole(['admin', 'operations', 'sales']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const falta = porQueNoSeAnula(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+      const motivo = String(req.body?.motivo ?? '').trim().slice(0, 300);
+
+      await query(
+        `UPDATE erp_encargos_venta
+            SET venta_estado = '${ANULADA}', venta_anulada_at = NOW(), venta_motivo_anulacion = $2, updated_at = NOW()
+          WHERE id = $1`,
+        [e.id, motivo]
+      );
+      if (e.venta_booking_id) {
+        await query(
+          `UPDATE vehicle_visit_bookings SET resultado = 'fue', updated_at = NOW() WHERE id = $1 AND resultado = 'compro'`,
+          [e.venta_booking_id]
+        ).catch((err) => console.error('[venta] visita al anular:', (err as Error).message));
+      }
+      const republicado = await query(
+        `UPDATE moveadvisor_marketplace_vo_offers SET is_active = TRUE, updated_at = NOW() WHERE id = $1 RETURNING id`,
+        [`idcar-${String(e.vehicle_id)}`]
+      ).then((r) => r.rows.length > 0).catch(() => false);
+
+      const d = { ...datosDelCorreo(e), motivo };
+      const avisos: Promise<unknown>[] = [];
+      if (e.comprador_email) {
+        const c = correoVentaAnuladaAlComprador(d);
+        avisos.push(enviar({ to: String(e.comprador_email), subject: c.subject, html: c.html, alClienteSiempre: true, movil: c.movil })
+          .catch((err) => console.error('[venta] correo al comprador:', (err as Error).message)));
+      }
+      if (e.cliente_email) {
+        const c = correoVentaAnuladaAlVendedor(d);
+        avisos.push(enviar({ to: String(e.cliente_email), subject: c.subject, html: c.html, alClienteSiempre: true, movil: c.movil })
+          .catch((err) => console.error('[venta] correo al vendedor:', (err as Error).message)));
+      }
+      await Promise.all(avisos);
+      res.json({ ok: true, data: { anulada: true, republicado } });
+    } catch (err) {
+      console.error('[venta] anular:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_anular_failed' });
+    }
+  }
+);
+
 encargosRouter.post(
   '/encargos/:id/cerrar',
   requireRole(['admin', 'operations']),

@@ -16,6 +16,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, descargaConSesion } from '../../api/client.js';
 import { loQueFaltaEnPantalla } from '../../lib/lo-que-falta-del-precio.js';
+import VentaEnCurso, { type LaVentaEnCurso } from './VentaEnCurso.js';
 import { Card } from '../../components/ui/Card.js';
 import Icono from '../../components/ui/Icono.js';
 import RevisionDelTaller, { type LoDelTaller } from './RevisionDelTaller.js';
@@ -95,6 +96,8 @@ export interface ElEncargo {
   /** El mandato: puerta de publicar y de cobrar. */
   mandato_firmado: boolean;
   por_que_no_firmado: string;
+  /** Si hay comprador: la venta en curso y en qué paso está. */
+  venta?: LaVentaEnCurso | null;
   /**
    * El papel que subió el cliente a su panel, si lo subió.
    *
@@ -438,6 +441,11 @@ export default function EncargoDeVenta({
           mandatoFirmado={datos.mandato_firmado}
         />
       </div>
+
+      {/* Con comprador, la venta va lo primero: es lo único que importa ahora. */}
+      {datos.venta && (
+        <VentaEnCurso encargoId={e.id} venta={datos.venta} alCambiar={() => void carga()} />
+      )}
 
       {/*
         * El mandato va lo primero, antes que las puertas.

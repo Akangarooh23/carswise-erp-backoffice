@@ -643,6 +643,54 @@ erp: Cuando pasa el día, se dice cómo acabó
 
 ---
 
+## 7b · El comprador se lo queda
+
+Al acabar la hora de la visita, al comprador le llega un correo: **«¿Te lo
+quedas?»**. Lo que contesta decide si empieza la venta.
+
+:::flujo
+correo: **Al comprador** — «¿Te lo quedas?», con «Quiero comprarlo», «Lo vi y no me lo quedo» y «No fui»
+cliente: Pulsa «Quiero comprarlo» y deja su DNI o NIE, su domicilio y si financia
+@ En PopCar, no en el ERP — la venta sale arriba del encargo en **IDCars**
++ DNI o NIE con su letra, dirección, código postal, ciudad y si financia
+sistema: La visita queda como «compró», el encargo abre la venta y el anuncio se reserva
+correo: **Al comprador** — «Nos ponemos con tu compra», y que el coche está reservado para él
+correo: **Al vendedor** — «Hay un comprador para tu coche»: que no lo enseñe a nadie más
+correo: **Al equipo** — «Venta en curso», con si financia o no
+erp: Si financia, se espera a la entidad y se apunta lo que diga
+@ IDCars → el coche → «Venta en curso» → «La entidad la ha aprobado» o «La ha denegado»
++ la entidad y el importe financiado, si la aprueba
+correo: **Al comprador** — su financiación aprobada, o denegada y si lo paga él
+erp: Si se deniega, o lo paga él o se anula la venta
+@ IDCars → el coche → «Venta en curso» → «Lo paga él entero» o «Anular la venta»
++ el motivo, si se anula
+:::
+
+> **La financiación va primero y bloquea lo demás.** No se pide el ingreso ni se
+> hace la gestoría de un coche que quizá no puede pagar. Mientras está en estudio
+> sale en Pendientes como «ventas con la financiación en estudio»; denegada, en
+> rojo, porque hay que llamarle.
+
+> **Aprobada, se apunta también en la visita**: la entidad y el importe salen en
+> **Comisiones** para facturarle los 150 €, sin tener que decirlo dos veces.
+
+> **Gana el primero.** Si otro comprador del mismo coche pulsa «Quiero
+> comprarlo» cuando ya hay una venta en curso, se le dice que el coche ya tiene
+> una compra en marcha.
+
+> **Anular la vuelve a dejar como estaba**: el anuncio se publica otra vez, la
+> visita pasa a «fue y no se lo quedó», y al comprador y al vendedor se les
+> escribe con el motivo.
+
+> **Lo que falta, y es la fase siguiente:** el ingreso de los 17.900 € —del
+> comprador, de la entidad o de los dos—, la gestoría del cambio de nombre y la
+> liberación al vendedor: 299 € para nosotros y el resto para él. Mientras tanto
+> la venta sale en Pendientes como «ventas esperando el ingreso». Antes de
+> construirlo hay que decidir dónde se guarda el dinero y quién paga el Impuesto
+> de Transmisiones.
+
+---
+
 ## 8 · Cerrar el encargo
 
 Un encargo no se acaba solo. Se cierra a mano, con uno de estos tres finales, y

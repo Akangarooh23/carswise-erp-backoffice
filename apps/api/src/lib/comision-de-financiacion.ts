@@ -131,7 +131,15 @@ export const SQL_SIN_CERRAR = `
    WHERE quiere_financiar = TRUE
      AND resultado = 'compro'
      AND financiacion_resultado IS NULL
-     AND status <> 'cancelled'`;
+     AND status <> 'cancelled'
+     -- La de una venta en curso se decide en el encargo, antes de pagar, y
+     -- tiene su propio aviso: aquí saldría dos veces. Con to_jsonb porque esas
+     -- columnas las crea el encargo y pueden no existir todavía.
+     AND NOT EXISTS (
+       SELECT 1 FROM erp_encargos_venta ev
+        WHERE to_jsonb(ev)->>'venta_booking_id' = vehicle_visit_bookings.id::text
+          AND to_jsonb(ev)->>'venta_estado' = 'en_curso'
+     )`;
 
 /** Y cuáles son, para la lista. */
 export const SQL_LAS_SIN_CERRAR = `
@@ -142,6 +150,14 @@ export const SQL_LAS_SIN_CERRAR = `
      AND resultado = 'compro'
      AND financiacion_resultado IS NULL
      AND status <> 'cancelled'
+     -- La de una venta en curso se decide en el encargo, antes de pagar, y
+     -- tiene su propio aviso: aquí saldría dos veces. Con to_jsonb porque esas
+     -- columnas las crea el encargo y pueden no existir todavía.
+     AND NOT EXISTS (
+       SELECT 1 FROM erp_encargos_venta ev
+        WHERE to_jsonb(ev)->>'venta_booking_id' = vehicle_visit_bookings.id::text
+          AND to_jsonb(ev)->>'venta_estado' = 'en_curso'
+     )
    ORDER BY resultado_at ASC`;
 
 /**
