@@ -28,43 +28,49 @@ cliente: Pide en la web que le vendamos su coche
 erp: Se le llama y se le abre el encargo sobre su coche
 @ Leads → el lead → «Encargo de venta» → «Abrir encargo»
 + nada: se pulsa sobre el coche que él eligió
-erp: Se le manda el mandato y se apunta cuándo lo firma
-@ IDCars → el coche → «Encargo de venta» → «Mandato»
-+ la fecha de la firma y cómo nos consta
-erp: Se acuerda el precio y si firma la cláusula
-@ IDCars → el coche → «Encargo de venta»
-+ el precio que le proponemos y la casilla de la cláusula
-cliente: Se hace la tasación gratuita
-@ En PopCar, no en el ERP — sale en **IDCars** cuando está hecha
-+ nada: es un cuestionario, y de ahí sale el precio
-cliente: Sube el coche, sus papeles y el informe de estado
-@ IDCars → el coche → «Datos del vehículo» y «Documentos»
-+ matrícula, kilómetros, fotos, permiso, ficha técnica e ITV
+erp: Se le manda el mandato
+@ IDCars → el coche → «Encargo de venta» → «Mandárselo»
++ nada: sale con su número, el coche y las condiciones
+cliente: Lo firma y lo sube desde su panel
+@ En PopCar, no en el ERP — el encargo queda firmado solo en **IDCars**
++ el papel firmado, en PDF, Word o una foto
+erp: Se le propone el precio, que arranca con su tasación
+@ IDCars → el coche → «Encargo de venta» → «Precio que le proponemos»
++ el precio, y se le da a Guardar
+cliente: Sube el coche, sus papeles, el seguro, el mantenimiento y el informe
+@ En PopCar, no en el ERP — cada cosa se ve hecha en **IDCars**
++ matrícula, kilómetros, fotos, permiso, ficha técnica, ITV, seguro y facturas
 cliente: Y elige las franjas en las que puede enseñarlo
-@ IDCars → el coche → «Franjas horarias»
+@ En PopCar, no en el ERP — cuentan en **IDCars**, en el encargo
 + al menos seis en los próximos catorce días
-erp: Con las cinco puertas abiertas, se le lleva al taller
+erp: Con todo lo suyo hecho, se le da cita en el taller y se le manda
 @ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
-+ a qué taller se lleva, y después lo que dijeron
++ taller, dirección, día y hora; y «Enviársela al cliente»
+erp: Cuando el taller contesta, se apunta cómo salió
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
++ lo que dijeron, y uno de los tres resultados
+erp: Y se le manda el precio de salida para que lo firme
+@ IDCars → el coche → «Encargo de venta» → «Mandarle el precio»
++ nada: el precio tiene que estar guardado
 erp: Se publica en nuestro marketplace
-@ Marketplace → VO Particulares → «Publicar»
-+ el precio de salida que se ha acordado con él
+@ IDCars → el coche → «Publicar en Marketplace»
++ nada: el precio y el título salen solos del encargo y del coche
 correo: **Al cliente** — su coche ya está anunciado, con el enlace
-@ Sale solo, en cuanto se publica en **Marketplace**
+@ Sale solo, en cuanto se publica desde **IDCars**
 trabajador: Y a mano en el portal, con nuestro teléfono
 @ IDCars → el coche → «Encargo de venta» → «Anuncios en portales»
 + el enlace del anuncio; el corto se copia de ahí, con su UTM
-cliente: Un comprador llega del portal y pide cita sin registrarse
+cliente: Un comprador llega del portal y pide cita
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y si le interesaría financiarlo
-erp: Si dijo que sí, sale en Pendientes para llamarle
+erp: Si dijo que quiere financiar, sale en Pendientes para llamarle
 @ Agenda → la visita → «quiere financiar · marcar llamado»
 + nada: se pulsa cuando ya se le ha llamado
-sistema: Hasta que no pulsa el enlace del correo, no hay reserva
-@ Agenda → la visita aparece cuando la confirma
-+ nada: el hueco sigue libre mientras tanto
-erp: La visita se confirma y se cierra como todas
-@ Agenda → la visita → «Confirmar», y después «Fue y se lo quedó»
+erp: La visita se confirma, y le llega al comprador y al vendedor
+@ Agenda → la visita → «Confirmar»
++ dónde es y por quién preguntar
+erp: Y cuando pasa el día, se dice cómo acabó
+@ Agenda → «visitas por cerrar» → «Fue y se lo quedó»
 + nada: son botones
 erp: Se cierra el encargo y se factura lo que toque
 @ IDCars → el coche → «Cerrar el encargo»
@@ -73,9 +79,11 @@ correo: **Al cliente** — cómo acabó y qué se le factura, o que no se le cob
 @ Sale solo, en cuanto se cierra desde **IDCars**
 :::
 
-Dieciséis pasos, de los que tres son correos que salen solos. Cinco los hace el
-cliente, dos pasan fuera del ERP y uno es trabajo de persona: poner y quitar el
-anuncio del portal.
+El orden no es de estilo: **mandato → lo suyo → taller → precio firmado →
+anuncio**. Sin mandato, sin sus siete puertas o sin taller no se publica. El
+precio firmado no bloquea el botón, pero va antes porque sin él la cancelación
+le cuesta 150 € desde el primer día; y va después del taller porque el precio
+se fija con lo que diga.
 
 ---
 
@@ -133,8 +141,9 @@ erp: Se le manda el mandato, hecho con lo que hay en el encargo
 @ IDCars → el coche → «Encargo de venta» → «Mandárselo»
 + nada: sale con su número, el coche, el precio y las condiciones
 correo: **Al cliente** — el mandato adjunto y el trato en tres líneas
-trabajador: Lo firma y lo devuelve
-erp: Se apunta cuándo lo firmó y cómo nos consta
+cliente: Lo firma y lo sube desde **Mis solicitudes**
+sistema: El encargo queda firmado solo, con la fecha y el papel guardado
+erp: Si lo firmó por otra vía, se apunta a mano
 @ IDCars → el coche → «Encargo de venta» → «Ya lo ha firmado»
 + la fecha, una de las tres maneras, y dónde está el papel
 :::
@@ -169,16 +178,26 @@ erp: Se apunta cuándo lo firmó y cómo nos consta
 > papeles distintos y el que el cliente tiene delante no sería el que dice el
 > ERP. Lo que sí queda guardado es cuál firmó: su número y la fecha.
 
-> **Mientras no esté firmado sale en Pendientes**, en rojo. Ese coche se puede
-> anunciar y se puede vender igual — lo que no se puede es cobrarlo, y cuanto
-> más tarde se pida la firma más raro es pedirla.
+> **Mientras no esté firmado sale en Pendientes**, en rojo, y **ese coche no se
+> publica.** El botón de publicar lo dice primero de todo —antes que las
+> puertas y que el taller— y el servidor tampoco deja. Antes se podía anunciar
+> sin mandato y cobrarlo después; pero un anuncio con nuestro teléfono sobre un
+> coche que nadie nos ha encargado por escrito es trabajar gratis, y cuanto más
+> tarde se pide la firma más raro es pedirla.
+
+> **Lo que ha firmado se puede descargar, aquí y en su panel.** En el ERP, desde
+> el encargo. El cliente lo tiene en **Mis coches** y en su panel, en «Lo que has
+> firmado», junto al precio de salida cuando lo firme. Solo ve los papeles de sus
+> coches: el enlace se comprueba contra su sesión antes de abrir nada.
 
 ---
 
 ## 2 · El precio, y si lo acepta
 
 El precio no se lo inventa nadie: sale de la **tasación gratuita** que se hace
-el cliente. Se le propone ese número y él lo acepta firmando la cláusula, o no.
+el cliente. Aquí se habla y se guarda; **se firma después del taller**, en el
+apartado 4b, porque hasta que el taller no dice cómo está el coche el número
+puede cambiar.
 
 :::flujo
 cliente: Se hace la tasación gratuita de su coche
@@ -186,11 +205,24 @@ cliente: Se hace la tasación gratuita de su coche
 + nada: un cuestionario, y sale un importe
 erp: El campo del precio arranca con lo que dio su tasación
 @ IDCars → el coche → «Encargo de venta» → «Precio que le proponemos»
-+ el precio, si se acuerda otro distinto
-erp: Y se marca si ha firmado la cláusula del precio
-@ IDCars → el coche → «Encargo de venta»
-+ una casilla, y se guarda
++ el precio, si se acuerda otro distinto, y «Guardar»
+sistema: Y ese precio pasa a su coche y a su anuncio, si ya lo tiene
 :::
+
+> **Escribirlo no es guardarlo.** Si se teclea un número y no se pulsa
+> «Guardar», el encargo lo dice debajo: «Has escrito X € y todavía no está
+> guardado». Mandarle el documento del precio con el número viejo es pedirle que
+> firme otra cifra.
+
+> **El precio acordado manda sobre el anuncio.** Al guardarlo se cambia en su
+> coche y en la oferta del marketplace si ya estaba publicada, y al publicar se
+> usa ese y no el que tuviera el coche. Antes cada sitio se quedaba con el
+> número del día en que se escribió, y el anuncio salía a 16.600 € con un
+> precio firmado de 17.900 €.
+
+> **La casilla «Ha firmado la cláusula del precio» se queda para los casos
+> raros** —lo firmó delante, lo dijo por teléfono—. La vía buena es el documento
+> del 4b: la casilla se marca sola cuando lo sube firmado.
 
 > **Es lo que decide la penalización**, así que no es un detalle administrativo:
 
@@ -200,8 +232,9 @@ erp: Y se marca si ha firmado la cláusula del precio
 | Firmó la cláusula · se va después de 30 días | **No** |
 | No firmó la cláusula · no vende con nosotros | **Sí, siempre y desde el día 1** |
 
-> **Los 30 días cuentan desde que firmó**, no desde que se marca la casilla. Si
-> se le apunta tres semanas después, le quedan diez días, no treinta.
+> **Los 30 días cuentan desde que firmó el mandato**, no desde que se marca la
+> casilla ni desde que sube el precio firmado. Si el precio lo firma tres
+> semanas después del mandato, le quedan diez días, no treinta.
 
 > **Por defecto nace en «no aceptó».** Es la respuesta prudente: da por hecho que
 > se le puede cobrar, y eso lo corrige el cliente en cuanto pase. Al revés se
@@ -209,14 +242,15 @@ erp: Y se marca si ha firmado la cláusula del precio
 
 ---
 
-## 3 · Las cinco puertas
+## 3 · Las siete puertas
 
 Ninguna es opcional. Mientras falte una, el coche no se publica: salen como una
 lista con su semáforo, y el botón de publicar no deja.
 
-Estas cinco son **cosas suyas**. Hay una sexta que ponemos nosotros —la revisión
-del taller, en el apartado siguiente—, y por eso van separadas: cuando se le
-llama, lo que se le pide es esto y nada más.
+Estas siete son **cosas suyas**. Lo que ponemos nosotros —la revisión del
+taller y el precio firmado, en los apartados siguientes— va aparte: cuando se
+le llama, lo que se le pide es esto y nada más. Él las ve en su panel como «lo
+que te falta», con un botón por cada una.
 
 :::flujo
 cliente: El coche, como IDCar
@@ -231,9 +265,15 @@ cliente: La tasación gratuita
 cliente: El informe de estado
 @ IDCars → el coche → «Informe de estado»
 + nada: se abre en el móvil y son fotos guiadas
-cliente: Y cuándo puede enseñarlo
+cliente: Cuándo puede enseñarlo
 @ IDCars → el coche → «Franjas horarias»
 + seis franjas como mínimo, dentro de los próximos catorce días
+cliente: El seguro
+@ En PopCar, desde su panel — se ve en **IDCars**, en el encargo
++ al menos un papel del seguro subido
+cliente: Y el mantenimiento
+@ En PopCar, desde su panel — se ve en **IDCars**, en el encargo
++ al menos una factura de revisión subida
 erp: Desde aquí se ve qué le falta y se le puede reclamar
 @ IDCars → el coche → «Encargo de venta»
 + nada: la lista se pinta sola
@@ -252,6 +292,11 @@ erp: Desde aquí se ve qué le falta y se le puede reclamar
 > la matrícula y la tasación empieza con la marca, el modelo, el año y los
 > kilómetros ya puestos: no tiene que volver a escribir lo que ya tenemos.
 
+> **El seguro y el mantenimiento cuentan con papel, no con datos escritos.** Una
+> compañía y un número de póliza se teclean de memoria y no prueban nada. El
+> historial de revisiones es lo primero que pregunta quien compra, y el seguro
+> hace falta el día del traspaso.
+
 > **Las franjas son suyas, no nuestras.** El que enseña el coche es él, en su
 > casa y a su hora.
 
@@ -268,16 +313,54 @@ permite decir algo de la mecánica.
 
 :::flujo
 erp: Se le da cita en un taller de la red
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller» → «Guardar cita»
++ el taller, la dirección, el día y la hora
+erp: Y se le manda
+@ IDCars → el coche → «Encargo de venta» → «Revisión del taller» → «Enviársela al cliente»
++ nada: sale con lo guardado
+correo: **Al cliente** — taller, dirección, día y hora, y que desde su panel puede moverla
+sistema: En su panel le sale la cita, en el resumen y en la campana
+cliente: Si no le viene bien, pide otro día o que se anule
+@ En PopCar, no en el ERP — le sale en rojo en **IDCars** y en Pendientes
++ «No puedo ese día» o «Anular la cita», y por qué
+erp: Se le cambia la cita, o se anula
 @ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
-+ a qué taller se lleva y qué día
-trabajador: Se le llama al cliente para decirle dónde y cuándo
++ el día nuevo y «Guardar cita» otra vez, o «Anular la cita»
+correo: **Al cliente** — el recordatorio, el día antes por la mañana o esa misma mañana
 erp: Se apunta lo que dijo el taller
 @ IDCars → el coche → «Encargo de venta» → «Revisión del taller»
 + lo que encontraron, y cuál de los tres resultados
+sistema: Y en su panel pasa a «revisión hecha · preparando el anuncio»
 :::
 
-> **Es la sexta puerta, y la única nuestra.** Las cinco anteriores son cosas del
-> cliente; esta la ponemos nosotros. Mientras no esté hecha, el botón de
+> **Guardar no es mandar.** «Guardar cita» deja la cita en el ERP y el cliente no
+> se entera. Hasta que no se pulsa «Enviársela al cliente» no le llega el correo
+> ni le sale en el panel: así se puede ir rellenando sin mandarle una cita a
+> medias. Si falta algo —la dirección, la hora—, el botón dice qué.
+
+> **Lo que pide el cliente sale en rojo y en Pendientes**, como «citas del taller
+> que piden mover», con el enlace a ese coche. En el encargo sale lo que pidió y
+> el motivo que escribió. Se apaga en cuanto se toca la fecha o se anula: al
+> guardarla de nuevo hay que volver a pulsar «Enviársela al cliente».
+
+> **«Anular la cita» la deja como estaba antes de darla**: «Por llevar», sin día
+> y sin aviso. No borra la revisión ni lo que se hubiera apuntado.
+
+> **El recordatorio sale solo, y una sola vez.** Lo manda una tarea que corre
+> cada mañana (a las 7:00 UTC: las 9 en verano, las 8 en invierno) y recuerda
+> las citas que caen en las 36 horas siguientes. Así sale el día de antes, o esa
+> misma mañana si la cita se dio con menos margen. No se recuerda una cita que
+> no se le ha enviado, que ya está hecha, o que ha pedido mover o anular; y
+> tampoco si se le envió hace menos de tres horas, para no mandarle dos correos
+> seguidos diciendo lo mismo. Va **por correo, no al móvil**: la cita del taller
+> no manda aviso push (ver «Avisos al móvil»).
+
+> **Mientras tanto el cliente ve por dónde va**: la cita, luego «revisión hecha»,
+> «preparando el anuncio» y «publicado» con el enlace. Lo que no ve es lo que
+> apuntó el taller: eso es nuestro hasta que se lo contemos.
+
+> **Es la puerta nuestra.** Las siete anteriores son cosas del cliente; esta la
+> ponemos nosotros. Mientras no esté hecha, el botón de
 > publicar sale apagado y el servidor tampoco deja: un anuncio nuestro dice que
 > el coche está comprobado, y eso no lo puede sostener una foto.
 
@@ -302,23 +385,84 @@ erp: Se apunta lo que dijo el taller
 
 ---
 
+## 4b · El precio de salida, firmado
+
+Con el taller hecho ya se sabe lo que vale el coche. Ese número se le manda en
+un documento y lo firma igual que el mandato: lo sube desde su panel.
+
+**No bloquea publicar**, a diferencia del mandato y del taller. Lo que cambia es
+cuánto paga si se retira: mientras no lo acepte por escrito, la cancelación son
+150 € desde el primer día. Por eso se le manda antes de anunciar, aunque el
+botón de publicar no lo exija.
+
+:::flujo
+erp: Se le manda el documento del precio
+@ IDCars → el coche → «Encargo de venta» → «Mandarle el precio»
++ nada: sale con el precio guardado y el coche
+correo: **Al cliente** — el precio de salida y dónde subirlo firmado
+sistema: En su panel le sale como un paso más, «Subir el precio firmado»
+cliente: Lo firma y lo sube
+@ En PopCar, no en el ERP — el encargo pasa a «Ha aceptado el precio por escrito» en **IDCars**
++ el documento firmado, en PDF, Word o una foto
+erp: Y el firmado se descarga desde el encargo
+@ IDCars → el coche → «Encargo de venta» → «Descargar el firmado»
++ nada: se abre el que subió
+:::
+
+> **El botón dice por qué no, mientras no toque.** Por orden: sin mandato
+> firmado, sin taller hecho, con el taller diciendo «no se puede vender así», o
+> sin precio guardado. Pedirle que acepte una cifra antes del taller es pedirle
+> que acepte una que vamos a tener que cambiar.
+
+> **Mientras no se le mande sale en Pendientes**, como «encargos sin mandarle el
+> precio», y en el menú lateral **IDCars** lleva el número en rojo. El aviso se
+> apaga al mandarlo, no al firmarlo: lo segundo depende de él, y un aviso que
+> solo se apaga cuando contesta otro se queda encendido semanas. En la lista
+> de IDCars cada coche dice qué le falta, y si solo es uno, el aviso de
+> Pendientes lleva directo a ese coche.
+
+> **Al subirlo, se marca solo**: la casilla del precio, la fecha y el documento
+> guardado. Los 30 días siguen contando desde el mandato.
+
+> **El documento se genera, como el mandato**, con su serie propia (`PC-PRECIO`)
+> y lo que hay en el encargo el día que se manda. Si se cambia el precio después
+> de mandarlo, hay que volver a mandarlo: el botón pasa a «Volver a mandárselo».
+
+---
+
 ## 5 · Se publica
 
 En nuestro marketplace es un botón. En el portal es una persona.
 
 :::flujo
 erp: Se publica en nuestro marketplace
-@ Marketplace → VO Particulares → «Publicar»
-+ el precio acordado
+@ IDCars → el coche → «Publicar en Marketplace»
++ nada: el precio acordado y el título salen solos
 trabajador: Y se pone a mano en el portal
 @ IDCars → el coche → «Encargo de venta» → «Anuncios en portales»
 + el enlace del anuncio, que es por donde se entra a borrarlo
 :::
 
-> **No se publica si falta una puerta.** El botón sale apagado, pero la
+> **No se publica sin mandato firmado, si falta una puerta o sin el taller.** El
+> botón sale apagado y dice por qué, empezando por el mandato; pero la
 > comprobación de verdad está en el servidor y antes de escribir nada: la
 > promesa de que un anuncio nuestro lleva informe y se puede visitar tiene que
 > sostenerse venga la llamada de donde venga.
+
+> **El anuncio se escribe solo con lo del coche, no con su alias.** El título es
+> marca, modelo y versión —si el cliente llamó a su coche «Prueba» en su panel,
+> eso no sale—, y el precio es el acordado en el encargo, no el que tuviera el
+> coche. Si se publicó antes de arreglarlo, hay que volver a publicar para que
+> el título se refresque.
+
+> **La ficha que ve el comprador enseña lo que hay en el ERP**: todas las fotos
+> del IDCar, en el orden en que se subieron, y el informe de estado con sus
+> fotos. Debajo de la financiación le ofrece venderle el coche que tiene ahora
+> —«Nosotros lo vendemos por ti», 299 € solo si se vende—, que es de donde sale
+> el siguiente encargo.
+>
+> Cambiar el orden de las fotos en el ERP todavía **no** cambia el orden de la
+> ficha: sale la principal primero y después por fecha de subida.
 
 > **El teléfono de los anuncios es el 684 717 736**, nunca el del cliente. Que no
 > le llamen a él es la mitad de lo que está pagando.
@@ -352,9 +496,10 @@ trabajador: Y se pone a mano en el portal
 > del bien, y nosotros no lo somos en ningún momento — pero decirlo en el anuncio
 > cierra la discusión antes de que empiece.
 
-> **Retirar el anuncio del portal es a mano y nadie lo vigila.** Es lo que pasó
-> con el Kia Sorento, pero en un canal que no controlamos y con nuestro teléfono
-> debajo. Lo que falta para arreglarlo está escrito y probado; falta enchufarlo.
+> **Retirar el anuncio del portal sigue siendo a mano, pero ya se vigila.** Es lo
+> que pasó con el Kia Sorento: un anuncio vivo en un canal que no controlamos y
+> con nuestro teléfono debajo. Ahora sale en Pendientes como «anuncios que hay
+> que quitar de los portales», con el enlace a **Portales**.
 
 ---
 
@@ -370,15 +515,32 @@ cliente: O llama al teléfono del anuncio, que es el nuestro
 trabajador: Se le pregunta lo básico y se le manda el enlace
 @ Agenda → la visita, cuando la pida
 + nada: la pide él desde la ficha
-cliente: Elige franja y pide la cita **sin cuenta y sin registrarse**
-correo: **Al comprador** — un enlace para confirmar que ese correo es suyo
+cliente: Elige franja y pide la cita, con cuenta o **sin registrarse**
+correo: **Al comprador sin cuenta** — un enlace para confirmar que ese correo es suyo
 cliente: Pulsa el enlace y entonces sí se reserva
 @ En PopCar, no en el ERP — cae en **Agenda** como todas
 + nombre, teléfono, correo y la casilla de financiación
+correo: **Al comprador** — «hemos recibido tu solicitud», todavía sin calendario
+correo: **Al equipo** — que hay una visita por confirmar
 erp: Nos entra pendiente de confirmar
 @ Agenda → «visitas por confirmar»
 + nada: entra sola
 :::
+
+> **Con cuenta no hay enlace.** Si ha entrado en PopCar, su correo ya está
+> comprobado por la sesión: la visita se crea pendiente al momento y le llega
+> directamente «hemos recibido tu solicitud». El enlace es solo para el que
+> llega sin cuenta.
+
+> **Al vendedor no se le escribe todavía.** Una visita pendiente es una
+> solicitud que no hemos filtrado, y a él le prometimos filtrarlas. Antes le
+> llegaba «alguien ha reservado» con el teléfono del comprador en cuanto
+> alguien pulsaba; ahora se le escribe desde el ERP al confirmarla.
+
+> **Los correos se esperan antes de contestar.** En Vercel, un correo lanzado
+> sin esperar se corta en cuanto la página responde, y no deja error en ningún
+> sitio. Así se perdieron los de las primeras visitas de prueba: la reserva se
+> creaba y no le llegaba nada a nadie.
 
 > **Sin cuenta, pero no sin comprobar.** Pedir cita sin registrarse era el único
 > modo de que alguien de coches.net llegara a algo. Pero la sesión estaba ahí por
@@ -419,7 +581,9 @@ al vendedor sí le podemos escribir, porque es cliente nuestro.
 erp: Se confirma la visita
 @ Agenda → la visita → «Confirmar»
 + dónde es y por quién preguntar
-correo: **Al comprador y al vendedor** — con el calendario
+correo: **Al comprador** — la cita confirmada, con el calendario
+correo: **Al vendedor** — día, hora, dónde y el nombre de quien viene, con el calendario
+correo: **Al comprador** — el recordatorio, el día antes y esa mañana
 cliente: Se ven, y el cliente enseña su coche
 erp: Cuando pasa el día, se dice cómo acabó
 @ Agenda → «visitas por cerrar»
@@ -428,6 +592,15 @@ erp: Cuando pasa el día, se dice cómo acabó
 
 > El vendedor es el cliente particular, no un comercial nuestro. Nosotros no
 > vamos a la visita.
+
+> **Al vendedor le llega el nombre, no el teléfono ni el correo del comprador.**
+> Que no le llamen directamente es parte de lo que paga, y si a esa hora no
+> puede, contesta al correo y la movemos nosotros. Su correo va aparte del del
+> comprador: si falla uno, el otro sale igual.
+
+> **El recordatorio es solo para el comprador y solo por correo.** Al vendedor
+> no se le recuerda la visita, y ninguno de los dos recibe aviso en el móvil por
+> ella (ver «Avisos al móvil»).
 
 ---
 
@@ -535,15 +708,58 @@ erp: Y la factura queda en su sitio
 
 ---
 
+## Avisos al móvil
+
+Todo lo de este flujo llega **por correo**. Al móvil, con la app de PopCar,
+solo llegan dos cosas, y de este camino solo una.
+
+| Aviso | ¿Llega al móvil? |
+|---|---|
+| Tu informe de estado ya está | **Sí**, detrás del correo con el PDF |
+| Tu cita es mañana / es hoy — de una cita de **Leads** o una entrega de importación | **Sí**, detrás del correo |
+| La cita del taller y su recordatorio | No, solo correo |
+| Las visitas del marketplace (pedida, confirmada, recordatorio) | No, solo correo |
+| El mandato y el precio de salida | No, solo correo y su panel |
+| La ITV que vence | Sí, pero no sale de aquí: la programa la propia app en el móvil, a un mes y a una semana, sin pasar por el servidor |
+
+> **El aviso va detrás del correo, nunca en su lugar.** El correo lleva el papel
+> y queda guardado; el aviso solo dice «ya está». Si el aviso falla, no cambia
+> nada: el correo ya salió y la cita ya está marcada como avisada.
+
+> **A qué móviles se manda lo guarda una tabla**, `moveadvisor_push_devices`:
+> una fila por móvil, con el correo de su dueño. Se apunta cuando el cliente
+> enciende los avisos en **Perfil** de la app —el mismo interruptor que los de
+> la ITV— y se borra al cerrar sesión; el servidor además quita solo los móviles
+> que Google dice que ya no existen. Mientras ningún móvil se haya apuntado, la
+> tabla no existe: se crea sola la primera vez.
+
+> **Hoy no sale ningún aviso push, aunque el código esté.** Hacen falta dos
+> piezas de Firebase y no está ninguna: la credencial del servidor
+> (`FIREBASE_SERVICE_ACCOUNT` en Vercel) y el fichero de la app Android
+> (`google-services.json`). Sin la segunda, el móvil no consigue registrarse y
+> no se apunta en la tabla; sin la primera, el servidor guarda los móviles pero
+> no manda nada. En ningún caso se rompe nada ni se le enseña un error al
+> cliente. Los de la ITV sí funcionan, porque no dependen de Firebase.
+
+> **Si alguien pide que borremos sus datos**, sus móviles también se borran: la
+> línea está en la guía de supresión de PopCar, y solo hay que ejecutarla si la
+> tabla ya existe.
+
+---
+
 ## Lo que el sistema no hace
 
 | No hace | Lo hace una persona |
 |---|---|
 | Llamar al cliente en 24 horas, que es lo que promete la web | Llamarle. El ERP solo avisa cuando el plazo ya se ha pasado |
 | Publicar en el portal, ni retirarlo cuando se vende | Ponerlo y quitarlo a mano. El ERP apunta dónde está y avisa cuándo |
+| Darle cita en el taller | Elegir taller, día y hora, y pulsar «Enviársela al cliente». El recordatorio sí sale solo |
+| Cambiar la cita cuando el cliente la pide mover | Llamarle si hace falta, guardar la nueva y volver a enviársela. El ERP avisa en rojo |
 | Llevar el coche al taller | Llevarlo. El resultado se apunta en el encargo |
 | Contestar el teléfono del anuncio | Cualificar al comprador y mandarle el enlace |
-| Conseguir la firma del mandato | Recogerlo firmado y apuntarlo |
+| Conseguir la firma del mandato y del precio | Mandárselos. Los sube él firmados y el encargo se marca solo |
+| Confirmar las visitas | Revisarlas en Agenda y confirmarlas: hasta entonces el vendedor no sabe nada |
+| Mandar avisos al móvil del taller o de las visitas | Nada: van por correo. Ver «Avisos al móvil» |
 | Cerrar el encargo | Elegir cómo acabó |
 | Vender la financiación al comprador | Llamarle. Una hora por operación, y no se automatiza |
 | Mandarle la factura al cliente él solo | Entrar a Facturación y descargar el PDF: eso es lo que la manda. El ERP avisa de las que faltan |
@@ -555,7 +771,13 @@ erp: Y la factura queda en su sitio
 | Los que piden que les vendamos el coche | **Leads**, tipo «Vender su coche» |
 | Abrirle el encargo | **Leads** → el lead → «Encargo de venta» |
 | Qué le falta por traer | **IDCars** → el coche → «Encargo de venta» |
-| El precio y la cláusula | **IDCars** → el coche → «Encargo de venta» |
+| El mandato, mandarlo y si lo ha firmado | **IDCars** → el coche → «Encargo de venta» |
+| La cita del taller, y lo que pide el cliente | **IDCars** → el coche → «Encargo de venta» → «Revisión del taller» |
+| El precio, mandarle el documento y descargar el firmado | **IDCars** → el coche → «Encargo de venta» |
+| Qué coche tiene algo pendiente | **IDCars**: el número rojo del menú, y la marca en la fila de cada coche |
+| Las citas que piden mover y los precios sin mandar | **Dashboard** → Pendientes, con enlace al coche |
+| Publicarlo | **IDCars** → el coche → «Publicar en Marketplace» |
+| Los anuncios que hay que quitar de un portal | **Dashboard** → Pendientes, y **Portales** |
 | Los que están a punto de poder irse | **Dashboard** → Pendientes |
 | Los que se quedaron sin franjas | **Dashboard** → Pendientes |
 | Los vendidos sin cerrar el encargo | **Dashboard** → Pendientes |
@@ -570,7 +792,7 @@ El camino entero, en el orden en que pasan las cosas:
     npm run test:flujo
 
 Recorre los trece pasos contra la base de verdad —lead, IDCar, encargo, mandato,
-las seis puertas, publicar, la visita del portal, cerrar, facturar, la
+las puertas, publicar, la visita del portal, cerrar, facturar, la
 transferencia y el aviso de retirar del portal— y comprueba en cada uno lo que
 tiene que ser cierto **y lo que todavía no**. Todo dentro de una transacción que
 se deshace: no deja ni una fila.
@@ -610,8 +832,12 @@ va lo que toca a este camino.
 | Si al que agota el plazo se le cobra algo | Ana |
 | Si la guía de subir el coche va **adjunta** al correo o enlazada | Ana. Hoy va enlazada |
 | Qué pasa con el comprador financiado después de comprar | Sin diseñar |
+| Configurar Firebase para que salgan los avisos al móvil | Ana. Faltan la credencial del servidor y el fichero de la app |
+| Si la cita del taller y las visitas deberían avisar también al móvil | Ana. Hoy van solo por correo |
+| Si el precio de salida firmado debería bloquear la publicación, como el mandato | Ana. Hoy solo avisa |
+| Que el orden de las fotos del ERP sea el de la ficha del comprador | Sin hacer. Hoy sale por fecha de subida |
 
-> **El mandato y el contrato no los ha visto un abogado.** Son los dos papeles
-> que firman personas, y es lo único de todo esto que, si está mal, no se
+> **El mandato, el precio de salida y el contrato no los ha visto un abogado.**
+> Son los papeles que firman personas, y es lo único de todo esto que, si está mal, no se
 > descubre hasta que alguien discute una factura.
 

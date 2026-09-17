@@ -207,12 +207,16 @@ mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
 | **CIF y razón social** de Gamboa Ocasión y VIAN | Sin eso no se les puede emitir la comisión |
 | Y su **correo** en la ficha de Proveedores | Sin él la factura se emite pero no se manda, y se queda avisando |
 | Si la guía de subir el coche va **adjunta** al correo o enlazada | Hoy va enlazada: adjuntarla obliga a una segunda copia del texto |
+| **Configurar Firebase** para los avisos al móvil | Sin la credencial del servidor y el fichero de la app Android no sale ningún aviso push: ni el del informe listo ni el de las citas. Todo llega igual por correo |
+| Si la cita del taller y las visitas avisan también al móvil | Hoy van solo por correo, aunque Firebase se configure |
+| Si el precio de salida firmado bloquea la publicación, como el mandato | Hoy solo sale en Pendientes; sin él la cancelación cuesta 150 € desde el primer día |
 
 ### Sin revisar por nadie de fuera
 
-> **El mandato y el contrato de compraventa no los ha visto un abogado.** Están
+> **El mandato, el precio de salida y el contrato de compraventa no los ha visto
+> un abogado.** Están
 > escritos con la cabeza puesta en lo que hacemos y en decir lo que no somos,
-> pero son los dos papeles que firman personas. Es lo único de todo esto que, si
+> pero son los papeles que firman personas. Es lo único de todo esto que, si
 > está mal, no se descubre hasta que alguien discute una factura.
 
 ### Sin diseñar
@@ -220,6 +224,7 @@ mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
 | Qué |
 |---|
 | Poner y quitar el anuncio del portal: seguirá siendo a mano, y es una decisión, no una falta |
+| Que el orden de las fotos en el ERP sea el de la ficha del comprador: hoy sale la principal y después por fecha de subida |
 
 > **Lo del comprador financiado ya no está sin diseñar.** Después de comprar se
 > cierra su financiación en **Agenda** —con qué entidad y cuánto—, y de ahí sale
