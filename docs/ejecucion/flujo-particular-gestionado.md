@@ -606,7 +606,7 @@ cliente: **Ninguna**: la rechaza
 @ En PopCar, no en el ERP — la visita se cancela en **Agenda**
 + nada
 correo: **Al comprador** — que esa no puede ser, con el enlace para elegir otra
-correo: **Al comprador** — el recordatorio, el día antes y esa mañana
+correo: **Al comprador y al vendedor** — el recordatorio, el día antes y esa mañana, con la franja y dónde
 cliente: Se ven, y el cliente enseña su coche
 erp: Cuando pasa el día, se dice cómo acabó
 @ Agenda → «visitas por cerrar»
@@ -632,8 +632,10 @@ erp: Cuando pasa el día, se dice cómo acabó
 > la podía pedir cualquiera que supiera el identificador del anuncio, y traía el
 > correo y el teléfono de cada comprador y la llave para cancelar sus visitas.
 
-> **El recordatorio es solo para el comprador**, por correo y al móvil. Al
-> vendedor no se le recuerda la visita.
+> **El recordatorio les llega a los dos**, por correo y al móvil: el vendedor
+> es quien abre la puerta y enseña el coche. Al vendedor, con quién viene y su
+> enlace por si al final no puede. En los coches de concesionario, solo al
+> comprador.
 
 > **Si el comprador la cancela, al vendedor se le dice**, pendiente o
 > confirmada, porque sabía de ella desde que se pidió: con el nombre y sin el
@@ -758,7 +760,8 @@ tiene la app de PopCar con los avisos encendidos. Al buzón del equipo, no.
 | Su coche ya anunciado | «Volkswagen T-Roc ya está anunciado» |
 | La visita pedida, confirmada, cambiada o cancelada — al comprador | «Hemos recibido tu solicitud de visita», «Tu visita está confirmada»… |
 | La visita confirmada o cancelada — al vendedor | «Alguien va a ver tu coche» / «Se ha cancelado una visita a tu coche» |
-| El recordatorio de la visita, el día antes y ese día | «Tu cita es mañana» / «Tu cita es hoy» |
+| El recordatorio de la visita, el día antes y ese día — al comprador | «Tu cita es mañana» / «Tu cita es hoy» |
+| El mismo recordatorio — al vendedor particular | «Mañana vienen a ver tu coche» / «Hoy vienen a ver tu coche» |
 | El cierre del encargo | «Tu encargo de venta se ha cerrado» |
 | Tu informe de estado ya está | «Tu informe de estado ya está» |
 | Cualquier otro correo del ERP al cliente | Su asunto, y «Te lo hemos mandado por correo» |
