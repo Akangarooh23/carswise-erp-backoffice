@@ -16,6 +16,7 @@
  */
 import { config } from '../config.js';
 import { NOMBRE, SITIO, CORREO_CONTACTO } from './marca.js';
+import { avisaAlMovil, elAvisoDelCorreo, type AvisoAlMovil } from './avisos-al-movil.js';
 
 const RESEND = 'https://api.resend.com/emails';
 
@@ -192,6 +193,14 @@ export interface Envio {
    * de su propia cita.
    */
   alClienteSiempre?: boolean;
+  /**
+   * Lo que sale en el móvil del cliente, si tiene la app.
+   *
+   * Todo correo al cliente (`alClienteSiempre`) avisa también al móvil. Sin
+   * esto, el aviso lleva el asunto de título; con esto, el texto corto que se
+   * lee en la pantalla bloqueada. Un correo al equipo no avisa a nadie.
+   */
+  movil?: AvisoAlMovil;
 }
 
 /**
@@ -210,7 +219,7 @@ function destinatario(to: string, alClienteSiempre?: boolean): string {
 }
 
 /** Manda. Lanza si Resend contesta mal, para que la ruta pueda decirlo. */
-export async function enviar({ to, subject, html, attachments, alClienteSiempre }: Envio): Promise<void> {
+export async function enviar({ to, subject, html, attachments, alClienteSiempre, movil }: Envio): Promise<void> {
   if (!config.RESEND_API_KEY) throw new Error('RESEND_API_KEY no configurada');
   const destino = destinatario(to, alClienteSiempre);
   const res = await fetch(RESEND, {
@@ -228,5 +237,17 @@ export async function enviar({ to, subject, html, attachments, alClienteSiempre 
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
     throw new Error(err.message || `Resend devolvió ${res.status}`);
+  }
+
+  /*
+   * Y al móvil, después y solo si el correo salió.
+   *
+   * Aquí y no en cada ruta: son treinta y tantos correos al cliente, y el día
+   * que se escriba uno nuevo tiene que avisar al móvil sin que nadie se acuerde.
+   * Se espera —en Vercel lo que no se espera se corta— pero `avisaAlMovil` no
+   * lanza nunca: si el aviso falla, el correo sigue contando como enviado.
+   */
+  if (alClienteSiempre) {
+    await avisaAlMovil(to, elAvisoDelCorreo(subject, movil));
   }
 }

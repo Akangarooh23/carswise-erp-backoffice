@@ -215,11 +215,11 @@ export function lasCondiciones(d: DatosDelMandato): string[] {
       + `adelantado: si no se vende, no se paga esta cantidad.`,
     d.acepto_el_precio
       ? `<b>Si el titular retira el encargo antes de ${DIAS_HASTA_SALIR_GRATIS} días</b> desde `
-        + `la firma, abona ${euros(FEE_DE_CANCELACION)} en concepto de cancelación. Pasados `
+        + `la publicación del anuncio, abona ${euros(FEE_DE_CANCELACION)} en concepto de cancelación. Pasados `
         + `esos ${DIAS_HASTA_SALIR_GRATIS} días puede retirarlo <b>sin coste alguno</b>.`
       : `<b>Si el titular retira el encargo</b> sin que el vehículo se haya vendido, abona `
         + `${euros(FEE_DE_CANCELACION)} en concepto de cancelación. Esta cantidad deja de ser `
-        + `exigible a los ${DIAS_HASTA_SALIR_GRATIS} días si el titular acepta por escrito el `
+        + `exigible a los ${DIAS_HASTA_SALIR_GRATIS} días de publicarse el anuncio si el titular acepta por escrito el `
         + `precio de salida propuesto por PopCar.`,
     `Este encargo <b>no tiene fecha de vencimiento</b>: se mantiene hasta que el vehículo se `
       + `vende o hasta que el titular lo retira. El titular puede retirarlo en cualquier `

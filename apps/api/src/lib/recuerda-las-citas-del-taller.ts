@@ -68,7 +68,14 @@ export async function recuerdaLasCitasDelTaller(ahora: Date = new Date()): Promi
     try {
       // `alClienteSiempre`: un desvío de pruebas olvidado en producción dejaría
       // al cliente sin su propio recordatorio, y el envío saldría bien.
-      await enviar({ to: correo, subject, html, alClienteSiempre: true });
+      await enviar({
+        to: correo, subject, html, alClienteSiempre: true,
+        movil: {
+          titulo: 'Recuerda tu cita en el taller',
+          cuerpo: [elDiaDeLaCita(cita), laHoraDeLaCita(cita) && `a las ${laHoraDeLaCita(cita)}`, fila.direccion || fila.taller]
+            .filter(Boolean).join(' · '),
+        },
+      });
     } catch (err) {
       console.error('[recordatorio-taller] no sale el correo:', (err as Error).message);
       fallados += 1;

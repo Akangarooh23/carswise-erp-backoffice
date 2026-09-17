@@ -6,7 +6,7 @@
  * El mandato dice que PopCar gestiona la venta y lo que se cobra. Esto dice **a
  * qué precio sale el coche**, y es lo que le abre al cliente la única puerta que
  * tiene para irse sin pagar: aceptando por escrito el precio propuesto, a los
- * treinta días puede retirar el encargo sin coste. Sin aceptarlo, la
+ * treinta días de publicarse el anuncio puede retirar el encargo sin coste. Sin aceptarlo, la
  * cancelación son 150 € desde el día uno y para siempre.
  *
  * Así que esto no es papeleo nuestro: es el papel que **le conviene a él**. Por
@@ -21,14 +21,21 @@
  *
  * El orden completo es: mandato → papeles y fotos → taller → precio → anuncio.
  *
+ * ## Y bloquea publicar
+ *
+ * Un anuncio nuestro sale con un precio que el dueño ha aceptado por escrito, y
+ * con ése y no con otro. Antes esto no bloqueaba —«cambia lo que paga si se
+ * retira, no si podemos venderlo»— y así se podía anunciar a 16.600 € el coche
+ * de alguien que había firmado 17.900 €, o a un precio que nunca vio.
+ *
+ * Por eso no basta con que la haya firmado: tiene que haber firmado **el precio
+ * que hay guardado**. Si después se acuerda otro, se le vuelve a mandar y hasta
+ * que no lo firma el anuncio no se puede publicar, y el que ya está publicado
+ * se queda con el precio que sí firmó.
+ *
  * ## Lo que esto NO es
  *
- * **No bloquea publicar.** Se puede anunciar el coche de quien no la ha firmado:
- * lo que cambia es lo que paga si se retira, no si podemos venderlo. Son dos
- * cosas distintas y meterlas en la misma puerta dejaría fuera a los que Juan
- * puso dentro a propósito.
- *
- * **Y no es una firma electrónica**, igual que el mandato: es un documento que
+ * **No es una firma electrónica**, igual que el mandato: es un documento que
  * el cliente firma y que queda guardado con la fecha en que llegó.
  */
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_CANCELACION, FEE_DE_GESTION } from './encargo-de-venta.js';
@@ -51,7 +58,8 @@ export const ENSURE_COLUMNAS = `
   ALTER TABLE erp_encargos_venta
     ADD COLUMN IF NOT EXISTS clausula_id          TEXT,
     ADD COLUMN IF NOT EXISTS clausula_enviada_at  TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS clausula_firmada_at  TIMESTAMPTZ`;
+    ADD COLUMN IF NOT EXISTS clausula_firmada_at  TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS clausula_precio      NUMERIC(12,2)`;
 
 export interface EstadoDeLaClausula {
   /** Si hay mandato firmado. Sin trato no hay precio que acordar. */
@@ -96,10 +104,73 @@ export function porQueNoSeLePuedePedir(e: EstadoDeLaClausula | null | undefined)
   return '';
 }
 
-/** Si ya la ha firmado. */
-export function estaAceptada(e: { clausula_firmada_at?: string | Date | null } | null | undefined): boolean {
-  if (!e?.clausula_firmada_at) return false;
-  return !Number.isNaN(new Date(e.clausula_firmada_at).getTime());
+/** Lo que hace falta de la fila para saber si el precio firmado vale. */
+export interface PrecioDeLaFila {
+  clausula_enviada_at?: string | Date | null;
+  clausula_firmada_at?: string | Date | null;
+  /** El precio que decía el papel que se le mandó. */
+  clausula_precio?: number | string | null;
+  /** El precio acordado que hay guardado ahora en el encargo. */
+  precio_referencia?: number | string | null;
+}
+
+const cifra = (v: unknown): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+};
+
+const fecha = (v: unknown): boolean =>
+  Boolean(v) && !Number.isNaN(new Date(v as string).getTime());
+
+/**
+ * Si el papel que se le mandó dice el precio que hay guardado.
+ *
+ * Se le mandó uno a 17.900 € y después se guardó 18.500 €: el papel ya no vale,
+ * aunque lo tenga firmado. Hay que volver a mandárselo.
+ */
+export function elPapelDiceElPrecio(e: PrecioDeLaFila | null | undefined): boolean {
+  if (!e) return false;
+  const papel = cifra(e.clausula_precio);
+  const guardado = cifra(e.precio_referencia);
+  return papel !== null && papel === guardado;
+}
+
+/** Si ya se le ha mandado el papel **con el precio de ahora**. */
+export function estaMandada(e: PrecioDeLaFila | null | undefined): boolean {
+  return fecha(e?.clausula_enviada_at) && elPapelDiceElPrecio(e);
+}
+
+/**
+ * Si ha firmado **el precio que hay guardado**.
+ *
+ * Firmar uno distinto no cuenta: es la diferencia entre «ha aceptado un
+ * precio» y «ha aceptado éste».
+ */
+export function estaAceptada(e: PrecioDeLaFila | null | undefined): boolean {
+  return fecha(e?.clausula_firmada_at) && elPapelDiceElPrecio(e);
+}
+
+const euros0 = (n: number) => `${miles(n)} €`;
+
+/**
+ * Por qué el precio no deja publicar. Cadena vacía cuando sí deja.
+ *
+ * Una frase para cada caso, porque cada uno se arregla de una manera: mandarlo,
+ * esperar a que lo suba, o volver a mandarlo con el precio nuevo.
+ */
+export function porQueElPrecioNoDeja(e: PrecioDeLaFila | null | undefined): string {
+  if (estaAceptada(e)) return '';
+  const guardado = cifra(e?.precio_referencia);
+  if (guardado === null) return 'Falta acordar el precio de salida';
+  const papel = cifra(e?.clausula_precio);
+  if (fecha(e?.clausula_firmada_at) && papel !== null && papel !== guardado) {
+    return `Firmó el precio de ${euros0(papel)} y el guardado es ${euros0(guardado)}: hay que volver a mandárselo`;
+  }
+  if (estaMandada(e)) return `Se le ha mandado el precio de salida (${euros0(guardado)}) y todavía no lo ha subido firmado`;
+  if (fecha(e?.clausula_enviada_at) && papel !== null) {
+    return `Se le mandó el precio de ${euros0(papel)} y el guardado es ${euros0(guardado)}: hay que volver a mandárselo`;
+  }
+  return 'Falta mandarle el precio de salida para que lo firme';
 }
 
 export interface DatosDeLaClausula {
@@ -149,7 +220,7 @@ export function loQueDice(d: DatosDeLaClausula): string[] {
       + 'revisión mecánica realizada en un taller de la red de PopCar. Cualquier cambio '
       + 'posterior se acuerda con el titular antes de aplicarlo.',
     `Al aceptar este precio por escrito, <b>el titular puede retirar el encargo sin coste `
-      + `alguno pasados ${DIAS_HASTA_SALIR_GRATIS} días</b> desde la firma del mandato. Sin `
+      + `alguno pasados ${DIAS_HASTA_SALIR_GRATIS} días</b> desde la publicación del anuncio. Sin `
       + `esta aceptación, la retirada del encargo conlleva ${euros(FEE_DE_CANCELACION)} en `
       + `concepto de cancelación en cualquier momento.`,
     `Esta aceptación no modifica ninguna otra condición del mandato de gestión de venta, `

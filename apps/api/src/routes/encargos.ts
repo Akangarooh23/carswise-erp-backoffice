@@ -50,7 +50,7 @@ import { porQueElTallerNoDeja, preparaRevisionesTaller, laRevisionDe } from './r
 import {
   COMO_SE_FIRMA, COMO_LO_DECIMOS, laMarcamosNosotros, SERIE as SERIE_DEL_MANDATO,
   esUnaFirma, estaFirmado, porQueNoEstaFirmado,
-  elMandato, comoSeLlamaElFichero,
+  elMandato, comoSeLlamaElFichero, miles,
 } from '../lib/mandato-de-venta.js';
 import { prefijoAnual, siguienteDeSerie } from '../lib/series.js';
 import {
@@ -62,7 +62,8 @@ import { elCorreoDelMandato, elCorreoDelCierre, elCorreoDePublicado, elCorreoDel
 import { config } from '../config.js';
 import {
   SERIE as SERIE_DEL_PRECIO, ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_PRECIO,
-  laClausula, porQueNoSeLePuedePedir, estaAceptada, PAPEL_FIRMADO as PAPEL_DEL_PRECIO,
+  laClausula, porQueNoSeLePuedePedir, estaAceptada, estaMandada, porQueElPrecioNoDeja,
+  PAPEL_FIRMADO as PAPEL_DEL_PRECIO,
   comoSeLlamaElFichero as comoSeLlamaElFicheroDelPrecio,
 } from '../lib/clausula-del-precio.js';
 import { abreLaTransferenciaDelEncargo } from './tramites.js';
@@ -124,6 +125,7 @@ const ENSURE_TABLE = `
 const ENSURE_COLUMNAS = `
   ALTER TABLE erp_encargos_venta
     ADD COLUMN IF NOT EXISTS libre_desde TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS publicado_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS acepto_el_precio BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS precio_referencia NUMERIC(12,2),
     ADD COLUMN IF NOT EXISTS lead_id TEXT,
@@ -303,7 +305,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
   await preparaRevisionesTaller().catch(() => {});
 
   const r = await query(`
-    SELECT e.vehicle_id, e.firmado_at, e.acepto_el_precio, e.firma_como,
+    SELECT e.vehicle_id, e.firmado_at, e.publicado_at, e.acepto_el_precio, e.firma_como,
            EXISTS (
              SELECT 1 FROM vehicle_visit_bookings b
               WHERE b.offer_id = 'idcar-' || e.vehicle_id AND b.resultado = 'compro'
@@ -339,7 +341,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
            -- Lo que el cliente ha pedido sobre su cita desde su panel.
            tal.cliente_pidio AS taller_cliente_pidio,
            -- Y el precio de salida: si hay cifra y si ya se le mandó el papel.
-           e.precio_referencia, e.clausula_enviada_at, e.clausula_firmada_at
+           e.precio_referencia, e.clausula_enviada_at, e.clausula_firmada_at, e.clausula_precio
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
       -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
@@ -377,7 +379,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
     // Una visita de ese coche acabo en venta y el encargo sigue abierto: falta
     // cerrarlo y emitir los 299 EUR.
     if (fila.se_vendio) avisos.push('encargos_vendidos');
-    if (tocaLlamarle({ firmado_at: fila.firmado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
+    if (tocaLlamarle({ publicado_at: fila.publicado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
     if (soloLeFaltanFranjas(puertas)) avisos.push('encargos_sin_franjas');
 
     /*
@@ -413,7 +415,11 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
      * Se apaga al mandarlo, no al firmarlo: lo segundo depende de él, y un aviso
      * que solo se apaga cuando conteste un tercero se queda encendido semanas.
      */
-    if (!fila.clausula_enviada_at && !fila.clausula_firmada_at
+    /*
+     * «Sin mandar» también es haberlo mandado con otro precio: si se guardó uno
+     * nuevo, el papel que tiene ya no vale y el anuncio no se puede publicar.
+     */
+    if (!estaMandada(fila)
         && porQueNoSeLePuedePedir({
           mandato_firmado: estaFirmado(fila),
           taller_hecho: !sigueEsperandoAlTaller(taller),
@@ -495,7 +501,9 @@ export async function losAvisosDeEncargos(): Promise<AvisosDeEncargos> {
 export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string> {
   await prepara();
   const r = await query(
-    `SELECT id, firmado_at, firma_como FROM erp_encargos_venta
+    `SELECT id, firmado_at, firma_como, precio_referencia,
+            clausula_enviada_at, clausula_firmada_at, clausula_precio
+       FROM erp_encargos_venta
       WHERE vehicle_id = $1 AND cerrado_at IS NULL`,
     [vehicleId]
   ).catch(() => ({ rows: [] }));
@@ -540,6 +548,16 @@ export async function porQueNoSePuedePublicar(vehicleId: string): Promise<string
    */
   const taller = await porQueElTallerNoDeja(vehicleId);
   if (taller) return `Este coche lo vendemos nosotros. ${taller}`;
+
+  /*
+   * Y el precio de salida, firmado y el mismo que hay guardado.
+   *
+   * Va el último porque es lo último que se le pide: el precio se fija con lo
+   * que diga el taller. Un anuncio nuestro sale con el precio que el dueño ha
+   * aceptado por escrito, y con ése y no con otro.
+   */
+  const precio = porQueElPrecioNoDeja(r.rows[0]);
+  if (precio) return `Este coche lo vendemos nosotros. ${precio}`;
 
   return '';
 }
@@ -642,6 +660,7 @@ encargosRouter.get(
       // La revisión entera, no solo si deja publicar: la cláusula del precio
       // necesita saber si está hecha y si el taller lo tumbó, que no es lo mismo.
       const revisionDelTaller = encargo ? await laRevisionDe(req.params.vehicleId) : null;
+      const faltaElPrecio = encargo ? porQueElPrecioNoDeja(encargo) : '';
 
       res.json({
         ok: true,
@@ -656,10 +675,12 @@ encargosRouter.get(
            * Si aquí dijera que sí y allí que no, el botón se vería encendido y
            * el «no» llegaría al pulsarlo — que es la peor manera de enterarse.
            */
-          se_puede_publicar: estaFirmado(encargo) && sePuedePublicar(puertas) && !faltaElTaller,
+          se_puede_publicar: estaFirmado(encargo) && sePuedePublicar(puertas) && !faltaElTaller && !faltaElPrecio,
           /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
           le_falta: loQueLeFalta(puertas),
           falta_el_taller: faltaElTaller,
+          /** Y el precio de salida firmado, que es lo último antes de publicar. */
+          falta_el_precio: faltaElPrecio,
           /*
            * El mandato. Es puerta de publicar **y** de cobrar.
            *
@@ -704,7 +725,11 @@ encargosRouter.get(
             enviada_at: encargo.clausula_enviada_at ?? null,
             firmada_at: encargo.clausula_firmada_at ?? null,
             aceptada: estaAceptada(encargo),
+            mandada: estaMandada(encargo),
             precio: Number(encargo.precio_referencia) || null,
+            /** El precio que decía el papel que se le mandó, que puede no ser el de ahora. */
+            precio_del_papel: Number(encargo.clausula_precio) || null,
+            por_que_no_deja: faltaElPrecio,
             /*
              * Y el papel que subió él, para poder bajárselo.
              *
@@ -1065,8 +1090,15 @@ encargosRouter.post(
           matricula: String(e.plate ?? ''),
           motivo, importe: factura?.total ?? 0, concepto: factura?.concepto ?? '',
         });
-        enviar({ to: String(e.cliente_email), subject, html, alClienteSiempre: true })
-          .catch((err) => console.error('[encargos] sin avisar del cierre:', (err as Error).message));
+        // Esperado, con su `catch`: en Vercel un correo sin esperar se corta
+        // en cuanto sale la respuesta, y el fallo sigue sin tumbar el cierre.
+        await enviar({
+          to: String(e.cliente_email), subject, html, alClienteSiempre: true,
+          movil: {
+            titulo: 'Tu encargo de venta se ha cerrado',
+            cuerpo: 'Te contamos por correo cómo ha acabado y si hay algo que pagar.',
+          },
+        }).catch((err) => console.error('[encargos] sin avisar del cierre:', (err as Error).message));
       }
 
       res.json({
@@ -1165,6 +1197,32 @@ encargosRouter.get(
  * No lanza: quien la llama ya ha publicado el coche, y que el correo falle no
  * puede deshacer eso.
  */
+/**
+ * Se apunta que el coche del encargo se ha publicado, y arrancan los 30 días.
+ *
+ * Solo la primera vez: despublicar para corregir una foto y volver a publicar
+ * no le regala otro mes. Devuelve `true` si ésta ha sido la primera, que es
+ * cuando se le escribe diciéndole que su coche ya está anunciado.
+ *
+ * Sin encargo vivo no apunta nada y devuelve `false`: el particular que publica
+ * su propio IDCar no tiene plazo ni correo nuestro.
+ */
+export async function apuntaQueSePublico(vehicleId: string): Promise<boolean> {
+  await prepara();
+  const r = await query(
+    `UPDATE erp_encargos_venta
+        SET publicado_at = NOW(),
+            libre_desde = CASE WHEN acepto_el_precio
+                               THEN NOW() + ($2 || ' days')::interval
+                               ELSE NULL END,
+            updated_at = NOW()
+      WHERE vehicle_id = $1 AND cerrado_at IS NULL AND publicado_at IS NULL
+    RETURNING id`,
+    [vehicleId, String(DIAS_HASTA_SALIR_GRATIS)]
+  );
+  return r.rows.length > 0;
+}
+
 export async function avisaDeQueSePublico(
   vehicleId: string,
   offerId: string,
@@ -1189,7 +1247,11 @@ export async function avisaDeQueSePublico(
     url: `${base}/marketplace-vo/${encodeURIComponent(offerId)}`,
     precio: precio > 0 ? precio : null,
   });
-  await enviar({ to: String(e.cliente_email), subject, html, alClienteSiempre: true });
+  const coche = [e.brand, e.model].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ') || 'Tu coche';
+  await enviar({
+    to: String(e.cliente_email), subject, html, alClienteSiempre: true,
+    movil: { titulo: `${coche} ya está anunciado`, cuerpo: 'Ya está a la venta en PopCar. Las llamadas y las visitas las llevamos nosotros.' },
+  });
 }
 
 /**
@@ -1374,6 +1436,10 @@ encargosRouter.post(
 
       await enviar({
         to: String(e.cliente_email), subject, html, alClienteSiempre: true,
+        movil: {
+          titulo: 'Tienes el mandato de venta para firmar',
+          cuerpo: 'Te lo hemos mandado por correo. Fírmalo y súbelo en Mis solicitudes.',
+        },
         // La marca del principio es lo que hace que Word lea el adjunto en
         // UTF-8; sin ella las tildes salen rotas en la primera línea.
         attachments: [{
@@ -1396,8 +1462,8 @@ encargosRouter.post(
  * Hacen falta las dos cosas —cuándo y cómo nos consta— porque una fecha sola es
  * exactamente lo que había antes: un dato que el ERP se escribía a sí mismo.
  *
- * Y aquí es donde empieza a correr el plazo de los 30 días, no al abrir el
- * encargo: `libre_desde` se recalcula desde la fecha de firma.
+ * El plazo de los 30 días no empieza aquí sino al publicar: `libre_desde` se
+ * recalcula desde `publicado_at`, que casi siempre sigue vacío a estas alturas.
  */
 encargosRouter.post(
   '/encargos/:id/firmado',
@@ -1432,12 +1498,14 @@ encargosRouter.post(
       }
 
       const actual = await query(
-        `SELECT acepto_el_precio FROM erp_encargos_venta WHERE id = $1 AND cerrado_at IS NULL`,
+        `SELECT acepto_el_precio, publicado_at FROM erp_encargos_venta WHERE id = $1 AND cerrado_at IS NULL`,
         [req.params.id]
       );
       if (!actual.rows.length) { res.status(404).json({ ok: false, error: 'encargo_no_encontrado' }); return; }
 
-      const libre = libreDesde(cuando, Boolean(actual.rows[0].acepto_el_precio));
+      const libre = actual.rows[0].publicado_at
+        ? libreDesde(actual.rows[0].publicado_at as string, Boolean(actual.rows[0].acepto_el_precio))
+        : null;
 
       const upd = await query(
         `UPDATE erp_encargos_venta
@@ -1487,14 +1555,14 @@ encargosRouter.patch(
         : acepta === true;
 
       /*
-       * Los 30 días cuentan desde que firmó, no desde hoy.
+       * Los 30 días cuentan desde que se publicó, no desde hoy.
        *
-       * Si se contaran desde el momento de marcar la casilla, alguien que
-       * firmó hace tres semanas y al que se le apunta hoy volvería a tener un
-       * mes por delante — y le estaríamos cobrando una penalización que ya no
-       * le corresponde.
+       * Si se contaran desde el momento de marcar la casilla, alguien publicado
+       * hace tres semanas y al que se le apunta hoy volvería a tener un mes por
+       * delante — y le estaríamos cobrando una penalización que ya no le
+       * corresponde. Sin publicar, no corre nada.
        */
-      const libre = e.firmado_at ? libreDesde(e.firmado_at as string, aceptoElPrecio) : null;
+      const libre = e.publicado_at ? libreDesde(e.publicado_at as string, aceptoElPrecio) : null;
 
       const precio = req.body?.precio_referencia === undefined
         ? (e.precio_referencia as number | null)
@@ -1510,44 +1578,14 @@ encargosRouter.patch(
       if (!upd.rows.length) { res.status(409).json({ ok: false, error: 'ya_estaba_cerrado' }); return; }
 
       /*
-       * Y el precio acordado es **el** precio: también en el anuncio.
+       * Guardar un precio **no** lo lleva al anuncio.
        *
-       * Del mismo coche había tres cifras distintas y ninguna se hablaba con
-       * las otras: la acordada aquí, la que el dueño escribió en su panel, y la
-       * que se congeló en el escaparate el día que se publicó. El resultado fue
-       * un anuncio en marcha a 16.600 € con el papel firmado a 17.900 — y, como
-       * el precio del coche estaba en blanco, el mismo coche no salía en el
-       * listado del marketplace aunque su ficha se abriera.
-       *
-       * En un encargo el precio lo acordamos nosotros con él y queda firmado,
-       * así que aquí manda éste. Los coches sin encargo no se tocan: ese precio
-       * es del dueño y lo pone en su panel.
-       *
-       * Sin transacción a propósito: si una de las dos fallara, lo peor que
-       * queda es lo de antes —dos cifras distintas— y se arregla volviendo a
-       * darle a Guardar. Envolverlo obligaría a pasar el pool entero por aquí
-       * para proteger algo que no deja nada a medias.
+       * Lo llevaba, y así un anuncio vivo cambiaba de precio sin que el dueño
+       * hubiera aceptado el nuevo. El anuncio lleva el precio que él ha firmado:
+       * lo pone `llevaElPrecioFirmadoAlAnuncio` al publicar, y PopCar cuando
+       * sube firmado el papel nuevo. Mientras tanto el anuncio sigue con el que
+       * sí firmó, y el encargo avisa de que hay que volver a mandárselo.
        */
-      if (precio && precio > 0) {
-        const cocheId = String(upd.rows[0].vehicle_id ?? '');
-        await query(
-          `UPDATE moveadvisor_user_vehicles SET price = $2, updated_at = NOW() WHERE id = $1`,
-          [cocheId, String(precio)]
-        ).catch((err) => console.error('[encargos] precio del coche:', (err as Error).message));
-
-        /*
-         * Y el anuncio, si ya está puesto.
-         *
-         * `WHERE id = 'idcar-…'` sin más: si no está publicado no hay fila y no
-         * pasa nada. Al publicarlo después, saldrá con el precio de arriba.
-         */
-        await query(
-          `UPDATE moveadvisor_marketplace_vo_offers
-              SET price = $2, updated_at = NOW()
-            WHERE id = $1`,
-          [`idcar-${cocheId}`, precio]
-        ).catch((err) => console.error('[encargos] precio del anuncio:', (err as Error).message));
-      }
 
       res.json({
         ok: true,
@@ -1732,6 +1770,10 @@ encargosRouter.post(
 
       await enviar({
         to: String(lo.e.cliente_email), subject, html, alClienteSiempre: true,
+        movil: {
+          titulo: 'Tienes el precio de salida para firmar',
+          cuerpo: `${miles(precio)} €. Fírmalo y súbelo en Mis solicitudes: sin él no podemos publicar el anuncio.`,
+        },
         attachments: [{
           filename: comoSeLlamaElFicheroDelPrecio(numero),
           content: Buffer.from('﻿' + doc, 'utf8').toString('base64'),
@@ -1742,9 +1784,15 @@ encargosRouter.post(
         `UPDATE erp_encargos_venta
             SET clausula_id = COALESCE(clausula_id, $2),
                 clausula_enviada_at = NOW(),
+                /*
+                 * El precio que dice este papel. Si no es el que firmó la otra
+                 * vez, esa firma deja de valer: firmó otra cifra.
+                 */
+                clausula_firmada_at = CASE WHEN clausula_precio = $3 THEN clausula_firmada_at ELSE NULL END,
+                clausula_precio = $3,
                 updated_at = NOW()
           WHERE id = $1`,
-        [req.params.id, numero]
+        [req.params.id, numero, precio]
       );
 
       res.json({ ok: true, data: { enviado_a: String(lo.e.cliente_email), clausula_id: numero } });

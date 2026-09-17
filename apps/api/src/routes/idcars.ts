@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
-import { porQueNoSePuedePublicar, avisaDeQueSePublico, elPrecioAcordadoDe } from './encargos.js';
+import { porQueNoSePuedePublicar, avisaDeQueSePublico, apuntaQueSePublico, elPrecioAcordadoDe } from './encargos.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { falloInterno } from '../lib/fallos.js';
@@ -553,8 +553,27 @@ idcarsRouter.post('/idcars/:id/publish', requireRole(['admin', 'operations']), a
      * Sin bloquear la respuesta: el anuncio ya está publicado, y que el correo
      * falle no puede hacer que la pantalla diga que no se publicó.
      */
-    if (!existing.rows.length) {
-      avisaDeQueSePublico(req.params.id, offerId, priceNum)
+    /*
+     * Y si el coche es de un encargo, que ha pasado lo que decía el mandato.
+     *
+     * Se apunta en el encargo y no se mira la oferta: la oferta puede existir de
+     * antes —el dueño la publicó él mismo meses atrás— y entonces el correo de
+     * «ya está anunciado» no salía nunca, y los 30 días no tendrían desde dónde
+     * contar. Solo la primera vez del encargo.
+     *
+     * Esperado: en Vercel lo que no se espera se corta, y así se perdía el
+     * correo. Con su `catch`, porque el anuncio ya está publicado.
+     */
+    if (acordado !== null) {
+      await query(
+        `UPDATE moveadvisor_user_vehicles SET price = $2, updated_at = NOW() WHERE id = $1`,
+        [req.params.id, String(priceNum)]
+      ).catch((e) => console.error('[idcars] precio del coche:', (e as Error).message));
+    }
+    const primeraVez = await apuntaQueSePublico(req.params.id)
+      .catch((e) => { console.error('[idcars] sin apuntar la publicación:', (e as Error).message); return false; });
+    if (primeraVez) {
+      await avisaDeQueSePublico(req.params.id, offerId, priceNum)
         .catch((e) => console.error('[idcars] sin avisar de la publicación:', (e as Error).message));
     }
 

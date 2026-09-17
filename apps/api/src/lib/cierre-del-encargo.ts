@@ -39,6 +39,8 @@ export const COMO_ACABO: Record<Motivo, string> = {
 
 export interface ElEncargo {
   firmado_at?: string | Date | null;
+  /** Cuándo se publicó: de ahí cuentan los 30 días. */
+  publicado_at?: string | Date | null;
   acepto_el_precio?: boolean | null;
   /** Cómo nos consta que firmó el mandato. Sin esto no se le factura nada. */
   firma_como?: unknown;

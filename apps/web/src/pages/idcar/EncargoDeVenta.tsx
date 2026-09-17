@@ -66,8 +66,15 @@ export interface ClausulaDelPrecio {
   clausula_id: string | null;
   enviada_at: string | null;
   firmada_at: string | null;
+  /** Si ha firmado **el precio que hay guardado**; uno distinto no cuenta. */
   aceptada: boolean;
+  /** Si se le ha mandado el papel con el precio de ahora. */
+  mandada: boolean;
   precio: number | null;
+  /** El precio que decía el último papel que se le mandó. */
+  precio_del_papel: number | null;
+  /** Por qué el precio no deja publicar todavía. Vacío cuando deja. */
+  por_que_no_deja: string;
   /** El papel que subió él firmado, que es el único que no se regenera. */
   subida: { id: string; nombre: string } | null;
 }
@@ -83,7 +90,9 @@ export interface ElEncargo {
   /** Lo que falta **él**. Lo del taller va aparte: eso lo ponemos nosotros. */
   le_falta: string[];
   falta_el_taller: string;
-  /** El mandato no es puerta de publicar: es puerta de cobrar. */
+  /** Y el precio de salida firmado, que también bloquea publicar. */
+  falta_el_precio: string;
+  /** El mandato: puerta de publicar y de cobrar. */
   mandato_firmado: boolean;
   por_que_no_firmado: string;
   /**
@@ -162,7 +171,17 @@ function ComoVaElPlazo({
       </span>
     );
   }
-  if (dias === null) return <span className="text-xs text-brand-300">Sin fecha de firma</span>;
+  /*
+   * Los 30 días empiezan al publicar, no al firmar. Hasta entonces no corre
+   * nada, y decir «sin fecha» se leería como un dato que falta.
+   */
+  if (dias === null) {
+    return (
+      <span className="inline-block rounded-lg bg-brand-50 text-brand-500 px-2.5 py-1 text-xs font-semibold">
+        Los 30 días empiezan al publicar
+      </span>
+    );
+  }
 
   const tono = dias < 0 ? 'bg-red-50 text-red-700'
     : dias <= 5 ? 'bg-amber-50 text-amber-700'
@@ -207,7 +226,6 @@ export default function EncargoDeVenta({
   const [cerrando, setCerrando] = useState(false);
   const [enviando, setEnviando] = useState('');
   const [precio, setPrecio] = useState('');
-  const [firmoElPrecio, setFirmoElPrecio] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [taller, setTaller] = useState<LoDelTaller | null>(null);
   const [avisoClausula, setAvisoClausula] = useState('');
@@ -275,7 +293,6 @@ export default function EncargoDeVenta({
        * propone ese número y él lo acepta o no.
        */
       setPrecio(r.data.encargo?.precio_referencia ?? (r.data.tasacion ? String(r.data.tasacion) : ''));
-      setFirmoElPrecio(Boolean(r.data.encargo?.acepto_el_precio));
       alCambiar?.(r.data);
     } catch (e) {
       setFallo((e as Error).message);
@@ -310,8 +327,9 @@ export default function EncargoDeVenta({
     setFallo('');
     try {
       const r = await api.patch(`/encargos/${datos?.encargo?.id}/precio`, {
+        // Sin la casilla de «ha firmado»: lo que cuenta es el papel que sube
+        // él, y eso lo marca PopCar. El servidor conserva lo que hubiera.
         precio_referencia: precio === '' ? null : Number(precio),
-        acepto_el_precio: firmoElPrecio,
       });
       if (!r.ok) { setFallo('No se ha podido guardar el precio.'); return; }
       // Se recarga entero: cambiar la cláusula cambia la penalización y los
@@ -459,7 +477,7 @@ export default function EncargoDeVenta({
           ? `Le falta: ${datos.le_falta.join('; ')}`
           : datos.se_puede_publicar
             ? 'Listo para publicar.'
-            : `Lo ha traído todo. ${taller?.por_que_no || datos.falta_el_taller}.`}
+            : `Lo ha traído todo. ${taller?.por_que_no || datos.falta_el_taller || datos.falta_el_precio}.`}
       </div>
 
       <RevisionDelTaller
@@ -507,21 +525,11 @@ export default function EncargoDeVenta({
             />
           </div>
           {/*
-            * La casilla se queda para los casos de siempre —lo firmó delante,
-            * lo dijo por teléfono— pero la vía buena es el documento: lo manda
-            * el botón de abajo y la enciende él al subirlo firmado. Marcarla a
-            * mano es otra vez un dato que el ERP se escribe a sí mismo, que es
-            * lo que se quitó para la firma del mandato.
+            * Aquí había una casilla «Ha firmado la cláusula del precio». Se
+            * quitó: el precio tiene que firmarlo él, en el papel, y con la
+            * cifra que hay guardada. Una casilla que marcamos nosotros no
+            * puede abrir la puerta de publicar.
             */}
-          <label className="flex items-center gap-2 pb-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={firmoElPrecio}
-              onChange={(ev) => setFirmoElPrecio(ev.target.checked)}
-              className="w-4 h-4 accent-acento"
-            />
-            <span className="text-[13px] text-brand-600">Ha firmado la cláusula del precio</span>
-          </label>
           <button
             type="button"
             onClick={() => void guardaElPrecio()}
@@ -538,8 +546,9 @@ export default function EncargoDeVenta({
           </p>
         )}
         <p className="text-[11.5px] text-brand-400 mt-2 leading-snug">
-          Si no la firma, se le puede cobrar la cancelación desde el primer día y siempre.
-          Si la firma, solo durante los 30 días siguientes a la firma del encargo.
+          Sin el precio firmado no se publica, y la cancelación se le puede cobrar siempre.
+          Firmado, solo durante los 30 días siguientes a la publicación del anuncio.
+          Si cambias el precio después, hay que volver a mandárselo.
         </p>
 
         {/*
@@ -556,8 +565,10 @@ export default function EncargoDeVenta({
               <p className="text-[12.5px] font-semibold text-brand-600">
                 {clausula.aceptada
                   ? 'Ha aceptado el precio por escrito'
-                  : clausula.enviada_at
+                  : clausula.mandada
                   ? 'Se le ha mandado el documento del precio'
+                  : clausula.enviada_at
+                  ? 'El precio ha cambiado: hay que volver a mandárselo'
                   : 'Mándale el documento del precio'}
               </p>
               <p className="text-[11.5px] text-brand-400 mt-0.5">
@@ -567,6 +578,10 @@ export default function EncargoDeVenta({
                   /* Con el número escrito y sin guardar, lo que falta no es
                      acordar el precio: es darle a Guardar. */
                   ? loQueFaltaEnPantalla(clausula.falta, precio, datos.encargo?.precio_referencia)
+                  /* Mandado o firmado con otra cifra: lo dice el servidor con
+                     las dos, para que se vea qué ha cambiado. */
+                  : clausula.enviada_at && !clausula.mandada
+                  ? loQueFaltaEnPantalla(clausula.por_que_no_deja, precio, datos.encargo?.precio_referencia)
                   : clausula.enviada_at
                   ? `Enviado el ${cuandoConHoraLarga(clausula.enviada_at)}. Lo sube firmado desde su panel.`
                   : 'Lo firma y lo sube desde su panel, como el mandato.'}

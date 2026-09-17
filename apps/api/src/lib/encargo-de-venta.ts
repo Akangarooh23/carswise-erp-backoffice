@@ -25,6 +25,9 @@
  * y era un invento: nadie retira el anuncio de un cliente por el calendario.
  *
  * Los 30 días son otra cosa: **hasta cuándo se le puede cobrar la penalización**.
+ * Y empiezan a contar **el día que se publica**, no el de la firma: hasta que el
+ * coche está anunciado no hemos empezado a venderlo, y un mes de plazo que se
+ * gasta esperando al taller o a que suba sus papeles no es un mes de venta.
  *
  * Los 150 € no son un castigo: cubren lo que nos hemos gastado en él aunque no
  * venda —el anuncio y la revisión mecánica— y dejan algo. Por eso poder
@@ -71,16 +74,16 @@ export type Estado = 'recogiendo' | 'listo' | 'publicado' | 'vendido' | 'cancela
  * Desde cuándo se puede ir sin pagar nada.
  *
  * Solo el que **firmó la cláusula del precio** llega a estar libre, y a los 30
- * días de firmar. El que firmó el acuerdo pero no esa cláusula paga la
+ * días de **publicarse** su coche. Mientras no está publicado no corre nada. El que firmó el acuerdo pero no esa cláusula paga la
  * penalización desde el día 1 y no deja de deberla nunca mientras no venda con
  * nosotros: por eso ahí no hay fecha, y se devuelve `null`.
  *
  * `null` quiere decir «nunca», no «no lo sé». Son cosas distintas y quien lea
  * esto tiene que poder distinguirlas: mira `aceptoElPrecio` para saber cuál es.
  */
-export function libreDesde(firmadoAt: string | Date, aceptoElPrecio: boolean): Date | null {
+export function libreDesde(publicadoAt: string | Date, aceptoElPrecio: boolean): Date | null {
   if (!aceptoElPrecio) return null;
-  const d = new Date(firmadoAt);
+  const d = new Date(publicadoAt);
   if (Number.isNaN(d.getTime())) return null;
   const libre = new Date(d);
   libre.setDate(libre.getDate() + DIAS_HASTA_SALIR_GRATIS);
@@ -93,20 +96,21 @@ export function libreDesde(firmadoAt: string | Date, aceptoElPrecio: boolean): D
  * Las tres ramas, que son las que dijo Juan:
  *
  *   · No firmó la cláusula del precio → **150 €, desde el día 1 y siempre**.
- *   · La firmó y aún no han pasado 30 días → **150 €**.
+ *   · La firmó y aún no han pasado 30 días desde que se publicó → **150 €**.
+ *     También si todavía no se ha publicado: el plazo no ha empezado.
  *   · La firmó y ya han pasado → **0 €**, se va gratis.
  *
  * No confundir con el fee de gestión: eso son 299 € y se cobran cuando el coche
  * se vende **con** nosotros. Esto es lo contrario, lo que se cobra cuando no.
  */
 export function laPenalizacion(
-  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  e: { publicado_at?: string | Date | null; acepto_el_precio?: boolean | null },
   ahora: Date = new Date(),
 ): number {
   if (!e.acepto_el_precio) return FEE_DE_CANCELACION;
-  const libre = e.firmado_at ? libreDesde(e.firmado_at, true) : null;
+  const libre = e.publicado_at ? libreDesde(e.publicado_at, true) : null;
   /*
-   * Sin fecha de firma legible no se le perdona la penalización.
+   * Sin fecha de publicación legible no se le perdona la penalización.
    *
    * Perdonar sale de la puerta equivocada: se dejaría de cobrar por una fila
    * mal escrita y nadie se enteraría. Cobrar de más, en cambio, lo ve el
@@ -137,7 +141,7 @@ export function diasQueQuedan(venceAt: string | Date | null, ahora: Date = new D
  * ningún encargo. Solo dice si, en caso de irse hoy, se le puede cobrar.
  */
 export function yaSePuedeIrGratis(
-  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  e: { publicado_at?: string | Date | null; acepto_el_precio?: boolean | null },
   ahora: Date = new Date(),
 ): boolean {
   return laPenalizacion(e, ahora) === 0;
@@ -345,10 +349,10 @@ export const AVISAR_CON = 5;
  * sería llenar la lista de gente sin motivo.
  */
 export function tocaLlamarle(
-  e: { firmado_at?: string | Date | null; acepto_el_precio?: boolean | null },
+  e: { publicado_at?: string | Date | null; acepto_el_precio?: boolean | null },
   ahora: Date = new Date(),
 ): boolean {
-  const libre = e.firmado_at ? libreDesde(e.firmado_at, Boolean(e.acepto_el_precio)) : null;
+  const libre = e.publicado_at ? libreDesde(e.publicado_at, Boolean(e.acepto_el_precio)) : null;
   if (!libre) return false;
   const dias = diasQueQuedan(libre, ahora);
   return dias !== null && dias <= AVISAR_CON;

@@ -207,9 +207,7 @@ mira de una vez, no buscándolo. Cada flujo repite en su sitio lo suyo.
 | **CIF y razón social** de Gamboa Ocasión y VIAN | Sin eso no se les puede emitir la comisión |
 | Y su **correo** en la ficha de Proveedores | Sin él la factura se emite pero no se manda, y se queda avisando |
 | Si la guía de subir el coche va **adjunta** al correo o enlazada | Hoy va enlazada: adjuntarla obliga a una segunda copia del texto |
-| **Configurar Firebase** para los avisos al móvil | Sin la credencial del servidor y el fichero de la app Android no sale ningún aviso push: ni el del informe listo ni el de las citas. Todo llega igual por correo |
-| Si la cita del taller y las visitas avisan también al móvil | Hoy van solo por correo, aunque Firebase se configure |
-| Si el precio de salida firmado bloquea la publicación, como el mandato | Hoy solo sale en Pendientes; sin él la cancelación cuesta 150 € desde el primer día |
+| **Configurar Firebase** para los avisos al móvil | Todo correo al cliente avisa también al móvil, pero sin la credencial del servidor —en PopCar y en el ERP— y el fichero de la app Android no sale ningún aviso. Todo llega igual por correo |
 
 ### Sin revisar por nadie de fuera
 

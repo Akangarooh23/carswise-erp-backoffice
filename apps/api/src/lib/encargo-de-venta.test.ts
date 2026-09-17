@@ -195,54 +195,65 @@ describe('lo que se firma', () => {
      * Lo único que cambia el día 30 es cuánto se le puede cobrar. Un encargo de
      * hace un año sigue vivo, sigue con sus cuatro puertas y sigue publicable.
      */
-    const deHaceUnAño = { firmado_at: new Date(AHORA.getTime() - 365 * 86400000).toISOString(), acepto_el_precio: true };
+    const deHaceUnAño = { publicado_at: new Date(AHORA.getTime() - 365 * 86400000).toISOString(), acepto_el_precio: true };
     assert.equal(laPenalizacion(deHaceUnAño, AHORA), 0, 'ya no se le puede cobrar');
     assert.equal(sePuedePublicar(lasPuertas(COMPLETO, AHORA)), true, 'y su coche se sigue pudiendo publicar');
   });
 });
 
 describe('la penalización, que es lo que los 30 días deciden de verdad', () => {
-  const firmadoHoy = AHORA.toISOString();
-  const firmadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
+  const publicadoHoy = AHORA.toISOString();
+  const publicadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
 
   test('el que NO firmó la cláusula del precio paga desde el día 1', () => {
     // Y no deja de deberla nunca mientras no venda con nosotros.
-    assert.equal(laPenalizacion({ firmado_at: firmadoHoy, acepto_el_precio: false }, AHORA), 150);
-    assert.equal(laPenalizacion({ firmado_at: firmadoHace(400), acepto_el_precio: false }, AHORA), 150);
+    assert.equal(laPenalizacion({ publicado_at: publicadoHoy, acepto_el_precio: false }, AHORA), 150);
+    assert.equal(laPenalizacion({ publicado_at: publicadoHace(400), acepto_el_precio: false }, AHORA), 150);
   });
 
   test('nunca llega a poder irse gratis, así que no tiene fecha', () => {
     // `null` aquí quiere decir «nunca», no «no lo sé».
-    assert.equal(libreDesde(firmadoHoy, false), null);
+    assert.equal(libreDesde(publicadoHoy, false), null);
   });
 
   test('el que sí la firmó paga durante los primeros 30 días', () => {
-    assert.equal(laPenalizacion({ firmado_at: firmadoHace(29), acepto_el_precio: true }, AHORA), 150);
+    assert.equal(laPenalizacion({ publicado_at: publicadoHace(29), acepto_el_precio: true }, AHORA), 150);
+  });
+
+  test('y los 30 días no empiezan hasta que se publica', () => {
+    /*
+     * Un mandato firmado hace dos meses con el coche todavía esperando al
+     * taller no ha tenido ni un día de venta. El plazo es de venta, no de
+     * papeleo.
+     */
+    const firmadoHaceDosMeses = { firmado_at: publicadoHace(60), publicado_at: null, acepto_el_precio: true };
+    assert.equal(laPenalizacion(firmadoHaceDosMeses, AHORA), 150);
+    assert.equal(tocaLlamarle(firmadoHaceDosMeses, AHORA), false);
   });
 
   test('y a partir del día 30 se va gratis', () => {
-    assert.equal(laPenalizacion({ firmado_at: firmadoHace(30), acepto_el_precio: true }, AHORA), 0);
-    assert.equal(laPenalizacion({ firmado_at: firmadoHace(90), acepto_el_precio: true }, AHORA), 0);
-    assert.equal(yaSePuedeIrGratis({ firmado_at: firmadoHace(30), acepto_el_precio: true }, AHORA), true);
+    assert.equal(laPenalizacion({ publicado_at: publicadoHace(30), acepto_el_precio: true }, AHORA), 0);
+    assert.equal(laPenalizacion({ publicado_at: publicadoHace(90), acepto_el_precio: true }, AHORA), 0);
+    assert.equal(yaSePuedeIrGratis({ publicado_at: publicadoHace(30), acepto_el_precio: true }, AHORA), true);
   });
 
-  test('la fecha de firma se cuenta desde el día que firmó', () => {
+  test('los 30 días se cuentan desde el día que se publicó', () => {
     const libre = libreDesde('2026-09-09T10:00:00Z', true);
     assert.equal(libre?.toISOString().slice(0, 10), '2026-10-09');
   });
 
-  test('una fecha de firma ilegible NO le perdona la penalización', () => {
+  test('una fecha de publicación ilegible NO le perdona la penalización', () => {
     /*
      * Perdonar sale de la puerta equivocada: se dejaría de cobrar por una fila
      * mal escrita y nadie se enteraría. Cobrar de más lo ve el cliente y lo dice.
      */
-    assert.equal(laPenalizacion({ firmado_at: 'el martes', acepto_el_precio: true }, AHORA), 150);
-    assert.equal(laPenalizacion({ firmado_at: null, acepto_el_precio: true }, AHORA), 150);
+    assert.equal(laPenalizacion({ publicado_at: 'el martes', acepto_el_precio: true }, AHORA), 150);
+    assert.equal(laPenalizacion({ publicado_at: null, acepto_el_precio: true }, AHORA), 150);
   });
 });
 
 describe('a quién hay que llamar', () => {
-  const firmadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
+  const publicadoHace = (n: number) => new Date(AHORA.getTime() - n * 86400000).toISOString();
 
   test('al que le quedan cinco días o menos para poder irse gratis', () => {
     /*
@@ -251,21 +262,21 @@ describe('a quién hay que llamar', () => {
      * momento de llamarle con un ajuste de precio.
      */
     assert.equal(AVISAR_CON, 5);
-    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(24), acepto_el_precio: true }, AHORA), false);
-    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(25), acepto_el_precio: true }, AHORA), true);
+    assert.equal(tocaLlamarle({ publicado_at: publicadoHace(24), acepto_el_precio: true }, AHORA), false);
+    assert.equal(tocaLlamarle({ publicado_at: publicadoHace(25), acepto_el_precio: true }, AHORA), true);
   });
 
   test('y al que ya puede, que sigue siendo cliente', () => {
-    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(45), acepto_el_precio: true }, AHORA), true);
+    assert.equal(tocaLlamarle({ publicado_at: publicadoHace(45), acepto_el_precio: true }, AHORA), true);
   });
 
   test('pero NO al que nunca va a poder irse gratis', () => {
     // No hay ninguna fecha que corra en su contra: llamarle por esto llenaría
     // la lista de gente sin motivo.
-    assert.equal(tocaLlamarle({ firmado_at: firmadoHace(200), acepto_el_precio: false }, AHORA), false);
+    assert.equal(tocaLlamarle({ publicado_at: publicadoHace(200), acepto_el_precio: false }, AHORA), false);
   });
 
-  test('ni a uno sin fecha de firma', () => {
-    assert.equal(tocaLlamarle({ firmado_at: null, acepto_el_precio: true }, AHORA), false);
+  test('ni a uno que todavía no se ha publicado', () => {
+    assert.equal(tocaLlamarle({ publicado_at: null, acepto_el_precio: true }, AHORA), false);
   });
 });

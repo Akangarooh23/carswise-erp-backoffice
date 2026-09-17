@@ -111,8 +111,8 @@ export function elCorreoDelMandato(
         parrafo(`<strong>Si se vende con nosotros</strong>, son ${euros(d.fee_gestion)}, `
           + `IVA incluido. No pagas nada por adelantado: si no se vende, no pagas esto.`) +
         parrafo(`<strong>Si decides retirarlo</strong>, ${euros(d.fee_cancelacion)} de `
-          + `cancelación, que dejan de aplicarse a los ${DIAS_HASTA_SALIR_GRATIS} días si `
-          + `aceptas por escrito el precio de salida que te proponemos.`) +
+          + `cancelación, que dejan de aplicarse a los ${DIAS_HASTA_SALIR_GRATIS} días de publicar `
+          + `el anuncio si aceptas por escrito el precio de salida que te proponemos.`) +
         aviso('El encargo no caduca',
           'No hay fecha de vencimiento: se mantiene hasta que el coche se vende o hasta '
           + 'que tú decidas retirarlo, y puedes retirarlo cuando quieras.'),
@@ -289,8 +289,9 @@ export function elCorreoDelPrecioDeSalida(
          */
         aviso('Por qué te interesa firmarlo',
           `Aceptando el precio por escrito puedes retirar el encargo <strong>sin pagar nada</strong> `
-          + `pasados ${d.dias_para_irse} días desde que firmaste el mandato. Sin esta aceptación, `
-          + `retirarlo cuesta ${euros(d.fee_cancelacion)} en cualquier momento.`) +
+          + `pasados ${d.dias_para_irse} días desde que publiquemos el anuncio. Sin esta aceptación, `
+          + `retirarlo cuesta ${euros(d.fee_cancelacion)} en cualquier momento. Y sin ella no `
+          + `podemos publicarlo: el anuncio sale con el precio que tú has firmado.`) +
         parrafo(`Te adjuntamos el documento. Fírmalo y súbelo desde tu panel: `
           + `${enlace('tus solicitudes', d.panel)}. No hace falta que nos escribas.`) +
         boton('Subir el precio firmado', d.panel) +

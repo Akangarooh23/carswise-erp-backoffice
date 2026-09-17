@@ -617,6 +617,11 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
         to: reserva.buyer_email,
         subject,
         alClienteSiempre: true,
+        movil: {
+          titulo: 'Tu visita está confirmada',
+          cuerpo: [reserva.vehicle_title, fechaLarga(reserva.starts_at), `a las ${hora(reserva.starts_at)}`].filter(Boolean).join(' · '),
+          pantalla: 'visitas',
+        },
         html,
         attachments: [{
           filename: 'visita-popcar.ics',
@@ -648,6 +653,10 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
           to: reserva.seller_email,
           subject,
           alClienteSiempre: true,
+          movil: {
+            titulo: 'Alguien va a ver tu coche',
+            cuerpo: [fechaLarga(reserva.starts_at), `a las ${hora(reserva.starts_at)}`, reserva.buyer_name && `viene ${reserva.buyer_name}`].filter(Boolean).join(' · '),
+          },
           html,
           attachments: [{
             filename: 'visita-popcar.ics',

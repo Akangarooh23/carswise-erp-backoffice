@@ -43,7 +43,7 @@ describe('las tres formas de acabar', () => {
 });
 
 describe('lo que se le factura', () => {
-  const firmoElPrecio = conMandato({ firmado_at: firmadoHace(10), acepto_el_precio: true });
+  const firmoElPrecio = conMandato({ firmado_at: firmadoHace(10), publicado_at: firmadoHace(10), acepto_el_precio: true });
 
   test('si vendió con nosotros, el fee de gestión', () => {
     const f = loQueSeLeFactura('vendido', firmoElPrecio, AHORA);
@@ -72,12 +72,12 @@ describe('lo que se le factura', () => {
 
   test('si se va después, no se le cobra nada', () => {
     // Y `null`, no una factura de 0 €: eso no existe.
-    assert.equal(loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), null);
-    assert.equal(seLeCobra('se_fue', conMandato({ firmado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), false);
+    assert.equal(loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(40), publicado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), null);
+    assert.equal(seLeCobra('se_fue', conMandato({ firmado_at: firmadoHace(40), publicado_at: firmadoHace(40), acepto_el_precio: true }), AHORA), false);
   });
 
   test('el que no firmó el precio paga aunque hayan pasado meses', () => {
-    const f = loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(200), acepto_el_precio: false }), AHORA);
+    const f = loQueSeLeFactura('se_fue', conMandato({ firmado_at: firmadoHace(200), publicado_at: firmadoHace(200), acepto_el_precio: false }), AHORA);
     assert.equal(f?.total, FEE_DE_CANCELACION);
   });
 
@@ -87,9 +87,9 @@ describe('lo que se le factura', () => {
      * Cobrarle ahí sería cobrarle por una decisión nuestra.
      */
     for (const e of [
-      { firmado_at: firmadoHace(1), acepto_el_precio: false },
-      { firmado_at: firmadoHace(1), acepto_el_precio: true },
-      { firmado_at: firmadoHace(90), acepto_el_precio: true },
+      { firmado_at: firmadoHace(1), publicado_at: firmadoHace(1), acepto_el_precio: false },
+      { firmado_at: firmadoHace(1), publicado_at: firmadoHace(1), acepto_el_precio: true },
+      { firmado_at: firmadoHace(90), publicado_at: firmadoHace(90), acepto_el_precio: true },
     ]) {
       assert.equal(loQueSeLeFactura('retirado', e, AHORA), null);
     }
@@ -102,8 +102,8 @@ describe('lo que se le factura', () => {
      * por separado, en pantalla pondría que ya puede irse gratis y le llegaría
      * una factura de 150 €.
      */
-    const justoAntes = conMandato({ firmado_at: firmadoHace(29), acepto_el_precio: true });
-    const justoDespues = conMandato({ firmado_at: firmadoHace(30), acepto_el_precio: true });
+    const justoAntes = conMandato({ firmado_at: firmadoHace(29), publicado_at: firmadoHace(29), acepto_el_precio: true });
+    const justoDespues = conMandato({ firmado_at: firmadoHace(30), publicado_at: firmadoHace(30), acepto_el_precio: true });
     assert.equal(loQueSeLeFactura('se_fue', justoAntes, AHORA)?.total, 150);
     assert.equal(loQueSeLeFactura('se_fue', justoDespues, AHORA), null);
   });
@@ -119,7 +119,7 @@ describe('sin mandato firmado no se le factura nada', () => {
    * «Abrir encargo» para que el ERP se escribiera una fecha de firma a sí mismo
    * y esa fecha sostuviera una factura de 299 €.
    */
-  const sinMandato = { firmado_at: firmadoHace(10), acepto_el_precio: true };
+  const sinMandato = { firmado_at: firmadoHace(10), publicado_at: firmadoHace(10), acepto_el_precio: true };
 
   test('ni siquiera si el coche se vendió', () => {
     // El caso caro y el que más cuesta aceptar: se ha hecho todo el trabajo y
@@ -247,13 +247,13 @@ describe('acordar el precio despues, sin regalar dias', () => {
     assert.match(RUTA, /encargosRouter\.patch\(\s*'\/encargos\/:id\/precio'/);
   });
 
-  test('los 30 dias cuentan desde la firma, no desde hoy', () => {
+  test('los 30 dias cuentan desde que se publico, no desde hoy', () => {
     /*
      * Contandolos desde el momento de marcar la casilla, alguien que firmo hace
      * tres semanas volveria a tener un mes por delante, y le cobrariamos una
      * penalizacion que ya no le corresponde.
      */
-    assert.match(PRECIO, /libreDesde\(e\.firmado_at as string, aceptoElPrecio\)/);
+    assert.match(PRECIO, /libreDesde\(e\.publicado_at as string, aceptoElPrecio\)/);
     assert.ok(!/libreDesde\(new Date\(\)/.test(PRECIO), 'el reloj se reinicia al marcar la casilla');
   });
 

@@ -343,7 +343,14 @@ revisionesTallerRouter.post(
 
       // `alClienteSiempre`: un desvío de pruebas olvidado en producción dejaría
       // al cliente sin enterarse de su propia cita, y el envío saldría bien.
-      await enviar({ to: correo, subject, html, alClienteSiempre: true });
+      await enviar({
+        to: correo, subject, html, alClienteSiempre: true,
+        movil: {
+          titulo: 'Tienes cita en el taller',
+          cuerpo: [elDiaDeLaCita(cita), laHoraDeLaCita(cita) && `a las ${laHoraDeLaCita(cita)}`, rev.taller]
+            .filter(Boolean).join(' · '),
+        },
+      });
 
       const g = await query(
         `UPDATE erp_revisiones_taller SET avisado_at = NOW(), updated_at = NOW()

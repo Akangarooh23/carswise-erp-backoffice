@@ -164,6 +164,15 @@ const VENDIDOS_SIN_CERRAR = `
         url TEXT NOT NULL, publicado_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         publicado_por TEXT NOT NULL DEFAULT '', retirado_at TIMESTAMPTZ,
         retirado_por TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    // Las del precio firmado y la publicacion, por si la base aun no las tiene:
+    // el ERP las crea al arrancar, y esto se deshace con todo lo demas.
+    await c.query(`
+      ALTER TABLE erp_encargos_venta
+        ADD COLUMN IF NOT EXISTS publicado_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS clausula_id TEXT,
+        ADD COLUMN IF NOT EXISTS clausula_enviada_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS clausula_firmada_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS clausula_precio NUMERIC(12,2)`);
 
     // ── 1 · Pide que le vendamos el coche, sin cuenta ──────────────────────
     paso(1, 'Manda el formulario sin registrarse, con su matricula');
@@ -222,8 +231,7 @@ const VENDIDOS_SIN_CERRAR = `
     await c.query(
       `UPDATE erp_encargos_venta
           SET firmado_at = NOW() - INTERVAL '10 days',
-              firma_como = 'papel_firmado', firma_nota = 'carpeta de mandatos',
-              libre_desde = NOW() + INTERVAL '20 days', acepto_el_precio = TRUE
+              firma_como = 'papel_firmado', firma_nota = 'carpeta de mandatos'
         WHERE id = $1`,
       [ENCARGO]
     );
@@ -231,7 +239,7 @@ const VENDIDOS_SIN_CERRAR = `
       `SELECT firma_como, libre_desde FROM erp_encargos_venta WHERE id = $1`, [ENCARGO]
     )).rows[0];
     di(f.firma_como === 'papel_firmado', 'consta COMO firmo, no solo la fecha');
-    di(f.libre_desde !== null, 'y el plazo de los 30 dias arranca en la firma');
+    di(f.libre_desde === null, 'y el plazo de los 30 dias NO arranca al firmar: arranca al publicar');
 
     // ── 6 · Las cinco puertas ──────────────────────────────────────────────
     paso(6, 'El cliente trae lo suyo');
@@ -344,8 +352,48 @@ const VENDIDOS_SIN_CERRAR = `
     di(rev.estado === 'Hecha' && rev.resultado === 'con_reparos',
       '«con reparos» deja vender contando lo que tiene');
 
+    // ── 7b · El precio de salida, firmado ─────────────────────────────────
+    paso(7, 'Se le manda el precio de salida y lo sube firmado');
+    await c.query(
+      `UPDATE erp_encargos_venta
+          SET precio_referencia = 8500, clausula_enviada_at = NOW(), clausula_precio = 8500
+        WHERE id = $1`,
+      [ENCARGO]
+    );
+    let pr = (await c.query(
+      `SELECT clausula_firmada_at, clausula_precio, precio_referencia FROM erp_encargos_venta WHERE id = $1`, [ENCARGO]
+    )).rows[0];
+    di(pr.clausula_firmada_at === null, 'mandado y sin firmar, NO se publica');
+
+    // Lo que hace PopCar al subirlo: marca, y el precio va al coche.
+    await c.query(
+      `UPDATE erp_encargos_venta
+          SET clausula_firmada_at = NOW(), acepto_el_precio = TRUE,
+              libre_desde = CASE WHEN publicado_at IS NOT NULL THEN publicado_at + INTERVAL '30 days' ELSE NULL END
+        WHERE id = $1 AND clausula_firmada_at IS NULL`,
+      [ENCARGO]
+    );
+    pr = (await c.query(
+      `SELECT clausula_firmada_at, clausula_precio, precio_referencia, libre_desde FROM erp_encargos_venta WHERE id = $1`, [ENCARGO]
+    )).rows[0];
+    di(pr.clausula_firmada_at !== null && Number(pr.clausula_precio) === Number(pr.precio_referencia),
+      'firmado y con el precio que hay guardado: ya se puede publicar');
+    di(pr.libre_desde === null, 'y todavia sin plazo: el coche no esta publicado');
+
     // ── 8 y 9 · Se publica aqui y a mano en el portal ──────────────────────
     paso(8, 'Se publica en nuestro escaparate y a mano en coches.net');
+    // Lo que hace el ERP al publicar la primera vez: arranca los 30 dias.
+    await c.query(
+      `UPDATE erp_encargos_venta
+          SET publicado_at = NOW(),
+              libre_desde = CASE WHEN acepto_el_precio THEN NOW() + INTERVAL '30 days' ELSE NULL END
+        WHERE vehicle_id = $1 AND cerrado_at IS NULL AND publicado_at IS NULL`,
+      [COCHE]
+    );
+    const pub = (await c.query(
+      `SELECT publicado_at, libre_desde FROM erp_encargos_venta WHERE id = $1`, [ENCARGO]
+    )).rows[0];
+    di(pub.publicado_at !== null && pub.libre_desde !== null, 'al publicar arrancan los 30 dias');
     await c.query(
       `INSERT INTO moveadvisor_marketplace_vo_offers
          (id, title, brand, model, year, price, mileage, fuel, color, seller, seller_type, is_active)

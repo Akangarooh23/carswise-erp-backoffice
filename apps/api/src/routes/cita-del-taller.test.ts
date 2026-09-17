@@ -91,13 +91,12 @@ describe('y mientras tanto no se pierde', () => {
 describe('y el aviso de mandarle el precio', () => {
   /*
    * El taller ya contestó y hay precio: lo siguiente es que lo acepte por
-   * escrito. No bloquea publicar, pero mientras no lo firme la cancelación son
-   * 150 € desde el día uno y para siempre — o sea que no mandárselo le cuesta
-   * dinero a él, y el día que lo descubra la conversación es nuestra.
+   * escrito. Sin eso el coche no se publica, y mientras no lo firme la
+   * cancelación son 150 € desde el día uno y para siempre.
    */
-  test('se cuenta cuando ya se puede pedir y no se ha mandado', () => {
+  test('se cuenta cuando ya se puede pedir y no se ha mandado con el precio de ahora', () => {
     assert.match(ENCARGOS, /avisos\.push\('encargos_sin_mandar_el_precio'\)/);
-    assert.match(ENCARGOS, /!fila\.clausula_enviada_at && !fila\.clausula_firmada_at/);
+    assert.match(ENCARGOS, /if \(!estaMandada\(fila\)\s*&& porQueNoSeLePuedePedir/);
   });
 
   test('con la misma regla que decide si se puede pedir', () => {
@@ -110,7 +109,7 @@ describe('y el aviso de mandarle el precio', () => {
 
   test('y la consulta trae lo que hace falta para saberlo', () => {
     // Contarlo sobre una fila sin estas columnas daría cero siempre.
-    assert.match(ENCARGOS, /e\.precio_referencia, e\.clausula_enviada_at, e\.clausula_firmada_at/);
+    assert.match(ENCARGOS, /e\.precio_referencia, e\.clausula_enviada_at, e\.clausula_firmada_at, e\.clausula_precio/);
   });
 
   test('se apaga al mandarlo, no al firmarlo', () => {
@@ -119,7 +118,7 @@ describe('y el aviso de mandarle el precio', () => {
      * tercero se queda encendido semanas, y entonces deja de mirarse.
      */
     const bloque = ENCARGOS.slice(
-      ENCARGOS.indexOf("!fila.clausula_enviada_at"),
+      ENCARGOS.indexOf("if (!estaMandada(fila)"),
       ENCARGOS.indexOf("avisos.push('encargos_sin_mandar_el_precio')"),
     );
     assert.doesNotMatch(bloque, /estaAceptada\(/);

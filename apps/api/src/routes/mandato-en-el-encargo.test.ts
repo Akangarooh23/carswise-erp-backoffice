@@ -83,11 +83,12 @@ describe('apuntar la firma', () => {
     assert.match(FIRMADO, /fecha_en_el_futuro/);
   });
 
-  test('es ahí donde empieza a correr el plazo', () => {
-    // Y desde la fecha que se apunte, no desde hoy: apuntarlo tarde no puede
-    // regalar un mes.
-    assert.match(FIRMADO, /libreDesde\(cuando,/);
+  test('pero el plazo no empieza al firmar, sino al publicar', () => {
+    // Firmar y esperar tres semanas al taller no puede gastarle el mes: hasta
+    // que el coche está anunciado no hemos empezado a venderlo.
     assert.match(FIRMADO, /SET firmado_at = \$2/);
+    assert.doesNotMatch(FIRMADO, /libreDesde\(cuando,/);
+    assert.match(FIRMADO, /libreDesde\(actual\.rows\[0\]\.publicado_at as string,/);
   });
 });
 
@@ -135,7 +136,7 @@ describe('el aviso de los que no han firmado', () => {
      * fila que no trae `firma_como`. Saldrían todos como sin firmar, para
      * siempre y sin que nadie lo notara.
      */
-    assert.match(ENCARGOS, /SELECT e\.vehicle_id, e\.firmado_at, e\.acepto_el_precio, e\.firma_como/);
+    assert.match(ENCARGOS, /SELECT e\.vehicle_id, e\.firmado_at, e\.publicado_at, e\.acepto_el_precio, e\.firma_como/);
   });
 });
 
@@ -205,9 +206,13 @@ describe('los correos salen de verdad', () => {
     assert.match(trozo, /e\.cerrado_at IS NULL/);
   });
 
-  test('y solo la primera vez que se publica', () => {
-    // Sin esto, cada retoque del anuncio le manda otro correo.
-    assert.match(IDCARS, /if \(!existing\.rows\.length\) \{\s*\n\s*avisaDeQueSePublico\(/);
+  test('y solo la primera vez que se publica el encargo', () => {
+    // Sin esto, cada retoque del anuncio le manda otro correo. Y se mira el
+    // encargo, no la oferta: la oferta puede existir de antes del encargo, y
+    // entonces el correo no salía nunca.
+    assert.match(IDCARS, /const primeraVez = await apuntaQueSePublico\(/);
+    assert.match(IDCARS, /if \(primeraVez\) \{\s*\n\s*await avisaDeQueSePublico\(/);
+    assert.match(ENCARGOS, /AND publicado_at IS NULL/);
   });
 });
 
