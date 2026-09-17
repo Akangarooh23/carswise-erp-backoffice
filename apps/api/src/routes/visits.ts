@@ -148,6 +148,8 @@ interface Reserva {
   ends_at?: string;
   buyer_email: string | null;
   buyer_name: string | null;
+  /** El dueño del coche, si es de garaje. En los de concesionario no hay. */
+  seller_email?: string | null;
 }
 
 /** Cuándo, como lo quiere un calendario: 20260915T100000Z. */
@@ -247,6 +249,43 @@ export function correoDeConfirmacion(
           ? ''
           : parrafo('Te confirmaremos la dirección exacta antes de la visita.', 14)) +
         parrafo('Va adjunto un archivo para añadirla a tu calendario. Si no puedes venir, entra en tu panel, en Solicitudes: desde ahí cambias el día y la hora o cancelas la visita.', 14),
+    }),
+  };
+}
+
+/**
+ * Y el del vendedor, cuando la visita ya es cierta.
+ *
+ * Es el dueño del coche que vendemos por él, y es quien lo enseña. Hasta ahora
+ * no se le escribía al confirmar: solo le llegaba un aviso con la solicitud
+ * todavía pendiente, que además decía «alguien ha reservado» y le pasaba el
+ * teléfono del comprador — justo lo contrario de lo que le prometemos al
+ * publicar, que filtramos y solo le pasamos las visitas que valen la pena.
+ *
+ * Ahora se le escribe una vez, cuando ya está confirmada, con lo que necesita
+ * para estar allí: qué día, a qué hora y quién viene. **El nombre, no el
+ * teléfono ni el correo**: las llamadas de su anuncio las cogemos nosotros, y
+ * si algo cambia se lo contamos nosotros.
+ */
+export function correoAlVendedorDeLaVisita(
+  r: Reserva,
+  donde = ''
+): { subject: string; html: string } {
+  const coche = r.vehicle_title || 'tu coche';
+  return {
+    subject: `Visita confirmada para ${coche} — ${fechaLarga(r.starts_at)}`,
+    html: plantilla({
+      titulo: 'Tienes una visita confirmada',
+      cuerpo:
+        parrafo(`Alguien va a ir a ver <strong>${esc(coche)}</strong>. Ya hemos hablado con él y la visita está confirmada.`) +
+        datos([
+          ['Día', fechaLarga(r.starts_at)],
+          ['Hora', hora(r.starts_at)],
+          ['Dónde', esc(donde)],
+          ['Viene', esc(r.buyer_name)],
+        ]) +
+        parrafo('Va adjunto un archivo para añadirla a tu calendario. Solo tienes que estar allí y enseñarle el coche.', 14) +
+        parrafo('Si a esa hora no puedes, contesta a este correo cuanto antes y la movemos nosotros.', 14),
     }),
   };
 }
@@ -559,7 +598,7 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
           SET status = 'confirmed', updated_at = NOW(),
               meeting_place = $2, meeting_contact = $3
         WHERE id = $1 AND status = 'pending'
-        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name`,
+        RETURNING id, offer_id, vehicle_title, starts_at, ends_at, buyer_email, buyer_name, seller_email`,
       [bookingId, donde, preguntarPor]
     );
     // Si no había ninguna pendiente con ese id, o ya estaba confirmada, no se
@@ -590,7 +629,42 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
       console.error('[visitas] no se ha podido confirmar al cliente:', fallo);
     }
 
-    return res.json({ ok: true, data: { avisado, ...(avisado ? {} : { fallo }) } });
+    /*
+     * Y al vendedor, si el coche es de alguien.
+     *
+     * En su propio `try`: que falle su correo no puede hacer que la pantalla diga
+     * que no se avisó al comprador, que sí se avisó. Son dos personas y se
+     * cuentan por separado.
+     *
+     * Solo si hay correo del vendedor, que es lo que tienen los coches de
+     * garaje. En los de concesionario el campo va vacío y al concesionario se le
+     * llama, que es como se ha hecho siempre.
+     */
+    let vendedorAvisado: boolean | null = null;
+    if (reserva.seller_email) {
+      try {
+        const { subject, html } = correoAlVendedorDeLaVisita(reserva, donde);
+        await enviar({
+          to: reserva.seller_email,
+          subject,
+          alClienteSiempre: true,
+          html,
+          attachments: [{
+            filename: 'visita-popcar.ics',
+            content: Buffer.from(calendarioDeLaCita(reserva)).toString('base64'),
+          }],
+        });
+        vendedorAvisado = true;
+      } catch (e) {
+        vendedorAvisado = false;
+        console.error('[visitas] no se ha podido avisar al vendedor:', e instanceof Error ? e.message : e);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      data: { avisado, vendedor_avisado: vendedorAvisado, ...(avisado ? {} : { fallo }) },
+    });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e.message });
   }
