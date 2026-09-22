@@ -35,6 +35,7 @@ export const DESTINOS: Destino[] = [
   { nombre: 'Citas de mantenimiento',  a: '/appointments',        icono: 'llave-inglesa',alias: 'taller revision',      roles: ['admin','support','operations','sales'], atajo: 'c' },
   { nombre: 'Tickets',                 a: '/tickets',             icono: 'ticket',       alias: 'soporte incidencias',  roles: ['admin','support','operations','sales'], atajo: 't' },
   { nombre: 'IDCars',                  a: '/idcars',              icono: 'llave',        alias: 'garaje vehiculos',     roles: ['admin','support','operations'],         atajo: 'i' },
+  { nombre: 'Ventas en curso',         a: '/ventas',              icono: 'euro',         alias: 'compras compradores financiacion', roles: ['admin','operations','sales'], atajo: 'n' },
   { nombre: 'Leads',                   a: '/leads',               icono: 'megafono',     alias: 'solicitudes',          roles: ['admin','support','operations','sales'], atajo: 'l' },
   { nombre: 'Contratos',               a: '/contracts',           icono: 'documento',    alias: 'renting ventas',       roles: ['admin','support','operations','sales'], atajo: 'k' },
   { nombre: 'Funnel',                  a: '/funnel',              icono: 'embudo',       alias: 'embudo conversion',    roles: ['admin','sales','operations'],           atajo: 'f' },

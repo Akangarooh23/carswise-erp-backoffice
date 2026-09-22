@@ -281,19 +281,19 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     clave: 'ventas_financiacion_denegada',
     etiqueta: 'ventas con la financiación denegada', una: 'venta con la financiación denegada',
     porque: 'hay que preguntarle al comprador si lo paga él o anular la venta',
-    a: '/idcars', icono: 'euro', tono: 'urgente',
+    a: '/ventas', icono: 'euro', tono: 'urgente',
   },
   {
     clave: 'ventas_financiacion_en_estudio',
     etiqueta: 'ventas con la financiación en estudio', una: 'venta con la financiación en estudio',
     porque: 'hasta que la entidad conteste no se pide el ingreso ni se hace la gestoría',
-    a: '/idcars', icono: 'euro', tono: 'espera',
+    a: '/ventas', icono: 'euro', tono: 'espera',
   },
   {
     clave: 'ventas_esperando_ingreso',
     etiqueta: 'ventas esperando el ingreso', una: 'venta esperando el ingreso',
     porque: 'el comprador ya ha dicho que lo compra y falta que entre el importe',
-    a: '/idcars', icono: 'euro', tono: 'espera',
+    a: '/ventas', icono: 'euro', tono: 'espera',
   },
   {
     clave: 'encargos_vendidos',

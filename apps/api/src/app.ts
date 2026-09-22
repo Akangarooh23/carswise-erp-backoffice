@@ -16,6 +16,7 @@ import { workshopsRouter } from './routes/workshops.js';
 import { workshopLocationsRouter } from './routes/workshop-locations.js';
 import { idcarsRouter } from './routes/idcars.js';
 import { encargosRouter } from './routes/encargos.js';
+import { ventasRouter } from './routes/ventas.js';
 import { revisionesTallerRouter } from './routes/revisiones-taller.js';
 import { anunciosPortalRouter } from './routes/anuncios-portal.js';
 import { billingRouter } from './routes/billing.js';
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api', workshopLocationsRouter);
   app.use('/api', idcarsRouter);
   app.use('/api', encargosRouter);
+  app.use('/api', ventasRouter);
   app.use('/api', revisionesTallerRouter);
   app.use('/api', anunciosPortalRouter);
   app.use('/api', billingRouter);
