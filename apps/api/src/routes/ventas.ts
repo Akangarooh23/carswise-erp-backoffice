@@ -35,7 +35,7 @@ const PUEDEN = ['admin', 'operations', 'sales'] as const;
  * tiene encima.
  */
 const CAMPOS = `
-  e.id, e.vehicle_id, e.venta_estado, e.venta_financia, e.financiacion_estado,
+  e.id, e.numero, e.vehicle_id, e.venta_estado, e.venta_financia, e.financiacion_estado,
   e.financiacion_entidad, e.financiacion_importe, e.financiacion_decidida_at,
   e.venta_iniciada_at, e.comprador_nombre, e.comprador_email, e.comprador_telefono,
   e.precio_venta, e.precio_referencia, e.cliente_nombre, e.cliente_email,
@@ -44,6 +44,7 @@ const CAMPOS = `
 
 interface Fila {
   id: string;
+  numero: string | null;
   vehicle_id: string;
   venta_estado: string | null;
   venta_financia: boolean | null;
@@ -111,6 +112,8 @@ ventasRouter.get('/ventas', requireRole([...PUEDEN]), async (req, res) => {
       const suPaso = enQuePasoEsta(f);
       return {
         id: f.id,
+        // El número del encargo: ENC-2026-0001. Es lo que se dice en voz alta.
+        numero: f.numero || "",
         vehicle_id: f.vehicle_id,
         paso: suPaso,
         // La frase de qué toca es la misma que se lee en la ficha del coche.

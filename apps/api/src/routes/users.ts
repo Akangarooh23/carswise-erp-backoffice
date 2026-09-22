@@ -21,7 +21,7 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
 
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length})`);
+    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length} OR lower(mu.numero) LIKE $${values.length})`);
   }
   if (status) {
     values.push(status);
@@ -33,7 +33,7 @@ usersRouter.get('/users', requireRole(['admin', 'support', 'operations', 'sales'
   try {
     const [rows, countResult] = await Promise.all([
       query(
-        `SELECT mu.id, mu.email, mu.name,
+        `SELECT mu.id, mu.numero, mu.email, mu.name,
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
                 COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
                 mu.created_at, mu.last_login_at,
@@ -78,7 +78,7 @@ usersRouter.get('/users/:id', requireRole(['admin', 'support', 'operations', 'sa
   try {
     const [user, appointments, tickets, leads, funnelEvents] = await Promise.all([
       query(
-        `SELECT mu.id, mu.email, mu.name,
+        `SELECT mu.id, mu.numero, mu.email, mu.name,
                 COALESCE(NULLIF(mu.apellidos, ''), '') AS apellidos,
                 COALESCE(NULLIF(mu.phone, ''), eu.phone, '') AS phone,
                 mu.created_at, mu.last_login_at,
@@ -157,7 +157,7 @@ usersRouter.get('/consentimientos', requireRole(['admin', 'support', 'operations
 
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length})`);
+    conditions.push(`(lower(mu.email) LIKE $${values.length} OR lower(mu.name) LIKE $${values.length} OR lower(mu.numero) LIKE $${values.length})`);
   }
   if (consent === 'legal')     conditions.push('mu.consent_legal_at IS NOT NULL');
   if (consent === 'marketing') conditions.push('mu.consent_marketing_at IS NOT NULL');

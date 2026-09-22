@@ -314,9 +314,15 @@ export default function IdCarDetailPage() {
         </div>
       )}
 
+      {/*
+        * El número del IDCar, arriba del todo.
+        *
+        * Es lo que se dice por teléfono y lo que se escribe en un papel; el
+        * identificador largo de la base no sale a ninguna pantalla.
+        */}
       <PageHeader
         title={vehicleTitle}
-        subtitle={vehicle.owner_email ?? vehicle.user_id}
+        subtitle={[vehicle.numero, vehicle.owner_email ?? vehicle.user_id].filter(Boolean).join(' · ')}
         actions={<Link to="/idcars" className="text-sm text-brand-400 hover:text-brand-500">← Volver</Link>}
       />
 

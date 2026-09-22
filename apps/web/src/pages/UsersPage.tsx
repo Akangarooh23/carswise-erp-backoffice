@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { Numero } from '../components/Numero.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { SearchInput } from '../components/ui/SearchInput.js';
 import { StatusBadge } from '../components/ui/Badge.js';
@@ -82,6 +83,8 @@ export default function UsersPage() {
                     <td>
                       <p className="font-medium text-brand-600 text-sm">{u.name || '(sin nombre)'}</p>
                       <p className="text-xs text-brand-300">{u.email}</p>
+                      {/* El número de cliente: es por donde se le nombra fuera de la pantalla. */}
+                      <p><Numero valor={u.numero} /></p>
                     </td>
                     <td><StatusBadge status={u.status} /></td>
                     <td><StatusBadge status={u.plan_type} /></td>

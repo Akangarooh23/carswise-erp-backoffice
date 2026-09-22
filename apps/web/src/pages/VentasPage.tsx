@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { Numero } from '../components/Numero.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Icono from '../components/ui/Icono.js';
 
@@ -19,6 +20,7 @@ import Icono from '../components/ui/Icono.js';
 
 interface Venta {
   id: string;
+  numero?: string;
   vehicle_id: string;
   paso: 'financiacion_en_estudio' | 'financiacion_denegada' | 'esperando_ingreso' | null;
   que_toca: string;
@@ -188,6 +190,8 @@ export default function VentasPage() {
                   <td>
                     <span className="font-semibold">{f.coche || '–'}</span>
                     {f.matricula && <span className="block text-[11px] text-brand-300">{f.matricula}</span>}
+                    {/* El número del encargo: lo que se dice al hablar de esta venta. */}
+                    <span className="block"><Numero valor={f.numero} /></span>
                   </td>
                   <td>
                     {f.comprador || '–'}

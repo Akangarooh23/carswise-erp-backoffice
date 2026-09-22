@@ -13,6 +13,8 @@ export type PlanType   = 'free' | 'plus' | 'premium';
 
 export interface User {
   id: string;
+  /** El número de cliente: CLI-0007. Lo pone la base al dar de alta. */
+  numero?: string;
   email: string;
   name: string;
   apellidos?: string;
@@ -231,6 +233,8 @@ export interface IdCarFile {
 
 export interface IdCar {
   id: string;
+  /** El número de negocio: IDC-0003. Lo pone la base al dar de alta. */
+  numero?: string;
   user_id: string;
   owner_name?: string;
   owner_email?: string;

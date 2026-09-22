@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+import { Numero } from '../components/Numero.js';
 import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
@@ -33,6 +34,8 @@ interface LeadMeta {
 }
 
 interface Lead {
+  /** El número del lead: LEAD-2026-0001. Lo pone la base al darlo de alta. */
+  numero?: string;
   id: string;
   user_email: string;
   vehicle_id: string;
@@ -771,6 +774,8 @@ export default function LeadsPage() {
                         <tr key={lead.id} className="cursor-pointer hover:bg-brand-50" onClick={() => openLead(lead)}>
                           <td className="text-brand-400 text-xs whitespace-nowrap">
                             <div>{new Date(lead.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                            {/* El número del lead, debajo de la fecha: es por donde se le nombra. */}
+                            <div><Numero valor={lead.numero} /></div>
                             {age && (
                               <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${age.color}`}>
                                 {age.label}

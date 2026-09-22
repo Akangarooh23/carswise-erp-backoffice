@@ -559,7 +559,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
   if (!offerId) return res.status(400).json({ ok: false, error: 'offerId required' });
   try {
     const r = await query(
-      `SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
+      `SELECT b.id, b.numero, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
               b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
              b.financiacion_llamada_at, b.financiacion_llamada_por,
              b.financiacion_resultado, b.financiacion_entidad, b.financiacion_importe,
@@ -1443,7 +1443,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
   const sinCerrar = String(req.query.sin_cerrar || '') === '1';
   try {
     let sql = `
-      SELECT b.id, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
+      SELECT b.id, b.numero, b.offer_id, b.vehicle_title, b.starts_at, b.ends_at,
              b.buyer_email, b.buyer_name, b.buyer_phone, b.notes, b.quiere_financiar, b.utm_source,
              b.financiacion_llamada_at, b.financiacion_llamada_por,
              b.financiacion_resultado, b.financiacion_entidad, b.financiacion_importe,

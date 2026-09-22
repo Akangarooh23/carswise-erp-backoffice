@@ -163,9 +163,10 @@ export default function UserDetailPage() {
 
   return (
     <div className="space-y-5">
+      {/* El número de cliente acompaña al correo: es como se le nombra fuera. */}
       <PageHeader
         title={[user.name, user.apellidos].filter(Boolean).join(' ') || user.email}
-        subtitle={user.email}
+        subtitle={[user.numero, user.email].filter(Boolean).join(' · ')}
         actions={
           <Link to="/users" className="text-sm text-brand-400 hover:text-brand-500">← Volver</Link>
         }

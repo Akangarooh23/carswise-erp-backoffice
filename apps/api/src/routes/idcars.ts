@@ -71,7 +71,7 @@ idcarsRouter.get('/idcars', requireRole(['admin', 'support', 'operations', 'sale
   }
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
-    conditions.push(`(lower(COALESCE(v.brand,'')) LIKE $${values.length} OR lower(COALESCE(v.model,'')) LIKE $${values.length} OR lower(COALESCE(v.plate,'')) LIKE $${values.length})`);
+    conditions.push(`(lower(COALESCE(v.brand,'')) LIKE $${values.length} OR lower(COALESCE(v.model,'')) LIKE $${values.length} OR lower(COALESCE(v.plate,'')) LIKE $${values.length} OR lower(COALESCE(v.numero,'')) LIKE $${values.length})`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

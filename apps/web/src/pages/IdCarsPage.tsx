@@ -7,6 +7,7 @@ import { Pagination } from '../components/ui/Pagination.js';
 import type { IdCar } from '../types/index.js';
 import Icono, { type NombreIcono } from '../components/ui/Icono.js';
 import { StatCard } from '../components/ui/Card.js';
+import { Numero } from '../components/Numero.js';
 import {
   NOMBRE_CORTO, esUrgente, porCoche, type IdCarConAvisos,
 } from '../lib/avisos-de-los-idcars.js';
@@ -117,6 +118,8 @@ export default function IdCarsPage() {
                       <Link to={`/idcars/${v.id}`} className="font-medium text-acento-texto hover:underline text-sm">
                         {[v.brand, v.model].filter(Boolean).join(' ') || '(sin datos)'}
                       </Link>
+                      {/* El número, debajo: es por donde se busca y lo que se dice por teléfono. */}
+                      <p><Numero valor={v.numero} /></p>
                       {/*
                         * Lo que espera este coche, debajo de su nombre.
                         *

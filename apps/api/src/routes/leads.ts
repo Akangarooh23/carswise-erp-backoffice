@@ -567,7 +567,7 @@ leadsRouter.get('/leads', requireRole(['admin', 'support', 'operations', 'sales'
   try {
     const [rows, total] = await Promise.all([
       query(
-        `SELECT id, user_email, vehicle_id,
+        `SELECT id, numero, user_email, vehicle_id,
                 lead_type           AS appointment_type,
                 vehicle_title       AS title,
                 /*
