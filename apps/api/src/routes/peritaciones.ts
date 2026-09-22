@@ -24,6 +24,7 @@ import { correoDeFacturaAlPerito, faltaParaPedirleLaFactura } from '../lib/factu
 import { nombreComparable } from '../lib/proveedores.js';
 import { escritoEnLista } from '../lib/escrow.js';
 import { subeAlAlmacen } from '../lib/subir-al-almacen.js';
+import { sirveGuardado } from '../lib/sirve-lo-guardado.js';
 import { revisaFichero, tamanoDeBase64 } from '../lib/ficheros.js';
 import { apuntaFacturaRecibida, apuntaFacturaEsperada } from './provider-billing.js';
 import { pareceUnCorreo, asuntoLimpio, notaEnParrafos } from '../lib/revision-de-correo.js';
@@ -989,6 +990,35 @@ peritacionesRouter.post(
       res.json({ ok: true, data: r.rows[0] });
     } catch (err) {
       console.error('[peritaciones] informe:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'informe_failed' });
+    }
+  }
+);
+
+/**
+ * Ver el informe, por una ruta que pide sesión.
+ *
+ * La pantalla enlazaba a `informe_url` tal cual, y esa dirección era la pública
+ * del almacén: el informe del perito —con la matrícula, el bastidor y los daños
+ * del coche de alguien— se abría desde cualquier navegador. Ahora el fichero
+ * está en el cubo privado y esta es la única puerta.
+ */
+peritacionesRouter.get(
+  '/peritaciones/:id/informe',
+  requireRole(['admin', 'operations', 'support']),
+  async (req, res) => {
+    await prepara();
+    try {
+      const r = await query<{ informe_url: string | null }>(
+        `SELECT informe_url FROM erp_peritaciones WHERE id = $1`,
+        [req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'no_encontrada' }); return; }
+      const url = String(r.rows[0].informe_url || '');
+      const ext = (url.split('?')[0].match(/\.([a-z0-9]{1,5})$/i)?.[1] || 'pdf').toLowerCase();
+      await sirveGuardado(url, res, `informe-${req.params.id}.${ext}`);
+    } catch (err) {
+      console.error('[peritaciones] ver informe:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'informe_failed' });
     }
   }

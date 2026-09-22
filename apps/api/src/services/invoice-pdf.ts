@@ -22,11 +22,17 @@ export async function nextInvoiceNumber(series: 'SUBS' | 'VTA' | 'PROV' | 'RECT'
 /**
  * El cubo donde van las facturas.
  *
- * Hoy es el mismo que el de las fotos, que es público porque las fotos tienen
- * que serlo. Una factura no. Cuando exista un cubo privado, esto es una
- * variable de entorno y ya: el resto del código no sabe cuál es.
+ * Era el mismo que el de las fotos, que es público porque las fotos tienen que
+ * serlo. Una factura no: lleva nombre, NIF, dirección y matrícula, y con la
+ * dirección delante se abría sin sesión.
+ *
+ * Ya hay cubo privado —`erp-documentos`, el de los papeles—, así que este es el
+ * de por defecto. La variable se queda por si un día hay que apuntar a otro.
  */
-const CUBO = process.env.SUPABASE_INVOICE_BUCKET?.trim() || 'vehicle-files';
+const CUBO = process.env.SUPABASE_INVOICE_BUCKET?.trim() || 'erp-documentos';
+
+/** El único cubo público que hay: el de las fotos de los anuncios. */
+const PUBLICO = 'vehicle-files';
 
 /**
  * Un trozo que no se adivina, para el nombre del fichero.
@@ -62,10 +68,12 @@ async function uploadPdf(bytes: Uint8Array, path: string): Promise<string | null
       body: Buffer.from(bytes),
     });
     if (!res.ok) return null;
-    // Se guarda la dirección pública porque es la forma que ya entiende todo lo
-    // que la lee. Quitándole `/public` sale la privada, que es la que se usa
-    // para servirla: el día que el cubo se cierre, lo guardado sigue valiendo.
-    return `${SUPABASE_URL}/storage/v1/object/public/${CUBO}/${conTrozo}`;
+    // La pública solo si el cubo lo es. En el privado se guarda la dirección
+    // privada, que es la que sabe usar `sirveGuardado` —con la clave de
+    // servicio— y que sola no abre nada.
+    return CUBO === PUBLICO
+      ? `${SUPABASE_URL}/storage/v1/object/public/${CUBO}/${conTrozo}`
+      : `${SUPABASE_URL}/storage/v1/object/${CUBO}/${conTrozo}`;
   } catch { return null; }
 }
 

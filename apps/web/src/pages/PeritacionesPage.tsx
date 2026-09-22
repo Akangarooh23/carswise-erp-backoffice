@@ -10,7 +10,7 @@
  * elegir perito, mandarle el encargo y anotar lo que dijo.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api } from '../api/client.js';
+import { api, descargaConSesion } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import Documentos from '../components/Documentos.js';
 import ElegirProveedor from '../components/ElegirProveedor.js';
@@ -678,10 +678,18 @@ function PeritacionAbierta({
             <div className={'mb-3 rounded-lg border px-3 py-2 ' +
               (p.informe_url ? 'border-brand-200 bg-brand-50' : 'border-red-200 bg-red-50')}>
               {p.informe_url ? (
-                <a href={p.informe_url} target="_blank" rel="noreferrer"
-                   className="text-[12px] font-semibold text-acento-texto hover:underline">
+                /* Por la ruta con sesión: el informe está en el cubo privado y
+                   su dirección no sirve sola ni sale a la pantalla. */
+                <button
+                  onClick={() => {
+                    // El nombre del fichero que se descarga: la extensión sale
+                    // de lo guardado, que puede ser una foto y no un PDF.
+                    const ext = p.informe_url?.split('?')[0].match(/\.([a-z0-9]{1,5})$/i)?.[1]?.toLowerCase() ?? 'pdf';
+                    void descargaConSesion(`/peritaciones/${p.id}/informe`, `informe-${p.id}.${ext}`).catch(() => {});
+                  }}
+                  className="text-[12px] font-semibold text-acento-texto hover:underline">
                   ↓ Ver el informe del perito
-                </a>
+                </button>
               ) : (
                 <p className="text-[12px] font-semibold text-red-700 mb-1.5">
                   Sin informe. Es lo único que prueba que alguien fue a ver el coche.

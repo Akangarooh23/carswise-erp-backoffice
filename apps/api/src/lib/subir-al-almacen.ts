@@ -16,6 +16,26 @@
 
 import { config } from '../config.js';
 
+/**
+ * El cubo privado, no el de las fotos.
+ *
+ * Esto guardaba en `vehicle-files`, que es **público**, y devolvía la dirección
+ * `/object/public/…`. Así estaban: un informe de peritación y cuatro facturas de
+ * proveedor se abrían desde cualquier navegador sin sesión, sabiendo la
+ * dirección — y la dirección era adivinable, porque el nombre del fichero es el
+ * identificador de serie: `provider-invoices/PROV-2026-001.pdf`, y después va el
+ * 002. Con nombre del proveedor, importe, matrícula y datos fiscales dentro.
+ *
+ * `erp-documentos` es privado y es el mismo que ya usa `routes/documentos.ts`.
+ * Desde aquí se devuelve la dirección **privada** (`/object/<cubo>/…`, sin
+ * `public`), que sin la clave de servicio no sirve para nada: quien quiera ver
+ * el fichero tiene que pedirlo por una ruta del ERP, y esas exigen sesión.
+ *
+ * Las fotos de los anuncios siguen en `vehicle-files` y siguen siendo públicas,
+ * que es lo suyo: se ven en el escaparate.
+ */
+const CUBO = 'erp-documentos';
+
 /** Dónde va cada cosa dentro del cubo. Una carpeta por tipo, no un cajón. */
 export type Carpeta = 'provider-invoices' | 'peritaciones' | 'documentos';
 
@@ -50,7 +70,7 @@ export async function subeAlAlmacen(
 
   try {
     const camino = comoSeGuarda(carpeta, id, nombre);
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vehicle-files/${camino}`, {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${CUBO}/${camino}`, {
       method: 'POST',
       headers: {
         // Sin `apikey` la clave nueva de Supabase no vale: ver invoice-pdf.ts.
@@ -64,7 +84,9 @@ export async function subeAlAlmacen(
       body: Buffer.from(base64, 'base64'),
     });
     if (!res.ok) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/vehicle-files/${camino}`;
+    // La privada. `sirveGuardado` y las rutas que enseñan estos ficheros la
+    // piden con la clave de servicio; un navegador con ella no hace nada.
+    return `${SUPABASE_URL}/storage/v1/object/${CUBO}/${camino}`;
   } catch {
     return null;
   }
