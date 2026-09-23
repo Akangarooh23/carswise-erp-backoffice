@@ -126,6 +126,24 @@ export default function RevisionDelTaller({
   const [tallerId, setTallerId] = useState('');
   const [busca, setBusca] = useState<DelDirectorio[]>([]);
   const [buscando, setBuscando] = useState(false);
+  /*
+   * Si ya se ha buscado, aunque no haya salido nada.
+   *
+   * Sin esto, una búsqueda sin resultados no pintaba absolutamente nada: la
+   * pantalla se quedaba igual que antes de escribir, así que no había forma de
+   * distinguir «ese taller no está» de «esto no funciona». Y pasa con el
+   * primer nombre que a uno se le ocurre: en el directorio los Norauto se
+   * llaman «NORAUTO» a secas, sin la ciudad.
+   */
+  const [seHaBuscado, setSeHaBuscado] = useState(false);
+  /*
+   * Si el desplegable está a la vista.
+   *
+   * Se cierra al salir del campo, con un respiro: sin él, el `blur` de pulsar
+   * una opción lo cerraría antes de que el clic llegara a registrarse, y la
+   * lista no serviría para nada.
+   */
+  const [seVeLaLista, setSeVeLaLista] = useState(false);
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [direccion, setDireccion] = useState('');
   const [dia, setDia] = useState('');
@@ -171,18 +189,22 @@ export default function RevisionDelTaller({
    */
   useEffect(() => {
     const loQueSeBusca = taller.trim();
-    if (loQueSeBusca.length < 3 || tallerId) { setBusca([]); return; }
+    if (loQueSeBusca.length < 2 || tallerId) { setSeHaBuscado(false); setBusca([]); return; }
 
     let vivo = true;
     setBuscando(true);
     const t = setTimeout(() => {
       void api.get<DelDirectorio[]>(`/workshop-locations?name=${encodeURIComponent(loQueSeBusca)}&limit=10`)
-        .then((r) => { if (vivo && r.ok) setBusca(r.data ?? []); })
+        .then((r) => {
+          if (!vivo) return;
+          setBusca(r.ok ? (r.data ?? []) : []);
+          setSeHaBuscado(true);
+        })
         // Sin búsqueda, el campo sigue siendo de texto: es peor no poder
         // apuntar la revisión que apuntarla con el nombre escrito a mano.
-        .catch(() => {})
+        .catch(() => { if (vivo) setSeHaBuscado(true); })
         .finally(() => { if (vivo) setBuscando(false); });
-    }, 500);
+    }, 300);
 
     return () => { vivo = false; clearTimeout(t); };
   }, [taller, tallerId]);
@@ -344,7 +366,9 @@ export default function RevisionDelTaller({
             <input
               id="taller-nombre"
               value={taller}
-              onChange={(ev) => { setTaller(ev.target.value); setTallerId(''); }}
+              onChange={(ev) => { setTaller(ev.target.value); setTallerId(''); setSeVeLaLista(true); }}
+              onFocus={() => setSeVeLaLista(true)}
+              onBlur={() => setTimeout(() => setSeVeLaLista(false), 150)}
               /*
                * El texto dice que aquí se busca.
                *
@@ -357,10 +381,26 @@ export default function RevisionDelTaller({
               className="w-full px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-acento"
             />
-            {busca.length > 0 && (
-              <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border border-brand-200
-                             rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                {busca.map((t) => (
+            {/*
+              * El desplegable sale desde que se escribe, tenga o no resultados.
+              *
+              * Es más ancho que el campo porque los nombres del directorio son
+              * largos —«ALONSO NUÑO, SL (MIDAS)»— y cortados no se distingue
+              * uno de otro.
+              */}
+            {seVeLaLista && !tallerId && taller.trim().length >= 2 && (buscando || seHaBuscado) && (
+              <div className="absolute z-20 left-0 w-80 mt-1 bg-white border border-brand-200
+                              rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                {buscando && busca.length === 0 ? (
+                  <p className="px-2.5 py-2 text-[11px] text-brand-300">Buscando…</p>
+                ) : busca.length === 0 ? (
+                  <p className="px-2.5 py-2 text-[11px] text-brand-400">
+                    Ningún taller se llama así. En el directorio salen con el nombre corto:
+                    prueba «Norauto» o «Midas», sin la ciudad.
+                  </p>
+                ) : null}
+                <ul>
+                  {busca.map((t) => (
                   <li key={t.id}>
                     <button
                       type="button"
@@ -378,13 +418,12 @@ export default function RevisionDelTaller({
                       </span>
                     </button>
                   </li>
-                ))}
-              </ul>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
-          {buscando && !tallerId && (
-            <p className="text-[11px] text-brand-300 mt-1 w-52">Buscando…</p>
-          )}
+          {/* El «buscando» ya sale dentro del desplegable; aquí sobraba. */}
           {taller.trim() && !tallerId && !buscando && (
             <p className="text-[11px] text-amber-700 mt-1 w-52">
               Escrito a mano. Elígelo de la lista y se le ocupa la hora en su agenda.
