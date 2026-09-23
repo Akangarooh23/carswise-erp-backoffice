@@ -127,7 +127,19 @@ export async function leeYGuarda(
 
   if (!otraVez) {
     const ya = await loLeido(vehicleId);
-    if (ya && ya.documento === doc.url) return ya;
+    /*
+     * Se reaprovecha la lectura **buena**, no la fallida.
+     *
+     * El papel no cambia, así que releerlo no aporta nada; un fallo sí cambia
+     * solo: la clave del lector que faltaba se configura, el almacén que no
+     * respondía vuelve. Guardando también el fallo como resultado, el botón
+     * seguiría enseñando para siempre un error ya arreglado.
+     *
+     * Que esto reintente no hace que el repaso reintente: aquel busca fichas
+     * **sin ninguna fila**, y una fallida ya la tiene. Así un documento que no
+     * hay manera de leer no se lee una y otra vez sin que nadie se entere.
+     */
+    if (ya && ya.documento === doc.url && !ya.fallo) return ya;
   }
 
   const base = { documento: doc.url, nombre: doc.nombre };

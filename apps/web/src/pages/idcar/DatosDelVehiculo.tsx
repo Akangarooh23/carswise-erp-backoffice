@@ -34,11 +34,30 @@ interface Diferencia {
 interface LaFicha {
   documento: string;
   confianza: string;
+  /** Por qué no se pudo leer. Vacío cuando se leyó bien. */
+  fallo?: string;
   diferencias: Diferencia[];
   avisos: string[];
   no_lo_trae: string[];
   no_es_una_ficha?: boolean;
   detail?: string;
+}
+
+/**
+ * Por qué no se ha podido leer, en una frase que diga qué hacer.
+ *
+ * Sin esto, una lectura fallida llegaba con la lista de diferencias vacía y la
+ * pantalla decía «todo coincide, no hay nada que corregir» — que es lo
+ * contrario de lo que pasa, y el peor sitio donde equivocarse: quien lo lee da
+ * por comprobado un coche que no se ha mirado.
+ */
+function porQueNoSeHaLeido(fallo: string): string {
+  if (fallo === 'sin_lector') return 'Falta configurar la clave del lector de fichas técnicas (GEMINI_API_KEY).';
+  if (fallo === 'sin_fichero' || fallo === 'no_se_ha_podido_bajar') return 'No hemos podido abrir el documento subido.';
+  if (fallo === 'fichero_vacio') return 'El documento subido está vacío.';
+  if (fallo === 'fichero_demasiado_grande') return 'El documento pesa demasiado para leerlo.';
+  if (fallo === 'no_se_ha_podido_leer') return 'El lector no ha podido con ese documento. Puede estar borroso o cortado.';
+  return `No se ha podido leer la ficha técnica (${fallo}).`;
 }
 
 /*
@@ -395,7 +414,11 @@ function PanelDeLaFicha({
         <button type="button" onClick={alCerrar} className="text-brand-300 hover:text-brand-500 text-sm leading-none">×</button>
       </div>
 
-      {ficha.no_es_una_ficha ? (
+      {ficha.fallo ? (
+        <p className="text-[11.5px] text-red-700 leading-snug">
+          {porQueNoSeHaLeido(ficha.fallo)} No se ha comprobado ningún dato del coche.
+        </p>
+      ) : ficha.no_es_una_ficha ? (
         <p className="text-[11.5px] text-amber-700 leading-snug">
           {ficha.detail ?? 'De ese documento no sale ningún dato de ficha técnica.'}
         </p>

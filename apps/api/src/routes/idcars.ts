@@ -10,7 +10,7 @@ import {
   ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_COCHE, type ElAnuncio,
 } from '../lib/caracteristicas-del-coche.js';
 import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
-import { leeYGuarda, loLeido, comoQuedaContraElCoche, etiquetaDe } from '../lib/la-ficha-leida.js';
+import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe } from '../lib/la-ficha-leida.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -702,10 +702,14 @@ idcarsRouter.post('/idcars/:id/ficha-tecnica/leer', requireRole(['admin', 'opera
     const coche = await query(`SELECT * FROM moveadvisor_user_vehicles WHERE id = $1`, [req.params.id]);
     if (!coche.rows.length) { res.status(404).json({ ok: false, error: 'idcar_not_found' }); return; }
 
+    /*
+     * `leeYGuarda` ya decide si hace falta leerlo: reaprovecha la lectura
+     * buena del mismo documento y reintenta la que fallo. Decidirlo tambien
+     * aqui era una segunda regla que un dia diria otra cosa — y la que habia
+     * devolvia para siempre el fallo guardado aunque ya estuviera arreglado.
+     */
     const otraVez = String(req.query.otraVez ?? '') === '1';
-    const lectura = otraVez || !(await loLeido(req.params.id))
-      ? await leeYGuarda(req.params.id, { otraVez })
-      : await loLeido(req.params.id);
+    const lectura = await leeYGuarda(req.params.id, { otraVez });
 
     if (!lectura) {
       res.status(404).json({ ok: false, error: 'sin_ficha_tecnica', detail: 'Este coche no tiene ficha técnica subida' });
