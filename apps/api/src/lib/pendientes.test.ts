@@ -328,3 +328,59 @@ describe('el aviso lleva al coche cuando es uno solo', () => {
     assert.equal(porClave.encargos_sin_firmar, '/idcars/veh-firma');
   });
 });
+
+/**
+ * Y que ningún aviso nuevo se quede mudo.
+ *
+ * Los avisos de encargos viven en tres sitios: el tipo que los declara
+ * (`routes/encargos.ts`), el catálogo que los explica en el panel (aquí) y el
+ * nombre corto que sale al lado del coche (en la web). Un aviso que solo está
+ * en el primero se cuenta y no se enseña, o se enseña con su clave —
+ * «encargos_ficha_no_cuadra»— al lado del coche, que se lee como un fallo del
+ * programa.
+ *
+ * Las claves se sacan **del tipo**, no de una lista escrita aquí: la lista a
+ * mano deja fuera al aviso nuevo sin que nadie se entere, que es justo lo que
+ * esto viene a impedir.
+ */
+describe('los avisos de encargos, en los tres sitios', () => {
+  const ENCARGOS = readFileSync(
+    new URL('../routes/encargos.ts', import.meta.url), 'utf8',
+  );
+  const NOMBRES = readFileSync(
+    new URL('../../../web/src/lib/avisos-de-los-idcars.ts', import.meta.url), 'utf8',
+  );
+
+  /** Las claves declaradas en `interface AvisosDeEncargos`. */
+  const declarados = (): string[] => {
+    const desde = ENCARGOS.indexOf('export interface AvisosDeEncargos {');
+    assert.ok(desde > 0, 'no encuentro el tipo de los avisos');
+    const hasta = ENCARGOS.indexOf('\n}', desde);
+    return [...ENCARGOS.slice(desde, hasta).matchAll(/^\s{2}([a-z_]+):\s*number;/gm)].map((m) => m[1]);
+  };
+
+  test('hay avisos declarados y se leen', () => {
+    // Si el recorte fallara, las dos pruebas de abajo pasarían sin mirar nada.
+    assert.ok(declarados().length >= 10, declarados().join(', '));
+  });
+
+  test('todos se explican en el panel', () => {
+    for (const clave of declarados()) {
+      assert.ok(
+        CATALOGO.some((c) => c.clave === clave),
+        `«${clave}» se cuenta pero no está en el catálogo: el panel no sabría qué decir`,
+      );
+    }
+  });
+
+  test('y todos tienen nombre corto para la tabla', () => {
+    for (const clave of declarados()) {
+      // Sin expresión regular a propósito: las claves no llevan caracteres que
+      // haya que escapar, y un patrón mal escapado da por buena la lista entera.
+      assert.ok(
+        NOMBRES.includes(`${clave}: '`),
+        `«${clave}» saldría con su clave al lado del coche`,
+      );
+    }
+  });
+});

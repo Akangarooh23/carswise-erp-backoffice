@@ -48,6 +48,9 @@ import { nextProviderInvoiceId } from './provider-billing.js';
 import { guardaConIdUnico } from '../lib/series.js';
 import { porQueElTallerNoDeja, preparaRevisionesTaller, laRevisionDe } from './revisiones-taller.js';
 import {
+  ENSURE_TABLA as ENSURE_FICHAS, comoQuedaContraElCoche, cuantosSeContradicen,
+} from '../lib/la-ficha-leida.js';
+import {
   COMO_SE_FIRMA, COMO_LO_DECIMOS, laMarcamosNosotros, SERIE as SERIE_DEL_MANDATO,
   esUnaFirma, estaFirmado, porQueNoEstaFirmado,
   elMandato, comoSeLlamaElFichero, miles,
@@ -292,6 +295,14 @@ export interface AvisosDeEncargos {
   ventas_financiacion_denegada: number;
   /** Hay comprador y falta que entre el importe. */
   ventas_esperando_ingreso: number;
+  /**
+   * Su ficha técnica dice otra cosa que lo que hay puesto en el coche.
+   *
+   * No es «le falta rellenar»: es que un dato **está puesto y contradice al
+   * papel**. Mientras tanto el coche se tasa y se anuncia con ese número — al
+   * T-Roc de la prueba le faltaban cuarenta caballos.
+   */
+  encargos_ficha_no_cuadra: number;
 }
 
 /**
@@ -312,11 +323,26 @@ export interface EncargoConAvisos {
   avisos: (keyof AvisosDeEncargos)[];
 }
 
+/**
+ * Si de ese coche hay una ficha técnica leída.
+ *
+ * Sin lectura no hay nada que comparar, y un coche sin ficha subida ya sale
+ * marcado por su puerta de papeles: sacarlo también aquí sería decir dos veces
+ * lo mismo con dos nombres distintos.
+ */
+function hayLecturaDeLaFicha(fila: Record<string, unknown>): boolean {
+  const codigos = fila.ficha_codigos as Record<string, unknown> | null | undefined;
+  return Boolean(codigos) && Object.keys(codigos ?? {}).length > 0;
+}
+
 export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
   await prepara();
   // La consulta de abajo lee `erp_revisiones_taller`. Si nadie la ha creado
   // todavía, falla entera y los cinco avisos se quedan a cero para siempre.
   await preparaRevisionesTaller().catch(() => {});
+  // Y la de las fichas leídas, por lo mismo: si no existe, la consulta de abajo
+  // falla entera y **todos** los avisos se quedan a cero.
+  await query(ENSURE_FICHAS).catch(() => {});
 
   const r = await query(`
     SELECT e.vehicle_id, e.firmado_at, e.publicado_at, e.acepto_el_precio, e.firma_como,
@@ -325,6 +351,9 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
               WHERE b.offer_id = 'idcar-' || e.vehicle_id AND b.resultado = 'compro'
            ) AS se_vendio,
            v.plate, v.brand, v.model, v.year, v.mileage,
+           -- Lo que hace falta para comparar el coche con su ficha técnica.
+           v.version, v.cv, v.displacement, v.co2, v.seats, v.fuel, v.body_type, v.color,
+           fic.codigos AS ficha_codigos, fic.fallo AS ficha_fallo,
            (SELECT COUNT(*) FROM moveadvisor_user_vehicle_files f
              WHERE f.vehicle_id = e.vehicle_id AND f.file_type = 'photo'
                AND COALESCE(f.file_url, '') <> '') AS fotos,
@@ -359,6 +388,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
            e.venta_estado, e.financiacion_estado
       FROM erp_encargos_venta e
       LEFT JOIN moveadvisor_user_vehicles v ON v.id = e.vehicle_id
+      LEFT JOIN erp_fichas_tecnicas_leidas fic ON fic.vehicle_id = e.vehicle_id
       -- La revisión del taller, la más reciente de ese coche. En LATERAL y no
       -- en dos subconsultas sueltas: con dos, un empate en la fecha podria dar
       -- el estado de una ficha y el resultado de otra.
@@ -404,6 +434,30 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
     if (paso === 'esperando_ingreso') avisos.push('ventas_esperando_ingreso');
     if (tocaLlamarle({ publicado_at: fila.publicado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
     if (soloLeFaltanFranjas(puertas)) avisos.push('encargos_sin_franjas');
+
+    /*
+     * Y si su ficha técnica dice otra cosa que lo que hay puesto.
+     *
+     * La ficha se lee sola al subirla, pero la contradicción se quedaba dentro
+     * del coche: había que entrar a mirarla. Con doscientos coches eso es no
+     * enterarse nunca — y mientras tanto el coche se tasa y se anuncia con el
+     * dato malo.
+     *
+     * Solo lo que **se contradice**, no lo que falta por rellenar: contando
+     * los huecos saltaría con cada coche recién subido, y un aviso que sale
+     * siempre deja de mirarse.
+     */
+    if (hayLecturaDeLaFicha(fila)) {
+      const contra = comoQuedaContraElCoche(
+        {
+          documento: '', nombre: '', leida_at: '', confianza: '',
+          codigos: (fila.ficha_codigos ?? {}) as Record<string, unknown>,
+          fallo: String(fila.ficha_fallo ?? ''),
+        },
+        fila,
+      );
+      if (cuantosSeContradicen(contra) > 0) avisos.push('encargos_ficha_no_cuadra');
+    }
 
     /*
      * «Listo para el taller» es justo eso: el cliente ya lo ha traído todo y lo
@@ -489,6 +543,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
     ventas_financiacion_en_estudio: 0,
     ventas_financiacion_denegada: 0,
     ventas_esperando_ingreso: 0,
+    encargos_ficha_no_cuadra: 0,
   };
   for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
   return cuenta;

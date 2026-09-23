@@ -262,6 +262,22 @@ export function cuantosNoCuadran(x: LoQueSaleDeLaFicha | null | undefined): numb
 }
 
 /**
+ * Cuántos **se contradicen**, que no es lo mismo que cuántos faltan.
+ *
+ * Un hueco vacío es algo que completar y ya lo dice la ficha del coche. Esto
+ * cuenta lo otro: el dato que está puesto y **dice otra cosa que el papel**.
+ * Son los que hay que mirar, porque ahí alguien se equivocó y el coche se está
+ * tasando y anunciando con ese número.
+ *
+ * Es lo que decide si sale el aviso. Contando también los vacíos, saltaría con
+ * cada coche recién subido —que no tiene nada puesto— y un aviso que sale
+ * siempre deja de mirarse.
+ */
+export function cuantosSeContradicen(x: LoQueSaleDeLaFicha | null | undefined): number {
+  return (x?.diferencias ?? []).filter((d) => d.corrige && d.ahora !== '').length;
+}
+
+/**
  * Las fichas subidas que todavía no se han leído.
  *
  * Es la red de debajo: cubre las que se subieron mientras el lector estaba

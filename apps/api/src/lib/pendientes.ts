@@ -307,6 +307,24 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'en unos días podrá vender por su cuenta sin pagarnos nada',
     a: '/idcars', icono: 'reloj', tono: 'urgente',
   },
+  /*
+   * Su ficha técnica dice otra cosa que lo que hay puesto en el coche.
+   *
+   * No es «le falta rellenar»: es un dato puesto que **contradice al papel**.
+   * Y mientras nadie lo mire, el coche se tasa y se anuncia con ese número —
+   * al T-Roc de la prueba le faltaban cuarenta caballos, porque el cliente
+   * copió los kilovatios en la casilla de los caballos.
+   *
+   * Urgente porque de ahí sale el precio del que se habla con el cliente, y
+   * porque se arregla en dos clics: la ficha ya está leída y las diferencias
+   * salen marcadas en su pantalla.
+   */
+  {
+    clave: 'encargos_ficha_no_cuadra',
+    etiqueta: 'coches que no cuadran con su ficha técnica', una: 'coche que no cuadra con su ficha técnica',
+    porque: 'hay datos puestos que contradicen a la ficha, y con esos se tasa y se anuncia',
+    a: '/idcars', icono: 'documento', tono: 'urgente',
+  },
   {
     clave: 'encargos_sin_franjas',
     etiqueta: 'encargos sin horas para visitar', una: 'encargo sin horas para visitar',
