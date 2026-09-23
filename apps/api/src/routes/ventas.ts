@@ -39,6 +39,9 @@ const CAMPOS = `
   e.financiacion_entidad, e.financiacion_importe, e.financiacion_decidida_at,
   e.venta_iniciada_at, e.comprador_nombre, e.comprador_email, e.comprador_telefono,
   e.precio_venta, e.precio_referencia, e.cliente_nombre, e.cliente_email,
+  -- Las fechas de la fase del dinero: de ellas sale el paso en que está.
+  e.ingreso_at, e.ingreso_importe, e.gestoria_at, e.gestoria_hecha_at,
+  e.liberado_at, e.liberado_importe, e.entregado_at,
   v.plate, v.brand, v.model, v.year
 `;
 
@@ -60,6 +63,13 @@ interface Fila {
   precio_referencia: string | number | null;
   cliente_nombre: string | null;
   cliente_email: string | null;
+  ingreso_at: string | null;
+  ingreso_importe: string | number | null;
+  gestoria_at: string | null;
+  gestoria_hecha_at: string | null;
+  liberado_at: string | null;
+  liberado_importe: string | number | null;
+  entregado_at: string | null;
   plate: string | null;
   brand: string | null;
   model: string | null;
@@ -133,6 +143,12 @@ ventasRouter.get('/ventas', requireRole([...PUEDEN]), async (req, res) => {
         financiacion_entidad: f.financiacion_entidad || '',
         financiacion_importe: Number(f.financiacion_importe) || null,
         financiacion_decidida_at: f.financiacion_decidida_at,
+        // La fase del dinero, para poder pintar en qué punto va cada una.
+        ingreso_at: f.ingreso_at,
+        gestoria_at: f.gestoria_at,
+        gestoria_hecha_at: f.gestoria_hecha_at,
+        liberado_at: f.liberado_at,
+        entregado_at: f.entregado_at,
       };
     });
 
@@ -142,12 +158,16 @@ ventasRouter.get('/ventas', requireRole([...PUEDEN]), async (req, res) => {
      * El recuento va de todas, no de las filtradas: es lo que deja poner el
      * número en cada pestaña sin pedir la lista tres veces.
      */
-    const cuenta: Record<Paso | 'todas', number> = {
-      todas: todas.length,
-      financiacion_en_estudio: 0,
-      financiacion_denegada: 0,
-      esperando_ingreso: 0,
-    };
+    /*
+     * A cero todos los pasos, sacados de `QUE_TOCA` y no escritos aquí.
+     *
+     * Escritos a mano, el paso nuevo se quedaba fuera y su pestaña salía vacía
+     * —o sin número— sin que nadie se enterase. Y hay que ponerlos a cero
+     * aunque no haya ninguna venta en ese paso: una pestaña sin número no dice
+     * «cero», dice «no lo sé».
+     */
+    const cuenta = { todas: todas.length } as Record<Paso | 'todas', number>;
+    for (const p of Object.keys(QUE_TOCA) as Paso[]) cuenta[p] = 0;
     for (const x of todas) if (x.paso) cuenta[x.paso] += 1;
 
     res.json({ ok: true, data: filtradas, meta: { total: filtradas.length, cuenta } });

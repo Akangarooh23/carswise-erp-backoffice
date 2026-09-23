@@ -38,6 +38,10 @@ export const NOMBRE_CORTO: Record<string, string> = {
   ventas_financiacion_denegada: 'Financiación denegada',
   ventas_esperando_ingreso: 'Falta el ingreso',
   encargos_ficha_no_cuadra: 'La ficha no cuadra',
+  ventas_toca_la_gestoria: 'Falta la gestoría',
+  ventas_toca_liberar: 'Falta pagar al vendedor',
+  ventas_toca_entregar: 'Falta recoger el coche',
+  ventas_entregadas_sin_cerrar: 'Entregado, falta cerrar',
 };
 
 /**
@@ -63,6 +67,14 @@ const URGENTES = new Set([
    * sale el precio del que se habla con el cliente.
    */
   'encargos_ficha_no_cuadra',
+  /*
+   * La fase del dinero: hay alguien esperando al otro lado. Un comprador que
+   * ya ha pagado y no tiene el coche, o un vendedor que lo ha entregado y no
+   * ha cobrado. «Entregado, falta cerrar» no: ahí ya no espera nadie de fuera.
+   */
+  'ventas_toca_la_gestoria',
+  'ventas_toca_liberar',
+  'ventas_toca_entregar',
 ]);
 
 export function esUrgente(aviso: string): boolean {

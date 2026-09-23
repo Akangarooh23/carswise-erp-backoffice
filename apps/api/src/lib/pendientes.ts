@@ -295,6 +295,39 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'el comprador ya ha dicho que lo compra y falta que entre el importe',
     a: '/ventas', icono: 'euro', tono: 'espera',
   },
+  /*
+   * La fase del dinero, paso a paso.
+   *
+   * Los cuatro son trabajo nuestro y con alguien esperando al otro lado: un
+   * comprador que ya ha pagado y no tiene el coche, o un vendedor que lo ha
+   * entregado y no ha cobrado. Por eso van en rojo los tres primeros.
+   */
+  {
+    clave: 'ventas_toca_la_gestoria',
+    etiqueta: 'ventas con el dinero dentro y sin gestoría', una: 'venta con el dinero dentro y sin gestoría',
+    porque: 'el comprador ya ha pagado y el coche sigue a nombre del vendedor',
+    a: '/ventas', icono: 'documento', tono: 'urgente',
+  },
+  {
+    clave: 'ventas_toca_liberar',
+    etiqueta: 'ventas con el vendedor sin cobrar', una: 'venta con el vendedor sin cobrar',
+    porque: 'el coche ya está a nombre del comprador y el dinero sigue retenido',
+    a: '/ventas', icono: 'euro', tono: 'urgente',
+  },
+  {
+    clave: 'ventas_toca_entregar',
+    etiqueta: 'coches vendidos sin recoger', una: 'coche vendido sin recoger',
+    porque: 'está pagado y a su nombre, y falta quedar para la entrega',
+    a: '/ventas', icono: 'coche', tono: 'urgente',
+  },
+  {
+    clave: 'ventas_entregadas_sin_cerrar',
+    etiqueta: 'ventas entregadas sin cerrar', una: 'venta entregada sin cerrar',
+    porque: 'la operación ha terminado y falta cerrar el encargo y emitir los 299 €',
+    // A la lista de ventas como los demás: desde ahí se entra al coche. Mandar a
+    // la lista de IDCars es lo que se arregló, que allí no se sabe cuál es.
+    a: '/ventas', icono: 'euro', tono: 'espera',
+  },
   {
     clave: 'encargos_vendidos',
     etiqueta: 'coches vendidos sin cerrar el encargo', una: 'coche vendido sin cerrar el encargo',

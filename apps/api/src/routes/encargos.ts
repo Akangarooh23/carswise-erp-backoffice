@@ -75,6 +75,13 @@ import {
   enQuePasoEsta, QUE_TOCA, porQueNoSeDecideLaFinanciacion, porQueNoPagaEl, porQueNoSeAnula,
   correoFinanciacionAprobada, correoFinanciacionDenegada,
   correoVentaAnuladaAlComprador, correoVentaAnuladaAlVendedor,
+  // La fase del dinero: cada paso con su guarda y su correo. El fee ya viene
+  // de `encargo-de-venta.js`, que es de donde lo reexporta este módulo.
+  comoSeReparte,
+  porQueNoSeApuntaElIngreso, porQueNoSeMandaLaGestoria, porQueNoSeCierraLaGestoria,
+  porQueNoSeLibera, porQueNoSeEntrega,
+  correoIngresoRecibido, correoIngresoRecibidoAlVendedor, correoCambioDeNombreHecho,
+  correoDineroLiberado, correoCocheEntregado,
 } from '../lib/venta-en-curso.js';
 import { sigueEsperandoAlTaller, elTallerLoTumbo, elClienteEsperaRespuesta } from '../lib/revision-del-taller.js';
 
@@ -295,6 +302,14 @@ export interface AvisosDeEncargos {
   ventas_financiacion_denegada: number;
   /** Hay comprador y falta que entre el importe. */
   ventas_esperando_ingreso: number;
+  /** El dinero ya está retenido: toca mandar el cambio de nombre. */
+  ventas_toca_la_gestoria: number;
+  /** Cambio de nombre hecho: toca soltarle el dinero al vendedor. */
+  ventas_toca_liberar: number;
+  /** El vendedor ya ha cobrado: falta que el comprador retire el coche. */
+  ventas_toca_entregar: number;
+  /** Coche entregado: falta cerrar el encargo y emitir los 299 €. */
+  ventas_entregadas_sin_cerrar: number;
   /**
    * Su ficha técnica dice otra cosa que lo que hay puesto en el coche.
    *
@@ -432,6 +447,10 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
     if (paso === 'financiacion_en_estudio') avisos.push('ventas_financiacion_en_estudio');
     if (paso === 'financiacion_denegada') avisos.push('ventas_financiacion_denegada');
     if (paso === 'esperando_ingreso') avisos.push('ventas_esperando_ingreso');
+    if (paso === 'toca_la_gestoria') avisos.push('ventas_toca_la_gestoria');
+    if (paso === 'toca_liberar') avisos.push('ventas_toca_liberar');
+    if (paso === 'toca_entregar') avisos.push('ventas_toca_entregar');
+    if (paso === 'entregado') avisos.push('ventas_entregadas_sin_cerrar');
     if (tocaLlamarle({ publicado_at: fila.publicado_at as string | null, acepto_el_precio: fila.acepto_el_precio as boolean })) avisos.push('encargos_por_llamar');
     if (soloLeFaltanFranjas(puertas)) avisos.push('encargos_sin_franjas');
 
@@ -543,6 +562,10 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
     ventas_financiacion_en_estudio: 0,
     ventas_financiacion_denegada: 0,
     ventas_esperando_ingreso: 0,
+    ventas_toca_la_gestoria: 0,
+    ventas_toca_liberar: 0,
+    ventas_toca_entregar: 0,
+    ventas_entregadas_sin_cerrar: 0,
     encargos_ficha_no_cuadra: 0,
   };
   for (const c of coches) for (const a of c.avisos) cuenta[a] += 1;
@@ -1098,6 +1121,200 @@ encargosRouter.post(
     } catch (err) {
       console.error('[venta] financiación:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'venta_financiacion_failed' });
+    }
+  }
+);
+
+/**
+ * La fase del dinero, paso a paso.
+ *
+ * Cinco rutas que hacen lo mismo con distinto contenido: comprobar que toca,
+ * apuntar la fecha y avisar a quien le afecta. Cada guarda vive en
+ * `venta-en-curso.ts`, que es donde se lee el orden entero de un vistazo.
+ *
+ * El orden no es burocracia. El dinero se queda retenido hasta que el coche
+ * está a nombre del comprador, y el vendedor no entrega hasta que ha cobrado:
+ * saltarse un paso es romper una de esas dos promesas, y las dos están hechas
+ * por escrito.
+ */
+
+/** Ha entrado el importe del coche en la cuenta de terceros. */
+encargosRouter.post(
+  '/encargos/:id/venta/ingreso',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const importe = Number(req.body?.importe);
+      const referencia = String(req.body?.referencia ?? '').trim().slice(0, 120);
+      const falta = porQueNoSeApuntaElIngreso(e, importe);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      await query(
+        `UPDATE erp_encargos_venta
+            SET ingreso_at = NOW(), ingreso_importe = $2, ingreso_referencia = NULLIF($3, ''), updated_at = NOW()
+          WHERE id = $1`,
+        [e.id, importe, referencia]
+      );
+
+      /*
+       * Se avisa a los dos, y no se les dice lo mismo.
+       *
+       * Al comprador, que su dinero está a salvo y no sale hasta que el coche
+       * sea suyo. Al vendedor, que **no entregue el coche todavía**: es el
+       * momento en que más tentado está de hacerlo, porque ya sabe que hay
+       * dinero.
+       */
+      const d = { ...datosDelCorreo(e), importe };
+      const avisados: string[] = [];
+      for (const [aQuien, correo] of [
+        [e.comprador_email, correoIngresoRecibido(d)],
+        [e.cliente_email, correoIngresoRecibidoAlVendedor(d)],
+      ] as const) {
+        if (!aQuien) continue;
+        await enviar({ to: String(aQuien), subject: correo.subject, html: correo.html, alClienteSiempre: true, movil: correo.movil })
+          .then(() => { avisados.push(String(aQuien)); })
+          .catch((err) => console.error('[venta] correo del ingreso:', (err as Error).message));
+      }
+      res.json({ ok: true, data: { paso: 'toca_la_gestoria', avisados } });
+    } catch (err) {
+      console.error('[venta] ingreso:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_ingreso_failed' });
+    }
+  }
+);
+
+/** La gestoría del cambio de nombre sale hacia el gestor. */
+encargosRouter.post(
+  '/encargos/:id/venta/gestoria',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const tramiteId = String(req.body?.tramite_id ?? '').trim().slice(0, 64);
+      const falta = porQueNoSeMandaLaGestoria(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      await query(
+        `UPDATE erp_encargos_venta
+            SET gestoria_at = NOW(), gestoria_tramite_id = NULLIF($2, ''), updated_at = NOW()
+          WHERE id = $1`,
+        [e.id, tramiteId]
+      );
+      // Sin correo: que el papeleo salga hacia el gestor no es noticia para
+      // nadie de fuera. La noticia es cuando el coche ya está a su nombre.
+      res.json({ ok: true, data: { paso: 'gestoria_en_curso' } });
+    } catch (err) {
+      console.error('[venta] gestoría:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_gestoria_failed' });
+    }
+  }
+);
+
+/** El cambio de nombre ya está hecho en Tráfico. */
+encargosRouter.post(
+  '/encargos/:id/venta/gestoria-hecha',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const falta = porQueNoSeCierraLaGestoria(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      await query(
+        `UPDATE erp_encargos_venta SET gestoria_hecha_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [e.id]
+      );
+
+      const correo = correoCambioDeNombreHecho(datosDelCorreo(e));
+      let avisado = false;
+      if (e.comprador_email) {
+        await enviar({ to: String(e.comprador_email), subject: correo.subject, html: correo.html, alClienteSiempre: true, movil: correo.movil })
+          .then(() => { avisado = true; })
+          .catch((err) => console.error('[venta] correo del cambio de nombre:', (err as Error).message));
+      }
+      res.json({ ok: true, data: { paso: 'toca_liberar', comprador_avisado: avisado } });
+    } catch (err) {
+      console.error('[venta] gestoría hecha:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_gestoria_hecha_failed' });
+    }
+  }
+);
+
+/** Se le suelta al vendedor lo suyo: el precio menos nuestros 299 €. */
+encargosRouter.post(
+  '/encargos/:id/venta/liberar',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const falta = porQueNoSeLibera(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      /*
+       * El reparto se calcula aquí, no se recibe.
+       *
+       * Si el importe viniera del navegador, quien liberase podría teclear otro
+       * número y al vendedor le llegaría de menos sin que nada lo delatara. Sale
+       * del precio de la venta y del fee, que son los dos números del trato.
+       */
+      const reparto = comoSeReparte(e.precio_venta ?? e.precio_referencia, FEE_DE_GESTION);
+      if (!(reparto.delVendedor > 0)) {
+        res.status(409).json({ ok: false, error: 'No consta el precio de esta venta: sin él no se puede repartir' });
+        return;
+      }
+
+      await query(
+        `UPDATE erp_encargos_venta
+            SET liberado_at = NOW(), liberado_importe = $2, updated_at = NOW()
+          WHERE id = $1`,
+        [e.id, reparto.delVendedor]
+      );
+
+      const correo = correoDineroLiberado({ ...datosDelCorreo(e), precio: reparto.total, importe: reparto.delVendedor });
+      let avisado = false;
+      if (e.cliente_email) {
+        await enviar({ to: String(e.cliente_email), subject: correo.subject, html: correo.html, alClienteSiempre: true, movil: correo.movil })
+          .then(() => { avisado = true; })
+          .catch((err) => console.error('[venta] correo de la liberación:', (err as Error).message));
+      }
+      res.json({ ok: true, data: { paso: 'toca_entregar', reparto, vendedor_avisado: avisado } });
+    } catch (err) {
+      console.error('[venta] liberar:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_liberar_failed' });
+    }
+  }
+);
+
+/** El comprador se ha llevado el coche. */
+encargosRouter.post(
+  '/encargos/:id/venta/entregado',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    try {
+      const e = await laVentaDe(req.params.id);
+      const falta = porQueNoSeEntrega(e);
+      if (falta) { res.status(e ? 409 : 404).json({ ok: false, error: falta }); return; }
+
+      await query(
+        `UPDATE erp_encargos_venta SET entregado_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [e.id]
+      );
+
+      const correo = correoCocheEntregado(datosDelCorreo(e));
+      const avisados: string[] = [];
+      for (const aQuien of [e.comprador_email, e.cliente_email]) {
+        if (!aQuien) continue;
+        await enviar({ to: String(aQuien), subject: correo.subject, html: correo.html, alClienteSiempre: true, movil: correo.movil })
+          .then(() => { avisados.push(String(aQuien)); })
+          .catch((err) => console.error('[venta] correo de la entrega:', (err as Error).message));
+      }
+      // Cerrar el encargo y emitir los 299 € sigue siendo el cierre de siempre:
+      // se hace desde la ficha, con su factura, y no se dispara solo desde aquí.
+      res.json({ ok: true, data: { paso: 'entregado', avisados } });
+    } catch (err) {
+      console.error('[venta] entregado:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'venta_entregado_failed' });
     }
   }
 );
