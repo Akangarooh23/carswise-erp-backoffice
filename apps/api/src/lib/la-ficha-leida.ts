@@ -27,6 +27,9 @@ import { query } from '../db/pool.js';
 import { loQueDiceLaFicha, lasDiferencias, laVersionNoCuadra, type Diferencia } from './la-ficha-tecnica.js';
 import { bajaElPapel, leeElPapel } from './lee-la-ficha.js';
 import { CAMPOS } from './caracteristicas-del-coche.js';
+import {
+  SQL_CANDIDATAS, losDatosDeLaBusqueda, sePuedeBuscar, type Candidata,
+} from './versiones-posibles.js';
 
 export const ENSURE_TABLA = `
   CREATE TABLE IF NOT EXISTS erp_fichas_tecnicas_leidas (
@@ -203,6 +206,54 @@ export function comoQuedaContraElCoche(
     avisos: deLaVersion ? [deLaVersion, ...avisos] : avisos,
     no_es_una_ficha: false,
   };
+}
+
+/**
+ * Las versiones que su motor puede tener, de nuestros propios anuncios.
+ *
+ * La versión no viene en ningún papel del coche —la ficha trae códigos de
+ * homologación, que hay que traducir con una base de pago— pero sí vienen los
+ * datos duros. Con la cilindrada y los kilovatios se busca qué versiones
+ * existen de verdad con ese motor entre el millón y medio de anuncios
+ * rastreados, que además son contra los que luego se le compara al tasarlo.
+ *
+ * No da una versión, da candidatas: cilindrada y potencia no distinguen
+ * acabados. Y si de ese modelo no hemos rastreado nada, la lista sale vacía y
+ * se escribe a mano, que es una respuesta legítima.
+ */
+export async function lasVersionesPosibles(
+  lectura: LaLectura | null | undefined,
+  coche: Record<string, unknown> | null | undefined,
+): Promise<Candidata[]> {
+  if (!lectura || lectura.fallo) return [];
+  const c = lectura.codigos ?? {};
+  const cc = Number(String(c['P.1'] ?? '').replace(/[^0-9]/g, '')) || null;
+  const kw = Number(String(c['P.2'] ?? '').replace(/[^0-9]/g, '')) || null;
+
+  /*
+   * La marca y el modelo, de la ficha si los trae y si no del coche.
+   *
+   * La ficha manda: es lo que no se ha escrito a mano. Pero hay tarjetas donde
+   * D.3 viene abreviado o en blanco, y entonces lo que hay puesto es mejor que
+   * no buscar nada.
+   */
+  const marca = String(c['D.1'] ?? '').trim() || coche?.brand;
+  const modelo = String(c['D.3'] ?? '').trim() || coche?.model;
+  if (!sePuedeBuscar({ marca, modelo, cc, kw })) return [];
+
+  const ano = Number(String(coche?.year ?? '').replace(/[^0-9]/g, '')) || null;
+  const r = await query(
+    SQL_CANDIDATAS,
+    losDatosDeLaBusqueda({ marca, modelo, cc: cc as number, kw: kw as number, ano }),
+  ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+  return r.rows.map((x) => ({
+    version: String(x.version ?? ''),
+    anuncios: Number(x.anuncios ?? 0),
+    cv: x.cv === null || x.cv === undefined ? null : Number(x.cv),
+    desde: x.desde === null || x.desde === undefined ? null : Number(x.desde),
+    hasta: x.hasta === null || x.hasta === undefined ? null : Number(x.hasta),
+  }));
 }
 
 /** Cuántos datos del coche no cuadran con su ficha técnica. */

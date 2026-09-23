@@ -31,9 +31,20 @@ interface Diferencia {
   segunLaFicha: string;
   corrige: boolean;
 }
+/** Una versión que ese motor puede tener, sacada de nuestros anuncios. */
+interface Candidata {
+  version: string;
+  anuncios: number;
+  cv: number | null;
+  desde: number | null;
+  hasta: number | null;
+}
+
 interface LaFicha {
   documento: string;
   confianza: string;
+  versiones?: Candidata[];
+  version_actual?: string;
   /** Por qué no se pudo leer. Vacío cuando se leyó bien. */
   fallo?: string;
   diferencias: Diferencia[];
@@ -168,6 +179,34 @@ export default function DatosDelVehiculo({
     }
   }
 
+  /**
+   * Poner una de las versiones que su motor puede tener.
+   *
+   * Escribe por el mismo sitio que todo lo demás. Es un clic aparte y no una
+   * casilla más de la tabla porque es **elegir entre varias**, no aceptar o
+   * rechazar un dato: el motor no distingue acabados, así que aquí decide la
+   * persona con lo que sepa del coche.
+   */
+  async function ponLaVersion(version: string) {
+    setGuardando(true);
+    setAviso(null);
+    try {
+      const r = await api.patch<Vehiculo & { detail?: string }>(`/idcars/${vehicleId}`, { version });
+      if (!r.ok) {
+        const d = r.data as { detail?: string } | undefined;
+        setAviso({ ok: false, texto: d?.detail || 'No se ha podido guardar.' });
+        return;
+      }
+      alGuardar(r.data);
+      setFicha((f) => (f ? { ...f, version_actual: version } : f));
+      setAviso({ ok: true, texto: `Versión puesta: ${version}.` });
+    } catch (e) {
+      setAviso({ ok: false, texto: (e as Error).message });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   /** Llevar al coche lo elegido de la ficha. Escribe el mismo sitio que «Guardar». */
   async function aplicaLaFicha() {
     const cambios: Record<string, string> = {};
@@ -290,6 +329,7 @@ export default function DatosDelVehiculo({
         setAplicar={setAplicar}
         guardando={guardando}
         alAplicar={() => void aplicaLaFicha()}
+        alPonerVersion={(v) => void ponLaVersion(v)}
         alCerrar={() => setFicha(null)}
       />}
 
@@ -389,13 +429,14 @@ export default function DatosDelVehiculo({
  * «comprobado».
  */
 function PanelDeLaFicha({
-  ficha, aplicar, setAplicar, guardando, alAplicar, alCerrar,
+  ficha, aplicar, setAplicar, guardando, alAplicar, alPonerVersion, alCerrar,
 }: {
   ficha: LaFicha;
   aplicar: Record<string, boolean>;
   setAplicar: (f: (x: Record<string, boolean>) => Record<string, boolean>) => void;
   guardando: boolean;
   alAplicar: () => void;
+  alPonerVersion: (v: string) => void;
   alCerrar: () => void;
 }) {
   const corrigen = ficha.diferencias.filter((d) => d.corrige);
@@ -477,6 +518,53 @@ function PanelDeLaFicha({
             <p key={a} className="text-[11px] text-amber-700 leading-snug mb-1">{a}</p>
           ))}
 
+          {/*
+            * Las versiones que ese motor puede tener.
+            *
+            * La versión no viene en ningún papel del coche y es lo que decide
+            * con qué coches se compara el suyo al tasarlo. Estas salen de
+            * nuestros propios anuncios cruzando la cilindrada y los kilovatios
+            * de la ficha — que son, además, los anuncios contra los que se le
+            * compara.
+            *
+            * Se ofrecen, no se eligen: cilindrada y potencia no distinguen
+            * acabados, y poner una por él seria cambiar su error por el
+            * nuestro, que viene con pinta de comprobado.
+            */}
+          {(ficha.versiones?.length ?? 0) > 0 && (
+            <div className="mt-3 pt-2 border-t border-brand-100">
+              <p className="text-[11.5px] font-semibold text-brand-600 mb-0.5">
+                Versiones con este motor
+              </p>
+              <p className="text-[11px] text-brand-300 leading-snug mb-1.5">
+                De nuestros anuncios, cruzando la cilindrada y los kilovatios de la ficha.
+                El motor no distingue acabados: elige la que sea.
+              </p>
+              <ul className="space-y-0.5">
+                {(ficha.versiones ?? []).map((v) => {
+                  const suya = comoSeCompara(v.version) === comoSeCompara(ficha.version_actual);
+                  return (
+                    <li key={v.version} className="flex items-center gap-2 text-[11.5px]">
+                      <button
+                        type="button"
+                        disabled={guardando || suya}
+                        onClick={() => alPonerVersion(v.version)}
+                        className={`text-left ${suya ? 'text-brand-400' : 'text-acento-texto hover:underline'} disabled:no-underline`}
+                      >
+                        {v.version}
+                      </button>
+                      <span className="text-brand-300">
+                        {v.cv ? `${v.cv} CV · ` : ''}{v.anuncios} anuncios
+                        {v.desde && v.hasta ? ` · ${v.desde === v.hasta ? v.desde : `${v.desde}-${v.hasta}`}` : ''}
+                        {suya ? ' · la que tiene puesta' : ''}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           {ficha.no_lo_trae.length > 0 && (
             <p className="text-[11px] text-brand-300 leading-snug">
               La ficha técnica no lleva: {ficha.no_lo_trae.map((x) => x.toLowerCase()).join(', ')}. Eso se pone a mano.
@@ -500,4 +588,18 @@ function PanelDeLaFicha({
       )}
     </div>
   );
+}
+
+/**
+ * Dos versiones son la misma si se leen igual.
+ *
+ * «1.5 TSI Advance DSG7» y «1.5 TSI Advance DSG-7» son la misma versión escrita
+ * por dos portales distintos. Sin esto, la que ya tiene puesta le saldría como
+ * una opción nueva, y eso hace dudar del resto de la lista.
+ *
+ * Gemela de `comoSeCompara` en `lib/versiones-posibles.ts`, que es la que hace
+ * el mismo trabajo en la consulta.
+ */
+function comoSeCompara(v: unknown): string {
+  return String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }

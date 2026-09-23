@@ -10,7 +10,7 @@ import {
   ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_COCHE, type ElAnuncio,
 } from '../lib/caracteristicas-del-coche.js';
 import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
-import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe } from '../lib/la-ficha-leida.js';
+import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe, lasVersionesPosibles } from '../lib/la-ficha-leida.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -717,6 +717,15 @@ idcarsRouter.post('/idcars/:id/ficha-tecnica/leer', requireRole(['admin', 'opera
     }
 
     const contra = comoQuedaContraElCoche(lectura, coche.rows[0]);
+    /*
+     * Y qué versiones puede tener ese motor.
+     *
+     * La versión no viene en ningún papel del coche, pero sí los datos duros;
+     * con ellos se mira qué versiones existen de verdad entre nuestros
+     * anuncios, que además son contra los que se le compara al tasarlo. Con su
+     * `catch`: sin candidatas se escribe a mano, como hasta ahora.
+     */
+    const versiones = await lasVersionesPosibles(lectura, coche.rows[0]).catch(() => []);
     res.json({
       ok: true,
       data: {
@@ -727,6 +736,8 @@ idcarsRouter.post('/idcars/:id/ficha-tecnica/leer', requireRole(['admin', 'opera
         diferencias: contra?.diferencias ?? [],
         avisos: contra?.avisos ?? [],
         no_es_una_ficha: contra?.no_es_una_ficha ?? false,
+        versiones,
+        version_actual: String(coche.rows[0].version ?? ''),
         detail: contra?.no_es_una_ficha
           ? 'De ese documento no sale ningún dato de ficha técnica. Comprueba que lo subido sea la tarjeta ITV del coche y no otro papel.'
           : undefined,
