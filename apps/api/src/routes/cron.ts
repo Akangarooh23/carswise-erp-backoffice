@@ -20,6 +20,7 @@ import type { Request } from 'express';
 import { falloInterno } from '../lib/fallos.js';
 import { recalculaPortalesParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
 import { recuerdaLasCitasDelTaller } from '../lib/recuerda-las-citas-del-taller.js';
+import { leeLasPendientes } from '../lib/la-ficha-leida.js';
 
 export const cronRouter = Router();
 
@@ -71,6 +72,23 @@ cronRouter.get('/cron/kpis', async (req, res) => {
     const parados = await recalculaPortalesParados();
     const precios = await recalculaPrecioContraElMercado();
 
+    /*
+     * Y las fichas técnicas que se hayan quedado sin leer.
+     *
+     * Cuando el cliente sube la suya, PopCar nos avisa y se lee al momento.
+     * Esto es la red de debajo: el aviso puede no llegar —el ERP caído, un
+     * despliegue a medias, una ficha subida antes de que esto existiera— y sin
+     * red esa ficha no se lee jamás. Y una ficha sin leer no es un hueco
+     * visible: es un coche que se tasa con lo que escribió el cliente.
+     *
+     * Va colgado de esta tarea y no en una suya para no tocar los crons
+     * configurados. Con tope, que aquí lo caro es el lector y no la base.
+     */
+    const fichas = await leeLasPendientes(20).catch((err) => {
+      console.error('[cron] fichas técnicas pendientes:', (err as Error).message);
+      return 0;
+    });
+
     res.json({
       ok: true,
       data: {
@@ -78,6 +96,7 @@ cronRouter.get('/cron/kpis', async (req, res) => {
         // no había con qué calcularlo, y eso también hay que poder verlo.
         portales_parados: Boolean(parados),
         precio_contra_el_mercado: Boolean(precios),
+        fichas_tecnicas_leidas: fichas,
       },
     });
   } catch (err) {

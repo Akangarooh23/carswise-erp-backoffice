@@ -672,6 +672,48 @@ idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (r
   }
 });
 
+/**
+ * PopCar avisa de que el cliente ha subido su ficha técnica.
+ *
+ * El lector vive aquí y estaba enganchado a la subida de documentos **del
+ * ERP**, que es el lado que no usa nadie: la ficha la sube el cliente desde su
+ * panel. Por ese camino no se leía nunca, y seguía haciendo falta que alguien
+ * pulsara un botón — que es justo lo que se venía a quitar.
+ *
+ * No lleva `requireRole`: quien llama es PopCar, que no tiene sesión de
+ * trabajador. La puerta es el secreto compartido, el mismo que usa el ERP para
+ * pedirle a PopCar una devolución de fianza. Sin secreto configurado no pasa
+ * nadie: un fallo de configuración puede cerrar una puerta —eso se nota y se
+ * arregla— pero no abrirla.
+ *
+ * Contesta lo que ha pasado y no lo leído. Quien llama no va a mirarlo —el
+ * coche del cliente ya está guardado— y devolver los datos del coche por una
+ * puerta que solo tiene un secreto delante es dar más de lo que hace falta.
+ */
+idcarsRouter.post('/interno/ficha-tecnica', async (req, res) => {
+  const secreto = String(process.env.INTERNAL_API_SECRET ?? '').trim();
+  if (!secreto) {
+    console.error('[interno] INTERNAL_API_SECRET no está configurado: la ficha técnica no se lee sola.');
+    res.status(503).json({ ok: false, error: 'sin_configurar' });
+    return;
+  }
+  if (String(req.headers.authorization ?? '') !== `Bearer ${secreto}`) {
+    res.status(401).json({ ok: false, error: 'no_autorizado' });
+    return;
+  }
+
+  const vehicleId = String((req.body as { vehicleId?: unknown })?.vehicleId ?? '').trim();
+  if (!vehicleId) { res.status(400).json({ ok: false, error: 'falta_el_coche' }); return; }
+
+  try {
+    const lectura = await leeYGuarda(vehicleId, { otraVez: true });
+    if (!lectura) { res.status(404).json({ ok: false, error: 'sin_ficha_tecnica' }); return; }
+    res.json({ ok: true, leida: !lectura.fallo, fallo: lectura.fallo || undefined });
+  } catch (err) {
+    falloInterno(res, 'ficha_tecnica_interna_failed', err);
+  }
+});
+
 /** Lo que el formulario necesita saber para pintar los campos. */
 idcarsRouter.get('/idcars/campos/caracteristicas', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
   res.json({ ok: true, data: { campos: CAMPOS } });
