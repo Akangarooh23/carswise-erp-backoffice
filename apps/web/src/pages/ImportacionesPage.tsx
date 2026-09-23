@@ -3,6 +3,57 @@ import { useSearchParams } from 'react-router-dom';
 import { api, descargaConSesion } from '../api/client.js';
 import RevisarCorreo, { type VistaDelCorreo } from '../components/RevisarCorreo.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
+
+/**
+ * Lo que cuesta traer un coche de Alemania.
+ *
+ * El cálculo existía entero —las tarifas de los transportistas, con sus zonas
+ * y sus fechas de vigencia— y no lo pedía ninguna pantalla. Se decidía si
+ * compensa traer un coche sin tener delante lo que cuesta traerlo.
+ *
+ * Sale arriba y pequeño porque es una referencia, no una operación: el coste
+ * de verdad de cada expediente es el del transporte que se contrate, y ése ya
+ * está en su ficha.
+ */
+interface CosteDelViaje {
+  tarifa: { proveedor_nombre?: string } | null;
+  precio: number;
+  total: number;
+  coches: number;
+  porDefecto?: boolean;
+}
+
+function LoQueCuestaTraerlo() {
+  const [opciones, setOpciones] = useState<CosteDelViaje[] | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void api.get<CosteDelViaje[]>('/tarifas/estimacion?origen_pais=DE&destino_pais=ES&coches=1')
+      .then((r) => { if (vivo && r.ok) setOpciones(r.data ?? []); })
+      // Sin tarifas cargadas no se enseña nada: un coste inventado en una
+      // pantalla de decisión es peor que un hueco.
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
+  // La primera es la más barata: es la que se pediría.
+  const mejor = opciones?.[0];
+  if (!mejor) return null;
+
+  return (
+    <p className="text-[12px] text-brand-400 mb-4">
+      Traer un coche de Alemania:{' '}
+      <strong className="text-brand-600">
+        {mejor.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+      </strong>
+      {mejor.tarifa?.proveedor_nombre ? ` con ${mejor.tarifa.proveedor_nombre}` : ''}
+      {opciones && opciones.length > 1 ? ` · ${opciones.length} transportistas con tarifa` : ''}
+      {mejor.porDefecto && (
+        <span className="text-amber-700"> · es una suposición nuestra, nadie ha ofrecido ese precio</span>
+      )}
+    </p>
+  );
+}
 import Documentos from '../components/Documentos.js';
 import { enlaceAlAnuncio } from '../lib/enlace-al-anuncio.js';
 import { comoSeCuenta } from '../lib/danos.js';
@@ -328,6 +379,8 @@ export default function ImportacionesPage() {
           </button>
         }
       />
+
+      <LoQueCuestaTraerlo />
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">

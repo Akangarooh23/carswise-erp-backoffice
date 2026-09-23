@@ -60,9 +60,6 @@ const LAS_QUE_LLAMA_OTRO: Record<string, string> = {
  * se enchufe, sale de aquí sola: la prueba de abajo lo comprueba.
  */
 const PENDIENTES_DE_ENCHUFAR: Record<string, string> = {
-  '/tarifas/estimacion': 'lo que cuesta traer un coche de Alemania; el expediente de importación todavía no lo enseña',
-  '/marketplace/vo/bulk-with-units': 'publicar en bloque con unidades; hoy se publica coche a coche',
-  '/pedidos/margen-por-origen': 'el margen por origen del coche; el panel todavía no lo pinta',
 };
 
 describe('ninguna ruta se queda sola', () => {
@@ -90,7 +87,15 @@ describe('ninguna ruta se queda sola', () => {
      * para los que se abren en otra pestaña.
      */
     const contextos = [
-      /api\.(?:get|post|patch|put|delete)(?:<[^>]*>)?\(\s*[`'"]([^`'"]+)/g,
+      /*
+       * Los genéricos se saltan con `[^(]*` y no con `<[^>]*>`.
+       *
+       * Con lo segundo, `api.get<Record<string, X>>('/ruta')` no casaba: el
+       * `>` de dentro cerraba antes de tiempo. Y una llamada que no casa es
+       * una ruta que sale como huérfana sin serlo, que es la manera más
+       * rápida de que esta prueba deje de creerse.
+       */
+      /api\.(?:get|post|patch|put|delete)[^(]*\(\s*[`'"]([^`'"]+)/g,
       /fetch\(\s*[`'"](?:\$\{BASE\})?([^`'"]+)/g,
       /descargaConSesion\(\s*[`'"]([^`'"]+)/g,
       /href=\{?[`'"]\/api([^`'"]+)/g,
