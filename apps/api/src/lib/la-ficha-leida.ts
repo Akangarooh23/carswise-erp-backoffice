@@ -274,7 +274,21 @@ export function cuantosNoCuadran(x: LoQueSaleDeLaFicha | null | undefined): numb
  * siempre deja de mirarse.
  */
 export function cuantosSeContradicen(x: LoQueSaleDeLaFicha | null | undefined): number {
-  return (x?.diferencias ?? []).filter((d) => d.corrige && d.ahora !== '').length;
+  const datos = (x?.diferencias ?? []).filter((d) => d.corrige && d.ahora !== '').length;
+  /*
+   * Y la versión cuenta como una más.
+   *
+   * La versión no es un campo que la ficha rellene —el papel trae códigos de
+   * homologación, no nombres comerciales— así que su contradicción no está en
+   * las diferencias, sino en los avisos. Sin contarla aquí, un coche cuya
+   * versión dice «1.5» sobre una ficha de 999 cc no levantaba el aviso si los
+   * demás datos cuadraban.
+   *
+   * Y es la que más importa: de la versión sale con qué coches se compara el
+   * suyo al tasarlo.
+   */
+  const laVersion = (x?.avisos ?? []).some((a) => /versión no cuadra/i.test(a)) ? 1 : 0;
+  return datos + laVersion;
 }
 
 /**

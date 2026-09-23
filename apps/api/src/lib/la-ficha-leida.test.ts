@@ -13,7 +13,9 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { comoQuedaContraElCoche, cuantosNoCuadran, type LaLectura } from './la-ficha-leida.js';
+import {
+  comoQuedaContraElCoche, cuantosNoCuadran, cuantosSeContradicen, type LaLectura,
+} from './la-ficha-leida.js';
 
 const DEL_ARONA = {
   'D.1': 'SEAT', 'D.3': 'ARONA', 'P.1': '999', 'P.2': '85',
@@ -105,5 +107,48 @@ describe('la versión que eligió el cliente', () => {
     // deja de leerse.
     const x = comoQuedaContraElCoche(leida(), { version: 'Style' });
     assert.ok(!(x?.avisos ?? []).some((a) => /versión no cuadra/i.test(a)));
+  });
+});
+
+describe('cuándo salta el aviso del ERP', () => {
+  test('con un dato puesto que contradice al papel', () => {
+    // La potencia en kilovatios metida en la casilla de caballos.
+    const x = comoQuedaContraElCoche(leida(), { brand: 'SEAT', model: 'ARONA', cv: '85' });
+    assert.equal(cuantosSeContradicen(x), 1);
+  });
+
+  test('pero no por los huecos sin rellenar', () => {
+    /*
+     * Un coche recién subido no tiene nada puesto. Si los huecos contaran, el
+     * aviso saltaría con todos y dejaría de mirarse.
+     */
+    const x = comoQuedaContraElCoche(leida(), {});
+    assert.equal(cuantosSeContradicen(x), 0);
+    assert.ok(cuantosNoCuadran(x) > 0, 'sí hay cosas que completar, y eso se ve en su ficha');
+  });
+
+  test('y también cuando la que no cuadra es la versión', () => {
+    /*
+     * La versión no es un campo que la ficha rellene —el papel trae códigos de
+     * homologación, no nombres comerciales—, así que su contradicción vive en
+     * los avisos. Sin contarla, un coche con la versión equivocada y el resto
+     * bien no levantaba nada, y es la que decide con qué coches se compara el
+     * suyo al tasarlo.
+     */
+    const x = comoQuedaContraElCoche(leida(), {
+      brand: 'SEAT', model: 'ARONA', cv: '116', displacement: '999',
+      co2: '110', seats: '5', fuel: 'gasolina', color: 'Blanco',
+      version: 'FR 1.5 TSI 150 CV',
+    });
+    assert.equal(cuantosSeContradicen(x), 1);
+  });
+
+  test('y con la versión buena y todo lo demás bien, no salta', () => {
+    const x = comoQuedaContraElCoche(leida(), {
+      brand: 'SEAT', model: 'ARONA', cv: '116', displacement: '999',
+      co2: '110', seats: '5', fuel: 'gasolina', color: 'Blanco',
+      version: 'Style 1.0 TSI 115 CV',
+    });
+    assert.equal(cuantosSeContradicen(x), 0);
   });
 });
