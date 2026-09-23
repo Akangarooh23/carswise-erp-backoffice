@@ -14,7 +14,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CODIGOS, elPrompt, caballos, elColor, elCombustible, laCarroceria,
-  loQueDiceLaFicha, lasDiferencias, LO_QUE_NO_TRAE,
+  loQueDiceLaFicha, lasDiferencias, laVersionNoCuadra, LO_QUE_NO_TRAE,
 } from './la-ficha-tecnica.js';
 import { CAMPOS } from './caracteristicas-del-coche.js';
 
@@ -242,5 +242,34 @@ describe('lo que se le pide al lector', () => {
     const p = elPrompt();
     assert.match(p, /No conviertas unidades/i);
     assert.match(p, /No inventes/i);
+  });
+});
+
+describe('los números del papel, con separador de miles', () => {
+  test('«1.498» son mil cuatrocientos noventa y ocho, no uno', () => {
+    /*
+     * El papel es español: el punto separa miles. Leyéndolo como decimal, la
+     * cilindrada de un 1.5 salía **1** — un centímetro cúbico. El ejemplo del
+     * SEAT trae «999» y por eso no se vio: el fallo solo aparece en los coches
+     * de más de un litro, que son casi todos.
+     */
+    assert.equal(loQueDiceLaFicha({ 'P.1': '1.498' }).campos.displacement, '1498');
+    assert.equal(loQueDiceLaFicha({ 'P.1': '1498' }).campos.displacement, '1498');
+  });
+
+  test('y con la unidad pegada tampoco se lía', () => {
+    // Quitando todo lo que no es cifra, «1.498 cm3» daba 14.983.
+    assert.equal(loQueDiceLaFicha({ 'P.1': '1.498 cm3' }).campos.displacement, '1498');
+    assert.equal(loQueDiceLaFicha({ 'P.2': '110 kW' }).campos.cv, '150');
+  });
+
+  test('las plazas y la potencia van por el mismo camino', () => {
+    assert.equal(loQueDiceLaFicha({ 'S.1': '5' }).campos.seats, '5');
+    assert.equal(loQueDiceLaFicha({ 'P.2': '110' }).campos.cv, '150');
+  });
+
+  test('y la versión se compara con la cilindrada bien leída', () => {
+    // Con el 1.498 leído como 1, la versión «1.5» chocaba con su propia ficha.
+    assert.equal(laVersionNoCuadra('R-Line 1.5 TSI 110kW', { 'P.1': '1.498', 'P.2': '110' }), '');
   });
 });

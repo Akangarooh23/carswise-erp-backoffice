@@ -109,6 +109,29 @@ function elNumero(v: unknown): number | null {
 }
 
 /**
+ * Y el entero de un valor del papel: «1.498», «1498 cm3», «110 kW».
+ *
+ * Los que son enteros por definición —cilindrada, kilovatios, plazas— se leen
+ * con esto y no con `elNumero`, que interpreta el punto como decimal. En un
+ * papel español «1.498» son mil cuatrocientos noventa y ocho, y leyéndolo como
+ * decimal salía **1**: una cilindrada de un centímetro cúbico. Y la ficha del
+ * SEAT del ejemplo trae «999» pero la de un 1.5 puede traer «1.498» — con lo
+ * que el fallo solo aparece en los coches de más de un litro, que son casi
+ * todos.
+ *
+ * Se coge la **primera tirada de cifras** con sus separadores: quitando todo lo
+ * que no es cifra, «1.498 cm3» daría 14.983 con el 3 de «cm3» pegado al final.
+ */
+function elEntero(v: unknown): number | null {
+  const trozo = texto(v).match(/\d[\d.,\s]*/);
+  if (!trozo) return null;
+  const cifras = trozo[0].replace(/[^0-9]/g, '');
+  if (!cifras) return null;
+  const n = Number(cifras);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
  * De kilovatios a caballos.
  *
  * 1 CV son 735,49875 W, así que el factor es 1,35962. Se redondea al entero
@@ -210,16 +233,16 @@ export function loQueDiceLaFicha(codigos: Record<string, unknown> | null | undef
   if (!estaVacio(c['D.3'])) pon('model', texto(c['D.3']));
   if (!estaVacio(c.Matricula)) pon('plate', texto(c.Matricula).toUpperCase().replace(/[^A-Z0-9]/g, ''));
 
-  const kw = estaVacio(c['P.2']) ? null : elNumero(c['P.2']);
+  const kw = estaVacio(c['P.2']) ? null : elEntero(c['P.2']);
   if (kw !== null && kw > 0) pon('cv', String(caballos(kw)));
 
-  const cc = estaVacio(c['P.1']) ? null : elNumero(c['P.1']);
+  const cc = estaVacio(c['P.1']) ? null : elEntero(c['P.1']);
   if (cc !== null && cc > 0) pon('displacement', String(Math.round(cc)));
 
   const co2 = estaVacio(c['V.7']) ? null : elNumero(c['V.7']);
   if (co2 !== null && co2 >= 0) pon('co2', String(co2));
 
-  const plazas = estaVacio(c['S.1']) ? null : elNumero(c['S.1']);
+  const plazas = estaVacio(c['S.1']) ? null : elEntero(c['S.1']);
   if (plazas !== null && plazas >= 1 && plazas <= 9) pon('seats', String(Math.round(plazas)));
 
   pon('fuel', elCombustible(c['P.3']));
@@ -286,8 +309,8 @@ export function laVersionNoCuadra(
 ): string {
   const dice = queDiceLaVersion(version);
   const c = codigos ?? {};
-  const ccFicha = estaVacio(c['P.1']) ? null : elNumero(c['P.1']);
-  const kwFicha = estaVacio(c['P.2']) ? null : elNumero(c['P.2']);
+  const ccFicha = estaVacio(c['P.1']) ? null : elEntero(c['P.1']);
+  const kwFicha = estaVacio(c['P.2']) ? null : elEntero(c['P.2']);
   const problemas: string[] = [];
 
   // Medio litro de margen: «1.5» se anuncia igual para 1.498 y para 1.512.
