@@ -23,6 +23,9 @@ import {
   ENSURE_TABLE, ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
   elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
 } from '../lib/revision-del-taller.js';
+import {
+  elDelDirectorio, seaProveedor, ocupaLaHora, sueltaLaHora, HORA_COGIDA,
+} from '../lib/el-taller-de-la-revision.js';
 import { config } from '../config.js';
 import { enviar } from '../lib/correo.js';
 import { elCorreoDeLaCitaDelTaller } from '../lib/correos-del-encargo.js';
@@ -106,16 +109,53 @@ revisionesTallerRouter.post(
       if (!vehicleId) { res.status(400).json({ ok: false, error: 'falta_el_coche' }); return; }
       if (!taller) { res.status(400).json({ ok: false, error: 'Falta a qué taller se lleva' }); return; }
 
+      /*
+       * El taller elegido del directorio: el mismo que ve el cliente.
+       *
+       * De ahí salen las dos cosas que antes no pasaban: que quede dado de
+       * alta como proveedor —a alguien hay que pagarle los 60 €— y que la
+       * hora se le ocupe en su agenda, para no mandarle dos coches a la vez.
+       */
+      const tallerId = String(req.body?.taller_id ?? '').trim();
+      const quien = req.actor?.name ?? req.actor?.sub ?? '';
+      const delDirectorio = tallerId ? await elDelDirectorio(tallerId) : null;
+
+      if (tallerId && !delDirectorio) {
+        res.status(400).json({ ok: false, error: 'taller_no_encontrado' });
+        return;
+      }
+
+      /*
+       * Primero la hora y después la fila.
+       *
+       * Si se apuntara la revisión y luego se viera que la hora está cogida,
+       * quedaría una cita dada a una hora que el taller no tiene: y como solo
+       * cabe una revisión viva por coche, para arreglarlo habría que cerrarla
+       * y abrir otra, lo que apunta una factura de más.
+       */
+      if (delDirectorio) {
+        const problema = await ocupaLaHora(tallerId, req.body?.cita_at, quien);
+        if (problema === HORA_COGIDA) {
+          res.status(409).json({
+            ok: false, error: 'hora_cogida',
+            detail: 'Ese taller ya tiene un coche a esa hora. Elige otra.',
+          });
+          return;
+        }
+        await seaProveedor(delDirectorio, quien);
+      }
+
       const r = await query(
         `INSERT INTO erp_revisiones_taller
-           (id, vehicle_id, encargo_id, estado, taller, direccion, cita_at, coste, creado_por)
-         VALUES ($1,$2,$3,'En el taller',$4,$5,$6,$7,$8)
+           (id, vehicle_id, encargo_id, estado, taller, taller_id, direccion, cita_at, coste, creado_por)
+         VALUES ($1,$2,$3,'En el taller',$4,$5,$6,$7,$8,$9)
          RETURNING *`,
         [
           `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           vehicleId,
           String(req.body?.encargo_id ?? '').trim() || null,
           taller,
+          tallerId,
           String(req.body?.direccion ?? '').trim(),
           req.body?.cita_at || null,
           Number(req.body?.coste) || LO_QUE_CUESTA,
@@ -130,6 +170,14 @@ revisionesTallerRouter.post(
         return;
       }
       console.error('[revisiones-taller] crear:', msg);
+      /*
+       * La hora se suelta si la revisión no ha llegado a escribirse.
+       *
+       * Se coge antes a propósito, así que un fallo después dejaría al taller
+       * con una hora ocupada por una cita que no existe, y nadie sabría por
+       * qué.
+       */
+      await sueltaLaHora(String(req.body?.taller_id ?? '').trim(), req.body?.cita_at).catch(() => {});
       res.status(500).json({ ok: false, error: 'revision_create_failed' });
     }
   }
@@ -186,12 +234,61 @@ revisionesTallerRouter.patch(
        */
       const tocaLaCita = req.body?.cita_at !== undefined;
 
+      /*
+       * Mover la cita mueve la hora que el taller tiene cogida.
+       *
+       * La hora del ERP y la que pide un cliente desde PopCar son la misma
+       * cosa, así que cambiar el día en esta ficha sin tocar la agenda
+       * dejaría al taller con la hora vieja bloqueada y la nueva libre para
+       * que se la lleve otro.
+       *
+       * Primero se coge la nueva y después se suelta la vieja: al revés, un
+       * cliente podría colarse en el hueco recién liberado entre las dos.
+       */
+      const cambiaDeTaller = req.body?.taller_id !== undefined;
+      if (tocaLaCita || cambiaDeTaller) {
+        const antes = await query<{ taller_id: string; cita_at: string | null }>(
+          `SELECT taller_id, cita_at FROM erp_revisiones_taller WHERE id = $1`,
+          [req.params.id]
+        );
+        if (!antes.rows.length) {
+          res.status(404).json({ ok: false, error: 'revision_no_encontrada' });
+          return;
+        }
+
+        const tallerViejo = String(antes.rows[0].taller_id ?? '').trim();
+        const tallerNuevo = cambiaDeTaller
+          ? String(req.body?.taller_id ?? '').trim()
+          : tallerViejo;
+        const laVieja = antes.rows[0].cita_at ?? null;
+        const laNueva = tocaLaCita ? (req.body?.cita_at || null) : laVieja;
+
+        const esOtraCita =
+          tallerNuevo !== tallerViejo || String(laNueva ?? '') !== String(laVieja ?? '');
+
+        if (esOtraCita) {
+          const quien = req.actor?.name ?? req.actor?.sub ?? '';
+          const problema = await ocupaLaHora(tallerNuevo, laNueva, quien);
+          if (problema === HORA_COGIDA) {
+            res.status(409).json({
+              ok: false, error: 'hora_cogida',
+              detail: 'Ese taller ya tiene un coche a esa hora. Elige otra.',
+            });
+            return;
+          }
+          // La vieja se suelta después: al revés, un cliente podría colarse en
+          // el hueco recién liberado entre las dos operaciones.
+          await sueltaLaHora(tallerViejo, laVieja);
+        }
+      }
+
       const r = await query(
         `UPDATE erp_revisiones_taller
             SET estado    = COALESCE($2, estado),
                 resultado = COALESCE($3, resultado),
                 notas     = COALESCE($4, notas),
                 taller    = COALESCE($5, taller),
+                taller_id = COALESCE($9, taller_id),
                 direccion = COALESCE($6, direccion),
                 cita_at   = COALESCE($7, cita_at),
                 cliente_pidio    = CASE WHEN $8 THEN NULL ELSE cliente_pidio END,
@@ -208,7 +305,8 @@ revisionesTallerRouter.patch(
          req.body?.taller === undefined ? null : String(req.body.taller).trim() || null,
          req.body?.direccion === undefined ? null : String(req.body.direccion).trim(),
          req.body?.cita_at === undefined ? null : req.body.cita_at || null,
-         tocaLaCita]
+         tocaLaCita,
+         req.body?.taller_id === undefined ? null : String(req.body.taller_id).trim()]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
 

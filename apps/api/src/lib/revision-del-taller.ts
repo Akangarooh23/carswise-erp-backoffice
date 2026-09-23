@@ -169,7 +169,19 @@ export const ENSURE_COLUMNAS = `
     ADD COLUMN IF NOT EXISTS cliente_pidio    TEXT,
     ADD COLUMN IF NOT EXISTS cliente_pidio_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS cliente_motivo   TEXT NOT NULL DEFAULT '',
-    ADD COLUMN IF NOT EXISTS recordado_at     TIMESTAMPTZ`;
+    ADD COLUMN IF NOT EXISTS recordado_at     TIMESTAMPTZ,
+    /*
+     * Cual de los talleres del directorio es.
+     *
+     * El nombre se escribia a mano, asi que «Norauto Alcobendas» no era
+     * ningun taller en concreto: no tenia direccion, ni agenda, ni a quien
+     * facturarle los 60 EUR. Con el id es uno, el mismo que ve el cliente en
+     * PopCar, y por eso la cita puede ocuparle la hora.
+     *
+     * Vacio en las de antes y en las que se escriban a mano: darles cita
+     * tiene que seguir funcionando.
+     */
+    ADD COLUMN IF NOT EXISTS taller_id        TEXT NOT NULL DEFAULT ''`;
 
 /**
  * Cuánto antes se le recuerda la cita.

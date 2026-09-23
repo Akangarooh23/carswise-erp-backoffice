@@ -22,6 +22,13 @@ export interface Revision {
   id: string;
   estado: string;
   taller: string;
+  /**
+   * Cuál de los talleres del directorio es.
+   *
+   * Vacío si el nombre se escribió a mano. Con él, la cita le ocupa la hora
+   * en la agenda del taller, que es la misma que ve el cliente en PopCar.
+   */
+  taller_id: string;
   /** Dónde está el taller. Es lo que el cliente necesita para llegar. */
   direccion: string;
   cita_at: string | null;
@@ -36,6 +43,21 @@ export interface Revision {
   cliente_pidio_at: string | null;
   /** Y por qué, con sus palabras. Puede venir vacío. */
   cliente_motivo: string;
+}
+
+/** Un taller del directorio, tal y como lo devuelve la búsqueda. */
+interface DelDirectorio {
+  id: number | string;
+  name: string;
+  address: string | null;
+  city: string | null;
+}
+
+/** Lo que ese taller tiene ese mes. */
+interface Agenda {
+  dias: { dia: string; horas: string[] }[];
+  cierres: { dia: string; hora: string }[];
+  citas: { dia: string; hora: string }[];
 }
 
 export interface LoDelTaller {
@@ -90,15 +112,21 @@ export default function RevisionDelTaller({
   const [fallo, setFallo] = useState('');
   const [taller, setTaller] = useState('');
   /*
-   * Los talleres de la red, para no escribir el nombre a mano.
+   * Cuál de los talleres del directorio es, y la búsqueda para elegirlo.
    *
-   * Aquí se tecleaba libre, y «Norauto Alcobendas», «norauto alcobendas» y
-   * «Norauto (Alcobendas)» son tres talleres distintos para cualquier consulta
-   * que agrupe. Salen de Proveedores, que es donde están sus tarifas y con
-   * quien se factura — no de `erp_workshops`, que es una tabla paralela vacía
-   * que no usa ninguna pantalla.
+   * Antes esto era un `datalist` sobre Proveedores, donde no había ni un
+   * taller dado de alta: un desplegable vacío se ve igual que un campo de
+   * texto, así que se seguía tecleando el nombre a mano.
+   *
+   * Ahora se busca en el directorio —el mismo del que el cliente elige
+   * taller en PopCar—, y al elegir uno pasan las dos cosas que faltaban: se
+   * da de alta como proveedor, que es a quien se le pagan los 60 €, y la
+   * cita le ocupa la hora en su agenda.
    */
-  const [deLaRed, setDeLaRed] = useState<{ id: string; nombre: string }[]>([]);
+  const [tallerId, setTallerId] = useState('');
+  const [busca, setBusca] = useState<DelDirectorio[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [direccion, setDireccion] = useState('');
   const [dia, setDia] = useState('');
   const [hora, setHora] = useState('');
@@ -122,6 +150,7 @@ export default function RevisionDelTaller({
        * estaba apuntado.
        */
       setTaller(rev?.taller ?? '');
+      setTallerId(rev?.taller_id ?? '');
       setDireccion(rev?.direccion ?? '');
       const p = partirLaCita(rev?.cita_at ?? null);
       setDia(p.dia);
@@ -134,15 +163,58 @@ export default function RevisionDelTaller({
 
   useEffect(() => { void carga(); }, [carga]);
 
+  /*
+   * Se busca mientras se escribe, con medio segundo de espera.
+   *
+   * El directorio tiene 55.718 talleres, así que una consulta por tecla
+   * serían veinte para escribir «Norauto».
+   */
   useEffect(() => {
+    const loQueSeBusca = taller.trim();
+    if (loQueSeBusca.length < 3 || tallerId) { setBusca([]); return; }
+
     let vivo = true;
-    void api.get<{ id: string; nombre: string }[]>('/proveedores?tipo=taller')
-      .then((r) => { if (vivo && r.ok) setDeLaRed(r.data ?? []); })
-      // Sin red, el campo sigue siendo de texto: es peor no poder apuntar la
-      // revisión que apuntarla con el nombre escrito a mano.
-      .catch(() => {});
+    setBuscando(true);
+    const t = setTimeout(() => {
+      void api.get<DelDirectorio[]>(`/workshop-locations?name=${encodeURIComponent(loQueSeBusca)}&limit=10`)
+        .then((r) => { if (vivo && r.ok) setBusca(r.data ?? []); })
+        // Sin búsqueda, el campo sigue siendo de texto: es peor no poder
+        // apuntar la revisión que apuntarla con el nombre escrito a mano.
+        .catch(() => {})
+        .finally(() => { if (vivo) setBuscando(false); });
+    }, 500);
+
+    return () => { vivo = false; clearTimeout(t); };
+  }, [taller, tallerId]);
+
+  /*
+   * Y la agenda del taller elegido, para ofrecer solo sus horas libres.
+   *
+   * Sin esto se podía poner cualquier hora, incluidas las que el taller no
+   * da —las 10:30 no existen en su horario— y las que ya tiene cogidas.
+   */
+  useEffect(() => {
+    if (!tallerId || !dia) { setAgenda(null); return; }
+    let vivo = true;
+    void api.get<Agenda>(`/workshop-locations/${tallerId}/agenda?mes=${dia.slice(0, 7)}`)
+      .then((r) => { if (vivo && r.ok) setAgenda(r.data ?? null); })
+      .catch(() => { if (vivo) setAgenda(null); });
     return () => { vivo = false; };
-  }, []);
+  }, [tallerId, dia]);
+
+  /** Qué se puede elegir ese día: sus horas, sin las cerradas ni las cogidas. */
+  const horasDelDia = (): { hora: string; libre: boolean }[] => {
+    const delDia = agenda?.dias.find((d) => d.dia === dia);
+    if (!delDia) return [];
+    const cerrado = agenda?.cierres.some((c) => c.dia === dia && !c.hora);
+    if (cerrado) return [];
+    return delDia.horas.map((h) => ({
+      hora: h,
+      libre:
+        !agenda?.citas.some((c) => c.dia === dia && c.hora === h) &&
+        !agenda?.cierres.some((c) => c.dia === dia && c.hora === h),
+    }));
+  };
 
   async function daCita() {
     if (!taller.trim()) { setFallo('Falta a qué taller se lleva.'); return; }
@@ -153,6 +225,7 @@ export default function RevisionDelTaller({
         vehicle_id: vehicleId,
         encargo_id: encargoId,
         taller: taller.trim(),
+        taller_id: tallerId,
         direccion: direccion.trim(),
         cita_at: juntarLaCita(dia, hora),
       });
@@ -181,6 +254,7 @@ export default function RevisionDelTaller({
     try {
       const r = await api.patch<unknown>(`/revisiones-taller/${datos.revision.id}`, {
         taller: taller.trim(),
+        taller_id: tallerId,
         direccion: direccion.trim(),
         cita_at: juntarLaCita(dia, hora),
       });
@@ -259,28 +333,54 @@ export default function RevisionDelTaller({
             Taller
           </label>
           {/*
-            * Con la red delante, pero sin cerrar la puerta.
+            * Se busca en el directorio, pero sin cerrar la puerta.
             *
-            * Un `datalist` propone los de Proveedores y deja escribir otro: el
-            * coche puede acabar en un taller que todavía no es de la red, y
-            * obligar a darlo de alta antes de poder apuntar la revisión sería
-            * parar el trabajo por el papeleo.
+            * Se puede escribir un taller que no esté: el coche puede acabar en
+            * uno de fuera, y obligar a darlo de alta antes de apuntar la
+            * revisión sería parar el trabajo por el papeleo. Lo que sí se dice
+            * es lo que se pierde por no elegirlo de la lista.
             */}
-          <input
-            id="taller-nombre"
-            list="talleres-de-la-red"
-            value={taller}
-            onChange={(ev) => setTaller(ev.target.value)}
-            placeholder="Norauto Villaverde"
-            className="w-52 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-acento"
-          />
-          <datalist id="talleres-de-la-red">
-            {deLaRed.map((t) => <option key={t.id} value={t.nombre} />)}
-          </datalist>
-          {taller && deLaRed.length > 0 && !deLaRed.some((t) => t.nombre === taller) && (
+          <div className="relative w-52">
+            <input
+              id="taller-nombre"
+              value={taller}
+              onChange={(ev) => { setTaller(ev.target.value); setTallerId(''); }}
+              placeholder="Norauto Villaverde"
+              autoComplete="off"
+              className="w-full px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-acento"
+            />
+            {busca.length > 0 && (
+              <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border border-brand-200
+                             rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                {busca.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTaller(t.name);
+                        setTallerId(String(t.id));
+                        setDireccion([t.address, t.city].filter(Boolean).join(', '));
+                        setBusca([]);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 hover:bg-brand-50"
+                    >
+                      <span className="block text-xs font-semibold text-brand-600">{t.name}</span>
+                      <span className="block text-[11px] text-brand-300">
+                        {[t.address, t.city].filter(Boolean).join(', ') || 'sin dirección'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {buscando && !tallerId && (
+            <p className="text-[11px] text-brand-300 mt-1 w-52">Buscando…</p>
+          )}
+          {taller.trim() && !tallerId && !buscando && (
             <p className="text-[11px] text-amber-700 mt-1 w-52">
-              No está en Proveedores. Si vais a repetir con él, dalo de alta: ahí van sus tarifas.
+              Escrito a mano. Elígelo de la lista y se le ocupa la hora en su agenda.
             </p>
           )}
         </div>
@@ -314,14 +414,46 @@ export default function RevisionDelTaller({
           <label className="block text-[11px] text-brand-300 mb-1" htmlFor="taller-hora">
             Hora
           </label>
-          <input
-            id="taller-hora"
-            type="time"
-            value={hora}
-            onChange={(ev) => setHora(ev.target.value)}
-            className="px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-acento"
-          />
+          {/*
+            * Con el taller elegido, sus horas; si no, la hora a mano.
+            *
+            * Un campo de hora libre deja poner las 10:30, que ese taller no da,
+            * o una que ya tiene cogida: la cita saldría del ERP y el coche se
+            * presentaría cuando no le esperan.
+            */}
+          {tallerId && dia && agenda ? (
+            horasDelDia().length === 0 ? (
+              <p className="text-[11px] text-amber-700 w-40 py-1.5">
+                Ese día no da citas.
+              </p>
+            ) : (
+              <select
+                id="taller-hora"
+                value={hora}
+                onChange={(ev) => setHora(ev.target.value)}
+                className="px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                           focus:outline-none focus:ring-2 focus:ring-acento"
+              >
+                <option value="">Elige la hora…</option>
+                {horasDelDia().map(({ hora: h, libre }) => (
+                  // La cogida se ve, pero no se puede elegir: así se entiende
+                  // por qué no está, en vez de desaparecer sin más.
+                  <option key={h} value={h} disabled={!libre && h !== hora}>
+                    {h}{libre || h === hora ? '' : ' · ocupada'}
+                  </option>
+                ))}
+              </select>
+            )
+          ) : (
+            <input
+              id="taller-hora"
+              type="time"
+              value={hora}
+              onChange={(ev) => setHora(ev.target.value)}
+              className="px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-acento"
+            />
+          )}
         </div>
       </>
     );
