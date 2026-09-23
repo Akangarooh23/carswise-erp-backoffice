@@ -273,6 +273,61 @@ export async function ensureSchema() {
       ON moveadvisor_renting_contracts (user_email, status)
   `);
 
+  // ── La agenda de los talleres ────────────────────────────────────────────────
+  //
+  // Las reservas y los cierres de los talleres. Las escribe PopCar cuando un
+  // cliente pide cita; los cierres los pone el ERP, que es donde hay quien sabe
+  // que un taller no abre el 24.
+  //
+  // GEMELAS DE `lib/huecos-del-taller.js` EN POPCAR, donde está el mismo
+  // `CREATE TABLE IF NOT EXISTS`. Las dos declaraciones tienen que decir lo
+  // mismo; la que corra primero crea y la otra no hace nada. Si se toca una,
+  // se toca la otra.
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_workshop_reservations (
+      id           TEXT PRIMARY KEY,
+      workshop_id  TEXT NOT NULL,
+      proveedor    TEXT NOT NULL DEFAULT '',
+      dia          DATE NOT NULL,
+      hora         TEXT NOT NULL,
+      estado       TEXT NOT NULL DEFAULT 'booked',
+      user_email   TEXT NOT NULL DEFAULT '',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Una hora reservada es una hora reservada: la anulada no estorba a la
+  // siguiente, y por eso el índice solo mira las vivas.
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS moveadvisor_workshop_reservations_hueco
+      ON moveadvisor_workshop_reservations (workshop_id, dia, hora)
+      WHERE estado = 'booked'
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS moveadvisor_workshop_blocks (
+      id           TEXT PRIMARY KEY,
+      workshop_id  TEXT NOT NULL,
+      proveedor    TEXT NOT NULL DEFAULT '',
+      dia          DATE NOT NULL,
+      hora         TEXT,               -- nulo = el día entero
+      motivo       TEXT NOT NULL DEFAULT '',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS moveadvisor_workshop_blocks_dia
+      ON moveadvisor_workshop_blocks (workshop_id, dia)
+      WHERE hora IS NULL
+  `);
+
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS moveadvisor_workshop_blocks_hueco
+      ON moveadvisor_workshop_blocks (workshop_id, dia, hora)
+      WHERE hora IS NOT NULL
+  `);
+
   await query(`
     ALTER TABLE IF EXISTS moveadvisor_user_vehicles
       ADD COLUMN IF NOT EXISTS renting_contract_id     VARCHAR(40),

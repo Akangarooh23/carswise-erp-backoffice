@@ -5,6 +5,7 @@ import { Pagination } from '../components/ui/Pagination.js';
 import { Modal } from '../components/ui/Modal.js';
 import type { WorkshopLocation } from '../types/index.js';
 import Icono from '../components/ui/Icono.js';
+import { AgendaDelTaller } from './AgendaDelTaller.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,13 @@ export default function WorkshopsPage() {
     filterAddress, filterCity, filterProvince, filterPostcode, filterPhone, filterWeb,
     filterHours, filterActive]);
   useEffect(() => { load(page); }, [page, load]);
+
+  /*
+   * El taller cuya agenda se está mirando. Aparte del de editar: son dos
+   * cosas distintas -los datos del taller y sus días cerrados- y abrir una
+   * no tiene por qué cerrar la otra.
+   */
+  const [laAgendaDe, setLaAgendaDe] = useState<WorkshopLocation | null>(null);
 
   // Edit modal
   function openEdit(w: WorkshopLocation) { setSelected(w); setForm(workshopToForm(w)); setSaveError(''); }
@@ -349,10 +357,16 @@ export default function WorkshopsPage() {
                         </span>
                       </td>
                       <td>
-                        <button onClick={() => openEdit(w)}
-                          className="text-xs text-acento-texto hover:text-brand-600 font-medium whitespace-nowrap">
-                          Editar
-                        </button>
+                        <div className="flex gap-3 justify-end">
+                          <button onClick={() => setLaAgendaDe(w)}
+                            className="text-xs text-acento-texto hover:text-brand-600 font-medium whitespace-nowrap">
+                            Agenda
+                          </button>
+                          <button onClick={() => openEdit(w)}
+                            className="text-xs text-acento-texto hover:text-brand-600 font-medium whitespace-nowrap">
+                            Editar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -365,6 +379,15 @@ export default function WorkshopsPage() {
       </div>
 
       {/* Edit modal */}
+      <Modal
+        open={!!laAgendaDe}
+        onClose={() => setLaAgendaDe(null)}
+        title={`Agenda · ${laAgendaDe?.name ?? ''}`}
+        size="lg"
+      >
+        {laAgendaDe ? <AgendaDelTaller tallerId={laAgendaDe.id} /> : null}
+      </Modal>
+
       <Modal open={!!selected && !!form} onClose={closeModal} title={selected?.name ?? 'Editar taller'} size="lg">
         {form && (
           <div className="space-y-5">

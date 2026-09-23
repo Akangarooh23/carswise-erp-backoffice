@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
+import {
+  laAgendaDelMes, cuantasCitasPisa, cierra, abre, esUnMes, esUnDia, esUnaHora,
+} from '../lib/agenda-del-taller.js';
 
 export const workshopLocationsRouter = Router();
 
@@ -154,3 +157,92 @@ workshopLocationsRouter.patch('/workshop-locations/:id', requireRole(['admin', '
     falloInterno(res, 'workshop_location_update_failed', err);
   }
 });
+
+// ── La agenda del taller ──────────────────────────────────────────────────────
+//
+// Cerrar un día o una hora. Las cuatro acciones existían en el servidor de
+// PopCar y no las llamaba ninguna pantalla: se podian usar con Postman y nada
+// mas. El sitio de esa pantalla es el ERP, porque quien sabe que un taller no
+// abre el 24 trabaja aqui. Lo de leer y escribir esta en lib/agenda-del-taller.
+
+// ── GET /workshop-locations/:id/agenda?mes=YYYY-MM ────────────────────────────
+workshopLocationsRouter.get(
+  '/workshop-locations/:id/agenda',
+  requireRole(['admin', 'support', 'operations']),
+  async (req, res) => {
+    const mes = String(req.query.mes || '').trim();
+    if (!esUnMes(mes)) {
+      res.status(400).json({ ok: false, error: 'mes_invalido' });
+      return;
+    }
+
+    try {
+      const agenda = await laAgendaDelMes(String(req.params.id), mes);
+      res.json({ ok: true, data: agenda });
+    } catch (err) {
+      falloInterno(res, 'agenda_del_taller_failed', err);
+    }
+  }
+);
+
+const cierreSchema = z.object({
+  dia: z.string(),
+  /** Vacia = el dia entero. */
+  hora: z.string().optional().default(''),
+  motivo: z.string().max(200).optional().default(''),
+});
+
+// ── POST /workshop-locations/:id/agenda/cierre ────────────────────────────────
+workshopLocationsRouter.post(
+  '/workshop-locations/:id/agenda/cierre',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    const parsed = cierreSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, error: 'invalid_payload', detail: parsed.error.flatten() });
+      return;
+    }
+
+    const { dia, hora, motivo } = parsed.data;
+    if (!esUnDia(dia) || (hora && !esUnaHora(hora))) {
+      res.status(400).json({ ok: false, error: 'fecha_invalida' });
+      return;
+    }
+
+    const taller = String(req.params.id);
+    try {
+      /*
+       * Las citas que ya hay se cuentan y se devuelven. Cerrar no las anula
+       * -no hay tal cosa, y no se inventa aqui-, asi que la pantalla lo dice
+       * y quien cierra decide que hacer con ellas.
+       */
+      const citasPisadas = await cuantasCitasPisa(taller, dia, hora);
+      await cierra(taller, dia, hora, motivo);
+      res.json({ ok: true, data: { dia, hora, citasPisadas } });
+    } catch (err) {
+      falloInterno(res, 'cierre_del_taller_failed', err);
+    }
+  }
+);
+
+// ── DELETE /workshop-locations/:id/agenda/cierre ──────────────────────────────
+workshopLocationsRouter.delete(
+  '/workshop-locations/:id/agenda/cierre',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    const dia  = String(req.query.dia  || '').trim();
+    const hora = String(req.query.hora || '').trim();
+
+    if (!esUnDia(dia) || (hora && !esUnaHora(hora))) {
+      res.status(400).json({ ok: false, error: 'fecha_invalida' });
+      return;
+    }
+
+    try {
+      const habia = await abre(String(req.params.id), dia, hora);
+      res.json({ ok: true, data: { dia, hora, habia } });
+    } catch (err) {
+      falloInterno(res, 'apertura_del_taller_failed', err);
+    }
+  }
+);
