@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../api/client.js';
 
 /**
@@ -19,6 +19,20 @@ import { api } from '../../api/client.js';
  * enseña el que toca. Poner todos y dejar que el servidor rechace los demás
  * sería invitar a pulsarlos.
  */
+
+/**
+ * Lo que cuesta el papeleo de este cambio de nombre.
+ *
+ * Sale de la tarifa de la gestoría que hay cargada en el ERP, no de un número
+ * escrito aquí: el día que la gestoría suba sus honorarios, esto lo dice solo.
+ * Y lo que no tenga tarifa sale por su nombre — un total al que le falta un
+ * trámite y no lo dice es peor que no tener total.
+ */
+export interface ElPapeleo {
+  total: number;
+  lineas: { tramite: string; coste: number }[];
+  sinTarifa: string[];
+}
 
 export interface LaVentaEnCurso {
   paso:
@@ -58,12 +72,32 @@ export default function VentaEnCurso({
 }) {
   const [modo, setModo] = useState<'' | 'aprobar' | 'anular' | 'ingreso'>('');
   const [ingreso, setIngreso] = useState('');
+  const [papeleo, setPapeleo] = useState<ElPapeleo | null>(null);
   const [referencia, setReferencia] = useState('');
   const [entidad, setEntidad] = useState('');
   const [importe, setImporte] = useState('');
   const [motivo, setMotivo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [fallo, setFallo] = useState('');
+
+  /*
+   * Lo que cuesta el papeleo, y solo cuando toca mandarlo.
+   *
+   * Es el momento en que alguien va a pulsar «Mandar la gestoría»: enseñarle
+   * antes lo que va a costar es lo que convierte un botón en una decisión.
+   * Pedirlo siempre sería una consulta más en cada ficha de coche.
+   *
+   * `particular` y `cliente` porque el coche va del vendedor al comprador sin
+   * pasar por nosotros: un solo cambio de nombre, con su modelo 620.
+   */
+  useEffect(() => {
+    if (venta.paso !== 'toca_la_gestoria') { setPapeleo(null); return; }
+    let vivo = true;
+    void api.get<ElPapeleo>('/tarifas-gestoria/estimacion?origen=particular&titularidad=cliente')
+      .then((r) => { if (vivo && r.ok) setPapeleo(r.data); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [venta.paso]);
 
   async function manda(ruta: string, cuerpo: Record<string, unknown>) {
     setEnviando(true);
@@ -195,10 +229,30 @@ export default function VentaEnCurso({
         )}
 
         {venta.paso === 'toca_la_gestoria' && (
-          <button type="button" className={`${boton} border-emerald-300 text-emerald-700 hover:bg-emerald-50`} disabled={enviando}
-                  onClick={() => void manda('gestoria', {})}>
-            Mandar la gestoría
-          </button>
+          <>
+            <button type="button" className={`${boton} border-emerald-300 text-emerald-700 hover:bg-emerald-50`} disabled={enviando}
+                    onClick={() => void manda('gestoria', {})}>
+              Mandar la gestoría
+            </button>
+            {/*
+              * Lo que cuesta, antes de pulsar.
+              *
+              * Sale de nuestros 299 €, así que quien lo manda tiene que ver lo
+              * que queda. Y el ITP se dice aparte y en voz alta: no lo fijamos
+              * nosotros —depende del valor fiscal del coche y de la comunidad—
+              * y meterlo en el total sería inventárselo.
+              */}
+            {papeleo && (
+              <p className="text-[12px] text-brand-400 w-full">
+                Papeleo: <strong className="text-brand-600">{euros(papeleo.total)}</strong>
+                {papeleo.lineas.length ? ` (${papeleo.lineas.map((l) => l.tramite).join(', ')})` : ''}
+                . Sale de nuestros 299 €. <strong>No incluye el ITP</strong>, que depende del valor fiscal del coche.
+                {papeleo.sinTarifa.length > 0 && (
+                  <span className="text-amber-700"> Sin tarifa cargada: {papeleo.sinTarifa.join(', ')}.</span>
+                )}
+              </p>
+            )}
+          </>
         )}
 
         {venta.paso === 'gestoria_en_curso' && (
