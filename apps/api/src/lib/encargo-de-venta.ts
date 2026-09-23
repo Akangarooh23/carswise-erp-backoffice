@@ -188,6 +188,22 @@ export interface Puerta {
   abierta: boolean;
   /** Qué falta, en la frase que se le puede leer al cliente por teléfono. */
   falta: string;
+  /**
+   * Se le pide, pero no para el anuncio.
+   *
+   * Un coche se publica y se vende sin el historial de revisiones —peor, pero
+   * se vende—, y el papel del seguro no hace falta hasta el día del traspaso.
+   * Con las dos contando, un encargo se quedaba parado por una factura de hace
+   * tres años que a lo mejor el cliente ni tiene.
+   */
+  opcional?: boolean;
+  /**
+   * Todavía no se puede hacer: falta otra cosa antes.
+   *
+   * Hoy solo la tasación, que necesita la ficha técnica. Es obligatoria igual;
+   * lo que dice esto es que pedírsela ahora no sirve de nada.
+   */
+  bloqueada?: boolean;
 }
 
 const hayAlgo = (v: unknown) => String(v ?? '').trim() !== '';
@@ -252,11 +268,26 @@ export function lasPuertas(hay: LoQueHay, ahora: Date = new Date()): Puerta[] {
       abierta: faltanPapeles.length === 0,
       falta: faltanPapeles.length ? `Falta ${enLista(faltanPapeles)}` : '',
     },
+    /*
+     * La tasación, pero después de los papeles.
+     *
+     * Se podía hacer la primera, y salía mal: las características del coche
+     * —la versión, la cilindrada, el CO₂, la potencia— se sacan de la ficha
+     * técnica, y sin ella hay que adivinarlas. Un «1.5 TSI» tiene tres
+     * versiones que no valen lo mismo, así que tasar antes es poner un número
+     * sobre un coche que todavía no sabemos cuál es — y de ese número sale la
+     * conversación del precio de salida.
+     *
+     * Sigue siendo obligatoria: cambia de sitio en la cola.
+     */
     {
       clave: 'tasacion',
       nombre: 'La tasación',
       abierta: Number(hay.tasacion ?? 0) > 0,
-      falta: 'No se la ha hecho. Es gratis y sale de su panel',
+      bloqueada: faltanPapeles.length > 0,
+      falta: faltanPapeles.length > 0
+        ? 'Todavía no: falta la ficha técnica, que es de donde salen la versión y las características'
+        : 'No se la ha hecho. Es gratis y sale de su panel',
     },
     {
       clave: 'informe',
@@ -271,24 +302,33 @@ export function lasPuertas(hay: LoQueHay, ahora: Date = new Date()): Puerta[] {
       falta: `Tiene ${libres} de ${FRANJAS_MINIMAS} en los próximos ${DIAS_DE_FRANJAS} días`,
     },
     /*
-     * El seguro y el mantenimiento, con papel.
+     * El seguro y el mantenimiento: se piden, pero no paran el anuncio.
      *
      * Se cuentan ficheros subidos y no los datos escritos: una compañía y un
-     * número de póliza se teclean de memoria y no prueban nada. El historial de
-     * revisiones es de lo poco que mueve el precio y es lo primero que pregunta
-     * quien compra; el del seguro hace falta el día del traspaso.
+     * número de póliza se teclean de memoria y no prueban nada.
+     *
+     * Estaban como obligatorias y no lo son. Un coche se publica y se vende sin
+     * el historial de revisiones, y el papel del seguro no hace falta hasta el
+     * día del traspaso. Tenerlas cerrando la puerta dejaba el encargo parado
+     * por una factura de hace tres años, y al cliente se le decía en su panel
+     * que no podíamos publicar por eso, que no era verdad.
+     *
+     * Siguen en la lista porque siguen mereciendo la llamada: el historial es
+     * de lo poco que mueve el precio y es lo primero que pregunta quien compra.
      */
     {
       clave: 'seguro',
       nombre: 'El seguro',
+      opcional: true,
       abierta: Number(hay.seguros ?? 0) > 0,
-      falta: 'No ha subido ningún papel del seguro',
+      falta: 'No ha subido el papel del seguro (no para el anuncio)',
     },
     {
       clave: 'mantenimiento',
       nombre: 'El mantenimiento',
+      opcional: true,
       abierta: Number(hay.mantenimientos ?? 0) > 0,
-      falta: 'No ha subido ninguna factura de revisión',
+      falta: 'No ha subido ninguna factura de revisión (no para el anuncio)',
     },
   ];
 }
@@ -311,16 +351,32 @@ export const LAS_PUERTAS: Puerta['clave'][] = [
 ];
 
 /**
+ * Las que se le piden pero no paran el anuncio.
+ *
+ * Están en la lista y salen en el panel del cliente; lo único que no hacen es
+ * cerrar la puerta de publicar. Gemela de `LAS_OPCIONALES` en PopCar.
+ */
+export const LAS_OPCIONALES: Puerta['clave'][] = ['seguro', 'mantenimiento'];
+
+/** Las que sí hay que tener antes de poner el anuncio. */
+export const LAS_OBLIGATORIAS: Puerta['clave'][] = LAS_PUERTAS.filter(
+  (c) => !LAS_OPCIONALES.includes(c),
+);
+
+/**
  * Si el coche se puede publicar ya.
  *
- * Se comprueba que estén **todas por su clave**, y no que «todas las que
- * me han pasado» estén abiertas: con lo segundo, pasarle una lista ya filtrada
- * —o una lista vacía— diría que sí. Las de la lista y nada más: el sello del
- * taller es otra cosa y va aparte, porque quien lo cierra no es el cliente sino
- * nosotros.
+ * Se comprueba que estén **las obligatorias por su clave**, y no que «todas las
+ * que me han pasado» estén abiertas: con lo segundo, pasarle una lista ya
+ * filtrada —o una lista vacía— diría que sí. Las de la lista y nada más: el
+ * sello del taller es otra cosa y va aparte, porque quien lo cierra no es el
+ * cliente sino nosotros.
+ *
+ * El seguro y el mantenimiento se le piden igual, pero no paran el anuncio:
+ * ver `LAS_OPCIONALES`.
  */
 export function sePuedePublicar(puertas: readonly Puerta[]): boolean {
-  return LAS_PUERTAS.every((clave) => puertas.some((p) => p.clave === clave && p.abierta));
+  return LAS_OBLIGATORIAS.every((clave) => puertas.some((p) => p.clave === clave && p.abierta));
 }
 
 /** Lo que falta, para decírselo al cliente de una vez. */

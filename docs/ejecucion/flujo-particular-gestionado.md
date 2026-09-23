@@ -80,8 +80,9 @@ correo: **Al cliente** — cómo acabó y qué se le factura, o que no se le cob
 :::
 
 El orden no es de estilo: **mandato → lo suyo → taller → precio firmado →
-anuncio**. Sin mandato, sin sus siete puertas, sin taller o sin el precio
-firmado no se publica. El precio va después del taller porque se fija con lo
+anuncio**. Sin mandato, sin sus cinco puertas obligatorias, sin taller o sin el
+precio firmado no se publica — el seguro y el mantenimiento se le piden pero no
+paran el anuncio. El precio va después del taller porque se fija con lo
 que diga. Y los 30 días del trato empiezan al publicar, no al firmar.
 
 ---
@@ -240,8 +241,10 @@ erp: El campo del precio arranca con lo que dio su tasación
 
 ## 3 · Las siete puertas
 
-Ninguna es opcional. Mientras falte una, el coche no se publica: salen como una
-lista con su semáforo, y el botón de publicar no deja.
+Cinco son obligatorias: mientras falte una de esas, el coche no se publica y el
+botón de publicar no deja. Las otras dos —el seguro y el mantenimiento— se le
+piden igual pero **no paran el anuncio**. Todas salen en la misma lista con su
+semáforo, y las opcionales van marcadas como tales.
 
 Estas siete son **cosas suyas**. Lo que ponemos nosotros —la revisión del
 taller y el precio firmado, en los apartados siguientes— va aparte: cuando se
@@ -255,21 +258,21 @@ cliente: El coche, como IDCar
 cliente: Los papeles del coche
 @ IDCars → el coche → «Documentos»
 + permiso de circulación, ficha técnica y la última ITV
-cliente: La tasación gratuita
+cliente: La tasación gratuita — después de los papeles
 @ IDCars → el coche → «Encargo de venta»
-+ nada: se la hace él desde su panel
++ la ficha técnica subida antes: de ahí salen la versión y las características
 cliente: El informe de estado
 @ IDCars → el coche → «Informe de estado»
 + nada: se abre en el móvil y son fotos guiadas
-cliente: Cuándo puede enseñarlo
-@ IDCars → el coche → «Franjas horarias»
-+ seis franjas como mínimo, dentro de los próximos catorce días
-cliente: El seguro
+cliente: Cuándo y dónde puede enseñarlo
+@ En PopCar: su panel → «Visitas»
++ seis franjas como mínimo dentro de los próximos catorce días, y la dirección
+cliente: El seguro — opcional
 @ En PopCar, desde su panel — se ve en **IDCars**, en el encargo
-+ al menos un papel del seguro subido
-cliente: Y el mantenimiento
++ nada: no para el anuncio
+cliente: Y el mantenimiento — opcional
 @ En PopCar, desde su panel — se ve en **IDCars**, en el encargo
-+ al menos una factura de revisión subida
++ nada: no para el anuncio
 erp: Desde aquí se ve qué le falta y se le puede reclamar
 @ IDCars → el coche → «Encargo de venta»
 + nada: la lista se pinta sola
@@ -288,10 +291,21 @@ erp: Desde aquí se ve qué le falta y se le puede reclamar
 > la matrícula y la tasación empieza con la marca, el modelo, el año y los
 > kilómetros ya puestos: no tiene que volver a escribir lo que ya tenemos.
 
-> **El seguro y el mantenimiento cuentan con papel, no con datos escritos.** Una
-> compañía y un número de póliza se teclean de memoria y no prueban nada. El
-> historial de revisiones es lo primero que pregunta quien compra, y el seguro
-> hace falta el día del traspaso.
+> **El seguro y el mantenimiento se piden, pero no paran el anuncio.** Un coche
+> se publica y se vende sin el historial de revisiones —peor, pero se vende—, y
+> el papel del seguro no hace falta hasta el día del traspaso. Estuvieron
+> cerrando la puerta y dejaban encargos parados por una factura de hace tres
+> años que a lo mejor el cliente ni tiene. Se le siguen reclamando en la
+> llamada: el historial es lo primero que pregunta quien compra y de lo poco que
+> mueve el precio. Y cuentan con papel, no con datos escritos: una compañía y un
+> número de póliza se teclean de memoria y no prueban nada.
+
+> **La tasación no se hace antes que los papeles.** De la ficha técnica salen la
+> versión, la cilindrada, el CO₂ y la potencia. Un «1.5 TSI» tiene tres
+> versiones que no valen lo mismo, así que tasar antes es poner un número sobre
+> un coche que todavía no sabemos cuál es — y de ese número sale luego la
+> conversación del precio de salida. Hasta que no sube la ficha técnica, en su
+> panel la tasación sale como «todavía no» y el botón no deja.
 
 > **Las franjas son suyas, no nuestras.** El que enseña el coche es él, en su
 > casa y a su hora.

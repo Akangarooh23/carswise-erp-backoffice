@@ -116,6 +116,31 @@ describe('las puertas', () => {
       .find((p) => p.clave === 'tasacion')?.abierta, false);
   });
 
+  test('sin la ficha técnica no toca todavía: queda bloqueada', () => {
+    /*
+     * Se podía hacer la primera, y salía mal: la versión, la cilindrada, el
+     * CO₂ y la potencia se sacan de la ficha técnica. Un «1.5 TSI» tiene tres
+     * versiones que no valen lo mismo, así que tasar antes es poner un número
+     * sobre un coche que todavía no sabemos cuál es — y de ese número sale la
+     * conversación del precio de salida.
+     */
+    const sinPapeles = lasPuertas({ ...COMPLETO, tasacion: null, papeles: [] }, AHORA);
+    const tasacion = sinPapeles.find((p) => p.clave === 'tasacion');
+    assert.equal(tasacion?.bloqueada, true);
+    assert.match(String(tasacion?.falta), /ficha técnica/);
+  });
+
+  test('con los papeles ya subidos, deja de estarlo', () => {
+    const conPapeles = lasPuertas({ ...COMPLETO, tasacion: null }, AHORA);
+    assert.ok(!conPapeles.find((p) => p.clave === 'tasacion')?.bloqueada);
+  });
+
+  test('pero bloqueada no es opcional: sigue haciendo falta para publicar', () => {
+    const puertas = lasPuertas({ ...COMPLETO, tasacion: null, papeles: [] }, AHORA);
+    assert.ok(!puertas.find((p) => p.clave === 'tasacion')?.opcional);
+    assert.equal(sePuedePublicar(puertas), false);
+  });
+
   test('faltan fotos y lo dice contándolas', () => {
     const puertas = lasPuertas({ ...COMPLETO, fotos: FOTOS_MINIMAS - 2 }, AHORA);
     assert.match(puertas.find((p) => p.clave === 'idcar')!.falta, /2 fotos/);
@@ -131,16 +156,40 @@ describe('las puertas', () => {
 });
 
 describe('el seguro y el mantenimiento, con papel', () => {
-  test('sin papeles subidos no se publica', () => {
+  test('sin ellos se publica igual: se piden, pero no paran el anuncio', () => {
     /*
-     * Es una decisión de Ana, tomada sabiendo lo que cuesta: cada puerta nueva
-     * se la cobras a los que sí iban a vender. Lo que se gana es que el coche
-     * salga al mercado con historial, que es lo primero que pregunta quien
-     * compra y de lo poco que mueve el precio.
+     * Aquí decía lo contrario, y era una decisión de Ana tomada sabiendo lo que
+     * costaba. La ha cambiado al verlo funcionando, y por lo que se ve al
+     * verlo: un coche se publica y se vende sin el historial de revisiones
+     * —peor, pero se vende—, y el papel del seguro no hace falta hasta el día
+     * del traspaso. Con las dos cerrando la puerta, un encargo se quedaba
+     * parado por una factura de hace tres años que a lo mejor el cliente ni
+     * tiene, y en su panel se le decía que no podíamos publicar por eso, que no
+     * era verdad.
+     *
+     * Siguen en la lista y se le siguen pidiendo: el historial es lo primero
+     * que pregunta quien compra y de lo poco que mueve el precio.
      */
-    for (const sin of [{ seguros: 0 }, { mantenimientos: 0 }]) {
+    for (const sin of [{ seguros: 0 }, { mantenimientos: 0 }, { seguros: 0, mantenimientos: 0 }]) {
+      const puertas = lasPuertas({ ...COMPLETO, ...sin }, AHORA);
+      assert.equal(sePuedePublicar(puertas), true, JSON.stringify(sin));
+    }
+  });
+
+  test('pero las obligatorias siguen parando', () => {
+    // Que dos dejen de contar no puede ablandar a las demás.
+    for (const sin of [{ papeles: [] }, { tasacion: 0 }, { informe: '' }, { franjas: [] }, { matricula: '' }]) {
       const puertas = lasPuertas({ ...COMPLETO, ...sin }, AHORA);
       assert.equal(sePuedePublicar(puertas), false, JSON.stringify(sin));
+    }
+  });
+
+  test('y están marcadas como opcionales, que es lo que lee la pantalla', () => {
+    const puertas = lasPuertas(COMPLETO, AHORA);
+    assert.equal(puertas.find((p) => p.clave === 'seguro')?.opcional, true);
+    assert.equal(puertas.find((p) => p.clave === 'mantenimiento')?.opcional, true);
+    for (const clave of ['idcar', 'papeles', 'tasacion', 'informe', 'franjas']) {
+      assert.ok(!puertas.find((p) => p.clave === clave)?.opcional, `«${clave}» no es opcional`);
     }
   });
 

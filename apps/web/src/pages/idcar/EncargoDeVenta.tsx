@@ -29,6 +29,10 @@ export interface Puerta {
   nombre: string;
   abierta: boolean;
   falta: string;
+  /** Se le pide, pero no para el anuncio: el seguro y el mantenimiento. */
+  opcional?: boolean;
+  /** Todavía no toca: la tasación, hasta que suba la ficha técnica. */
+  bloqueada?: boolean;
 }
 
 export interface Encargo {
@@ -206,6 +210,24 @@ function Semaforo({ puerta }: { puerta: Puerta }) {
       <span className="min-w-0 flex-1">
         <span className={`block text-[13.5px] ${puerta.abierta ? 'text-brand-500' : 'text-brand-600 font-medium'}`}>
           {puerta.nombre}
+          {/*
+            * Cuál no para el anuncio y cuál no toca todavía.
+            *
+            * Sin esto, quien llama al cliente lee siete filas con el mismo
+            * reloj ámbar y se las pide todas con la misma urgencia: le reclama
+            * una factura de hace tres años que no impide publicar, y le manda
+            * a tasar un coche cuya versión todavía no sabemos.
+            */}
+          {!puerta.abierta && puerta.opcional && (
+            <span className="ml-1.5 align-middle rounded-full border border-brand-200 px-1.5 text-[9.5px] font-bold tracking-wide text-brand-400">
+              OPCIONAL
+            </span>
+          )}
+          {!puerta.abierta && puerta.bloqueada && (
+            <span className="ml-1.5 align-middle rounded-full border border-amber-400 px-1.5 text-[9.5px] font-bold tracking-wide text-amber-600">
+              TODAVÍA NO
+            </span>
+          )}
         </span>
         {!puerta.abierta && puerta.falta && (
           <span className="block text-[12px] text-brand-400 mt-0.5">{puerta.falta}</span>
