@@ -61,6 +61,30 @@ const LAS_QUE_LLAMA_OTRO: Record<string, string> = {
  */
 const PENDIENTES_DE_ENCHUFAR: Record<string, string> = {
   '/tarifas/estimacion': 'lo que cuesta traer un coche de Alemania; el expediente de importación todavía no lo enseña',
+  '/marketplace/vo/bulk-with-units': 'publicar en bloque con unidades; hoy se publica coche a coche',
+  '/pedidos/margen-por-origen': 'el margen por origen del coche; el panel todavía no lo pinta',
+  /*
+   * Y el sistema de talleres que quedó en paralelo.
+   *
+   * Hay tres cosas distintas que se llaman «taller» y solo una se usa:
+   *
+   *   · `workshop_locations`, 55.718 filas, es el directorio público. Es lo que
+   *     enseña la pantalla de Talleres del ERP, por `/workshop-locations`.
+   *   · `erp_proveedores` con el tipo «taller» es la red de socios: es donde
+   *     cuelgan las tarifas y con quien se factura.
+   *   · `erp_workshops` es **esto**: su propia tabla, su CRUD entero y su clave
+   *     ajena desde `erp_appointments`. Vacía, y sin una sola pantalla que la
+   *     llame.
+   *
+   * Mientras tanto, la revisión del encargo guarda el taller como texto libre
+   * («Norauto Alcobendas»), así que tampoco apunta a ninguna de las tres.
+   *
+   * No se borra sin decidirlo: hay una clave ajena viva. Queda escrito aquí
+   * para que la próxima persona que abra `routes/workshops.ts` sepa lo que
+   * tiene delante.
+   */
+  '/workshops': 'tabla paralela vacía; la pantalla de Talleres usa /workshop-locations y la revisión guarda texto libre',
+  '/workshops/:id': 'lo mismo que /workshops: CRUD de una tabla que no usa ninguna pantalla',
 };
 
 describe('ninguna ruta se queda sola', () => {
@@ -69,6 +93,35 @@ describe('ninguna ruta se queda sola', () => {
   const deLaWeb = losFicheros(join(RAIZ, 'apps/web/src'), /\.(ts|tsx)$/)
     .filter((p) => !p.includes('.test.'));
   const fuenteWeb = deLaWeb.map((p) => readFileSync(p, 'utf8')).join('\n');
+
+  /**
+   * Las direcciones que la web **llama a la API**, no las que escribe.
+   *
+   * Buscar el texto suelto daba falsos negativos: `/workshops` aparece en el
+   * menú lateral como la dirección de una **página**, y eso hacía pasar por
+   * usada una API que no llama nadie —la pantalla de Talleres pide
+   * `/workshop-locations`, que es otra cosa—. Una prueba que da por bueno lo
+   * que no mira es peor que no tenerla.
+   */
+  const loQuePideLaWeb = (): string => {
+    const trozos: string[] = [];
+    /*
+     * Los cuatro caminos por los que la web habla con la API: el cliente
+     * (`api.get`…), el `fetch` de dentro de ese cliente —por donde va el
+     * login—, el bajador de ficheros con sesión, y un enlace directo a `/api`
+     * para los que se abren en otra pestaña.
+     */
+    const contextos = [
+      /api\.(?:get|post|patch|put|delete)(?:<[^>]*>)?\(\s*[`'"]([^`'"]+)/g,
+      /fetch\(\s*[`'"](?:\$\{BASE\})?([^`'"]+)/g,
+      /descargaConSesion\(\s*[`'"]([^`'"]+)/g,
+      /href=\{?[`'"]\/api([^`'"]+)/g,
+    ];
+    for (const re of contextos) {
+      for (const m of fuenteWeb.matchAll(re)) trozos.push(m[1]);
+    }
+    return trozos.join('\n');
+  };
 
   /** Todas las rutas declaradas, con el fichero donde viven. */
   const lasRutas = (): { fichero: string; ruta: string }[] => {
@@ -82,19 +135,20 @@ describe('ninguna ruta se queda sola', () => {
     return salida;
   };
 
-  test('se encuentran las rutas y las pantallas', () => {
+  test('se encuentran las rutas y las llamadas de la web', () => {
     // Si la búsqueda fallara, las de abajo pasarían sin mirar nada.
     assert.ok(lasRutas().length > 100, String(lasRutas().length));
-    assert.ok(fuenteWeb.length > 100000, String(fuenteWeb.length));
+    assert.ok(loQuePideLaWeb().split('\n').length > 50, String(loQuePideLaWeb().split('\n').length));
   });
 
   test('o la llama la web, o está apuntada con su motivo', () => {
+    const pide = loQuePideLaWeb();
     const solas: string[] = [];
     for (const { fichero, ruta } of lasRutas()) {
       // El trozo fijo, hasta el primer parámetro: es lo que la web escribe.
       const trozo = ruta.split('/:')[0];
       if (trozo.length < 4) continue;
-      if (fuenteWeb.includes(trozo)) continue;
+      if (pide.includes(trozo)) continue;
       if (ruta in LAS_QUE_LLAMA_OTRO) continue;
       if (ruta in PENDIENTES_DE_ENCHUFAR) continue;
       solas.push(`${ruta}  (${fichero})`);
@@ -114,7 +168,7 @@ describe('ninguna ruta se queda sola', () => {
     for (const ruta of [...Object.keys(LAS_QUE_LLAMA_OTRO), ...Object.keys(PENDIENTES_DE_ENCHUFAR)]) {
       if (!todas.has(ruta)) { sobran.push(`${ruta} (ya no existe)`); continue; }
       const trozo = ruta.split('/:')[0];
-      if (fuenteWeb.includes(trozo)) sobran.push(`${ruta} (ahora sí la usa la web)`);
+      if (loQuePideLaWeb().includes(trozo)) sobran.push(`${ruta} (ahora sí la usa la web)`);
     }
     assert.deepEqual(sobran, [], `sobran excepciones:\n  ${sobran.join('\n  ')}`);
   });
