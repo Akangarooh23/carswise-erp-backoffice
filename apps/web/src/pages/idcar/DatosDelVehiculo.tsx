@@ -23,6 +23,24 @@ interface Campo {
 
 type Vehiculo = Record<string, unknown>;
 
+/** Lo que devuelve el lector de la ficha técnica. Nada de esto se guarda solo. */
+interface Diferencia {
+  clave: string;
+  etiqueta: string;
+  ahora: string;
+  segunLaFicha: string;
+  corrige: boolean;
+}
+interface LaFicha {
+  documento: string;
+  confianza: string;
+  diferencias: Diferencia[];
+  avisos: string[];
+  no_lo_trae: string[];
+  no_es_una_ficha?: boolean;
+  detail?: string;
+}
+
 /*
  * De dónde se lee cada uno para enseñarlo. Los kilómetros y el año se leen de
  * la columna de texto, que es la que escribe el cliente y la que se corrige
@@ -73,6 +91,16 @@ export default function DatosDelVehiculo({
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
 
+  /*
+   * Lo que dice la ficha técnica.
+   *
+   * Se lee cuando alguien lo pide, no al abrir la pantalla: cada lectura es una
+   * llamada al lector y la mayoría de las veces nadie va a corregir nada.
+   */
+  const [leyendo, setLeyendo] = useState(false);
+  const [ficha, setFicha] = useState<LaFicha | null>(null);
+  const [aplicar, setAplicar] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     void api.get<{ campos: Campo[] }>('/idcars/campos/caracteristicas').then((r) => {
       if (r.ok) setCampos(r.data.campos);
@@ -94,6 +122,64 @@ export default function DatosDelVehiculo({
     setErrores({});
     setAviso(null);
     setEditando(true);
+  }
+
+  /** Pedir que se lea la ficha técnica subida. */
+  async function leeLaFicha() {
+    setLeyendo(true);
+    setAviso(null);
+    setFicha(null);
+    try {
+      const r = await api.post<LaFicha & { detail?: string }>(`/idcars/${vehicleId}/ficha-tecnica/leer`, {});
+      if (!r.ok) {
+        const d = r.data as { detail?: string } | undefined;
+        setAviso({ ok: false, texto: d?.detail || 'No se ha podido leer la ficha técnica.' });
+        return;
+      }
+      setFicha(r.data);
+      // Vienen marcadas las que corrigen algo: es lo que se venía a hacer. Las
+      // que ya coinciden se enseñan para poder decir que se han comprobado.
+      const marcadas: Record<string, boolean> = {};
+      for (const d of r.data.diferencias) marcadas[d.clave] = d.corrige;
+      setAplicar(marcadas);
+    } catch (e) {
+      setAviso({ ok: false, texto: (e as Error).message });
+    } finally {
+      setLeyendo(false);
+    }
+  }
+
+  /** Llevar al coche lo elegido de la ficha. Escribe el mismo sitio que «Guardar». */
+  async function aplicaLaFicha() {
+    const cambios: Record<string, string> = {};
+    for (const d of ficha?.diferencias ?? []) {
+      if (aplicar[d.clave] && d.corrige) cambios[d.clave] = d.segunLaFicha;
+    }
+    if (!Object.keys(cambios).length) { setFicha(null); return; }
+
+    setGuardando(true);
+    setAviso(null);
+    try {
+      const r = await api.patch<Vehiculo & { detail?: string }>(`/idcars/${vehicleId}`, cambios);
+      if (!r.ok) {
+        const d = r.data as { detail?: string } | undefined;
+        setAviso({ ok: false, texto: d?.detail || 'No se ha podido guardar.' });
+        return;
+      }
+      const cuerpo = r as unknown as { anuncio_actualizado?: boolean };
+      alGuardar(r.data);
+      setFicha(null);
+      const cuantos = Object.keys(cambios).length;
+      setAviso({
+        ok: true,
+        texto: `${cuantos === 1 ? 'Un dato corregido' : `${cuantos} datos corregidos`} con la ficha técnica.` +
+          (cuerpo.anuncio_actualizado ? ' El anuncio publicado ya lo enseña.' : ''),
+      });
+    } catch (e) {
+      setAviso({ ok: false, texto: (e as Error).message });
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function guarda() {
@@ -144,10 +230,23 @@ export default function DatosDelVehiculo({
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-brand-600 text-sm">Datos del vehículo</h3>
         {!editando ? (
-          <button type="button" onClick={empieza} disabled={!campos.length}
-            className="text-xs text-acento-texto font-medium disabled:opacity-50">
-            Editar
-          </button>
+          <div className="flex gap-3">
+            {/*
+              * Leer la ficha técnica en vez de teclearla.
+              *
+              * El cliente copia el número que ve sin saber la unidad: en el
+              * T-Roc puso «110 CV» de un coche que en su propia versión dice
+              * «110 kW», que son 150. El papel lo dice sin opinión.
+              */}
+            <button type="button" onClick={() => void leeLaFicha()} disabled={leyendo || guardando}
+              className="text-xs text-brand-400 hover:text-brand-600 font-medium disabled:opacity-50">
+              {leyendo ? 'Leyendo la ficha…' : 'Leer la ficha técnica'}
+            </button>
+            <button type="button" onClick={empieza} disabled={!campos.length}
+              className="text-xs text-acento-texto font-medium disabled:opacity-50">
+              Editar
+            </button>
+          </div>
         ) : (
           <div className="flex gap-2">
             <button type="button" onClick={() => { setEditando(false); setAviso(null); setErrores({}); }}
@@ -165,6 +264,15 @@ export default function DatosDelVehiculo({
           {aviso.texto}
         </div>
       )}
+
+      {ficha && <PanelDeLaFicha
+        ficha={ficha}
+        aplicar={aplicar}
+        setAplicar={setAplicar}
+        guardando={guardando}
+        alAplicar={() => void aplicaLaFicha()}
+        alCerrar={() => setFicha(null)}
+      />}
 
       {!editando ? (
         <>
@@ -250,5 +358,123 @@ export default function DatosDelVehiculo({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Lo que dice la ficha técnica, al lado de lo que hay puesto.
+ *
+ * Las dos columnas juntas, y una casilla por fila. Nada se guarda hasta que
+ * alguien pulsa: un OCR que pisa datos porque cree haber leído bien es peor que
+ * no tenerlo — el error que mete no lo revisa nadie, porque ya viene
+ * «comprobado».
+ */
+function PanelDeLaFicha({
+  ficha, aplicar, setAplicar, guardando, alAplicar, alCerrar,
+}: {
+  ficha: LaFicha;
+  aplicar: Record<string, boolean>;
+  setAplicar: (f: (x: Record<string, boolean>) => Record<string, boolean>) => void;
+  guardando: boolean;
+  alAplicar: () => void;
+  alCerrar: () => void;
+}) {
+  const corrigen = ficha.diferencias.filter((d) => d.corrige);
+  const coinciden = ficha.diferencias.filter((d) => !d.corrige);
+  const marcados = corrigen.filter((d) => aplicar[d.clave]).length;
+
+  return (
+    <div className="mb-4 border border-brand-200 rounded-lg p-3 bg-brand-50/50">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-brand-600">Lo que dice la ficha técnica</p>
+          {ficha.documento && (
+            <p className="text-[11px] text-brand-300 truncate">{ficha.documento}</p>
+          )}
+        </div>
+        <button type="button" onClick={alCerrar} className="text-brand-300 hover:text-brand-500 text-sm leading-none">×</button>
+      </div>
+
+      {ficha.no_es_una_ficha ? (
+        <p className="text-[11.5px] text-amber-700 leading-snug">
+          {ficha.detail ?? 'De ese documento no sale ningún dato de ficha técnica.'}
+        </p>
+      ) : (
+        <>
+          {ficha.confianza === 'baja' && (
+            <p className="mb-2 text-[11.5px] text-amber-700 leading-snug">
+              El documento se lee mal. Repasa cada dato antes de aplicarlo.
+            </p>
+          )}
+
+          {corrigen.length === 0 ? (
+            <p className="text-[11.5px] text-emerald-700 leading-snug">
+              Todo lo que trae la ficha coincide con lo que hay puesto. No hay nada que corregir.
+            </p>
+          ) : (
+            <table className="w-full text-[11.5px] mb-2">
+              <thead>
+                <tr className="text-brand-300 text-left">
+                  <th className="font-normal w-6" />
+                  <th className="font-normal">Dato</th>
+                  <th className="font-normal">Ahora</th>
+                  <th className="font-normal">La ficha dice</th>
+                </tr>
+              </thead>
+              <tbody>
+                {corrigen.map((d) => (
+                  <tr key={d.clave} className="border-t border-brand-100">
+                    <td className="py-1">
+                      <input
+                        type="checkbox"
+                        id={`fic-${d.clave}`}
+                        checked={Boolean(aplicar[d.clave])}
+                        onChange={(e) => setAplicar((x) => ({ ...x, [d.clave]: e.target.checked }))}
+                      />
+                    </td>
+                    <td className="py-1">
+                      <label htmlFor={`fic-${d.clave}`} className="text-brand-500">{d.etiqueta}</label>
+                    </td>
+                    {/* Lo vacío se dice, no se deja en blanco: «—» es «no había nada». */}
+                    <td className="py-1 text-brand-400">{d.ahora || '—'}</td>
+                    <td className="py-1 text-brand-600 font-medium">{d.segunLaFicha}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {coinciden.length > 0 && (
+            <p className="text-[11px] text-brand-300 leading-snug mb-2">
+              Comprobados y correctos: {coinciden.map((d) => d.etiqueta.toLowerCase()).join(', ')}.
+            </p>
+          )}
+
+          {ficha.avisos.map((a) => (
+            <p key={a} className="text-[11px] text-amber-700 leading-snug mb-1">{a}</p>
+          ))}
+
+          {ficha.no_lo_trae.length > 0 && (
+            <p className="text-[11px] text-brand-300 leading-snug">
+              La ficha técnica no lleva: {ficha.no_lo_trae.map((x) => x.toLowerCase()).join(', ')}. Eso se pone a mano.
+            </p>
+          )}
+
+          {corrigen.length > 0 && (
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                type="button"
+                onClick={alAplicar}
+                disabled={guardando || marcados === 0}
+                className="text-xs bg-brand-600 text-white px-3 py-1 rounded-md hover:bg-brand-700 disabled:opacity-50"
+              >
+                {guardando ? 'Guardando…' : marcados === 1 ? 'Corregir 1 dato' : `Corregir ${marcados} datos`}
+              </button>
+              <span className="text-[11px] text-brand-300">Solo se cambia lo que dejes marcado.</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

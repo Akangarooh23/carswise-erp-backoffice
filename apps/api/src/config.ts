@@ -28,6 +28,10 @@ const envSchema = z.object({
   APP_URL: z.string().default('http://localhost:5175'),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_KEY: z.string().optional(),
+  // Para leer la ficha técnica del coche. Es la misma clave que ya usa PopCar
+  // para el informe de venta: sin ella, el botón de leerla dice que no está
+  // configurado y todo lo demás sigue igual.
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

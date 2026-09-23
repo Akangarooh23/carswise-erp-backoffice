@@ -9,6 +9,8 @@ import {
   CAMPOS, GEMELAS, limpiaLosCambios, loQueVaAlAnuncio,
   ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_COCHE, type ElAnuncio,
 } from '../lib/caracteristicas-del-coche.js';
+import { loQueDiceLaFicha, lasDiferencias, LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
+import { bajaElPapel, leeElPapel } from '../lib/lee-la-ficha.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -657,6 +659,104 @@ idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (r
 /** Lo que el formulario necesita saber para pintar los campos. */
 idcarsRouter.get('/idcars/campos/caracteristicas', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
   res.json({ ok: true, data: { campos: CAMPOS } });
+});
+
+/**
+ * Leer la ficha técnica del coche y decir en qué se diferencia de lo que hay.
+ *
+ * **No guarda nada.** Devuelve lo que dice el papel y las diferencias; escribir
+ * sigue siendo el `PATCH` de arriba, con una persona pulsándolo. Un OCR que
+ * pisa datos porque cree haber leído bien es peor que no tenerlo: el error que
+ * mete no lo revisa nadie, porque ya viene «comprobado».
+ */
+idcarsRouter.post('/idcars/:id/ficha-tecnica/leer', requireRole(['admin', 'operations']), async (req, res) => {
+  try {
+    const doc = await query(
+      `SELECT file_url, file_name, file_mime_type
+         FROM ${DOCS_TABLE}
+        WHERE vehicle_id = $1 AND document_type = 'technical_sheet'
+          AND COALESCE(file_url, '') <> ''
+        ORDER BY created_at DESC LIMIT 1`,
+      [req.params.id],
+    ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+    if (!doc.rows.length) {
+      res.status(404).json({ ok: false, error: 'sin_ficha_tecnica', detail: 'Este coche no tiene ficha técnica subida' });
+      return;
+    }
+
+    const coche = await query(`SELECT * FROM moveadvisor_user_vehicles WHERE id = $1`, [req.params.id]);
+    if (!coche.rows.length) { res.status(404).json({ ok: false, error: 'idcar_not_found' }); return; }
+
+    const papel = await bajaElPapel(String(doc.rows[0].file_url ?? ''));
+    const leido = await leeElPapel(papel);
+    const { campos, avisos } = loQueDiceLaFicha(leido.codigos);
+
+    const etiquetaDe = (clave: string) => CAMPOS.find((c) => c.clave === clave)?.etiqueta ?? '';
+    const diferencias = lasDiferencias(coche.rows[0], campos, etiquetaDe);
+
+    /*
+     * Si de ahí no ha salido nada, ese papel no es una ficha técnica.
+     *
+     * Pasa más de lo que parece: en «ficha técnica» se sube la factura del
+     * taller, el permiso de circulación o una foto movida. Devolver una lista
+     * vacía y ya deja a quien mira pensando que el lector no funciona, cuando
+     * lo que falla es el documento — y el que hay que pedirle al cliente es
+     * otro.
+     */
+    if (!Object.keys(campos).length) {
+      res.json({
+        ok: true,
+        data: {
+          documento: doc.rows[0].file_name ?? '',
+          confianza: leido.confianza,
+          codigos: leido.codigos,
+          diferencias: [],
+          avisos: [],
+          no_lo_trae: [],
+          no_es_una_ficha: true,
+          detail: 'De ese documento no sale ningún dato de ficha técnica. Comprueba que lo subido sea la tarjeta ITV del coche y no otro papel.',
+        },
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        documento: doc.rows[0].file_name ?? '',
+        confianza: leido.confianza,
+        codigos: leido.codigos,
+        diferencias,
+        avisos,
+        /*
+         * Y lo que la ficha no trae nunca, por su nombre. Sin esto, quien mira
+         * la pantalla ve nueve campos propuestos y se queda pensando que los
+         * kilómetros no se leyeron bien, cuando es que ahí no están.
+         */
+        no_lo_trae: LO_QUE_NO_TRAE.map((c) => etiquetaDe(c)).filter(Boolean),
+      },
+    });
+  } catch (err) {
+    const motivo = (err as Error).message;
+    if (motivo === 'sin_lector') {
+      res.status(503).json({ ok: false, error: 'sin_lector', detail: 'Falta configurar la clave del lector de fichas técnicas' });
+      return;
+    }
+    if (motivo === 'sin_fichero' || motivo === 'no_se_ha_podido_bajar' || motivo === 'fichero_vacio') {
+      res.status(502).json({ ok: false, error: motivo, detail: 'No hemos podido abrir la ficha técnica subida' });
+      return;
+    }
+    if (motivo === 'fichero_demasiado_grande') {
+      res.status(413).json({ ok: false, error: motivo, detail: 'La ficha técnica pesa demasiado para leerla' });
+      return;
+    }
+    if (motivo === 'no_se_ha_podido_leer') {
+      res.status(502).json({ ok: false, error: motivo, detail: 'El lector no ha sacado nada de ese documento' });
+      return;
+    }
+    falloInterno(res, 'ficha_tecnica_leer_failed', err);
+  }
 });
 
 idcarsRouter.patch('/idcars/:id/photos/reorder', requireRole(['admin', 'operations', 'support']), async (req, res) => {
