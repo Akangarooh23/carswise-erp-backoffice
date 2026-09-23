@@ -239,7 +239,7 @@ export default function WorkshopsPage() {
                     <th>Web</th>
                     <th>Horario</th>
                     <th>Activo</th>
-                    <th></th>
+                    <th className="columna-pegada"></th>
                   </tr>
                   {/* Per-column filter row */}
                   <tr style={{ background: '#f8fafc' }}>
@@ -319,7 +319,7 @@ export default function WorkshopsPage() {
                         <option value="false">No</option>
                       </select>
                     </th>
-                    <th />
+                    <th className="columna-pegada" />
                   </tr>
                 </thead>
                 <tbody>
@@ -356,7 +356,7 @@ export default function WorkshopsPage() {
                           {w.is_active ? 'Sí' : 'No'}
                         </span>
                       </td>
-                      <td>
+                      <td className="columna-pegada">
                         <div className="flex gap-3 justify-end">
                           <button onClick={() => setLaAgendaDe(w)}
                             className="text-xs text-acento-texto hover:text-brand-600 font-medium whitespace-nowrap">

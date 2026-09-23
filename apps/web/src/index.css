@@ -106,6 +106,25 @@ body {
 .erp-table thead { position: sticky; top: 0; z-index: 20; }
 .erp-table thead td { background: #F5F5F4; }
 .erp-table thead th { box-shadow: inset 0 -1px 0 #E4E4DF; }
+/* Una columna que se queda pegada al borde derecho.
+
+   En Talleres hay trece columnas, asi que la de los botones caia fuera de la
+   pantalla: para llegar a «Agenda» habia que arrastrar la tabla, y un boton
+   que no se ve no existe. Se pone a mano, columna por columna, porque solo
+   tiene sentido en las tablas anchas. */
+.erp-table th.columna-pegada,
+.erp-table td.columna-pegada {
+  position: sticky;
+  right: 0;
+  /* Fondo propio: sin el, las celdas de al lado se leen por debajo al
+     arrastrar la tabla. */
+  background: #FFFFFF;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+.erp-table th.columna-pegada { background: #F5F5F4; z-index: 21; }
+.erp-table thead tr + tr th.columna-pegada { background: #F8FAFC; }
+.erp-table td.columna-pegada { z-index: 10; }
+.erp-table tr:hover td.columna-pegada { background: #FFFDF5; }
 
 /* Transition utility */
 .fade-in { animation: fadeIn 0.15s ease; }

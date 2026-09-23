@@ -345,7 +345,14 @@ export default function RevisionDelTaller({
               id="taller-nombre"
               value={taller}
               onChange={(ev) => { setTaller(ev.target.value); setTallerId(''); }}
-              placeholder="Norauto Villaverde"
+              /*
+               * El texto dice que aquí se busca.
+               *
+               * Con «Norauto Villaverde» de ejemplo, el campo se lee como uno
+               * de escribir el nombre, que es justo lo que era antes: nadie
+               * prueba a teclear para ver si sale una lista.
+               */
+              placeholder="Busca: Norauto, Midas…"
               autoComplete="off"
               className="w-full px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-acento"
