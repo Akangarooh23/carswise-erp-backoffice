@@ -89,6 +89,16 @@ export default function RevisionDelTaller({
   const [datos, setDatos] = useState<LoDelTaller | null>(null);
   const [fallo, setFallo] = useState('');
   const [taller, setTaller] = useState('');
+  /*
+   * Los talleres de la red, para no escribir el nombre a mano.
+   *
+   * Aquí se tecleaba libre, y «Norauto Alcobendas», «norauto alcobendas» y
+   * «Norauto (Alcobendas)» son tres talleres distintos para cualquier consulta
+   * que agrupe. Salen de Proveedores, que es donde están sus tarifas y con
+   * quien se factura — no de `erp_workshops`, que es una tabla paralela vacía
+   * que no usa ninguna pantalla.
+   */
+  const [deLaRed, setDeLaRed] = useState<{ id: string; nombre: string }[]>([]);
   const [direccion, setDireccion] = useState('');
   const [dia, setDia] = useState('');
   const [hora, setHora] = useState('');
@@ -123,6 +133,16 @@ export default function RevisionDelTaller({
   }, [vehicleId, alCambiar]);
 
   useEffect(() => { void carga(); }, [carga]);
+
+  useEffect(() => {
+    let vivo = true;
+    void api.get<{ id: string; nombre: string }[]>('/proveedores?tipo=taller')
+      .then((r) => { if (vivo && r.ok) setDeLaRed(r.data ?? []); })
+      // Sin red, el campo sigue siendo de texto: es peor no poder apuntar la
+      // revisión que apuntarla con el nombre escrito a mano.
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
 
   async function daCita() {
     if (!taller.trim()) { setFallo('Falta a qué taller se lleva.'); return; }
@@ -238,14 +258,31 @@ export default function RevisionDelTaller({
           <label className="block text-[11px] text-brand-300 mb-1" htmlFor="taller-nombre">
             Taller
           </label>
+          {/*
+            * Con la red delante, pero sin cerrar la puerta.
+            *
+            * Un `datalist` propone los de Proveedores y deja escribir otro: el
+            * coche puede acabar en un taller que todavía no es de la red, y
+            * obligar a darlo de alta antes de poder apuntar la revisión sería
+            * parar el trabajo por el papeleo.
+            */}
           <input
             id="taller-nombre"
+            list="talleres-de-la-red"
             value={taller}
             onChange={(ev) => setTaller(ev.target.value)}
             placeholder="Norauto Villaverde"
             className="w-52 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
                        focus:outline-none focus:ring-2 focus:ring-acento"
           />
+          <datalist id="talleres-de-la-red">
+            {deLaRed.map((t) => <option key={t.id} value={t.nombre} />)}
+          </datalist>
+          {taller && deLaRed.length > 0 && !deLaRed.some((t) => t.nombre === taller) && (
+            <p className="text-[11px] text-amber-700 mt-1 w-52">
+              No está en Proveedores. Si vais a repetir con él, dalo de alta: ahí van sus tarifas.
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-[11px] text-brand-300 mb-1" htmlFor="taller-direccion">

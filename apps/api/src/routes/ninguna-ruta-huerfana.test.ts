@@ -63,28 +63,6 @@ const PENDIENTES_DE_ENCHUFAR: Record<string, string> = {
   '/tarifas/estimacion': 'lo que cuesta traer un coche de Alemania; el expediente de importación todavía no lo enseña',
   '/marketplace/vo/bulk-with-units': 'publicar en bloque con unidades; hoy se publica coche a coche',
   '/pedidos/margen-por-origen': 'el margen por origen del coche; el panel todavía no lo pinta',
-  /*
-   * Y el sistema de talleres que quedó en paralelo.
-   *
-   * Hay tres cosas distintas que se llaman «taller» y solo una se usa:
-   *
-   *   · `workshop_locations`, 55.718 filas, es el directorio público. Es lo que
-   *     enseña la pantalla de Talleres del ERP, por `/workshop-locations`.
-   *   · `erp_proveedores` con el tipo «taller» es la red de socios: es donde
-   *     cuelgan las tarifas y con quien se factura.
-   *   · `erp_workshops` es **esto**: su propia tabla, su CRUD entero y su clave
-   *     ajena desde `erp_appointments`. Vacía, y sin una sola pantalla que la
-   *     llame.
-   *
-   * Mientras tanto, la revisión del encargo guarda el taller como texto libre
-   * («Norauto Alcobendas»), así que tampoco apunta a ninguna de las tres.
-   *
-   * No se borra sin decidirlo: hay una clave ajena viva. Queda escrito aquí
-   * para que la próxima persona que abra `routes/workshops.ts` sepa lo que
-   * tiene delante.
-   */
-  '/workshops': 'tabla paralela vacía; la pantalla de Talleres usa /workshop-locations y la revisión guarda texto libre',
-  '/workshops/:id': 'lo mismo que /workshops: CRUD de una tabla que no usa ninguna pantalla',
 };
 
 describe('ninguna ruta se queda sola', () => {

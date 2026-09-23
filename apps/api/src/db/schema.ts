@@ -32,28 +32,14 @@ export async function ensureSchema() {
   `);
 
   await query(`
-    CREATE TABLE IF NOT EXISTS erp_workshops (
-      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name        TEXT NOT NULL,
-      address     TEXT,
-      city        TEXT,
-      province    TEXT,
-      postal_code TEXT,
-      phone       TEXT,
-      email       TEXT,
-      is_active   BOOLEAN DEFAULT TRUE,
-      notes       TEXT,
-      created_at  TIMESTAMPTZ DEFAULT NOW(),
-      updated_at  TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await query(`
     CREATE TABLE IF NOT EXISTS erp_appointments (
       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id       TEXT NOT NULL,
       agent         TEXT,
-      workshop_id   UUID REFERENCES erp_workshops(id) ON DELETE SET NULL,
+      -- Sin clave ajena: erp_workshops se retiró. El nombre del taller ya
+      -- viaja al lado, en workshop_name, y la red de socios vive en
+      -- erp_proveedores con el tipo «taller».
+      workshop_id   UUID,
       workshop_name TEXT,
       scheduled_at  TIMESTAMPTZ NOT NULL,
       type          TEXT NOT NULL,
