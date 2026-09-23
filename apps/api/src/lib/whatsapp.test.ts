@@ -125,9 +125,20 @@ describe('la firma de lo que manda Meta', () => {
   const firmaDe = (secreto: string) =>
     'sha256=' + createHmac('sha256', secreto).update(cuerpo).digest('hex');
 
-  test('sin secreto configurado se deja pasar, como antes', () => {
+  test('sin secreto configurado no pasa nada', () => {
+    /*
+     * Esto decía lo contrario: sin `WHATSAPP_APP_SECRET` se dejaba pasar, para
+     * que el webhook no quedara inservible el día que se conectara faltando la
+     * variable. Pero un webhook que no puede comprobar quién le escribe no es
+     * un webhook: es un formulario público que escribe en el ERP, y con él
+     * cualquiera podía dar por elegida la hora de una cita.
+     *
+     * Si falta la variable, el webhook rechaza y lo dice en el registro. Eso se
+     * arregla en dos minutos; lo otro no se nota nunca.
+     */
     delete process.env.WHATSAPP_APP_SECRET;
-    assert.equal(firmaValida(cuerpo, undefined), true);
+    assert.equal(firmaValida(cuerpo, undefined), false);
+    assert.equal(firmaValida(cuerpo, firmaDe('el-que-sea')), false);
   });
 
   test('con secreto, la buena pasa', () => {

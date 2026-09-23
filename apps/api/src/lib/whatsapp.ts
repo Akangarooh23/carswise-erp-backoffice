@@ -192,13 +192,26 @@ export const botonDeHora = (bookingId: string, hora: string) => `elige|${booking
  * Se compara en tiempo constante: comparar dos textos con `===` se para en el
  * primer carácter distinto, y eso deja adivinar la firma byte a byte.
  *
- * Sin `WHATSAPP_APP_SECRET` no se puede comprobar nada y se deja pasar: es lo
- * mismo que había antes de esto, y bloquear sin secreto dejaría el webhook
- * inservible el día que se conecte y falte la variable. Quien lo enchufe la pone.
+ * **Sin `WHATSAPP_APP_SECRET` no pasa nada.** Antes se dejaba pasar, con el
+ * argumento de que bloquear sin secreto dejaría el webhook inservible el día
+ * que se conecte y falte la variable. Es verdad, y es exactamente lo que tiene
+ * que pasar: un webhook que no puede comprobar quién le escribe no es un
+ * webhook, es un formulario público que escribe en el ERP. El día que se
+ * enchufe, la variable se pone —y si se olvida, se nota enseguida y se arregla,
+ * que es mucho mejor que funcionar aceptando avisos de cualquiera.
+ *
+ * Hoy la integración no está en uso: no hay ni una tabla de WhatsApp en la
+ * base, así que cerrar esto no apaga nada.
  */
 export function firmaValida(cuerpo: Buffer | string | undefined, cabecera: string | undefined): boolean {
   const secreto = process.env.WHATSAPP_APP_SECRET?.trim();
-  if (!secreto) return true;
+  if (!secreto) {
+    console.error(
+      '[whatsapp] WHATSAPP_APP_SECRET no está configurado: el webhook rechaza todo. ' +
+      'Ponlo en Vercel con el «App Secret» de la app de Meta.'
+    );
+    return false;
+  }
   if (!cuerpo || !cabecera?.startsWith('sha256=')) return false;
   const esperada = createHmac('sha256', secreto)
     .update(typeof cuerpo === 'string' ? Buffer.from(cuerpo, 'utf8') : cuerpo)

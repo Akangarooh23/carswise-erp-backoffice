@@ -30,18 +30,29 @@ describe('quién puede disparar la tarea', () => {
     assert.equal(autorizado(conCabeceras({ 'user-agent': 'vercel-cron/1.0' })), false);
   });
 
-  test('sin secreto configurado, solo la llamada de Vercel', () => {
+  test('sin secreto configurado no pasa nadie, ni Vercel', () => {
+    /*
+     * Esto antes decía lo contrario: sin secreto se aceptaba la llamada que
+     * dijera ser de Vercel, reconocida por su `user-agent`. Y ese agente lo
+     * escribe quien llama —es una línea de texto, no una credencial—, así que
+     * la puerta estaba abierta para cualquiera que la copiara. Detrás hay un
+     * recálculo y los recordatorios de taller, que son correos a clientes.
+     *
+     * Un secreto que falta es un fallo de configuración, y un fallo de
+     * configuración puede cerrar una puerta —eso se nota y se arregla— pero no
+     * abrirla.
+     */
     process.env.CRON_SECRET = '';
-    assert.equal(autorizado(conCabeceras({ 'user-agent': 'vercel-cron/1.0' })), true);
+    assert.equal(autorizado(conCabeceras({ 'user-agent': 'vercel-cron/1.0' })), false);
     assert.equal(autorizado(conCabeceras({ 'user-agent': 'curl/8.4.0' })), false);
     assert.equal(autorizado(conCabeceras({})), false);
   });
 
-  test('un secreto de espacios cuenta como no puesto, no como secreto', () => {
-    // Si contara como secreto, nadie podría dispararla y la tarea moriría en
-    // silencio: el número se quedaría viejo y nadie sabría por qué.
+  test('un secreto de espacios cuenta como no puesto, y tampoco abre', () => {
+    // El riesgo de cerrar —que la tarea muera en silencio— se paga con un
+    // mensaje en el registro, no dejando entrar a cualquiera.
     process.env.CRON_SECRET = '   ';
-    assert.equal(autorizado(conCabeceras({ 'user-agent': 'vercel-cron/1.0' })), true);
+    assert.equal(autorizado(conCabeceras({ 'user-agent': 'vercel-cron/1.0' })), false);
   });
 });
 

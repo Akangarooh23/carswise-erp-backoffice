@@ -26,15 +26,29 @@ export const cronRouter = Router();
 /**
  * Quién puede disparar una tarea.
  *
- * Con `CRON_SECRET` puesto se exige; sin él, solo la llamada de Vercel Cron,
- * que se reconoce por su agente. Lo segundo es más débil —un agente se puede
- * copiar— y por eso lo único que hay detrás es un recálculo: lo peor que
- * consigue quien se cuele es que los números estén más frescos.
+ * Antes: con `CRON_SECRET` puesto se exigía; **sin él bastaba con decir que
+ * eres Vercel**, porque se miraba el agente. Y el agente lo escribe quien
+ * llama: es una línea de texto, no una credencial. Detrás de estas direcciones
+ * hay un recálculo de números y los recordatorios de taller, que son correos a
+ * clientes.
+ *
+ * Ahora, sin secreto no pasa nadie. Un secreto que falta es un fallo de
+ * configuración, y un fallo de configuración puede cerrar una puerta —eso se
+ * nota y se arregla— pero no abrirla.
+ *
+ * `CRON_SECRET` está puesto en este proyecto, y Vercel manda ese mismo valor en
+ * `Authorization` al disparar una tarea: cerrar aquí no apaga nada.
  */
 export function autorizado(req: Pick<Request, 'headers'>): boolean {
   const secreto = String(process.env.CRON_SECRET ?? '').trim();
-  if (secreto) return String(req.headers.authorization ?? '') === `Bearer ${secreto}`;
-  return String(req.headers['user-agent'] ?? '').toLowerCase().includes('vercel-cron');
+  if (!secreto) {
+    console.error(
+      '[cron] CRON_SECRET no está configurado: las tareas no se ejecutan. ' +
+      'Ponlo en Vercel (Settings → Environment Variables) y vuelve a desplegar.'
+    );
+    return false;
+  }
+  return String(req.headers.authorization ?? '') === `Bearer ${secreto}`;
 }
 
 
