@@ -245,6 +245,67 @@ export function loQueDiceLaFicha(codigos: Record<string, unknown> | null | undef
   return { campos, avisos };
 }
 
+/**
+ * Lo que la versión que escribió el cliente dice del motor.
+ *
+ * «R-Line 1st Edition 1.5 eTSI 110kW DSG» lleva dentro la cilindrada y la
+ * potencia. No es un nombre libre: es lo que el fabricante pone en la gama, y
+ * por eso se puede contrastar con el papel.
+ *
+ * Los litros se guardan en centímetros cúbicos para poder compararlos con P.1,
+ * y se admite medio margen porque «1.5» se anuncia igual para 1.498 y 1.512.
+ */
+export function queDiceLaVersion(version: unknown): { cc: number | null; kw: number | null; cv: number | null } {
+  const s = texto(version);
+  // Los litros: «1.5», «2,0 TDI». No vale un «1.5» que sea parte de otra cosa.
+  const litros = s.match(/(?<![\d.,])([0-9])[.,]([0-9])(?![\d.,])/);
+  const kw = s.match(/([0-9]{2,3})\s*kw/i);
+  const cv = s.match(/([0-9]{2,4})\s*(cv|hp)\b/i);
+  return {
+    cc: litros ? Math.round(Number(`${litros[1]}.${litros[2]}`) * 1000) : null,
+    kw: kw ? Number(kw[1]) : null,
+    cv: cv ? Number(cv[1]) : null,
+  };
+}
+
+/**
+ * Si la versión que eligió el cliente cuadra con su ficha técnica.
+ *
+ * Es lo que hace fiable la tasación. Un coche se compara con los que son como
+ * él, y la versión es lo que dice cuáles son: si el cliente elige de una lista
+ * una que no es la suya —y las gamas tienen tres «1.5» que no valen lo mismo—
+ * el precio sale de comparar su coche con otros coches.
+ *
+ * Solo se avisa cuando el papel **contradice** lo que pone la versión, no
+ * cuando la versión no dice nada. La mayoría no lleva la potencia escrita, y un
+ * aviso que salta siempre deja de leerse.
+ */
+export function laVersionNoCuadra(
+  version: unknown,
+  codigos: Record<string, unknown> | null | undefined,
+): string {
+  const dice = queDiceLaVersion(version);
+  const c = codigos ?? {};
+  const ccFicha = estaVacio(c['P.1']) ? null : elNumero(c['P.1']);
+  const kwFicha = estaVacio(c['P.2']) ? null : elNumero(c['P.2']);
+  const problemas: string[] = [];
+
+  // Medio litro de margen: «1.5» se anuncia igual para 1.498 y para 1.512.
+  if (dice.cc !== null && ccFicha !== null && Math.abs(dice.cc - ccFicha) > 150) {
+    problemas.push(`la versión dice ${(dice.cc / 1000).toFixed(1)} y la ficha ${ccFicha} cc`);
+  }
+  if (dice.kw !== null && kwFicha !== null && Math.abs(dice.kw - kwFicha) > 3) {
+    problemas.push(`la versión dice ${dice.kw} kW y la ficha ${kwFicha}`);
+  }
+  if (dice.cv !== null && kwFicha !== null && Math.abs(dice.cv - caballos(kwFicha)) > 5) {
+    problemas.push(`la versión dice ${dice.cv} CV y la ficha ${caballos(kwFicha)}`);
+  }
+  if (!problemas.length) return '';
+
+  return `La versión no cuadra con la ficha técnica: ${problemas.join('; ')}. `
+    + 'Comprueba cuál es su versión antes de tasarlo: el precio sale de compararlo con coches de esa versión.';
+}
+
 /** Los campos que la ficha técnica no lleva nunca, para poder decirlo. */
 export const LO_QUE_NO_TRAE = [
   'mileage', 'version', 'transmission_type', 'vehicle_location',

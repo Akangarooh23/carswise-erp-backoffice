@@ -81,10 +81,16 @@ export async function leeElPapel(papel: ElPapel): Promise<LoLeido> {
     generationConfig: { temperature: 0, maxOutputTokens: 900, responseMimeType: 'application/json' },
   };
 
-  // Un minuto: un PDF escaneado tarda, y reintentar por impaciencia es pagar
-  // dos lecturas para quedarse con una.
+  /*
+   * Veinte segundos, no un minuto.
+   *
+   * La función de Vercel se corta a los treinta (`vercel.json`), y esto corre
+   * dentro de una subida de documento: pasarse no da una lectura lenta, da una
+   * subida que parece haber fallado. Una ficha técnica se lee en bastante
+   * menos; la que no quepa se queda para el repaso, que no tiene prisa.
+   */
   const ctrl = new AbortController();
-  const reloj = setTimeout(() => ctrl.abort(), 60_000);
+  const reloj = setTimeout(() => ctrl.abort(), 20_000);
   try {
     let texto: string | null = null;
     for (const modelo of MODELOS) {
