@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { api, descargaConSesion } from '../api/client.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { Card } from '../components/ui/Card.js';
 import type { IdCar, IdCarFile } from '../types/index.js';
@@ -58,6 +58,9 @@ function fmtDate(s: string) {
 
 interface IdCarDetail extends IdCar {
   user_email?: string;
+  /** En qué va su informe de estado, y de cuándo es el último. */
+  informe_estado?: string | null;
+  informe_fecha?: string | null;
   fuel?: string;
   price?: string;
   notes?: string;
@@ -68,6 +71,9 @@ interface IdCarDetail extends IdCar {
   version?: string;
 }
 
+
+/** Estados en los que ya hay informe que enseñar. Los mismos que en la API. */
+const INFORME_LISTO = new Set(['informe_listo', 'verificada', 'publicada']);
 
 export default function IdCarDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -83,6 +89,8 @@ export default function IdCarDetailPage() {
   const [settingPrimary, setSettingPrimary] = useState(false);
   const [primaryMsg, setPrimaryMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [migrating, setMigrating] = useState(false);
+  const [bajandoInforme, setBajandoInforme] = useState(false);
+  const [informeError, setInformeError] = useState<string | null>(null);
   const [migrateMsg, setMigrateMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Upload state
@@ -464,6 +472,66 @@ export default function IdCarDetailPage() {
           )}
         </Card>
       </div>
+
+      {/*
+        * El informe de estado, con su botón.
+        *
+        * El ERP sabía que existe —es la puerta para publicar y sale en los
+        * papeles que faltan del encargo— pero no había forma de abrirlo. Quien
+        * cogía el teléfono veía «hecho» y no podía enseñárselo a nadie.
+        *
+        * El PDF lo tiene PopCar Check; se pide a PopCar, que es quien guarda su
+        * clave, y llega por una ruta con sesión: lleva las fotos del coche de
+        * un cliente.
+        */}
+      <Card padding={false}>
+        <div className="px-5 py-3 border-b border-brand-100">
+          <h3 className="font-semibold text-brand-600 text-sm">Informe de estado</h3>
+        </div>
+        <div className="px-5 py-4">
+          {INFORME_LISTO.has(String(vehicle.informe_estado ?? '')) ? (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm text-brand-600">
+                  Hecho{vehicle.informe_fecha ? ` el ${fmtDate(vehicle.informe_fecha)}` : ''}
+                </p>
+                <p className="text-xs text-brand-300">
+                  Con las matrículas y las caras difuminadas. Es el mismo PDF que recibió el cliente.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={bajandoInforme}
+                onClick={async () => {
+                  setInformeError(null);
+                  setBajandoInforme(true);
+                  try {
+                    await descargaConSesion(`/idcars/${id}/informe-de-estado`, `informe-${id}.pdf`);
+                  } catch (e) {
+                    setInformeError((e as Error).message);
+                  }
+                  setBajandoInforme(false);
+                }}
+                className="text-xs rounded px-3 py-1.5 border border-brand-200 text-acento-texto hover:bg-brand-50 disabled:opacity-60 whitespace-nowrap"
+              >
+                {bajandoInforme ? 'Bajando…' : '↓ Descargar el informe (PDF)'}
+              </button>
+            </div>
+          ) : vehicle.informe_estado ? (
+            // Hay expediente pero todavía no hay documento. Se dice en qué va,
+            // que es distinto de no haber empezado.
+            <p className="text-sm text-brand-400">
+              En curso: <span className="font-mono text-xs">{vehicle.informe_estado}</span>. Cuando
+              termine, el cliente recibe el PDF por correo y aquí aparece el botón.
+            </p>
+          ) : (
+            <p className="text-sm text-brand-400">
+              Este coche todavía no tiene informe de estado.
+            </p>
+          )}
+          {informeError && <p className="mt-2 text-xs text-red-600">{informeError}</p>}
+        </div>
+      </Card>
 
       {/* Documents & file upload — one section per category */}
       <Card padding={false}>

@@ -122,7 +122,23 @@ idcarsRouter.get('/idcars', requireRole(['admin', 'support', 'operations', 'sale
 idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {
     const result = await query(
-      `SELECT v.*, u.name AS owner_name, u.email AS owner_email
+      /*
+       * Y en qué estado está su informe de estado.
+       *
+       * El ERP sabía que el informe existe —lo usa de puerta para publicar y
+       * sale en los papeles que faltan— pero la ficha del coche no lo decía ni
+       * dejaba abrirlo. Si un cliente llamaba preguntando por su informe, quien
+       * cogía el teléfono veía que estaba hecho y no podía verlo.
+       *
+       * El último, que es el vigente: un coche puede repetir el informe.
+       */
+      `SELECT v.*, u.name AS owner_name, u.email AS owner_email,
+              (SELECT r.status FROM moveadvisor_vehicle_condition_reports r
+                WHERE r.vehicle_id = v.id
+                ORDER BY r.created_at DESC LIMIT 1) AS informe_estado,
+              (SELECT r.created_at FROM moveadvisor_vehicle_condition_reports r
+                WHERE r.vehicle_id = v.id
+                ORDER BY r.created_at DESC LIMIT 1) AS informe_fecha
        FROM moveadvisor_user_vehicles v
        LEFT JOIN moveadvisor_users u ON u.id = v.user_id
        WHERE v.id = $1`,
@@ -713,6 +729,53 @@ idcarsRouter.post('/interno/ficha-tecnica', async (req, res) => {
     falloInterno(res, 'ficha_tecnica_interna_failed', err);
   }
 });
+
+/**
+ * El informe de estado del coche, en PDF, para verlo desde su ficha.
+ *
+ * Se lo pedimos a PopCar y no a PopCar Check directamente, aunque el documento
+ * lo tenga Check: su clave de servicio vive en un solo sitio. Si estuviera
+ * también aquí habría dos sitios desde los que se habla con Check y dos donde
+ * rotarla el día que toque. Es el mismo criterio que la devolución de fianzas.
+ *
+ * Va por una ruta con sesión, como las facturas y los papeles del coche: el PDF
+ * lleva las fotos del coche de un cliente.
+ */
+idcarsRouter.get(
+  '/idcars/:id/informe-de-estado',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (req, res) => {
+    const secreto = String(process.env.INTERNAL_API_SECRET ?? '').trim();
+    if (!secreto) {
+      res.status(503).json({ ok: false, error: 'sin_configurar', detail: 'Falta INTERNAL_API_SECRET.' });
+      return;
+    }
+    const sitio = config.PUBLIC_SITE_URL.replace(/\/$/, '');
+    try {
+      const r = await fetch(
+        `${sitio}/api/market?route=informe-de-estado-interno&vehicleId=${encodeURIComponent(req.params.id)}`,
+        { headers: { Authorization: `Bearer ${secreto}` } },
+      );
+
+      if (!r.ok) {
+        // Lo que contesta PopCar se pasa tal cual: «todavía no está» no es un
+        // error que haya que disfrazar de avería.
+        const cuerpo = (await r.json().catch(() => ({}))) as { error?: string; estado?: string };
+        res.status(r.status).json({ ok: false, error: cuerpo.error ?? 'sin_informe', estado: cuerpo.estado });
+        return;
+      }
+
+      const bytes = Buffer.from(await r.arrayBuffer());
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="informe-${req.params.id}.pdf"`);
+      res.setHeader('Content-Length', bytes.byteLength);
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.end(bytes);
+    } catch (err) {
+      falloInterno(res, 'informe_de_estado_failed', err);
+    }
+  },
+);
 
 /** Lo que el formulario necesita saber para pintar los campos. */
 idcarsRouter.get('/idcars/campos/caracteristicas', requireRole(['admin', 'support', 'operations', 'sales']), (_req, res) => {
