@@ -11,6 +11,7 @@ import {
 } from '../lib/caracteristicas-del-coche.js';
 import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
 import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe, lasVersionesPosibles } from '../lib/la-ficha-leida.js';
+import { timingSafeEqual } from 'node:crypto';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -706,6 +707,33 @@ idcarsRouter.patch('/idcars/:id', requireRole(['admin', 'operations']), async (r
  * coche del cliente ya está guardado— y devolver los datos del coche por una
  * puerta que solo tiene un secreto delante es dar más de lo que hace falta.
  */
+/**
+ * ¿La cabecera trae el secreto compartido?
+ *
+ * Esto era `String(req.headers.authorization) !== \`Bearer \${secreto}\``, una
+ * comparación de cadenas, que **corta en el primer carácter distinto**.
+ *
+ * A diferencia de comparar hashes —donde da igual, porque el atacante no controla
+ * lo que se compara— aquí sí lo controla: puede mandar el token que quiera y medir
+ * cuánto tarda la respuesta. Sacar un secreto byte a byte por la red es difícil y
+ * ruidoso, pero no imposible con suficientes muestras, y la puerta que protege es
+ * la que lee documentos de coches de clientes.
+ *
+ * Y la costumbre buena ya estaba en este repositorio: `lib/personal.ts`,
+ * `lib/whatsapp.ts` y los dos de `routes/auth.ts` usan `timingSafeEqual`. Aquí no
+ * se aplicó.
+ *
+ * El orden importa: `timingSafeEqual` **levanta** si los búferes miden distinto, así
+ * que la longitud se comprueba antes. Eso filtra por tamaño —que no es secreto— y
+ * deja el contenido en tiempo constante, que es lo que se protege.
+ */
+function elSecretoCuadra(cabecera: string, secreto: string): boolean {
+  const esperada = Buffer.from(`Bearer ${secreto}`, 'utf8');
+  const recibida = Buffer.from(cabecera, 'utf8');
+  if (recibida.length !== esperada.length) return false;
+  return timingSafeEqual(recibida, esperada);
+}
+
 idcarsRouter.post('/interno/ficha-tecnica', async (req, res) => {
   const secreto = String(process.env.INTERNAL_API_SECRET ?? '').trim();
   if (!secreto) {
@@ -713,7 +741,7 @@ idcarsRouter.post('/interno/ficha-tecnica', async (req, res) => {
     res.status(503).json({ ok: false, error: 'sin_configurar' });
     return;
   }
-  if (String(req.headers.authorization ?? '') !== `Bearer ${secreto}`) {
+  if (!elSecretoCuadra(String(req.headers.authorization ?? ''), secreto)) {
     res.status(401).json({ ok: false, error: 'no_autorizado' });
     return;
   }
