@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireRole } from '../middleware/auth.js';
 import { query } from '../db/pool.js';
+import { falloInterno } from '../lib/fallos.js';
 
 /**
  * El explorador de datos.
@@ -83,7 +84,7 @@ datosRouter.get('/datos/tablas', requireRole([...PUEDEN]), async (_req, res) => 
       data: nombres.map((t) => ({ tabla: t, filas: porNombre.get(t) ?? 0 })),
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'datos_tablas_get_failed', err);
   }
 });
 
@@ -136,7 +137,7 @@ datosRouter.get('/datos/:tabla', requireRole([...PUEDEN]), async (req, res) => {
       salto,
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'datos_tabla_get_failed', err);
   }
 });
 
@@ -167,6 +168,6 @@ datosRouter.get('/datos/:tabla/csv', requireRole([...PUEDEN]), async (req, res) 
     res.setHeader('Content-Disposition', `attachment; filename="${tabla}.csv"`);
     res.send('﻿' + lineas.join('\r\n'));
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'datos_csv_get_failed', err);
   }
 });

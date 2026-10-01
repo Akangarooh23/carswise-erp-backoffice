@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { query } from '../db/pool.js';
 import * as personal from '../lib/personal.js';
 import { registrar } from '../lib/auditoria.js';
+import { falloInterno } from '../lib/fallos.js';
 
 /**
  * El equipo y lo que hace.
@@ -38,7 +39,7 @@ personalRouter.get('/personal', requireRole(['admin']), async (_req, res) => {
   try {
     res.json({ ok: true, data: await personal.listar() });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'personal_get_failed', err);
   }
 });
 
@@ -61,7 +62,7 @@ personalRouter.post('/personal', requireRole(['admin']), async (req, res) => {
     await registrar(req, { accion: 'alta', recurso: 'personal', recursoId: p.id, datos: { email: p.email, rol: p.rol } });
     res.status(201).json({ ok: true, data: p });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'personal_post_failed', err);
   }
 });
 
@@ -84,7 +85,7 @@ personalRouter.patch('/personal/:id/rol', requireRole(['admin']), async (req, re
     await registrar(req, { accion: 'cambiar_rol', recurso: 'personal', recursoId: p.id, datos: { de: p.rol, a: rol } });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'personal_rol_patch_failed', err);
   }
 });
 
@@ -108,7 +109,7 @@ personalRouter.patch('/personal/:id/activo', requireRole(['admin']), async (req,
     await registrar(req, { accion: activo ? 'reactivar' : 'desactivar', recurso: 'personal', recursoId: p.id, datos: { email: p.email } });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'personal_activo_patch_failed', err);
   }
 });
 
@@ -126,7 +127,7 @@ personalRouter.patch('/personal/:id/clave', requireRole(['admin']), async (req, 
     await registrar(req, { accion: 'cambiar_clave', recurso: 'personal', recursoId: p.id, datos: { email: p.email } });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'personal_clave_patch_failed', err);
   }
 });
 
@@ -148,6 +149,6 @@ personalRouter.get('/actividad', requireRole(['admin']), async (req, res) => {
     );
     res.json({ ok: true, data: r.rows });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'actividad_get_failed', err);
   }
 });

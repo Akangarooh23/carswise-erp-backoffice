@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireRole } from "../middleware/auth.js";
 import { importMarketVoOffersRows, listMarketOffersTable, listMarketVoOffers, listMarketVoOffersTable, updateMarketTableRow } from "../data/market.js";
+import { falloInterno } from '../lib/fallos.js';
 
 export const marketRouter = Router();
 
@@ -12,7 +13,7 @@ marketRouter.get("/market/vo-offers", requireRole(["admin", "support", "operatio
     });
     res.json({ ok: true, data });
   } catch (error) {
-    res.status(500).json({ ok: false, error: "market_vo_offers_list_failed", detail: error instanceof Error ? error.message : String(error) });
+    falloInterno(res, 'market_vo_offers_list_failed', error);
   }
 });
 
@@ -21,7 +22,7 @@ marketRouter.get("/market/vo-offers/table", requireRole(["admin", "support", "op
     const data = await listMarketVoOffersTable();
     res.json({ ok: true, data });
   } catch (error) {
-    res.status(500).json({ ok: false, error: "market_vo_offers_table_failed", detail: error instanceof Error ? error.message : String(error) });
+    falloInterno(res, 'market_vo_offers_table_failed', error);
   }
 });
 
@@ -30,7 +31,7 @@ marketRouter.get("/market/offers/table", requireRole(["admin", "support", "opera
     const data = await listMarketOffersTable();
     res.json({ ok: true, data });
   } catch (error) {
-    res.status(500).json({ ok: false, error: "market_offers_table_failed", detail: error instanceof Error ? error.message : String(error) });
+    falloInterno(res, 'market_offers_table_failed', error);
   }
 });
 
@@ -53,7 +54,7 @@ marketRouter.patch("/market/table-row", requireRole(["admin", "support", "operat
 
     res.json({ ok: true, data });
   } catch (error) {
-    res.status(500).json({ ok: false, error: "market_update_failed", detail: error instanceof Error ? error.message : String(error) });
+    falloInterno(res, 'market_update_failed', error);
   }
 });
 
@@ -68,6 +69,6 @@ marketRouter.post("/market/vo-offers/import", requireRole(["admin", "support", "
     const data = await importMarketVoOffersRows(rows as Array<Record<string, unknown>>);
     res.json({ ok: true, data });
   } catch (error) {
-    res.status(500).json({ ok: false, error: "market_vo_import_failed", detail: error instanceof Error ? error.message : String(error) });
+    falloInterno(res, 'market_vo_import_failed', error);
   }
 });

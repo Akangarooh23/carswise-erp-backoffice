@@ -239,7 +239,7 @@ usersRouter.patch(
       );
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ ok: false, error: (err as Error).message });
+      falloInterno(res, 'users_plan_patch_failed', err);
     }
   }
 );
@@ -292,7 +292,7 @@ usersRouter.patch(
       );
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ ok: false, error: (err as Error).message });
+      falloInterno(res, 'users_profile_patch_failed', err);
     }
   }
 );

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireRole } from '../middleware/auth.js';
 import { query } from '../db/pool.js';
 import { registrar } from '../lib/auditoria.js';
+import { falloInterno } from '../lib/fallos.js';
 
 /**
  * Las cuatro colas de trabajo que PopCar generaba y el ERP no veía.
@@ -92,7 +93,7 @@ colasRouter.get('/colas', requireRole([...PUEDEN]), async (_req, res) => {
     );
     res.json({ ok: true, data: resumen });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'colas_get_failed', err);
   }
 });
 
@@ -127,7 +128,7 @@ colasRouter.get('/colas/:cola', requireRole([...PUEDEN]), async (req, res) => {
     );
     res.json({ ok: true, data: r.rows, estados: c.estados, cerrados: c.cerrados });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'colas_una_get_failed', err);
   }
 });
 
@@ -160,6 +161,6 @@ colasRouter.patch('/colas/:cola/:id/estado', requireRole([...PUEDEN]), async (re
     });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    falloInterno(res, 'colas_estado_patch_failed', err);
   }
 });

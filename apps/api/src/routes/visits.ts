@@ -20,6 +20,7 @@ import {
 import { elProveedorDe, nombreComparable } from '../lib/proveedores.js';
 import { preparaProveedores } from './proveedores.js';
 import { siguienteDeSerie, prefijoAnual, guardaConIdUnico } from '../lib/series.js';
+import { falloInterno } from '../lib/fallos.js';
 
 export const visitsRouter = Router();
 
@@ -509,7 +510,7 @@ visitsRouter.get('/visit-slots', requireRole(ROLES), async (req, res) => {
     );
     return res.json({ ok: true, data: { slots: r.rows } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_slots_get_failed', e);
   }
 });
 
@@ -533,7 +534,7 @@ visitsRouter.post('/visit-slots', requireRole(ROLES), async (req, res) => {
     );
     return res.json({ ok: true, data: { slot: r.rows[0] } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_slots_post_failed', e);
   }
 });
 
@@ -549,7 +550,7 @@ visitsRouter.delete('/visit-slots/:slotId', requireRole(ROLES), async (req, res)
     );
     return res.json({ ok: true });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_slots_delete_failed', e);
   }
 });
 
@@ -573,7 +574,7 @@ visitsRouter.get('/visit-bookings', requireRole(ROLES), async (req, res) => {
     );
     return res.json({ ok: true, data: { bookings: r.rows } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_get_failed', e);
   }
 });
 
@@ -675,7 +676,7 @@ visitsRouter.post('/visit-bookings/:bookingId/confirm', requireRole(ROLES), asyn
       data: { avisado, vendedor_avisado: vendedorAvisado, ...(avisado ? {} : { fallo }) },
     });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_confirm_failed', e);
   }
 });
 
@@ -957,7 +958,7 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer/vista', requireRole(ROLES
       },
     });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_proponer_vista_failed', e);
   }
 });
 
@@ -1039,7 +1040,7 @@ visitsRouter.post('/visit-bookings/:bookingId/proponer', requireRole(ROLES), asy
       },
     });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_proponer_failed', e);
   }
 });
 
@@ -1076,7 +1077,7 @@ visitsRouter.get('/visit-bookings/:bookingId/pasos', requireRole(ROLES), async (
     );
     return res.json({ ok: true, data: { pasos: r.rows } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_pasos_get_failed', e);
   }
 });
 
@@ -1153,7 +1154,7 @@ visitsRouter.post('/visit-bookings/:bookingId/telefono-del-vendedor', requireRol
     await apunta(bookingId, 'telefono_del_vendedor', quien(req as never), { vendedor });
     return res.json({ ok: true, data: { vendedor, telefono } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_telefono_vendedor_failed', e);
   }
 });
 
@@ -1196,7 +1197,7 @@ visitsRouter.post('/visit-bookings/:bookingId/resultado', requireRole(ROLES), as
 
     return res.json({ ok: true, data: { resultado } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_resultado_failed', e);
   }
 });
 
@@ -1383,7 +1384,7 @@ visitsRouter.post('/visit-bookings/:bookingId/cancel', requireRole(ROLES), async
 
     return res.json({ ok: true, data: { avisado, anuncioQuitado, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_cancel_failed', e);
   }
 });
 
@@ -1513,7 +1514,7 @@ visitsRouter.get('/all-bookings', requireRole(ROLES), async (req, res) => {
     const r = await query(sql, params);
     return res.json({ ok: true, data: { bookings: await conLaFichaDeQuienVende(r.rows) } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'all_bookings_get_failed', e);
   }
 });
 
@@ -1571,6 +1572,6 @@ visitsRouter.post('/visit-bookings/:bookingId/lugar', requireRole(ROLES), async 
     }
     return res.json({ ok: true, data: { avisado, escrito: true, ...(avisado ? {} : { fallo }) } });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return falloInterno(res, 'visit_bookings_lugar_failed', e);
   }
 });
