@@ -409,6 +409,24 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'ha dicho cuándo puede y espera que le demos día y perito',
     a: '/idcars', icono: 'taller', tono: 'urgente',
   },
+  /*
+   * Y la que ha pedido con el IDCar a medias.
+   *
+   * Son dos cosas distintas y por eso son dos cubos: contestarle y mandar al
+   * perito. Lo caro es la visita -60 € y un desplazamiento- y no se gasta en
+   * un coche que puede no llegar a publicarse, así que aquí NO se le asigna
+   * perito todavía. Lo que toca es decirle qué le falta para que podamos
+   * confirmarle el día.
+   *
+   * En espera y no en urgente: nadie va a perder una cita hoy. Pero visible,
+   * porque ha hecho lo que le pedimos y callarse es como no haber preguntado.
+   */
+  {
+    clave: 'peritaciones_idcar_a_medias',
+    etiqueta: 'peritaciones pedidas con el IDCar a medias', una: 'peritación pedida con el IDCar a medias',
+    porque: 'ha dicho cuándo puede, pero le falta algo y todavía no se le puede mandar al perito',
+    a: '/idcars', icono: 'taller', tono: 'espera',
+  },
   {
     clave: 'encargos_listos',
     etiqueta: 'encargos listos para el taller', una: 'encargo listo para el taller',

@@ -296,6 +296,8 @@ export interface AvisosDeEncargos {
   encargos_sin_firmar: number;
   /** Ha pedido la peritación en su casa y ha dicho cuándo puede: falta darle día. */
   peritaciones_a_domicilio: number;
+  /** Lo mismo, pero con el IDCar a medias: toca contestarle, no mandar al perito. */
+  peritaciones_idcar_a_medias: number;
   /** El cliente ha dicho desde su panel que no puede ir al taller ese día. */
   citas_taller_que_pide_mover: number;
   /** Ya se puede pedir el precio de salida y todavía no se le ha mandado. */
@@ -512,7 +514,19 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
       sigueEsperandoAlTaller(taller) &&
       !fila.taller_cita_at
     ) {
-      avisos.push('peritaciones_a_domicilio');
+      /*
+       * Dos cubos y no uno, porque lo que toca hacer es distinto.
+       *
+       * Con todo traído, se le asigna perito y se confirma. Con el IDCar a
+       * medias, lo que toca es contestarle qué le falta: mandar al perito
+       * -60 € y un desplazamiento- a un coche que quizá no se publique es
+       * gastar antes de tiempo, y es la misma regla que ya protege la cita
+       * del taller.
+       *
+       * Lo que no se hace en ninguno de los dos casos es callarse: ha dicho
+       * tres horas concretas y espera respuesta.
+       */
+      avisos.push(sePuedePublicar(puertas) ? 'peritaciones_a_domicilio' : 'peritaciones_idcar_a_medias');
     }
 
     if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) avisos.push('encargos_listos');
@@ -588,6 +602,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
     peritaciones_a_domicilio: 0,
+    peritaciones_idcar_a_medias: 0,
     citas_taller_que_pide_mover: 0,
     encargos_sin_mandar_el_precio: 0,
     ventas_financiacion_en_estudio: 0,
