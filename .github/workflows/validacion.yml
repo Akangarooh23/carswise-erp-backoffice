@@ -1,0 +1,129 @@
+# Lo que se comprueba solo, en cada empujón.
+#
+# ## Por qué existe esto
+#
+# Hasta el 1 de octubre de 2026 este repositorio **no tenía CI**. Y eso no era teórico:
+# ese mismo día su suite estuvo en rojo y nadie se enteró —`comprueba-flujo-gestionado`
+# daba tres MAL porque PopCar había añadido dos puertas al panel del cliente—. Lo
+# encontré ejecutándolo a mano, por casualidad, mientras miraba otra cosa.
+#
+# Una suite de 2.813 pruebas que nadie lanza es una suite que no existe.
+#
+# ## Lo que hace y lo que no
+#
+# Corre lo que se puede comprobar **sin base de datos y sin secretos de verdad**:
+#
+#   - los tipos de las dos aplicaciones, que es lo único que cubre hoy el `strict: true`
+#     de `tsconfig.base.json` —y que fuera de aquí solo protege a quien construye en su
+#     máquina—;
+#   - las 2.813 pruebas;
+#   - y que las dos aplicaciones construyan.
+#
+# **No** corre los ocho `scripts/comprueba-*.js`. Esos leen el `.env` del repositorio con
+# `fs.readFileSync` y consultan la base de verdad, así que aquí reventarían por no existir
+# el fichero. Hacerlos correr pide dos cosas que no son de hoy: que acepten el entorno
+# cuando no hay `.env`, y una base desechable con el esquema —que es justo lo que bloquea
+# §19.1, las 280 sentencias de esquema dentro de las peticiones y ninguna migración—.
+#
+# ## Por qué están TODAS las variables, y no solo las obligatorias
+#
+# La primera versión de este fichero puso seis —las que `config.ts` marca como
+# requeridas— y **trece pruebas se pusieron rojas**. Mi primera explicación fue que eran
+# frágiles por tiempo: `importacion-completa` espera 60 ms fijos a un envío asíncrono, y
+# eso en un runner compartido no llega. Era una teoría y era falsa.
+#
+# Lo que pasa es esto:
+#
+#     const { config } = await import('../config.js');   // lee el entorno AL IMPORTARSE
+#     …
+#     process.env.RESEND_API_KEY = 'clave-de-mentira';   // ya es tarde
+#
+# `config` se construye cuando se importa, así que una prueba que pone la variable
+# después no la cambia. Sin `RESEND_API_KEY`, `enviar()` levanta y la ruta contesta
+# `correo: false` — que es exactamente el «el correo con las horas ha salido:
+# false !== true» que salía en CI.
+#
+# Comprobado al revés: con el `.env` entero y solo `RESEND_API_KEY` vacía, fallan 12 en
+# mi máquina. Con las dieciocho puestas, pasan las 2.813.
+#
+# Así que aquí van **las dieciocho que da el `.env`**, todas inventadas. Ninguna vale
+# nada: la cadena de la base apunta al puerto 1 de localhost a propósito, para que si
+# alguna prueba intentara conectarse fallara en vez de encontrar algo, y las pruebas que
+# mandan correos tienen su `global.fetch` simulado.
+
+name: Validación
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  comprobaciones:
+    name: Tipos, pruebas y construcción
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Las dieciocho del `.env`, inventadas. Ver la cabecera.
+      NODE_ENV: test
+      PORT: '4000'
+      JWT_SECRET: solo-para-el-ci-y-no-vale-nada
+      DATABASE_URL: postgres://nadie:nada@127.0.0.1:1/vacio
+      ERP_ADMIN_PASSWORD: ci-sin-valor
+      ERP_SUPPORT_PASSWORD: ci-sin-valor
+      ERP_OPS_PASSWORD: ci-sin-valor
+      ERP_SALES_PASSWORD: ci-sin-valor
+      CORS_ORIGIN: http://localhost:5174
+      APP_URL: http://localhost:5175
+      RESEND_API_KEY: re_ci_no_vale_nada
+      RESEND_FROM_EMAIL: ci@ejemplo.invalid
+      RESEND_TEST_EMAIL: ci@ejemplo.invalid
+      INTERNAL_LEADS_EMAIL: ci@ejemplo.invalid
+      REPLY_TO_EMAIL: ci@ejemplo.invalid
+      ERP_ADMIN_EMAIL: ci@ejemplo.invalid
+      SUPABASE_URL: https://ejemplo.invalid
+      SUPABASE_SERVICE_KEY: no-vale-nada
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # 22 y no 20, y no es por estar al día.
+          #
+          # `npm test` es `tsx --test "apps/api/src/**/*.test.ts" …`, y **Node 20 no
+          # expande esos comodines**: la primera vuelta de este CI murió con
+          # «Could not find …/apps/api/src/**/*.test.ts» mientras en local pasaban las
+          # 2.813. El soporte de patrones en `--test` llegó en la 21.
+          #
+          # La alternativa era que el CI enumerase los ficheros con `find` y quien
+          # desarrolla siguiera con `npm test`. Pero entonces los dos no ejecutan lo
+          # mismo, que es exactamente lo que hace que un verde aquí no signifique nada
+          # allí — y ya se vio hoy con el servidor local, que servía la mitad de las
+          # rutas.
+          node-version: 22
+          cache: npm
+
+      - name: Instalar
+        run: npm ci
+
+      # Los tipos van primero: son lo más rápido y lo que más pronto corta.
+      - name: Tipos del API
+        run: npx tsc -p apps/api/tsconfig.json --noEmit
+
+      - name: Tipos de la web
+        run: npx tsc -b apps/web/tsconfig.json
+
+      - name: Las 2.813 pruebas
+        run: npm test
+
+      # La construcción al final: si los tipos y las pruebas están bien y esto falla,
+      # el problema es del empaquetado y no del código, y conviene saberlo separado.
+      - name: Construir
+        run: npm run build
