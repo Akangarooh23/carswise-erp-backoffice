@@ -400,8 +400,20 @@ revisionesTallerRouter.patch(
           ? new Date(rev.hecha_at as string).toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10);
 
+        /*
+         * A quién se la esperamos: al taller, o al perito si fue a su casa.
+         *
+         * Con `rev.taller` a secas, una visita a domicilio apuntaba los 60 €
+         * SIN NOMBRE -ahí ese campo está vacío, el que va es el perito-. Y un
+         * gasto sin proveedor es justo el que no entra en «facturas de
+         * proveedor sin llegar», que existe para que no se quede sin deducir.
+         *
+         * El importe se queda en los 60 € del taller: una visita a domicilio
+         * cuesta lo mismo mientras no se decida otra cosa.
+         */
+        const aDomicilio = String(rev.modalidad ?? '').trim() === 'a_domicilio';
         await apuntaFacturaEsperada({
-          proveedor: String(rev.taller ?? ''),
+          proveedor: String((aDomicilio ? rev.perito : rev.taller) ?? ''),
           concepto: `Revisión mecánica del vehículo · ${dia}`,
           importe: (rev.coste as string | null) ?? LO_QUE_CUESTA,
           vehiculo: titulo.trim() || String(rev.vehicle_id ?? ''),

@@ -363,12 +363,28 @@ describe('el taller nos factura, y las cuentas se enteran', () => {
 
   test('se apunta la factura esperada', () => {
     assert.match(REVISIONES, /apuntaFacturaEsperada\(\{/);
-    assert.match(REVISIONES, /proveedor: String\(rev\.taller/);
+    /*
+     * Y al proveedor que de verdad fue.
+     *
+     * Antes bastaba con `rev.taller`. Desde que la revisión puede hacerse en
+     * casa del cliente, ese campo está vacío en esos casos —el que va es el
+     * perito— y los 60 € se apuntarían SIN NOMBRE. Un gasto sin proveedor es
+     * justo el que no entra en «facturas de proveedor sin llegar», que existe
+     * para que no se quede sin deducir.
+     */
+    assert.match(REVISIONES, /proveedor: String\(\(aDomicilio \? rev\.perito : rev\.taller\)/);
   });
 
   test('al quedar hecha, no al dar la cita', () => {
-    // Hasta que no está hecho, el taller no tiene nada que cobrar.
-    assert.match(REVISIONES, /if \(estado === 'Hecha'\) \{[\s\S]{0,1400}apuntaFacturaEsperada\(/);
+    /*
+     * Hasta que no está hecho, el taller no tiene nada que cobrar.
+     *
+     * La distancia es para que la factura siga **dentro** de ese `if` y no se
+     * escape a otro sitio. El margen subió de 1400 a 2000 al añadir el perito
+     * como proveedor: lo que creció es el comentario que explica por qué, no
+     * el número de cosas que pasan entre una línea y otra.
+     */
+    assert.match(REVISIONES, /if \(estado === 'Hecha'\) \{[\s\S]{0,2000}apuntaFacturaEsperada\(/);
   });
 
   test('con el importe de la ficha, no con la constante a secas', () => {
