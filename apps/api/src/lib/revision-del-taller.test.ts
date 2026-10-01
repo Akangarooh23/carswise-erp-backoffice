@@ -462,3 +462,27 @@ describe('la peritación a domicilio', () => {
     assert.match(queToca('Por llevar', 'a_domicilio'), /perito/i);
   });
 });
+
+describe('y lo que falta se dice segun donde se haga', () => {
+  /*
+   * Estas frases las lee en voz alta quien coge el telefono. «Falta darle
+   * cita en el taller» a quien pidio que fueramos a su casa le dice que nos
+   * hemos equivocado de coche.
+   */
+  test('a domicilio no se habla de taller', () => {
+    const r = { estado: 'Por llevar', modalidad: 'a_domicilio' };
+    assert.match(porQueNoEstaComprobado(r), /perito/i);
+    assert.doesNotMatch(porQueNoEstaComprobado(r), /taller/i);
+  });
+
+  test('ni cuando esta en curso', () => {
+    const r = { estado: 'En el taller', modalidad: 'a_domicilio' };
+    assert.doesNotMatch(porQueNoEstaComprobado(r), /taller/i);
+  });
+
+  test('y en taller se sigue diciendo lo de siempre', () => {
+    assert.match(porQueNoEstaComprobado({ estado: 'Por llevar', modalidad: 'en_taller' }), /taller/i);
+    // Y sin modalidad, que es como estan las de antes.
+    assert.match(porQueNoEstaComprobado({ estado: 'Por llevar' }), /taller/i);
+  });
+});

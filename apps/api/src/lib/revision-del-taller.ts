@@ -136,12 +136,24 @@ export function elCocheEstaComprobado(
  * otro lado hay alguien explicándoselo por teléfono, y «false» no se explica.
  */
 export function porQueNoEstaComprobado(
-  r: { estado?: unknown; resultado?: unknown } | null | undefined,
+  r: { estado?: unknown; resultado?: unknown; modalidad?: unknown } | null | undefined,
 ): string {
   if (!r) return 'No se ha llevado al taller todavía';
   const estado = String(r.estado ?? '').trim();
-  if (estado === 'Por llevar') return 'Falta darle cita en el taller';
-  if (estado === 'En el taller') return 'Está en el taller, esperando resultado';
+  /*
+   * Y según dónde se haga, porque no es lo mismo lo que falta.
+   *
+   * Esta frase se la lee en voz alta quien coge el teléfono. «Falta darle
+   * cita en el taller» a quien pidió que fuéramos a su casa le dice que nos
+   * hemos equivocado de coche.
+   */
+  const aDomicilio = String(r.modalidad ?? '').trim() === 'a_domicilio';
+  if (estado === 'Por llevar') {
+    return aDomicilio ? 'Falta darle día y perito para ir a verlo' : 'Falta darle cita en el taller';
+  }
+  if (estado === 'En el taller') {
+    return aDomicilio ? 'El perito está en ello, esperando resultado' : 'Está en el taller, esperando resultado';
+  }
   if (!esUnResultado(r.resultado)) return 'La revisión está hecha pero nadie ha apuntado cómo salió';
   if (r.resultado === 'no_se_puede_vender') return 'El taller dice que así no se puede vender';
   return '';

@@ -296,7 +296,19 @@ export default function RevisionDelTaller({
   /** Corregir lo apuntado: la dirección que faltaba, la hora que cambiaron. */
   async function guardaLaCita() {
     if (!datos?.revision) return;
-    if (!taller.trim()) { setFallo('Falta a qué taller se lleva.'); return; }
+    /*
+     * A domicilio no hay taller, y pedirlo dejaba la pantalla sin salida.
+     *
+     * El cliente pide que vaya un perito, se le pone perito y hora, se pulsa
+     * guardar y salía «Falta a qué taller se lleva» sobre una ficha donde el
+     * campo del taller ni se usa. La única forma de seguir era inventarse
+     * uno, que es escribir una mentira en la ficha para que te deje pasar.
+     */
+    if (datos.revision.modalidad === 'a_domicilio') {
+      if (!perito.trim()) { setFallo('Falta qué perito va a verlo.'); return; }
+    } else if (!taller.trim()) {
+      setFallo('Falta a qué taller se lleva.'); return;
+    }
     setGuardando('cita');
     setFallo('');
     setEnviado('');
