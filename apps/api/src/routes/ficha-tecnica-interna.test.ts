@@ -32,8 +32,49 @@ describe('quién puede entrar', () => {
   test('hace falta el secreto compartido', () => {
     const r = laRuta();
     assert.match(r, /INTERNAL_API_SECRET/);
-    assert.match(r, /Bearer \$\{secreto\}/);
     assert.match(r, /401/);
+
+    /*
+     * Que se compruebe el secreto, sin fijar **cómo**.
+     *
+     * Esto afirmaba `/Bearer \\$\\{secreto\\}/`: el texto exacto de la comparación
+     * que había. Y se puso roja el día que esa comparación se cambió por una en
+     * tiempo constante —que es mejor— porque fijaba la implementación y no la
+     * propiedad.
+     *
+     * Una prueba que se rompe cuando el código mejora está midiendo lo que no debe.
+     * Lo que importa es que la cabecera se compruebe contra el secreto; da igual con
+     * qué forma.
+     */
+    assert.match(
+      r,
+      /headers\.authorization/,
+      'la ruta tiene que mirar la cabecera de autorización'
+    );
+    assert.ok(
+      /elSecretoCuadra\(|timingSafeEqual\(/.test(r) || /`Bearer \$\{secreto\}`/.test(r),
+      'la cabecera tiene que compararse contra el secreto, de alguna forma'
+    );
+  });
+
+  test('y la comparación es en tiempo constante', () => {
+    /*
+     * Aquí el atacante **sí** controla lo que se compara: manda el token que quiera
+     * y mide. Una comparación de cadenas corta en el primer carácter distinto, así
+     * que el tiempo dice cuántos bytes acertó.
+     *
+     * `timingSafeEqual` levanta si los búferes miden distinto, así que la longitud
+     * va antes. Las dos cosas se comprueban: que se use, y que el tamaño se filtre
+     * primero.
+     */
+    assert.match(IDCARS, /timingSafeEqual\(/, 'falta timingSafeEqual');
+    const fn = IDCARS.slice(IDCARS.indexOf('function elSecretoCuadra'));
+    const cuerpo = fn.slice(0, fn.indexOf('\n}') + 2);
+    assert.match(cuerpo, /\.length !== .*\.length/, 'la longitud tiene que comprobarse antes');
+    assert.ok(
+      cuerpo.indexOf('.length !==') < cuerpo.indexOf('timingSafeEqual('),
+      'la comprobación de longitud va ANTES de timingSafeEqual, que levanta con tamaños distintos'
+    );
   });
 
   test('y sin secreto configurado no pasa nadie', () => {
