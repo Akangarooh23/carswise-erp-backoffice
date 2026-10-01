@@ -42,6 +42,51 @@ export const QUE_TOCA: Record<Estado, string> = {
 };
 
 /**
+ * Dónde se hace.
+ *
+ * Dos maneras y la misma revisión: cambia quién la hace y dónde, no lo que
+ * significa ni lo que abre. Por eso es una columna de esta tabla y no una
+ * tabla aparte — con dos tablas habría dos puertas de «está comprobado», y el
+ * día que alguien se olvide de mirar una de las dos se publica un coche sin
+ * revisar.
+ *
+ * Vacío es una tercera cosa, y hace falta: es «todavía no lo ha elegido», que
+ * no es lo mismo que «en taller». Distingue a quien espera nuestra llamada de
+ * quien aún no sabe que puede elegir.
+ */
+export const MODALIDADES = ['en_taller', 'a_domicilio'] as const;
+export type Modalidad = (typeof MODALIDADES)[number];
+
+export function esUnaModalidad(v: unknown): v is Modalidad {
+  return (MODALIDADES as readonly string[]).includes(String(v ?? '').trim());
+}
+
+/** Cómo se lee cada una. */
+export const COMO_SE_HACE: Record<Modalidad, string> = {
+  en_taller: 'La lleva él a un taller',
+  a_domicilio: 'Va un perito a su dirección',
+};
+
+/**
+ * Y qué toca, que no es lo mismo según dónde se haga.
+ *
+ * «En el taller» es mentira cuando el perito va a su casa. Quien coge el
+ * teléfono lee esta línea, y leerle eso a un cliente es decirle que su coche
+ * está en un sitio al que no lo ha llevado.
+ */
+const QUE_TOCA_A_DOMICILIO: Record<Estado, string> = {
+  'Por llevar': 'Asignarle perito, elegir una de sus horas y avisarle',
+  'En el taller': 'Visita en curso',
+  'Hecha': 'Ya se sabe lo que hay',
+};
+
+export function queToca(estado: unknown, modalidad: unknown): string {
+  const e = String(estado ?? '').trim();
+  if (!esUnEstado(e)) return '';
+  return modalidad === 'a_domicilio' ? QUE_TOCA_A_DOMICILIO[e] : QUE_TOCA[e];
+}
+
+/**
  * Cómo salió.
  *
  * `con_reparos` no es un no: es un coche que se puede vender diciendo lo que
@@ -343,10 +388,23 @@ export function laHoraDeLaCita(iso: string): string {
  * ubica— pero se manda si está.
  */
 export function porQueNoSeLePuedeAvisar(
-  /** La dirección entra y no se mira: está aquí para que se lea que no se exige. */
-  r: { taller?: unknown; cita_at?: unknown; direccion?: unknown } | null | undefined,
+  /**
+   * La dirección se mira **solo** a domicilio: para un taller la sabemos
+   * nosotros y se la damos; para una visita a su casa es a dónde va el perito,
+   * y sin ella el correo diría que alguien va a ninguna parte.
+   */
+  r: {
+    taller?: unknown; cita_at?: unknown; direccion?: unknown;
+    modalidad?: unknown; perito?: unknown;
+  } | null | undefined,
 ): string {
   if (!r) return 'No hay ninguna cita que contarle';
+  if (String(r.modalidad ?? '').trim() === 'a_domicilio') {
+    if (!String(r.perito ?? '').trim()) return 'Falta qué perito va';
+    if (!String(r.direccion ?? '').trim()) return 'Falta a qué dirección va';
+    if (!r.cita_at) return 'Falta el día de la visita';
+    return '';
+  }
   if (!String(r.taller ?? '').trim()) return 'Falta a qué taller se lleva';
   if (!r.cita_at) return 'Falta el día de la cita';
   return '';

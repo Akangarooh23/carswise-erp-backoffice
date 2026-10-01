@@ -294,6 +294,8 @@ export interface AvisosDeEncargos {
   encargos_listos: number;
   encargos_rechazados: number;
   encargos_sin_firmar: number;
+  /** Ha pedido la peritación en su casa y ha dicho cuándo puede: falta darle día. */
+  peritaciones_a_domicilio: number;
   /** El cliente ha dicho desde su panel que no puede ir al taller ese día. */
   citas_taller_que_pide_mover: number;
   /** Ya se puede pedir el precio de salida y todavía no se le ha mandado. */
@@ -398,6 +400,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
               JOIN moveadvisor_user_maintenances mm ON mm.id = mf.maintenance_id
              WHERE mm.vehicle_id = e.vehicle_id) AS mantenimientos,
            tal.estado AS taller_estado, tal.resultado AS taller_resultado,
+           tal.modalidad AS taller_modalidad, tal.cita_at AS taller_cita_at,
            -- Lo que el cliente ha pedido sobre su cita desde su panel.
            tal.cliente_pidio AS taller_cliente_pidio,
            -- Y el precio de salida: si hay cifra y si ya se le mandó el papel.
@@ -410,7 +413,13 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
       -- en dos subconsultas sueltas: con dos, un empate en la fecha podria dar
       -- el estado de una ficha y el resultado de otra.
       LEFT JOIN LATERAL (
-        SELECT rt.estado, rt.resultado, rt.cliente_pidio
+        SELECT rt.estado, rt.resultado, rt.cliente_pidio,
+               -- Dónde pidió que se hiciera y si ya tiene día. Por to_jsonb
+               -- porque la columna la añade la migración 0022 y nombrarla en
+               -- una base sin ella tumbaría la consulta entera, que es la de
+               -- todos los avisos.
+               to_jsonb(rt)->>'modalidad' AS modalidad,
+               rt.cita_at
           FROM erp_revisiones_taller rt
          WHERE rt.vehicle_id = e.vehicle_id
          ORDER BY rt.created_at DESC LIMIT 1
@@ -487,6 +496,25 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
      * su vida, ya publicado y ya revisado.
      */
     const taller = { estado: fila.taller_estado, resultado: fila.taller_resultado };
+
+    /*
+     * Lo que ha pedido en su casa y todavía no tiene día.
+     *
+     * No espera a que traiga nada: ya ha contestado y lo que falta es nuestro,
+     * así que no se condiciona a que estén las puertas. Un cliente que dice
+     * «puedo el martes» y no recibe respuesta hasta que termina de subir fotos
+     * ve pasar su martes.
+     *
+     * Se apaga en cuanto tiene cita, que es cuando deja de esperar a nadie.
+     */
+    if (
+      fila.taller_modalidad === 'a_domicilio' &&
+      sigueEsperandoAlTaller(taller) &&
+      !fila.taller_cita_at
+    ) {
+      avisos.push('peritaciones_a_domicilio');
+    }
+
     if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) avisos.push('encargos_listos');
 
     // Y el que el taller ha tumbado: su coche no va a salir y él no lo sabe.
@@ -559,6 +587,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
   const cuenta: AvisosDeEncargos = {
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
+    peritaciones_a_domicilio: 0,
     citas_taller_que_pide_mover: 0,
     encargos_sin_mandar_el_precio: 0,
     ventas_financiacion_en_estudio: 0,

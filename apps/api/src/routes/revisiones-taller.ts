@@ -19,6 +19,7 @@ import { requireRole } from '../middleware/auth.js';
 import { apuntaFacturaEsperada } from './provider-billing.js';
 import {
   ESTADOS, RESULTADOS, QUE_TOCA, ETIQUETA, LO_QUE_CUESTA,
+  MODALIDADES, COMO_SE_HACE, esUnaModalidad, queToca,
   esUnEstado, esUnResultado, elCocheEstaComprobado, porQueNoEstaComprobado,
   ENSURE_TABLE, ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
   elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
@@ -28,7 +29,9 @@ import {
 } from '../lib/el-taller-de-la-revision.js';
 import { config } from '../config.js';
 import { enviar } from '../lib/correo.js';
-import { elCorreoDeLaCitaDelTaller } from '../lib/correos-del-encargo.js';
+import {
+  elCorreoDeLaCitaDelTaller, elCorreoDeLaPeritacionADomicilio,
+} from '../lib/correos-del-encargo.js';
 
 export const revisionesTallerRouter = Router();
 
@@ -76,13 +79,32 @@ revisionesTallerRouter.get(
   async (req, res) => {
     try {
       const r = await laRevisionDe(req.params.vehicleId);
+
+      /*
+       * Y las horas a las que dijo que puede.
+       *
+       * Sin ellas, quien tiene que darle cita a domicilio no sabe cuándo está
+       * en casa: tendría que llamarle para preguntarle lo que ya contestó, y
+       * ésa es justo la llamada que esto viene a quitar.
+       */
+      const horas = r
+        ? (await query<{ empieza_at: string; la_puso: string }>(
+            `SELECT empieza_at, la_puso FROM erp_revisiones_taller_horas
+              WHERE revision_id = $1 ORDER BY empieza_at`,
+            [(r as { id: string }).id]
+          ).catch(() => ({ rows: [] }))).rows
+        : [];
+
       res.json({
         ok: true,
         data: {
           revision: r,
           estados: ESTADOS,
           resultados: RESULTADOS.map((x) => ({ clave: x, nombre: ETIQUETA[x] })),
-          que_toca: r ? QUE_TOCA[r.estado as keyof typeof QUE_TOCA] ?? '' : '',
+          // Dónde se hace, y las dos maneras con su nombre para el desplegable.
+          modalidades: MODALIDADES.map((x) => ({ clave: x, nombre: COMO_SE_HACE[x] })),
+          horas_que_propuso: horas,
+          que_toca: r ? queToca((r as { estado?: unknown }).estado, (r as { modalidad?: unknown }).modalidad) : '',
           comprobado: elCocheEstaComprobado(r),
           por_que_no: porQueNoEstaComprobado(r),
           // Por qué no se le puede mandar la cita al cliente, si es que no.
@@ -201,6 +223,21 @@ revisionesTallerRouter.patch(
         res.status(400).json({ ok: false, error: 'estado_no_valido' });
         return;
       }
+      /*
+       * La modalidad también se corrige aquí.
+       *
+       * La elige el cliente desde su panel, pero hay que poder cambiarla: la
+       * llama por teléfono diciendo que al final sí puede llevarlo, o el
+       * perito no cubre su zona y hay que pasarlo a taller. Que solo la pueda
+       * cambiar él obligaría a pedírselo por correo para algo que se resuelve
+       * en la misma llamada.
+       */
+      const modalidad = req.body?.modalidad === undefined ? undefined : String(req.body.modalidad).trim();
+      if (modalidad !== undefined && modalidad !== '' && !esUnaModalidad(modalidad)) {
+        res.status(400).json({ ok: false, error: 'modalidad_no_valida' });
+        return;
+      }
+
       const resultado = req.body?.resultado === undefined ? undefined : String(req.body.resultado).trim();
       if (resultado !== undefined && resultado !== '' && !esUnResultado(resultado)) {
         res.status(400).json({ ok: false, error: 'resultado_no_valido' });
@@ -289,6 +326,11 @@ revisionesTallerRouter.patch(
                 notas     = COALESCE($4, notas),
                 taller    = COALESCE($5, taller),
                 taller_id = COALESCE($9, taller_id),
+                modalidad = COALESCE($10, modalidad),
+                -- Quién va, cuando va alguien. Gemelas de taller/taller_id: un
+                -- perito es un proveedor más, con su tipo propio.
+                perito    = COALESCE($11, perito),
+                perito_id = COALESCE($12, perito_id),
                 direccion = COALESCE($6, direccion),
                 cita_at   = COALESCE($7, cita_at),
                 cliente_pidio    = CASE WHEN $8 THEN NULL ELSE cliente_pidio END,
@@ -306,7 +348,10 @@ revisionesTallerRouter.patch(
          req.body?.direccion === undefined ? null : String(req.body.direccion).trim(),
          req.body?.cita_at === undefined ? null : req.body.cita_at || null,
          tocaLaCita,
-         req.body?.taller_id === undefined ? null : String(req.body.taller_id).trim()]
+         req.body?.taller_id === undefined ? null : String(req.body.taller_id).trim(),
+         modalidad === undefined ? null : modalidad || null,
+         req.body?.perito === undefined ? null : String(req.body.perito).trim(),
+         req.body?.perito_id === undefined ? null : String(req.body.perito_id).trim()]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
 
@@ -425,28 +470,50 @@ revisionesTallerRouter.post(
       }
 
       const cita = String(rev.cita_at);
-      const { subject, html } = elCorreoDeLaCitaDelTaller({
+      const panel = `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`;
+      const deQuien = {
         cliente_nombre: String(rev.cliente_nombre ?? ''),
         marca: String(rev.brand ?? ''),
         modelo: String(rev.model ?? ''),
         matricula: String(rev.plate ?? ''),
-        taller: String(rev.taller ?? ''),
-        direccion: String(rev.direccion ?? ''),
         dia: elDiaDeLaCita(cita),
         hora: laHoraDeLaCita(cita),
         // Donde puede pedir que se la cambiemos o anularla: es la misma
         // pantalla donde se le enseña esta cita.
-        panel: `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`,
-      });
+        panel,
+      };
+
+      /*
+       * Dos correos, porque son dos cosas distintas.
+       *
+       * Mandarle el del taller a quien ha pedido que vayamos a su casa sería
+       * decirle que lleve el coche a un sitio: exactamente lo que pidió no
+       * hacer, y la manera de que el día de la visita no haya nadie.
+       */
+      const aDomicilio = String(rev.modalidad ?? '').trim() === 'a_domicilio';
+      const { subject, html } = aDomicilio
+        ? elCorreoDeLaPeritacionADomicilio({
+            ...deQuien,
+            perito: String(rev.perito ?? ''),
+            direccion: String(rev.direccion ?? ''),
+          })
+        : elCorreoDeLaCitaDelTaller({
+            ...deQuien,
+            taller: String(rev.taller ?? ''),
+            direccion: String(rev.direccion ?? ''),
+          });
 
       // `alClienteSiempre`: un desvío de pruebas olvidado en producción dejaría
       // al cliente sin enterarse de su propia cita, y el envío saldría bien.
       await enviar({
         to: correo, subject, html, alClienteSiempre: true,
         movil: {
-          titulo: 'Tienes cita en el taller',
-          cuerpo: [elDiaDeLaCita(cita), laHoraDeLaCita(cita) && `a las ${laHoraDeLaCita(cita)}`, rev.taller]
-            .filter(Boolean).join(' · '),
+          titulo: aDomicilio ? 'Un perito va a ver tu coche' : 'Tienes cita en el taller',
+          cuerpo: [
+            elDiaDeLaCita(cita),
+            laHoraDeLaCita(cita) && `a las ${laHoraDeLaCita(cita)}`,
+            aDomicilio ? rev.direccion : rev.taller,
+          ].filter(Boolean).join(' · '),
         },
       });
 

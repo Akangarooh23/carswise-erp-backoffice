@@ -391,6 +391,22 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
     porque: 'lo ha pedido desde su panel y esa cita se pierde si nadie la mueve',
     a: '/idcars', icono: 'taller', tono: 'urgente',
   },
+  /*
+   * Y la peritación que ha pedido en su casa.
+   *
+   * Va aparte de «listos para el taller» y por delante: ahí el siguiente paso
+   * es nuestro y no hay nadie esperando una respuesta concreta; aquí el
+   * cliente ha dicho tres horas a las que estará y espera que le digamos cuál.
+   * Si se mezclara con los otros, sus huecos irían pasando sin que nadie los
+   * mirase y acabaríamos pidiéndole otros — que es como se pierde la confianza
+   * de quien sí contestó a la primera.
+   */
+  {
+    clave: 'peritaciones_a_domicilio',
+    etiqueta: 'peritaciones a domicilio por confirmar', una: 'peritación a domicilio por confirmar',
+    porque: 'ha dicho cuándo puede y espera que le demos día y perito',
+    a: '/idcars', icono: 'taller', tono: 'urgente',
+  },
   {
     clave: 'encargos_listos',
     etiqueta: 'encargos listos para el taller', una: 'encargo listo para el taller',

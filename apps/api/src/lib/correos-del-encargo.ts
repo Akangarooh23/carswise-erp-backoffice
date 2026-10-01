@@ -61,6 +61,60 @@ export interface DatosDelCorreo {
 }
 
 /**
+ * Va un perito a ver el coche a su dirección.
+ *
+ * Es la misma peritación que la del taller y dice lo mismo —qué es, cuándo y
+ * qué hace falta— cambiando lo único que cambia: que no tiene que mover el
+ * coche, y que tiene que estar él o alguien con las llaves.
+ *
+ * Eso último no es un detalle: un perito que llega y no puede abrir el coche
+ * es un desplazamiento pagado y una visita que hay que repetir. Va en negrita
+ * por eso, y no por énfasis.
+ */
+export function elCorreoDeLaPeritacionADomicilio(
+  d: DatosDelCorreo & {
+    perito: string;
+    direccion: string;
+    dia: string;
+    hora: string;
+    /** Su panel, que es donde puede pedir que se la cambiemos. */
+    panel: string;
+  },
+): { subject: string; html: string } {
+  const coche = elCoche(d.marca, d.modelo, d.matricula);
+  return {
+    subject: `Un perito va a ver tu ${coche}`,
+    html: plantilla({
+      titulo: 'Vamos a ver tu coche',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
+        parrafo(`Como nos pediste, no hace falta que muevas el coche: `
+          + `<strong>${esc(d.perito) || 'un perito nuestro'}</strong> se acerca a verlo.`) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Día', esc(d.dia)],
+          ['Hora', esc(d.hora)],
+          ['Dónde', esc(d.direccion)],
+        ]) +
+        /*
+         * Lo que tiene que pasar para que la visita sirva.
+         *
+         * Un perito que llega y no puede abrir el coche es un desplazamiento
+         * pagado y una visita que se repite. Decirlo aquí cuesta una línea.
+         */
+        aviso('Tienes que estar tú o alguien con las llaves',
+          'Son unos cuarenta minutos. Necesita abrirlo, arrancarlo y verlo por debajo, '
+          + 'así que mejor que esté accesible y no encajonado.') +
+        parrafo(`Es la revisión que nos permite anunciarlo como comprobado, y se la `
+          + `hacemos a todos los coches que vendemos.`) +
+        parrafo(`Si ese día no te viene bien, dínoslo desde tu panel: en `
+          + `${enlace('tus solicitudes', d.panel)} puedes pedir que te la cambiemos.`) +
+        boton('Ver mi visita', d.panel),
+    }),
+  };
+}
+
+/**
  * El mandato, para que lo firme.
  *
  * Va con el documento adjunto y dice **las tres cosas que decide**: que no

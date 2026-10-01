@@ -43,6 +43,16 @@ export interface Revision {
   cliente_pidio_at: string | null;
   /** Y por qué, con sus palabras. Puede venir vacío. */
   cliente_motivo: string;
+  /**
+   * Dónde se hace: la lleva él a un taller o va un perito a su dirección.
+   *
+   * Vacío es una tercera cosa: todavía no lo ha elegido. No es lo mismo que
+   * «en taller», y la pantalla no debe darlo por supuesto.
+   */
+  modalidad: string;
+  /** Quién va, cuando va alguien a su casa. Gemelas de taller/taller_id. */
+  perito: string;
+  perito_id: string;
 }
 
 /** Un taller del directorio, tal y como lo devuelve la búsqueda. */
@@ -70,6 +80,16 @@ export interface LoDelTaller {
   /** Por qué todavía no se le puede mandar la cita. Vacío cuando sí. */
   falta_para_avisar: string;
   lo_que_cuesta: number;
+  /** Las dos maneras, con su nombre. */
+  modalidades: { clave: string; nombre: string }[];
+  /**
+   * Y las horas a las que el cliente dijo que puede.
+   *
+   * Sin esto habría que llamarle para preguntarle lo que ya contestó desde su
+   * panel, que es justo la llamada que la peritación a domicilio viene a
+   * quitar.
+   */
+  horas_que_propuso: { empieza_at: string; la_puso: string }[];
 }
 
 
@@ -146,6 +166,12 @@ export default function RevisionDelTaller({
   const [seVeLaLista, setSeVeLaLista] = useState(false);
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [direccion, setDireccion] = useState('');
+  /*
+   * Quién va a su casa. Se escribe a mano como el taller cuando no está en el
+   * directorio: lo que no puede pasar es que no se pueda avisar al cliente
+   * porque el perito que va todavía no esté dado de alta.
+   */
+  const [perito, setPerito] = useState('');
   const [dia, setDia] = useState('');
   const [hora, setHora] = useState('');
   const [notas, setNotas] = useState('');
@@ -170,6 +196,7 @@ export default function RevisionDelTaller({
       setTaller(rev?.taller ?? '');
       setTallerId(rev?.taller_id ?? '');
       setDireccion(rev?.direccion ?? '');
+      setPerito(rev?.perito ?? '');
       const p = partirLaCita(rev?.cita_at ?? null);
       setDia(p.dia);
       setHora(p.hora);
@@ -279,6 +306,10 @@ export default function RevisionDelTaller({
         taller_id: tallerId,
         direccion: direccion.trim(),
         cita_at: juntarLaCita(dia, hora),
+        // Va con la cita y no en un botón aparte: asignar perito y ponerle
+        // hora son el mismo gesto, y dos botones serían dos maneras de
+        // dejarlo a medias.
+        perito: perito.trim(),
       });
       if (!r.ok) { setFallo(r.error ?? 'No se ha podido guardar la cita.'); return; }
       await carga();
@@ -430,6 +461,27 @@ export default function RevisionDelTaller({
             </p>
           )}
         </div>
+        {/*
+          * Quién va, solo cuando va alguien a su casa.
+          *
+          * En una revisión de taller este campo no existe -lo hace el taller- y
+          * enseñarlo vacío sería pedir un dato que no hay que rellenar.
+          */}
+        {datos?.revision?.modalidad === 'a_domicilio' && (
+          <div>
+            <label className="block text-[11px] text-brand-300 mb-1" htmlFor="peritacion-perito">
+              Perito
+            </label>
+            <input
+              id="peritacion-perito"
+              value={perito}
+              onChange={(ev) => setPerito(ev.target.value)}
+              placeholder="Quién va a verlo"
+              className="w-44 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-acento"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-[11px] text-brand-300 mb-1" htmlFor="taller-direccion">
             Dirección
@@ -576,6 +628,58 @@ export default function RevisionDelTaller({
             </button>
           </div>
         </>
+      )}
+
+      {/*
+        * Lo que ha pedido en su casa, y cuándo puede.
+        *
+        * Va antes que los campos porque es lo que decide cómo se rellenan:
+        * pulsar una de sus horas la mete en el día y la hora de abajo, que es
+        * la diferencia entre atender esto en un clic o teclear una fecha
+        * leyéndola de otra línea — y equivocarse de martes.
+        */}
+      {rev && rev.modalidad === 'a_domicilio' && rev.estado !== 'Hecha' && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-[13px] font-semibold text-amber-800">
+            Ha pedido que vaya un perito a verlo
+          </p>
+          {rev.direccion && (
+            <p className="text-[12.5px] text-amber-800/90 mt-0.5">{rev.direccion}</p>
+          )}
+          {datos.horas_que_propuso.filter((h) => h.la_puso === 'cliente').length > 0 ? (
+            <>
+              <p className="text-[11.5px] text-amber-800/75 mt-1.5 mb-1">
+                Puede en estas horas. Pulsa una para ponerla:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {datos.horas_que_propuso
+                  .filter((h) => h.la_puso === 'cliente')
+                  .map((h) => {
+                    const partes = partirLaCita(h.empieza_at);
+                    const puesta = partes.dia === dia && partes.hora === hora;
+                    return (
+                      <button
+                        key={h.empieza_at}
+                        type="button"
+                        onClick={() => { setDia(partes.dia); setHora(partes.hora); }}
+                        className={`px-2 py-1 text-[12px] rounded-lg border ${
+                          puesta
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold'
+                            : 'border-amber-300 text-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        {cuandoConHora(h.empieza_at)}
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          ) : (
+            <p className="text-[11.5px] text-amber-800/75 mt-1">
+              No ha dicho a qué horas puede. Hay que llamarle.
+            </p>
+          )}
+        </div>
       )}
 
       {/*

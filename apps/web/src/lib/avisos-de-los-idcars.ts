@@ -30,6 +30,7 @@ export const NOMBRE_CORTO: Record<string, string> = {
   encargos_por_llamar: 'Hay que llamarle',
   encargos_sin_franjas: 'Sin horas de visita',
   encargos_listos: 'Falta la revisión',
+  peritaciones_a_domicilio: 'Perito a domicilio',
   encargos_rechazados: 'El taller lo tumbó',
   encargos_sin_firmar: 'Mandato sin firmar',
   citas_taller_que_pide_mover: 'No puede ir al taller',

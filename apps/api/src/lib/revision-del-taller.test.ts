@@ -24,7 +24,7 @@ import {
   esUnEstado, esUnResultado, elCocheEstaComprobado, porQueNoEstaComprobado,
   sigueEsperandoAlTaller, elTallerLoTumbo,
   ENSURE_UNA_VIVA, ENSURE_COLUMNAS, SQL_LA_DEL_COCHE,
-  elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar,
+  elDiaDeLaCita, laHoraDeLaCita, porQueNoSeLePuedeAvisar, queToca,
   LO_QUE_PUEDE_PEDIR, LO_QUE_PIDIO, esLoQuePuedePedir, elClienteEsperaRespuesta,
   elRecordatorioToca, SQL_CANDIDATAS_A_RECORDATORIO, CUANTO_ANTES_SE_RECUERDA_MS,
 } from './revision-del-taller.js';
@@ -403,5 +403,62 @@ describe('a quién se le pregunta', () => {
 
   test('y la tabla guarda que ya se recordó', () => {
     assert.match(ENSURE_COLUMNAS, /ADD COLUMN IF NOT EXISTS recordado_at/);
+  });
+});
+
+describe('la peritación a domicilio', () => {
+  /*
+   * Es la misma revisión: cambia dónde se hace y quién la hace, no lo que
+   * abre. Lo que cambia de verdad son dos cosas, y las dos se rompen en
+   * silencio si nadie las fija.
+   */
+  test('no se avisa sin saber quién va', () => {
+    // Un correo diciendo «va un perito» sin perito es un correo que no se
+    // puede cumplir, y el cliente se queda esperando en casa.
+    assert.match(
+      porQueNoSeLePuedeAvisar({ modalidad: 'a_domicilio', direccion: 'C/ A 1', cita_at: '2026-10-05T10:00:00Z' }),
+      /perito/i,
+    );
+  });
+
+  test('ni sin saber a dónde va', () => {
+    assert.match(
+      porQueNoSeLePuedeAvisar({ modalidad: 'a_domicilio', perito: 'Pedro', cita_at: '2026-10-05T10:00:00Z' }),
+      /direcci/i,
+    );
+  });
+
+  test('ni sin día', () => {
+    assert.match(
+      porQueNoSeLePuedeAvisar({ modalidad: 'a_domicilio', perito: 'Pedro', direccion: 'C/ A 1' }),
+      /día/i,
+    );
+  });
+
+  test('y con las tres cosas, sí: el taller no hace falta', () => {
+    /*
+     * Esto es lo que distingue una modalidad de la otra. Si el guardián
+     * siguiera exigiendo taller, la visita a domicilio no se podría avisar
+     * nunca y habría que inventarse un taller para engañarlo.
+     */
+    assert.equal(
+      porQueNoSeLePuedeAvisar({
+        modalidad: 'a_domicilio', perito: 'Pedro', direccion: 'C/ A 1',
+        cita_at: '2026-10-05T10:00:00Z', taller: '',
+      }),
+      '',
+    );
+  });
+
+  test('en taller sigue haciendo falta el taller', () => {
+    assert.match(porQueNoSeLePuedeAvisar({ modalidad: 'en_taller', cita_at: '2026-10-05T10:00:00Z' }), /taller/i);
+  });
+
+  test('y no se le dice que su coche está en un taller al que no lo ha llevado', () => {
+    // Quien coge el teléfono lee esta línea. «En el taller» con un perito
+    // yendo a su casa es decirle que su coche está donde no está.
+    assert.equal(queToca('En el taller', 'a_domicilio'), 'Visita en curso');
+    assert.equal(queToca('En el taller', 'en_taller'), 'Esperando a que lo revisen');
+    assert.match(queToca('Por llevar', 'a_domicilio'), /perito/i);
   });
 });

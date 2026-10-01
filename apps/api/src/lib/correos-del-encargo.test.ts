@@ -11,6 +11,7 @@ import {
   elCorreoDelMandato, elCorreoDePublicado, elCorreoDelCierre,
   elCorreoDelAlta, laRutaDelAlta, elCorreoDeLaCitaDelTaller,
   elRecordatorioDeLaCitaDelTaller, elCorreoDelPrecioDeSalida,
+  elCorreoDeLaPeritacionADomicilio,
 } from './correos-del-encargo.js';
 import { DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION } from './encargo-de-venta.js';
 
@@ -463,5 +464,43 @@ describe('el correo del precio de salida', () => {
     // Es un precio, no un trámite: el que no está de acuerdo tiene que poder
     // decirlo sin buscar el teléfono.
     assert.match(soloTexto(c().html), /contesta a este correo/i);
+  });
+});
+
+describe('el correo de la peritación a domicilio', () => {
+  const c = () => elCorreoDeLaPeritacionADomicilio({
+    ...COCHE,
+    perito: 'Pedro Ruiz',
+    direccion: 'C/ Alcalá 120, Madrid',
+    dia: 'martes, 6 de octubre',
+    hora: '10:00',
+    panel: 'https://popcar.com.es/panel/solicitudes',
+  });
+
+  test('dice quién va, cuándo y a dónde', () => {
+    const texto = soloTexto(c().html);
+    assert.match(texto, /Pedro Ruiz/);
+    assert.match(texto, /martes, 6 de octubre/);
+    assert.match(texto, /10:00/);
+    assert.match(texto, /Alcalá 120/);
+  });
+
+  test('y que tiene que estar él o alguien con las llaves', () => {
+    /*
+     * No es un detalle de cortesía: un perito que llega y no puede abrir el
+     * coche es un desplazamiento pagado y una visita que hay que repetir.
+     */
+    assert.match(soloTexto(c().html), /llaves/i);
+  });
+
+  test('y NO le pide que lleve el coche a ninguna parte', () => {
+    // Es lo único que pidió: no moverlo. Un correo que le diga que lo lleve
+    // es el correo del taller mandado a quien pidió lo contrario.
+    assert.doesNotMatch(soloTexto(c().html), /lleva(r|)\s+el\s+coche/i);
+    assert.doesNotMatch(soloTexto(c().html), /taller/i);
+  });
+
+  test('y le dice dónde pedir que se la cambiemos', () => {
+    assert.match(c().html, /panel\/solicitudes/);
   });
 });
