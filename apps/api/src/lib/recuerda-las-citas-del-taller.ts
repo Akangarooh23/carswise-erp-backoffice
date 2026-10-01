@@ -63,6 +63,11 @@ export async function recuerdaLasCitasDelTaller(ahora: Date = new Date()): Promi
       dia: elDiaDeLaCita(cita),
       hora: laHoraDeLaCita(cita),
       panel: `${config.PUBLIC_SITE_URL.replace(/\/+$/, '')}/panel/solicitudes`,
+      // La consulta trae la fila entera, así que esto no cuesta una columna
+      // más: lo que costaría es recordarle una cita en un taller al que no
+      // tiene que ir.
+      modalidad: String(fila.modalidad ?? ''),
+      perito: String(fila.perito ?? ''),
     });
 
     try {
@@ -71,7 +76,9 @@ export async function recuerdaLasCitasDelTaller(ahora: Date = new Date()): Promi
       await enviar({
         to: correo, subject, html, alClienteSiempre: true,
         movil: {
-          titulo: 'Recuerda tu cita en el taller',
+          titulo: String(fila.modalidad ?? '') === 'a_domicilio'
+            ? 'Mañana vemos tu coche'
+            : 'Recuerda tu cita en el taller',
           cuerpo: [elDiaDeLaCita(cita), laHoraDeLaCita(cita) && `a las ${laHoraDeLaCita(cita)}`, fila.direccion || fila.taller]
             .filter(Boolean).join(' · '),
         },

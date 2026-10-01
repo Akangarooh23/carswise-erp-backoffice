@@ -388,23 +388,45 @@ export function elRecordatorioDeLaCitaDelTaller(
     dia: string;
     hora: string;
     panel: string;
+    /*
+     * Dónde se hace, para no recordarle una cita a la que no tiene que ir.
+     *
+     * Aquí sí es el mismo correo con dos palabras cambiadas —el de confirmar
+     * son dos correos distintos porque dicen cosas distintas—. Lo que cambia
+     * es a quién espera y si tiene que mover el coche; lo demás, incluido el
+     * «si no puedes, dínoslo», es idéntico, y partirlo en dos sería tener dos
+     * sitios donde arreglar esa frase.
+     */
+    modalidad?: string;
+    perito?: string;
   },
 ): { subject: string; html: string } {
   const coche = elCoche(d.marca, d.modelo, d.matricula);
+  const aDomicilio = String(d.modalidad ?? '').trim() === 'a_domicilio';
+
   const filas: [string, string][] = [
-    ['Taller', esc(d.taller)],
-    ...(d.direccion.trim() ? ([['Dirección', esc(d.direccion)]] as [string, string][]) : []),
+    aDomicilio
+      ? ['Quién va', esc(d.perito ?? '') || 'Un perito nuestro']
+      : ['Taller', esc(d.taller)],
+    ...(d.direccion.trim() ? ([[aDomicilio ? 'Dónde' : 'Dirección', esc(d.direccion)]] as [string, string][]) : []),
     ['Día', esc(d.dia)],
     ['Hora', esc(d.hora)],
   ];
 
   return {
-    subject: `Recordatorio: ${coche} tiene taller el ${d.dia}`,
+    subject: aDomicilio
+      ? `Recordatorio: mañana vemos tu ${coche}`
+      : `Recordatorio: ${coche} tiene taller el ${d.dia}`,
     html: plantilla({
-      titulo: 'Te recordamos la cita del taller',
+      titulo: aDomicilio ? 'Te recordamos la visita' : 'Te recordamos la cita del taller',
       cuerpo:
         parrafo(`Hola <strong>${esc(d.cliente_nombre) || 'buenas'}</strong>,`) +
-        parrafo(`Es la revisión de <strong>${esc(coche)}</strong>. Solo hay que acercarlo.`) +
+        parrafo(
+          aDomicilio
+            ? `Es la revisión de <strong>${esc(coche)}</strong>. No tienes que moverlo, `
+              + `pero sí estar tú o alguien con las llaves.`
+            : `Es la revisión de <strong>${esc(coche)}</strong>. Solo hay que acercarlo.`,
+        ) +
         datos(filas) +
         parrafo(`Si no vas a poder, dínoslo desde ${enlace('tu panel', d.panel)} y te llamamos.`),
     }),

@@ -504,3 +504,40 @@ describe('el correo de la peritación a domicilio', () => {
     assert.match(c().html, /panel\/solicitudes/);
   });
 });
+
+describe('y el recordatorio, cuando va un perito a su casa', () => {
+  const c = (extra = {}) => elRecordatorioDeLaCitaDelTaller({
+    ...COCHE,
+    taller: 'Norauto Alcobendas',
+    direccion: 'C/ Alcalá 120, Madrid',
+    dia: 'martes, 6 de octubre',
+    hora: '10:00',
+    panel: 'https://popcar.com.es/panel/solicitudes',
+    ...extra,
+  });
+
+  test('no le recuerda que lleve el coche a ninguna parte', () => {
+    /*
+     * Es el fallo que mas caro sale: recordarle «solo hay que acercarlo» a
+     * quien pidio justo no moverlo. Si lo lee y lo lleva, el perito se
+     * presenta en una casa vacia.
+     */
+    const texto = soloTexto(c({ modalidad: 'a_domicilio', perito: 'Pedro Ruiz' }).html);
+    assert.doesNotMatch(texto, /acercarlo/i);
+    assert.match(texto, /no tienes que moverlo/i);
+    assert.match(texto, /llaves/i);
+    assert.match(texto, /Pedro Ruiz/);
+  });
+
+  test('y el del taller sigue diciendo lo suyo', () => {
+    const texto = soloTexto(c({ modalidad: 'en_taller' }).html);
+    assert.match(texto, /acercarlo/i);
+    assert.match(texto, /Norauto/);
+  });
+
+  test('sin modalidad -las de antes- se comporta como el del taller', () => {
+    // Las apuntadas antes de que existiera la modalidad tienen esa columna
+    // vacía, y todas eran de taller.
+    assert.match(soloTexto(c().html), /acercarlo/i);
+  });
+});

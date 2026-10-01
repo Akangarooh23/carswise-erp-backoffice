@@ -387,7 +387,9 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    */
   {
     clave: 'citas_taller_que_pide_mover',
-    etiqueta: 'citas de taller que el cliente no puede', una: 'cita de taller que el cliente no puede',
+    // «De revisión» y no «de taller»: desde que la peritación puede hacerse
+    // en su casa, media lista no es una cita de taller.
+    etiqueta: 'citas de revisión que el cliente no puede', una: 'cita de revisión que el cliente no puede',
     porque: 'lo ha pedido desde su panel y esa cita se pierde si nadie la mueve',
     a: '/idcars', icono: 'taller', tono: 'urgente',
   },
