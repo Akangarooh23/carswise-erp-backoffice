@@ -275,6 +275,20 @@ describe('cómo se le pide que devuelva el mandato', () => {
     assert.doesNotMatch(soloTexto(c().html), /contestando a este correo/i);
   });
 
+  test('y también dónde está en la app, no solo en la web', () => {
+    /*
+     * Un correo se lee en el móvil. Decir solo «súbelo en tu panel» deja al
+     * que usa la app sin saber que allí también se puede, y el papel se queda
+     * sin devolver -con el encargo diciendo «sin mandato firmado»-.
+     *
+     * Y se dice la ruta exacta, no «entra en la app»: ahí es donde se pierde
+     * la mitad de la gente.
+     */
+    const texto = soloTexto(c().html);
+    assert.match(texto, /Coches → PopCar/);
+    assert.match(c().html, /app.popcar.com.es/);
+  });
+
   test('y se le dice que no hace falta escribirnos', () => {
     // Si no, sube el papel y además contesta, por si acaso.
     assert.match(soloTexto(c().html), /no hace falta que nos escribas/i);

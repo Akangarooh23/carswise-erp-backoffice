@@ -16,6 +16,20 @@ export const SITIO = 'www.popcar.com.es';
 export const SITIO_URL = 'https://www.popcar.com.es';
 
 /**
+ * Y donde vive la app del cliente, que es otro despliegue y otro dominio.
+ *
+ * Hace falta en los correos. El mandato se le pide por correo y solo se le
+ * decia donde subirlo en la web: quien usa el movil leia «subelo en tu
+ * panel», no sabia que eso tambien esta en su app, y el papel se quedaba sin
+ * devolver — con el encargo diciendo «sin mandato firmado · no se le puede
+ * facturar», que es el estado en el que no podemos ni vender ni cobrar.
+ *
+ * La misma direccion abre la version web de la app, asi que el enlace sirve
+ * tambien para quien no la tenga instalada.
+ */
+export const APP_URL = 'https://app.popcar.com.es';
+
+/**
  * El dominio anterior. Sigue sirviendo y redirige al nuevo con un 308, y hay
  * correos ya enviados con enlaces suyos que tienen que seguir abriendo.
  */

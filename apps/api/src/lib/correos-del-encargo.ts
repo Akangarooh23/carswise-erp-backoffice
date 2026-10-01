@@ -42,6 +42,7 @@
 import { plantilla, parrafo, datos, boton, aviso, enlace, esc } from './correo.js';
 import { DIAS_HASTA_SALIR_GRATIS } from './encargo-de-venta.js';
 import { COMO_ACABO, type Motivo } from './cierre-del-encargo.js';
+import { APP_URL } from './marca.js';
 
 /** Los euros, con el punto de los miles puesto a mano y no por el ICU. */
 function euros(n: number): string {
@@ -98,6 +99,19 @@ export function elCorreoDelMandato(
         parrafo(`Cuando lo tengas firmado, <strong>súbelo en tu panel</strong> y listo: `
           + `<a href="${esc(d.panel)}" style="color:#111111;font-weight:600">Mis solicitudes</a>. `
           + `Nos llega al momento y no hace falta que nos escribas.`) +
+        /*
+         * Y desde el móvil, que es desde donde se lee un correo.
+         *
+         * Esto decía solo «súbelo en tu panel». Quien usa la app leía eso, no
+         * sabía que allí también se puede, y el papel se quedaba sin devolver.
+         *
+         * Se dice dónde está exactamente —«Coches → PopCar»— y no «entra en la
+         * app y búscalo», que es donde se pierde la mitad de la gente: la
+         * misma regla que el correo de la cita del taller.
+         */
+        parrafo(`¿Lo llevas en el móvil? En ${enlace('la app de PopCar', APP_URL)} lo tienes en `
+          + `<strong>Coches → PopCar</strong>, y además te sale en tu resumen como pendiente. `
+          + `Vale una foto del papel firmado.`) +
         datos([
           ['Nº de mandato', esc(d.mandato_id)],
           ['Vehículo', esc(coche)],
