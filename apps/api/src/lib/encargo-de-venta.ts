@@ -68,6 +68,35 @@ export const FOTOS_MINIMAS = 6;
  */
 export const INFORME_HECHO = ['informe_listo', 'verificada', 'publicada'];
 
+/**
+ * Cuál de los informes de un coche es el que cuenta: **el más avanzado**, no
+ * el más reciente.
+ *
+ * Un coche puede tener varias sesiones, porque se abre una cada vez que
+ * alguien pulsa «hacer el informe». Las tres consultas que lo leían cogían la
+ * última por fecha, y así una captura abierta por error tapa un informe
+ * terminado.
+ *
+ * Pasó el 1-oct-2026 con el Opel Corsa 5228HNS: informe hecho y avisado por
+ * correo a las 13:01, y otra sesión abierta a las 13:45 desde el botón de la
+ * app. La ficha del ERP decía «lo empezó y no lo ha terminado» de un informe
+ * que estaba hecho, y quien cogiera el teléfono le habría dicho eso mismo al
+ * cliente.
+ *
+ * Un documento emitido no se desdice porque alguien vuelva a empezar otro: se
+ * busca primero uno terminado y solo si no lo hay se mira en qué va la última
+ * sesión.
+ *
+ * Los estados van escritos dentro del SQL y no como parámetro porque una de
+ * las tres consultas no lleva ninguno. Salen de `INFORME_HECHO`, que es de
+ * este módulo: aquí no entra nada que venga de fuera.
+ */
+export function sqlInformeVigente(alias = ''): string {
+  const col = alias ? `${alias}.` : '';
+  const listos = INFORME_HECHO.map((estado) => `'${estado}'`).join(', ');
+  return `ORDER BY (${col}status = ANY(ARRAY[${listos}])) DESC, ${col}created_at DESC`;
+}
+
 export type Estado = 'recogiendo' | 'listo' | 'publicado' | 'vendido' | 'cancelado' | 'vencido';
 
 /**

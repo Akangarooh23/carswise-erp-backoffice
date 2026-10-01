@@ -69,8 +69,20 @@ describe('la ficha del IDCar', () => {
   test('trae el estado del informe con el coche, sin otra llamada', () => {
     assert.match(RUTA, /AS informe_estado/);
     assert.match(RUTA, /AS informe_fecha/);
-    // El último, que es el vigente: un coche puede repetir el informe.
-    assert.match(RUTA, /ORDER BY r\.created_at DESC LIMIT 1/);
+    /*
+     * Y el que trae es el VIGENTE, que no es el último.
+     *
+     * Un coche puede repetir el informe, y antes se cogía el más reciente por
+     * fecha: una captura abierta por error tapaba uno terminado, y la ficha
+     * decía «lo empezó y no lo ha terminado» de un informe hecho. El orden
+     * tiene que salir de `sqlInformeVigente` —escrito aquí a mano se
+     * desincroniza del que usan las otras dos consultas del mismo dato—.
+     */
+    assert.match(RUTA, /\$\{sqlInformeVigente\('r'\)\} LIMIT 1/);
+    assert.ok(
+      !/ORDER BY r\.created_at DESC LIMIT 1/.test(RUTA),
+      'vuelve a coger el informe más reciente en vez del más avanzado',
+    );
   });
 
   test('y enseña el botón solo cuando hay documento', () => {

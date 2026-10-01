@@ -9,6 +9,7 @@ import {
   CAMPOS, GEMELAS, limpiaLosCambios, loQueVaAlAnuncio,
   ENSURE_COLUMNAS as ENSURE_COLUMNAS_DEL_COCHE, type ElAnuncio,
 } from '../lib/caracteristicas-del-coche.js';
+import { sqlInformeVigente } from '../lib/encargo-de-venta.js';
 import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
 import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe, lasVersionesPosibles } from '../lib/la-ficha-leida.js';
 import { timingSafeEqual } from 'node:crypto';
@@ -131,15 +132,17 @@ idcarsRouter.get('/idcars/:id', requireRole(['admin', 'support', 'operations', '
        * dejaba abrirlo. Si un cliente llamaba preguntando por su informe, quien
        * cogía el teléfono veía que estaba hecho y no podía verlo.
        *
-       * El último, que es el vigente: un coche puede repetir el informe.
+       * El vigente, que es el más avanzado y no el último: un coche puede
+       * repetir el informe, y una captura abierta después no borra el que ya
+       * estaba hecho. Ver `sqlInformeVigente`.
        */
       `SELECT v.*, u.name AS owner_name, u.email AS owner_email,
               (SELECT r.status FROM moveadvisor_vehicle_condition_reports r
                 WHERE r.vehicle_id = v.id
-                ORDER BY r.created_at DESC LIMIT 1) AS informe_estado,
+                ${sqlInformeVigente('r')} LIMIT 1) AS informe_estado,
               (SELECT r.created_at FROM moveadvisor_vehicle_condition_reports r
                 WHERE r.vehicle_id = v.id
-                ORDER BY r.created_at DESC LIMIT 1) AS informe_fecha
+                ${sqlInformeVigente('r')} LIMIT 1) AS informe_fecha
        FROM moveadvisor_user_vehicles v
        LEFT JOIN moveadvisor_users u ON u.id = v.user_id
        WHERE v.id = $1`,

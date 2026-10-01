@@ -37,6 +37,7 @@ import {
   DIAS_HASTA_SALIR_GRATIS, FEE_DE_GESTION, FEE_DE_CANCELACION,
   libreDesde, diasQueQuedan, laPenalizacion, yaSePuedeIrGratis,
   lasPuertas, sePuedePublicar, loQueLeFalta, tocaLlamarle, soloLeFaltanFranjas,
+  sqlInformeVigente,
   type LoQueHay,
 } from '../lib/encargo-de-venta.js';
 import {
@@ -208,9 +209,10 @@ export async function loQueHayDe(vehicleId: string): Promise<LoQueHay> {
     [vehicleId]
   ).catch(() => ({ rows: [] }));
 
+  // El más avanzado, no el último: ver `sqlInformeVigente`.
   const informe = await query(
     `SELECT status FROM moveadvisor_vehicle_condition_reports
-      WHERE vehicle_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      WHERE vehicle_id = $1 ${sqlInformeVigente()} LIMIT 1`,
     [vehicleId]
   ).catch(() => ({ rows: [] }));
 
@@ -379,7 +381,7 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
              WHERE t.vehicle_id = e.vehicle_id AND COALESCE(t.estimate_value, 0) > 0
              ORDER BY t.created_at DESC LIMIT 1) AS tasacion,
            (SELECT r2.status FROM moveadvisor_vehicle_condition_reports r2
-             WHERE r2.vehicle_id = e.vehicle_id ORDER BY r2.created_at DESC LIMIT 1) AS informe,
+             WHERE r2.vehicle_id = e.vehicle_id ${sqlInformeVigente('r2')} LIMIT 1) AS informe,
            (SELECT COALESCE(array_agg(a.starts_at), '{}')
               FROM vehicle_visit_availability a
              WHERE a.offer_id = 'idcar-' || e.vehicle_id

@@ -14,6 +14,7 @@ import {
   libreDesde, laPenalizacion, yaSePuedeIrGratis,
   franjasQueValen, lasPuertas, sePuedePublicar, loQueLeFalta,
   AVISAR_CON, tocaLlamarle, soloLeFaltanFranjas,
+  INFORME_HECHO, sqlInformeVigente,
   type LoQueHay,
 } from './encargo-de-venta.js';
 
@@ -327,5 +328,45 @@ describe('a quién hay que llamar', () => {
 
   test('ni a uno que todavía no se ha publicado', () => {
     assert.equal(tocaLlamarle({ publicado_at: null, acepto_el_precio: true }, AHORA), false);
+  });
+});
+
+describe('cuál de los informes cuenta', () => {
+  /*
+   * El 1-oct-2026, Opel Corsa 5228HNS: informe hecho y avisado a las 13:01, y
+   * a las 13:45 el botón de la app abrió otra captura. Las tres consultas que
+   * leen el estado cogían la última por fecha, así que la ficha del ERP decía
+   * «lo empezó y no lo ha terminado» de un informe terminado.
+   *
+   * Quien ordena las filas es Postgres, no esta prueba, así que lo que se fija
+   * es que se le pida el orden correcto —y que lo pedido salga de
+   * `INFORME_HECHO` y no de una lista escrita aparte, que es como se
+   * desincronizan—.
+   */
+  test('primero el terminado y solo después el más reciente', () => {
+    const sql = sqlInformeVigente();
+    assert.ok(sql.startsWith('ORDER BY (status = ANY(ARRAY['), sql);
+    assert.ok(sql.endsWith(')) DESC, created_at DESC'), sql);
+  });
+
+  test('y con los mismos estados que cuentan como hecho', () => {
+    const sql = sqlInformeVigente();
+    for (const estado of INFORME_HECHO) {
+      assert.ok(sql.includes(`'${estado}'`), `falta ${estado} en el orden`);
+    }
+  });
+
+  test('con alias, porque dos de las tres consultas lo llevan', () => {
+    assert.equal(
+      sqlInformeVigente('r2'),
+      "ORDER BY (r2.status = ANY(ARRAY['informe_listo', 'verificada', 'publicada'])) DESC, r2.created_at DESC",
+    );
+  });
+
+  test('y el que se elige con ese orden abre la puerta', () => {
+    // El caso del Corsa: terminado el 13:01, «iniciada» a las 13:45. Con el
+    // orden nuevo gana el primero, y la puerta sale abierta.
+    const puertas = lasPuertas({ ...COMPLETO, informe: 'informe_listo' }, AHORA);
+    assert.equal(puertas.find((p) => p.clave === 'informe')?.abierta, true);
   });
 });
