@@ -224,6 +224,38 @@ export async function ensureSchema() {
       ON moveadvisor_provider_invoices (status, issued_at DESC)
   `);
 
+  /*
+   * Una factura solo se rectifica una vez, y lo dice la base.
+   *
+   * La ruta que emite una rectificativa comprobaba antes si ya existía:
+   *
+   *     const existing = await query(`… WHERE rectifies_id = $1`);
+   *     if (existing.rows.length) { res.status(409) … return; }
+   *     const rectId = await nextInvoiceNumber('RECT');
+   *     await query(`INSERT INTO moveadvisor_provider_invoices …`);
+   *
+   * Comprobar y luego actuar, sin nada atómico en medio. Dos peticiones a la vez
+   * pasaban las dos el SELECT, cogían dos números RECT **distintos** —así que la
+   * clave primaria no las frenaba— y los dos INSERT funcionaban. El resultado no
+   * era un duplicado cosmético: **dos abonos del mismo importe** contra una
+   * factura emitida una sola vez, y eso sale en el modelo 303.
+   *
+   * Con este índice el segundo INSERT falla limpio y el 409 de arriba pasa a ser
+   * verdad en vez de una apariencia.
+   *
+   * Parcial —`WHERE rectifies_id IS NOT NULL`— porque la inmensa mayoría de las
+   * facturas no rectifican nada y en Postgres varios NULL no colisionan, pero el
+   * índice parcial además no las indexa: más pequeño y más claro de leer.
+   *
+   * Comprobado antes de ponerlo: en la base no hay ninguna factura rectificada
+   * más de una vez, así que se crea sin tocar datos.
+   */
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_provider_invoices_rectifies
+      ON moveadvisor_provider_invoices (rectifies_id)
+      WHERE rectifies_id IS NOT NULL
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS moveadvisor_marketplace_vo_units (
       id           VARCHAR(64)  PRIMARY KEY,

@@ -80,9 +80,36 @@ export function conFormaUnica<T>(cuerpo: unknown): ApiResponse<T> {
   return { ...resto, ok: ok === true, error, meta, data: resto } as unknown as ApiResponse<T>;
 }
 
+/**
+ * Cuando no se llega al servidor.
+ *
+ * `fetch` **rechaza** —no devuelve— si no hay red: sin conexión, DNS caído,
+ * servidor inalcanzable, CORS. Y este cliente promete lo contrario: que los
+ * errores son valores, `{ ok, data, error }`, para que las pantallas puedan
+ * hacer `if (res.ok) … else …` sin `try/catch`.
+ *
+ * Esa promesa estaba rota justo en ese caso, y la consecuencia era grande:
+ * **46 de las 91 pantallas apagan su indicador de carga en la línea recta**
+ * —correctamente, porque confían en esta promesa—, así que un corte de red
+ * dejaba la rueda girando para siempre y sin mensaje. Un 500 o un 404 sí
+ * estaban cubiertos; lo que se escapaba era no llegar.
+ *
+ * En un back-office que se usa desde un taller con wifi regular, ése es el
+ * caso más probable de los dos.
+ */
+const SIN_CONEXION = 'sin_conexion';
+
+async function pide(url: string, options: RequestInit): Promise<Response | null> {
+  try {
+    return await fetch(url, options);
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await pide(`${BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -91,12 +118,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
     },
   });
 
+  if (!res) return { ok: false, data: undefined as T, error: SIN_CONEXION } as ApiResponse<T>;
+
   const body = await res.json().catch(() => ({ ok: false, error: 'invalid_json' }));
 
   if (res.status === 401) {
     const newToken = await tryRefresh();
     if (newToken) {
-      const retryRes = await fetch(`${BASE}${path}`, {
+      // El reintento tenía el mismo agujero: si la red se va entre la renovación
+      // del token y esta segunda petición, rechazaba igual.
+      const retryRes = await pide(`${BASE}${path}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
@@ -104,6 +135,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
           ...(options.headers ?? {}),
         },
       });
+      if (!retryRes) return { ok: false, data: undefined as T, error: SIN_CONEXION } as ApiResponse<T>;
       const reintento = await retryRes.json().catch(() => ({ ok: false, error: 'invalid_json' }));
       return conFormaUnica<T>(reintento);
     }
@@ -122,9 +154,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
  */
 export async function descargaConSesion(path: string, filename: string) {
   const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await pide(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  // Esta sí lanza a propósito —quien la llama espera una excepción— pero el
+  // mensaje tiene que distinguir «no hay red» de «el servidor ha dicho no».
+  if (!res) throw new Error('Sin conexión: no se ha podido descargar el fichero');
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const msg = (body as { message?: string }).message || 'No se ha podido descargar el fichero';
