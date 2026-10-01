@@ -30,7 +30,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           {/* drag handle on mobile */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-brand-200 rounded-full sm:hidden" />
           <h2 className="font-semibold text-brand-600 text-base">{title}</h2>
-          <button onClick={onClose} className="text-brand-300 hover:text-brand-400 text-xl leading-none p-1">✕</button>
+          <button aria-label="Cerrar" onClick={onClose} className="text-brand-300 hover:text-brand-400 text-xl leading-none p-1">✕</button>
         </div>
         <div className="overflow-y-auto flex-1 px-5 py-4">{children}</div>
       </div>

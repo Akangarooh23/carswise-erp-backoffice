@@ -616,7 +616,7 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
             <h2 className="text-base font-bold text-brand-600 leading-tight">{t.tipo}</h2>
             <p className="text-xs text-brand-400 mt-0.5">{t.id} · {t.matricula || t.vehiculo_titulo || '—'}</p>
           </div>
-          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
+          <button aria-label="Cerrar" onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
         {estaFuera(t.estado) && dias !== null && (
@@ -766,7 +766,7 @@ function TramiteAbierto({ t, guardando, habituales, onCerrar, onCambiar }: {
                     <option value="suplido">Suplido</option>
                     <option value="nuestro">Nuestro</option>
                   </select>
-                  <button onClick={() => quitaPartida(i)}
+                  <button aria-label="Quitar esta partida" onClick={() => quitaPartida(i)}
                           className="text-[11px] text-brand-300 hover:text-red-600 px-1">×</button>
                 </div>
                 {/*

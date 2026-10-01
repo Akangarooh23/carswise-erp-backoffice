@@ -846,7 +846,7 @@ onEncargarALaGestoria, aviso }: PanelProps) {
             <h2 className="text-base font-bold text-brand-600 leading-tight">{x.title || 'Sin vehículo'}</h2>
             <p className="text-xs text-brand-400 mt-0.5">{x.meta?.name || '—'} · {x.user_email}</p>
           </div>
-          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
+          <button aria-label="Cerrar" onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
         {/*

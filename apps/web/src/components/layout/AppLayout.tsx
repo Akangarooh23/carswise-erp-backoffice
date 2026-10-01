@@ -164,7 +164,7 @@ export default function AppLayout() {
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-white border border-brand-200 shadow-xl rounded-xl px-4 py-3 text-sm font-medium text-brand-600">
           <span>{toast}</span>
-          <button
+          <button aria-label="Cerrar el aviso"
             onClick={() => setToast(null)}
             className="text-brand-300 hover:text-brand-400 text-base leading-none"
           >

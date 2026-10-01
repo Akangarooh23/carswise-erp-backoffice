@@ -759,7 +759,7 @@ function PedidoAbierto({ p, guardando, onCerrar, onCambiar, onPapeles }: {
             <h2 className="text-base font-bold text-brand-600 leading-tight">{p.vehiculo_titulo || 'Sin vehículo'}</h2>
             <p className="text-xs text-brand-400 mt-0.5">{p.id} · {etiquetaOrigen(p.origen)}</p>
           </div>
-          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
+          <button aria-label="Cerrar" onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
         {/*

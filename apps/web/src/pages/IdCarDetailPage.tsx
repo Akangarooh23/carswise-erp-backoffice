@@ -315,7 +315,7 @@ export default function IdCarDetailPage() {
           onClick={() => setLightbox(null)}
         >
           <img src={lightbox} alt="" className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain" />
-          <button
+          <button aria-label="Cerrar la imagen"
             className="absolute top-4 right-4 text-white text-2xl font-bold leading-none"
             onClick={() => setLightbox(null)}
           >×</button>

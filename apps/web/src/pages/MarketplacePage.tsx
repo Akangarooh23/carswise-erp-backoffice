@@ -2447,7 +2447,7 @@ export default function MarketplacePage() {
                                       <button onClick={() => changeUnitStatus(u.id, 'returned')}
                                         className="text-xs text-brand-400 hover:bg-brand-50 px-1.5 py-0.5 rounded">Devolver</button>
                                     )}
-                                    <button onClick={() => deleteUnit(u.id)}
+                                    <button aria-label="Borrar esta unidad" onClick={() => deleteUnit(u.id)}
                                       className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-1.5 py-0.5 rounded">✕</button>
                                   </div>
                                 </td>
@@ -2590,7 +2590,7 @@ export default function MarketplacePage() {
                         Hacer principal
                       </button>
                     )}
-                    <button
+                    <button aria-label="Quitar esta foto"
                       type="button"
                       onClick={() => { const next = imageUrls.filter(u => u !== url); setImageUrls(next.length ? next : ['']); }}
                       className="absolute top-1 right-1 bg-white/90 text-red-500 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
@@ -2612,7 +2612,7 @@ export default function MarketplacePage() {
                     placeholder={idx === 0 ? 'https://... (foto principal)' : `https://... (foto ${idx + 1})`}
                   />
                   {imageUrls.length > 1 && (
-                    <button type="button" onClick={() => { const next = imageUrls.filter((_, i) => i !== idx); setImageUrls(next.length ? next : ['']); }}
+                    <button aria-label="Quitar esta foto" type="button" onClick={() => { const next = imageUrls.filter((_, i) => i !== idx); setImageUrls(next.length ? next : ['']); }}
                       className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>
                   )}
                 </div>
@@ -2864,7 +2864,7 @@ export default function MarketplacePage() {
                       className="w-full border border-brand-200 rounded-lg px-3 py-2 text-sm"
                       placeholder={idx === 0 ? 'https://… (principal)' : `https://… (foto ${idx + 1})`} />
                     {(portalEditForm.image_urls?.length ?? 0) > 1 && (
-                      <button type="button" onClick={() => setPortalEditForm(f => { const next = (f.image_urls ?? []).filter((_: string, i: number) => i !== idx); return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
+                      <button aria-label="Quitar esta foto" type="button" onClick={() => setPortalEditForm(f => { const next = (f.image_urls ?? []).filter((_: string, i: number) => i !== idx); return {...f, image_urls: next, image_url: next[0] ?? ''}; })}
                         className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>
                     )}
                   </div>

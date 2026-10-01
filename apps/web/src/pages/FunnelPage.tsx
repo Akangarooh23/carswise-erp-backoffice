@@ -636,7 +636,7 @@ export default function FunnelPage() {
                 onChange={(e) => { setGlobalUser(e.target.value); setSessPage(1); setEvtPage(1); }}
                 className="text-xs border border-brand-200 rounded-lg pl-7 pr-3 py-1.5 w-52 text-brand-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-brand-300"><Icono nombre="buscar" tam={13} /></span>
-              {globalUser && <button onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-300 hover:text-brand-400 text-xs">×</button>}
+              {globalUser && <button aria-label="Quitar el filtro de usuario" onClick={() => setGlobalUser('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-300 hover:text-brand-400 text-xs">×</button>}
             </div>
             <div className="flex items-center gap-1">
               {DATE_SHORTCUTS.map(({ label, daysAgo }) => {
@@ -1209,7 +1209,7 @@ export default function FunnelPage() {
               {filterAnonId && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-acento-tenue text-acento-texto border border-acento">
                   Sesión: <span className="font-mono">{filterAnonId.slice(0, 14)}…</span>
-                  <button onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-acento-texto ml-0.5">×</button>
+                  <button aria-label="Quitar el filtro" onClick={() => { setFilterAnonId(''); setEvtPage(1); }} className="hover:text-acento-texto ml-0.5">×</button>
                 </span>
               )}
             </div>

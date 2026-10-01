@@ -199,7 +199,7 @@ export default function VehicleFormFields({ form, setForm, idPrefix, onSetPrimar
               placeholder={idx === 0 ? 'https://... (foto principal)' : `https://... (foto ${idx + 1})`}
             />
             {(form.image_urls?.length ?? 0) > 1 && (
-              <button type="button" onClick={() => {
+              <button aria-label="Quitar esta foto" type="button" onClick={() => {
                 const next = (form.image_urls ?? []).filter((_, i) => i !== idx);
                 setForm((f) => ({ ...f, image_urls: next, image_url: next[0] ?? '' }));
               }} className="text-red-400 hover:text-red-600 text-lg font-bold shrink-0 leading-none">✕</button>

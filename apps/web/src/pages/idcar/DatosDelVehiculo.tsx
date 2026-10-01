@@ -452,7 +452,7 @@ function PanelDeLaFicha({
             <p className="text-[11px] text-brand-300 truncate">{ficha.documento}</p>
           )}
         </div>
-        <button type="button" onClick={alCerrar} className="text-brand-300 hover:text-brand-500 text-sm leading-none">×</button>
+        <button aria-label="Cerrar" type="button" onClick={alCerrar} className="text-brand-300 hover:text-brand-500 text-sm leading-none">×</button>
       </div>
 
       {ficha.fallo ? (

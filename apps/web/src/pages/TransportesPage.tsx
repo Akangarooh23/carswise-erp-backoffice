@@ -506,7 +506,7 @@ function TransporteAbierto({ t, guardando, onCerrar, onCambiar, onMandarOrden, o
               {' · viaje '}{queViajeEs(t.tramo, t.origen) || `tramo ${t.tramo}`}
             </p>
           </div>
-          <button onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
+          <button aria-label="Cerrar" onClick={onCerrar} className="text-brand-400 hover:text-brand-600 text-xl leading-none">×</button>
         </div>
 
         {enCamino(t.estado) && dias !== null && (

@@ -66,7 +66,7 @@ export default function VisitsPanel({
                   {s.status === 'booked' ? 'Reservada' : 'Libre'}
                 </span>
                 {s.status === 'available' && (
-                  <button onClick={() => onRemoveSlot(s.id)} className="text-brand-300 hover:text-red-500 font-bold text-sm leading-none">✕</button>
+                  <button aria-label="Quitar este horario" onClick={() => onRemoveSlot(s.id)} className="text-brand-300 hover:text-red-500 font-bold text-sm leading-none">✕</button>
                 )}
               </div>
             ))}

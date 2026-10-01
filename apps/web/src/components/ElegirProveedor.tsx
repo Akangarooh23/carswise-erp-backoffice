@@ -74,7 +74,7 @@ export default function ElegirProveedor({ tipo, valor, onCambio, placeholder }: 
                 className="px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg disabled:opacity-40">
           Añadir
         </button>
-        <button onClick={() => { setAnadiendo(false); setNuevo(''); }}
+        <button aria-label="Cancelar" onClick={() => { setAnadiendo(false); setNuevo(''); }}
                 className="px-2 py-2 text-xs text-brand-400">×</button>
         {fallo && <p className="text-[11px] text-red-600">{fallo}</p>}
       </div>
