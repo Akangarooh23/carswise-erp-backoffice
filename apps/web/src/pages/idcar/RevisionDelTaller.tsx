@@ -761,10 +761,26 @@ export default function RevisionDelTaller({
                 * cita que solo está en la ficha, y es lo primero que se mira
                 * cuando el cliente no aparece.
                 */}
-              <p className="text-[11px] text-brand-300 mt-1">
-                {enviado
-                  || (rev.avisado_at ? `Avisado el ${cuandoConHora(rev.avisado_at)}` : 'Todavía no se le ha dicho')}
-              </p>
+              {/*
+                * Y si no se puede mandar, por qué.
+                *
+                * El motivo lo calcula la API y hasta ahora solo vivía en el
+                * `title` del botón. Un tooltip sobre un botón desactivado no
+                * lo ve nadie —hay navegadores que ni lo enseñan—, así que lo
+                * que quedaba era un botón apagado y, debajo, una línea
+                * hablando de otra cosa. Quien lo mira prueba a pulsarlo, no
+                * pasa nada, y de ahí a pensar que está roto hay un paso.
+                */}
+              {datos.falta_para_avisar ? (
+                <p className="text-[11px] text-amber-700 mt-1 max-w-[220px]">
+                  {datos.falta_para_avisar}
+                </p>
+              ) : (
+                <p className="text-[11px] text-brand-300 mt-1">
+                  {enviado
+                    || (rev.avisado_at ? `Avisado el ${cuandoConHora(rev.avisado_at)}` : 'Todavía no se le ha dicho')}
+                </p>
+              )}
             </div>
           </div>
 
