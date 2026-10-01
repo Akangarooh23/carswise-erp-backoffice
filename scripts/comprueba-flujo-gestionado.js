@@ -256,8 +256,20 @@ const VENDIDOS_SIN_CERRAR = `
       di(false, 'SIN COMPROBAR: PopCar no esta al lado, no se puede comparar el panel');
     } else {
       const suyas = elPanel.lasPuertas(await elPanel.loQueHayDe(c, COCHE));
-      di(suyas.length === 5 && suyas.every((x) => !x.abierta),
-        'al cliente su panel le dice que le faltan las 5');
+      /*
+       * Cuántas son se le pregunta al panel, no se escribe aquí.
+       *
+       * Esto decía `=== 5`, y el día que PopCar añadió el seguro y el mantenimiento
+       * —`ad45c57`— pasaron a ser siete y esta comprobación se puso roja sin que
+       * hubiera ninguna regresión. El commit que las añadió lo dice de su propia
+       * prueba: «una lista aparte deja fuera a la puerta nueva sin que nadie se
+       * entere». Aquí pasó eso mismo, desde el otro repositorio.
+       *
+       * Lo que importa no es el número: es que con el coche vacío estén **todas**
+       * cerradas.
+       */
+      di(suyas.length > 0 && suyas.every((x) => !x.abierta),
+        `al cliente su panel le dice que le faltan las ${suyas.length}`);
       /*
        * Los números de su texto son los nuestros.
        *
@@ -308,6 +320,39 @@ const VENDIDOS_SIN_CERRAR = `
         [OFERTA, String(i)]
       );
     }
+    /*
+     * El seguro y la factura de revisión, que también las pide el panel.
+     *
+     * Son dos puertas que PopCar añadió en `ad45c57`: las sube el cliente y sin ellas
+     * el ERP no publica. Una venta gestionada las trae como trae las fotos, así que el
+     * recorrido de prueba tiene que traerlas también — si no, la comparación de abajo
+     * dice «al cliente le falta el seguro» y tiene razón.
+     *
+     * Cada una son dos tablas: la cosa y su papel. Contar solo la cosa dejaría pasar un
+     * seguro declarado y sin documento, que es justo lo que el panel no da por bueno.
+     */
+    await c.query(
+      `INSERT INTO moveadvisor_user_insurances
+         (id, vehicle_id, user_email, provider, created_at, updated_at)
+       VALUES ('seg-comprueba-flujo',$1,$2,'Aseguradora de prueba', NOW(), NOW())`,
+      [COCHE, EMAIL]
+    );
+    await c.query(
+      `INSERT INTO moveadvisor_user_insurance_documents (insurance_id, file_name, created_at)
+       VALUES ('seg-comprueba-flujo','poliza.pdf', NOW())`
+    );
+
+    await c.query(
+      `INSERT INTO moveadvisor_user_maintenances
+         (id, vehicle_id, user_email, title, created_at, updated_at)
+       VALUES ('man-comprueba-flujo',$1,$2,'Revision de los 90.000', NOW(), NOW())`,
+      [COCHE, EMAIL]
+    );
+    await c.query(
+      `INSERT INTO moveadvisor_user_maintenance_invoices (maintenance_id, file_name, created_at)
+       VALUES ('man-comprueba-flujo','factura-revision.pdf', NOW())`
+    );
+
     p = (await c.query(PUERTAS, [COCHE, OFERTA])).rows[0];
     di(Number(p.fotos) >= FOTOS, `las ${FOTOS} fotos`);
     di((p.papeles || []).length === PAPELES.length, `los ${PAPELES.length} papeles`);
