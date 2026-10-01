@@ -65,7 +65,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22 y no 20, y no es por estar al día.
+          #
+          # `npm test` es `tsx --test "apps/api/src/**/*.test.ts" …`, y **Node 20 no
+          # expande esos comodines**: la primera vuelta de este CI murió con
+          # «Could not find …/apps/api/src/**/*.test.ts» mientras en local pasaban las
+          # 2.813. El soporte de patrones en `--test` llegó en la 21.
+          #
+          # La alternativa era que el CI corriera `tsx --test $(find apps -name
+          # '*.test.ts')` y Ana siguiera con `npm test`. Pero entonces el CI y quien
+          # desarrolla no ejecutan lo mismo, que es exactamente lo que hace que un verde
+          # aquí no signifique nada allí — y ya se vio hoy con el servidor local, que
+          # servía la mitad de las rutas.
+          node-version: 22
           cache: npm
 
       - name: Instalar
