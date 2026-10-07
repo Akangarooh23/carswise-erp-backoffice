@@ -294,6 +294,8 @@ export interface AvisosDeEncargos {
   encargos_listos: number;
   encargos_rechazados: number;
   encargos_sin_firmar: number;
+  /** La visita ya fue y nadie ha apuntado cómo salió. */
+  revisiones_sin_cerrar: number;
   /** Ha pedido la peritación en su casa y ha dicho cuándo puede: falta darle día. */
   peritaciones_a_domicilio: number;
   /** Lo mismo, pero con el IDCar a medias: toca contestarle, no mandar al perito. */
@@ -529,6 +531,22 @@ export async function losEncargosConAvisos(): Promise<EncargoConAvisos[]> {
       avisos.push(sePuedePublicar(puertas) ? 'peritaciones_a_domicilio' : 'peritaciones_idcar_a_medias');
     }
 
+    /*
+     * Y la que ya pasó sin cerrarse.
+     *
+     * Va aparte de «listos para el taller»: ahí falta darle cita, aquí la
+     * cita ya fue. Confundirlas esconde la segunda dentro de la primera, y
+     * son dos trabajos distintos -uno es llamar al taller, el otro es
+     * apuntar un resultado que ya existe-.
+     */
+    if (
+      sigueEsperandoAlTaller(taller) &&
+      fila.taller_cita_at &&
+      new Date(String(fila.taller_cita_at)).getTime() < Date.now()
+    ) {
+      avisos.push('revisiones_sin_cerrar');
+    }
+
     if (sePuedePublicar(puertas) && sigueEsperandoAlTaller(taller)) avisos.push('encargos_listos');
 
     // Y el que el taller ha tumbado: su coche no va a salir y él no lo sabe.
@@ -601,6 +619,7 @@ export function cuentaLosAvisos(coches: readonly EncargoConAvisos[]): AvisosDeEn
   const cuenta: AvisosDeEncargos = {
     encargos_vendidos: 0, encargos_por_llamar: 0, encargos_sin_franjas: 0,
     encargos_listos: 0, encargos_rechazados: 0, encargos_sin_firmar: 0,
+    revisiones_sin_cerrar: 0,
     peritaciones_a_domicilio: 0,
     peritaciones_idcar_a_medias: 0,
     citas_taller_que_pide_mover: 0,

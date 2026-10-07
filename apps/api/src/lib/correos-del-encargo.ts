@@ -61,6 +61,79 @@ export interface DatosDelCorreo {
 }
 
 /**
+ * Y al día siguiente se le pide el resultado a quien fue.
+ *
+ * Hasta que alguien no apunta cómo salió, el anuncio no puede publicarse, la
+ * factura de los 60 € no se apunta -se apunta al cerrarla- y el cliente sigue
+ * leyendo «Confirmada» con una fecha que ya pasó. Tres cosas paradas por una
+ * casilla, y nadie a quien echarle la culpa: no había nada que la pidiera.
+ *
+ * ## Las tres respuestas, escritas
+ *
+ * No se le pide «un informe»: se le piden las tres frases que el ERP sabe
+ * guardar, para que pueda contestar con una. Un correo que pide algo abierto
+ * se contesta con un adjunto de doce páginas o no se contesta, y las dos
+ * cosas acaban en una llamada.
+ *
+ * ## Lo que NO lleva
+ *
+ * El nombre del cliente no va: a quien revisa el coche le basta la matrícula
+ * y la dirección, y el nombre de una persona no tiene por qué viajar a un
+ * taller de la red para algo que no lo necesita.
+ */
+export function elCorreoPidiendoElResultado(
+  d: {
+    /** El perito o el taller, según quién fuera. */
+    quien: string;
+    cliente_nombre: string;
+    marca: string;
+    modelo: string;
+    matricula: string;
+    dia: string;
+    hora: string;
+    aDomicilio: boolean;
+    direccion: string;
+  },
+): { subject: string; html: string } {
+  const coche = elCoche(d.marca, d.modelo, d.matricula);
+  return {
+    subject: `¿Cómo salió la revisión del ${coche}?`,
+    html: plantilla({
+      titulo: 'Nos falta tu resultado',
+      cuerpo:
+        parrafo(`Hola <strong>${esc(d.quien) || 'buenas'}</strong>,`) +
+        parrafo(
+          d.aDomicilio
+            ? `${esc(d.dia)} fuiste a ver el <strong>${esc(coche)}</strong>. Cuéntanos cómo salió `
+              + `y lo apuntamos.`
+            : `${esc(d.dia)} pasó por vosotros el <strong>${esc(coche)}</strong>. Cuéntanos cómo salió `
+              + `y lo apuntamos.`,
+        ) +
+        datos([
+          ['Vehículo', esc(coche)],
+          ['Cuándo', `${esc(d.dia)}, ${esc(d.hora)}`],
+          ...(d.direccion.trim() ? ([['Dónde', esc(d.direccion)]] as [string, string][]) : []),
+        ]) +
+        parrafo('<strong>Con una de estas tres nos vale:</strong>') +
+        parrafo('· <strong>Bien</strong>, sin nada que contar.') +
+        parrafo('· <strong>Se puede vender</strong>, contando lo que tiene.') +
+        parrafo('· <strong>No se puede vender así</strong>.') +
+        /*
+         * Y por qué corre prisa, dicho sin apretar.
+         *
+         * No es papeleo nuestro: hasta que no está, su coche no sale a la
+         * venta. Quien lo lee entiende que no le estamos pidiendo un informe
+         * para el archivo.
+         */
+        parrafo('Si hay algo que contar, escríbelo en la respuesta: lo que viste, lo que '
+          + 'habría que hacerle y, si lo sabes, cuánto costaría.') +
+        parrafo('Contéstanos a este correo. Hasta que no lo apuntemos, el coche no puede '
+          + 'salir a la venta.'),
+    }),
+  };
+}
+
+/**
  * Va un perito a ver el coche a su dirección.
  *
  * Es la misma peritación que la del taller y dice lo mismo —qué es, cuándo y

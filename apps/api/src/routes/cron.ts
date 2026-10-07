@@ -20,6 +20,7 @@ import type { Request } from 'express';
 import { falloInterno } from '../lib/fallos.js';
 import { recalculaPortalesParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
 import { recuerdaLasCitasDelTaller } from '../lib/recuerda-las-citas-del-taller.js';
+import { pideLosResultadosQueFalten } from '../lib/pide-el-resultado-de-la-revision.js';
 import { leeLasPendientes } from '../lib/la-ficha-leida.js';
 
 export const cronRouter = Router();
@@ -119,7 +120,23 @@ cronRouter.get('/cron/recordatorios-taller', async (req, res) => {
     return;
   }
   try {
-    res.json({ ok: true, data: await recuerdaLasCitasDelTaller() });
+    /*
+     * Dos cosas en la misma pasada, y en este orden.
+     *
+     * Las dos van del mismo sitio -las citas de revisión- y a la misma hora
+     * de la mañana. Un cron nuevo en vercel.json seria una entrada mas que
+     * mantener y otra hora que cuadrar, para recorrer la misma tabla.
+     *
+     * Primero los recordatorios: son de hoy y tienen hora; pedir un
+     * resultado de ayer puede esperar treinta segundos. Y si lo segundo
+     * fallara, lo primero ya esta mandado.
+     */
+    const recordados = await recuerdaLasCitasDelTaller();
+    const resultados = await pideLosResultadosQueFalten().catch((err) => {
+      console.error('[cron] pedir resultados:', (err as Error).message);
+      return null;
+    });
+    res.json({ ok: true, data: { recordados, resultados } });
   } catch (err) {
     falloInterno(res, 'cron_recordatorios_taller_failed', err);
   }

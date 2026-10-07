@@ -403,6 +403,24 @@ export const CATALOGO: readonly Omit<Pendiente, 'n'>[] = [
    * mirase y acabaríamos pidiéndole otros — que es como se pierde la confianza
    * de quien sí contestó a la primera.
    */
+  /*
+   * La visita que ya fue y nadie ha cerrado.
+   *
+   * Confirmada, recordada el día antes… y después nada: pasada la hora no se
+   * mueve nada solo, porque que pase la hora no prueba que el perito fuera ni
+   * qué vio. Eso está bien; lo que no está bien es que nadie se entere.
+   *
+   * Sin este aviso, el cliente sigue leyendo «Confirmada» días después, el
+   * anuncio no sale -hace falta el resultado para publicar- y la factura de
+   * los 60 € tampoco se apunta, porque se apunta al cerrarla. Tres cosas
+   * paradas por una casilla que nadie sabía que faltaba.
+   */
+  {
+    clave: 'revisiones_sin_cerrar',
+    etiqueta: 'visitas pasadas que nadie ha cerrado', una: 'visita pasada que nadie ha cerrado',
+    porque: 'ya se hizo y falta apuntar como salio: sin eso no se publica ni se factura',
+    a: '/idcars', icono: 'taller', tono: 'urgente',
+  },
   {
     clave: 'peritaciones_a_domicilio',
     etiqueta: 'peritaciones a domicilio por confirmar', una: 'peritación a domicilio por confirmar',

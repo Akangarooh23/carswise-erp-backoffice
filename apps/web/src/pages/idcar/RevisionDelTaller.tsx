@@ -53,6 +53,10 @@ export interface Revision {
   /** Quién va, cuando va alguien a su casa. Gemelas de taller/taller_id. */
   perito: string;
   perito_id: string;
+  /** Y a dónde se le pide el resultado al día siguiente. */
+  perito_email: string;
+  /** Cuándo se le pidió, para no pedírselo cada mañana. */
+  resultado_pedido_at: string | null;
 }
 
 /** Un taller del directorio, tal y como lo devuelve la búsqueda. */
@@ -172,6 +176,14 @@ export default function RevisionDelTaller({
    * porque el perito que va todavía no esté dado de alta.
    */
   const [perito, setPerito] = useState('');
+  /*
+   * Y su correo, que es por donde se le pide el resultado.
+   *
+   * Sin esto, la petición automática solo le llega a los peritos dados de
+   * alta en el directorio — y justo los de una sola vez, a los que nadie da
+   * de alta, son a los que más se les olvida contestar.
+   */
+  const [peritoEmail, setPeritoEmail] = useState('');
   const [dia, setDia] = useState('');
   const [hora, setHora] = useState('');
   const [notas, setNotas] = useState('');
@@ -197,6 +209,7 @@ export default function RevisionDelTaller({
       setTallerId(rev?.taller_id ?? '');
       setDireccion(rev?.direccion ?? '');
       setPerito(rev?.perito ?? '');
+      setPeritoEmail(rev?.perito_email ?? '');
       const p = partirLaCita(rev?.cita_at ?? null);
       setDia(p.dia);
       setHora(p.hora);
@@ -322,6 +335,7 @@ export default function RevisionDelTaller({
         // hora son el mismo gesto, y dos botones serían dos maneras de
         // dejarlo a medias.
         perito: perito.trim(),
+        perito_email: peritoEmail.trim(),
       });
       if (!r.ok) { setFallo(r.error ?? 'No se ha podido guardar la cita.'); return; }
       await carga();
@@ -490,6 +504,22 @@ export default function RevisionDelTaller({
               onChange={(ev) => setPerito(ev.target.value)}
               placeholder="Quién va a verlo"
               className="w-44 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-acento"
+            />
+          </div>
+        )}
+        {datos?.revision?.modalidad === 'a_domicilio' && (
+          <div>
+            <label className="block text-[11px] text-brand-300 mb-1" htmlFor="peritacion-correo">
+              Correo del perito
+            </label>
+            <input
+              id="peritacion-correo"
+              type="email"
+              value={peritoEmail}
+              onChange={(ev) => setPeritoEmail(ev.target.value)}
+              placeholder="Para pedirle el resultado"
+              className="w-52 px-2.5 py-1.5 text-sm border border-brand-200 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-acento"
             />
           </div>

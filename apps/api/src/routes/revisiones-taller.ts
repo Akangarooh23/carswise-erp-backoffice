@@ -331,6 +331,9 @@ revisionesTallerRouter.patch(
                 -- perito es un proveedor más, con su tipo propio.
                 perito    = COALESCE($11, perito),
                 perito_id = COALESCE($12, perito_id),
+                -- A dónde se le pide el resultado cuando no está en el
+                -- directorio, que es el caso del perito de una sola vez.
+                perito_email = COALESCE($13, perito_email),
                 direccion = COALESCE($6, direccion),
                 cita_at   = COALESCE($7, cita_at),
                 cliente_pidio    = CASE WHEN $8 THEN NULL ELSE cliente_pidio END,
@@ -351,7 +354,8 @@ revisionesTallerRouter.patch(
          req.body?.taller_id === undefined ? null : String(req.body.taller_id).trim(),
          modalidad === undefined ? null : modalidad || null,
          req.body?.perito === undefined ? null : String(req.body.perito).trim(),
-         req.body?.perito_id === undefined ? null : String(req.body.perito_id).trim()]
+         req.body?.perito_id === undefined ? null : String(req.body.perito_id).trim(),
+         req.body?.perito_email === undefined ? null : String(req.body.perito_email).trim()]
       );
       if (!r.rows.length) { res.status(404).json({ ok: false, error: 'revision_no_encontrada' }); return; }
 
