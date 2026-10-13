@@ -70,8 +70,20 @@ cronRouter.get('/cron/kpis', async (req, res) => {
      * Y cada uno con su resultado: si el segundo se cae, el primero ya está
      * guardado y se dice cuál falló.
      */
-    const parados = await recalculaPortalesParados();
+    /*
+     * El barato primero, y no es un detalle de estilo.
+     *
+     * Iban al reves y el de portales crecio hasta tardar mas que la funcion
+     * entera: se comia el presupuesto y el de precios no llegaba a correr.
+     * Resultado, medido el 13-oct-2026: el precio contra el mercado llevaba
+     * desde el 22 de septiembre sin actualizarse, y un numero viejo se ve
+     * exactamente igual que uno nuevo.
+     *
+     * Con el barato delante, el dia que el caro vuelva a pasarse de tiempo se
+     * pierde el caro, que es el que ya sabemos que puede.
+     */
     const precios = await recalculaPrecioContraElMercado();
+    const parados = await recalculaPortalesParados();
 
     /*
      * Y las fichas técnicas que se hayan quedado sin leer.
