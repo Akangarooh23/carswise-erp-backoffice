@@ -143,9 +143,21 @@ documentosRouter.get(
       const ids = cajones.map((c) => c.id ?? '');
 
       const r = await query(
+        /*
+         * `visible_cliente` se lee con `to_jsonb` a propósito.
+         *
+         * Nombrarla a pelo haría que Postgres rechazara la consulta entera
+         * mientras la columna no exista —mira la frase antes de ejecutarla— y
+         * la lista de papeles se caería en todas las pantallas por una
+         * columna que solo decora una etiqueta. Pasó esta misma mañana con
+         * `perito_email`: el guardado de la revisión fallaba por una columna
+         * que ni se estaba tocando.
+         */
         `SELECT id, papel, nombre, tipo, tamano, subido_por, created_at,
-                ambito, ambito_id
-           FROM erp_documentos
+                ambito, ambito_id,
+                COALESCE(to_jsonb(d)->>'visible_cliente', 'false') = 'true' AS visible_cliente,
+                to_jsonb(d)->>'visible_desde' AS visible_desde
+           FROM erp_documentos d
           WHERE (ambito, ambito_id) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))
           ORDER BY created_at DESC`,
         [ambitos, ids]
@@ -263,6 +275,53 @@ documentosRouter.get(
       res.send(Buffer.from(await bajada.arrayBuffer()));
     } catch (err) {
       console.error('[documentos] ver:', (err as Error).message);
+      res.status(500).json({ ok: false, error: 'documentos_failed' });
+    }
+  }
+);
+
+/**
+ * ── Abrirle (o cerrarle) un papel al cliente ────────────────────────────────
+ *
+ * Lo que decide no es qué tipo de papel es: es si alguien ha mirado **ese**
+ * papel y ha dicho que sí. De la misma visita del perito cuelga el informe que
+ * se le enseña y el presupuesto interno de la reparación, que no.
+ *
+ * ## Por qué solo admin y operaciones
+ *
+ * Porque esto saca un papel nuestro fuera de casa. Subirlo y listarlo lo puede
+ * hacer también soporte; decidir que lo vea el cliente, no. Es la misma puerta
+ * estrecha que borrar.
+ *
+ * ## Por qué se apunta quién y cuándo
+ *
+ * El día que haya que explicar por qué un cliente vio un papel, «lo marcó
+ * alguien, en algún momento» no es una respuesta. Al cerrarlo se borra la
+ * marca: lo que queda escrito es que hoy está abierto y desde cuándo, no un
+ * historial — eso pide otra tabla y no es lo que resuelve esto.
+ */
+documentosRouter.patch(
+  '/documentos/:ambito/:id/:docId/visible',
+  requireRole(['admin', 'operations']),
+  async (req, res) => {
+    if (!ambitoValido(req.params.ambito)) { res.status(400).json({ ok: false, error: 'ambito_no_valido' }); return; }
+    const visible = req.body?.visible === true;
+    try {
+      await prepara();
+      const quien = req.actor?.name ?? req.actor?.sub ?? '';
+      const r = await query(
+        `UPDATE erp_documentos
+            SET visible_cliente = $4,
+                visible_desde   = CASE WHEN $4 THEN NOW() ELSE NULL END,
+                visible_por     = CASE WHEN $4 THEN $5 ELSE NULL END
+          WHERE id = $1 AND ambito = $2 AND ambito_id = $3
+        RETURNING id, visible_cliente, visible_desde, visible_por`,
+        [req.params.docId, req.params.ambito, req.params.id, visible, quien]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'documento_no_encontrado' }); return; }
+      res.json({ ok: true, data: r.rows[0] });
+    } catch (err) {
+      console.error('[documentos] abrir al cliente:', (err as Error).message);
       res.status(500).json({ ok: false, error: 'documentos_failed' });
     }
   }

@@ -93,13 +93,21 @@ describe('cada consulta se cae sola', () => {
 });
 
 describe('quién ve cada papel', () => {
-  test('los del ERP no los ve el cliente, y se dice', () => {
+  test('los del ERP solo si alguien los ha abierto, uno a uno', () => {
     /*
-     * Están en el cajón privado y el cliente no tiene puerta. El día que la
-     * tenga esto deja de ser una constante — y será una decisión, no un
-     * descuido.
+     * Esto era una constante en `false` —el cliente no tenía puerta— y ahora
+     * es una decisión: la marca que pone una persona desde el ERP. Lo que no
+     * puede volver a ser es una constante en el otro sentido.
      */
-    assert.match(FUENTE, /loVeElCliente: false/);
+    /*
+     * Solo en el trozo de los papeles del ERP. En el resto del fichero
+     * `loVeElCliente: true` es correcto y abunda: las fotos, los papeles del
+     * coche o la póliza los subió él, y claro que los ve.
+     */
+    const delErp = FUENTE.slice(FUENTE.indexOf('for (const d of delErp.rows)'));
+    assert.ok(delErp.length > 100, 'no encuentro el trozo de los papeles del ERP');
+    assert.ok(!/loVeElCliente: true\b/.test(delErp), 'los papeles del ERP se abren por defecto');
+    assert.match(delErp, /loVeElCliente: d\.visible_cliente === true/);
   });
 
   test('«dónde está» y «quién lo ve» son dos cosas', () => {
@@ -125,5 +133,51 @@ describe('de qué momento es cada papel', () => {
     assert.equal(elDia('lo que sea'), '');
     assert.equal(elDia(null), '');
     assert.equal(elDia(undefined), '');
+  });
+});
+
+/**
+ * El interruptor de «lo ve el cliente».
+ *
+ * Es la parte con más filo: aquí se decide qué papel NUESTRO sale de casa. Un
+ * fallo no da error — da un informe interno en la pantalla de un cliente, y no
+ * hay forma de enterarse.
+ */
+describe('qué ve el cliente de los papeles del ERP', () => {
+  test('por defecto, nada', () => {
+    /*
+     * El fallo caro es el que no se nota. Un papel que debería verse y no se
+     * ve provoca una llamada; uno que no debería y se ve no provoca nada,
+     * hasta que lo provoca.
+     */
+    assert.match(FUENTE, /COALESCE\(to_jsonb\(d\)->>'visible_cliente', 'false'\)/);
+  });
+
+  test('salvo los dos que firmó él, que son suyos desde que los firmó', () => {
+    // Que ahora haya un interruptor no puede esconderle lo que ya veía desde
+    // septiembre.
+    assert.match(FUENTE, /mandato_firmado/);
+    assert.match(FUENTE, /clausula_precio_firmada/);
+  });
+
+  test('y la marca se lee con to_jsonb, no nombrando la columna en el SQL', () => {
+    /*
+     * Nombrarla a pelo haría que Postgres rechazara la consulta entera
+     * mientras la columna no exista —mira la frase antes de ejecutarla— y el
+     * expediente se caería por algo que solo decora una etiqueta. Pasó el
+     * 14-oct-2026 con `perito_email`: el guardado de la revisión fallaba por
+     * una columna que ni se estaba tocando.
+     *
+     * Se mira **solo dentro del SQL**: en el JavaScript, `d.visible_cliente`
+     * es el alias que devuelve esa misma consulta y ahí es correcto. Buscarlo
+     * en el fichero entero confundía las dos cosas.
+     */
+    const empieza = FUENTE.indexOf('FROM erp_documentos');
+    // El `ORDER BY` de DESPUÉS, no el primero del fichero: hay otras consultas
+    // antes y buscar desde el principio devolvía un trozo vacío.
+    const sql = FUENTE.slice(empieza, FUENTE.indexOf('ORDER BY', empieza));
+    assert.ok(sql.length > 50, 'no encuentro la consulta de erp_documentos');
+    assert.ok(!/\bd\.visible_cliente\b/.test(sql), 'el SQL nombra la columna a pelo');
+    assert.match(FUENTE, /to_jsonb\(d\)->>'visible_cliente'/);
   });
 });

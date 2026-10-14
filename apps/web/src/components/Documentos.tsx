@@ -35,6 +35,15 @@ export interface Documento {
   tamano: number;
   subido_por: string;
   created_at: string;
+  /**
+   * Si el cliente lo ve en su panel y en la app.
+   *
+   * Lo decide una persona, papel a papel: de la misma visita del perito
+   * cuelga el informe que se le enseña y el presupuesto interno, que no.
+   */
+  visible_cliente?: boolean;
+  /** Y desde cuándo, para poder decirlo sin ir a mirar la base. */
+  visible_desde?: string | null;
 }
 
 interface PapelEsperado {
@@ -91,6 +100,7 @@ export default function Documentos({ ambito, id, origen, papeles, coche, onCambi
   const [papel, setPapel] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [fallo, setFallo] = useState('');
+  const [cambiando, setCambiando] = useState<string | null>(null);
 
   /**
    * En qué cajón está de verdad un papel.
@@ -160,6 +170,28 @@ export default function Documentos({ ambito, id, origen, papeles, coche, onCambi
     setSubiendo(false);
   }
 
+  /**
+   * Abrirle o cerrarle un papel al cliente.
+   *
+   * Se pregunta solo al **abrir**. Cerrar es volver a lo seguro y no necesita
+   * confirmación; abrir saca un papel nuestro fuera de casa, y ésa es una
+   * decisión que conviene tomar despierto — es un clic al lado de «quitar».
+   */
+  async function abreOcierra(doc: Documento) {
+    const abrir = !doc.visible_cliente;
+    if (abrir && !window.confirm(
+      `¿Enseñarle «${doc.papel || doc.nombre}» al cliente?\n\n` +
+      'Lo verá en su panel de PopCar y en la app, y podrá descargarlo.'
+    )) return;
+
+    setCambiando(doc.id);
+    const suyo = cajonDe(doc);
+    const r = await api.patch(`/documentos/${suyo.ambito}/${suyo.id}/${doc.id}/visible`, { visible: abrir });
+    setCambiando(null);
+    if (!r.ok) { setFallo('No se ha podido cambiar quién lo ve.'); return; }
+    await carga();
+  }
+
   async function quita(doc: Documento) {
     if (!window.confirm(`¿Quitar «${doc.nombre}»? Se borra también del almacén.`)) return;
     // Al cajón donde está de verdad, no al de la pantalla.
@@ -174,7 +206,7 @@ export default function Documentos({ ambito, id, origen, papeles, coche, onCambi
     <div className="mt-4 pt-4 border-t border-brand-100">
       <div className="text-xs font-semibold text-brand-500 mb-1.5">Documentos</div>
       <p className="text-[11px] text-brand-400 mb-2">
-        Del expediente, para el equipo. El cliente no los ve en su panel.
+        Del expediente, para el equipo. El cliente solo ve los que se le abran uno a uno.
       </p>
 
       {/* Lo que falta, primero: es la pregunta que hay que poder contestar de un
@@ -220,6 +252,31 @@ export default function Documentos({ ambito, id, origen, papeles, coche, onCambi
                 {d.papel || d.nombre}
               </button>
               <span className="text-[10px] text-brand-400 shrink-0">{pesa(d.tamano)}</span>
+              {/*
+                * Si lo ve el cliente, y poder cambiarlo aquí mismo.
+                *
+                * Es una marca por papel y no por tipo: de la misma visita del
+                * perito cuelga el informe que se le enseña y el presupuesto
+                * interno de la reparación, que no.
+                *
+                * El estado se lee en el propio botón en vez de en un icono
+                * aparte: un interruptor que no dice cómo está obliga a
+                * acordarse, y lo que hay detrás es un papel nuestro saliendo
+                * de casa.
+                */}
+              <button
+                onClick={() => void abreOcierra(d)}
+                disabled={cambiando === d.id}
+                title={d.visible_cliente
+                  ? `Lo ve en su panel${d.visible_desde ? ` desde el ${new Date(d.visible_desde).toLocaleDateString('es-ES')}` : ''}. Pulsa para cerrarlo.`
+                  : 'Solo lo vemos nosotros. Pulsa para enseñárselo al cliente.'}
+                className={`text-[10px] shrink-0 px-1.5 py-0.5 rounded border font-semibold disabled:opacity-50
+                            ${d.visible_cliente
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-brand-50 text-brand-400 border-brand-200'}`}
+              >
+                {cambiando === d.id ? '…' : d.visible_cliente ? 'lo ve el cliente' : 'solo nosotros'}
+              </button>
               <button onClick={() => void quita(d)} className="text-[10px] text-red-600 hover:underline shrink-0">
                 quitar
               </button>

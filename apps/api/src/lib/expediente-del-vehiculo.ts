@@ -203,7 +203,10 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
      * hay a propósito: lo que identifica a ese papel es de qué trámite salió.
      */
     query<Record<string, unknown>>(
+      // `visible_cliente` con `to_jsonb`: ver el porqué en la ruta de listar.
+      // Sin la columna, todo sale cerrado, que es lo que era hasta ahora.
       `SELECT d.id, d.ambito, d.ambito_id, d.papel, d.nombre, d.tipo, d.tamano, d.created_at,
+              COALESCE(to_jsonb(d)->>'visible_cliente', 'false') = 'true' AS visible_cliente,
               e.numero AS encargo_numero,
               r.cita_at, r.modalidad
          FROM erp_documentos d
@@ -350,9 +353,18 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
       // La ruta que ya existe y ya comprueba quién pide. Aquí solo se dice
       // cuál es: servir ficheros desde el reunidor sería una puerta nueva.
       comoSeAbre: `/documentos/${texto(d.ambito)}/${texto(d.ambito_id)}/${texto(d.id)}`,
-      // Hoy no: están en el cajón privado del ERP y el cliente no tiene puerta.
-      // Cuando la tenga, esto deja de ser una constante.
-      loVeElCliente: false,
+      /*
+       * Y éste sí es una decisión, no una constante.
+       *
+       * Los papeles del ERP están en el cajón privado y el cliente no los ve
+       * salvo que alguien abra ESE papel. Los dos que firmó él —el mandato y
+       * la aceptación del precio— los ve siempre, porque son suyos desde que
+       * los firmó: que ahora haya un interruptor no puede esconderle lo que
+       * ya veía.
+       */
+      loVeElCliente: d.visible_cliente === true
+        || texto(d.papel) === 'mandato_firmado'
+        || texto(d.papel) === 'clausula_precio_firmada',
     });
   }
 
