@@ -29,9 +29,21 @@ import Documentos from '../../components/Documentos.js';
  * porque son lo que se enseña cuando el cliente pregunta; y el presupuesto
  * porque «con reparos» sin una cifra no es una conversación que se pueda
  * tener con nadie.
+ *
+ * El historial va aparte del informe de la revisión aunque lo mande el mismo
+ * perito el mismo día, y no es una manía de orden: son dos cosas distintas y
+ * se envejecen distinto. El informe dice **cómo está hoy** este coche y lo ha
+ * mirado una persona; el historial dice **por dónde ha pasado** —accidentes,
+ * kilómetros, dueños— y lo firma un tercero. Metidos en el mismo cajón, el
+ * día que el comprador pregunta «¿tiene golpes declarados?» hay que abrir los
+ * dos para saber cuál contesta.
+ *
+ * Y porque uno se le enseña al cliente casi siempre y el otro depende: el
+ * historial es de pago y lo hemos pedido nosotros.
  */
 const PAPELES_DE_LA_VISITA = [
   'Informe de la revisión',
+  'Informe de historial (Carfax)',
   'Fotos de los daños',
   'Presupuesto de la reparación',
 ];
