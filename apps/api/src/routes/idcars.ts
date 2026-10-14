@@ -13,6 +13,7 @@ import { sqlInformeVigente } from '../lib/encargo-de-venta.js';
 import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
 import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe, lasVersionesPosibles } from '../lib/la-ficha-leida.js';
 import { timingSafeEqual } from 'node:crypto';
+import { elExpedienteDe } from '../lib/expediente-del-vehiculo.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -231,6 +232,26 @@ async function listSupabaseStorageFiles(vehicleId: string): Promise<{
   }
   return results;
 }
+
+/**
+ * El expediente del coche: todos sus papeles, estén donde estén.
+ *
+ * Va aparte de `/files`, que es otra cosa: aquél lista lo que subió el cliente
+ * para poder enseñarlo y reordenarlo en el anuncio. Esto contesta «enséñame
+ * todo lo del 5228HNS», que hasta hoy obligaba a abrir cuatro pantallas y a
+ * saber de antemano dónde mirar.
+ *
+ * Solo dice **qué hay y por dónde se abre**: no sirve ni un byte. Abrir cada
+ * papel sigue siendo cosa de la ruta que ya comprueba de quién es, y poner
+ * aquí una descarga sería una puerta nueva a la póliza de alguien.
+ */
+idcarsRouter.get('/idcars/:id/expediente', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
+  try {
+    res.json({ ok: true, data: await elExpedienteDe(req.params.id) });
+  } catch (err) {
+    falloInterno(res, 'expediente_failed', err);
+  }
+});
 
 idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {

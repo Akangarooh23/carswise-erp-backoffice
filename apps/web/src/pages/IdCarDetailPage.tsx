@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card.js';
 import type { IdCar, IdCarFile } from '../types/index.js';
 import Icono, { type NombreIcono } from '../components/ui/Icono.js';
 import EncargoDeVenta, { type ElEncargo } from './idcar/EncargoDeVenta.js';
+import ExpedienteDelVehiculo from './idcar/ExpedienteDelVehiculo.js';
 import DatosDelVehiculo from './idcar/DatosDelVehiculo.js';
 
 const MIME_ICONS: Record<string, NombreIcono> = {
@@ -612,6 +613,19 @@ export default function IdCarDetailPage() {
             );
           })}
         </div>
+      </Card>
+
+      {/*
+        * El expediente va detrás del encargo, no al principio.
+        *
+        * Arriba está lo que se *hace* con el coche —sus datos, sus fotos, su
+        * venta—. Esto es a dónde se viene a buscar algo concreto, y eso se
+        * pregunta después: «¿dónde está el mandato?», «¿nos mandó el perito
+        * el informe?». Delante empujaría todo lo demás hacia abajo para
+        * contestar algo que nadie se pregunta al entrar.
+        */}
+      <Card>
+        <ExpedienteDelVehiculo vehicleId={id!} />
       </Card>
 
       <EncargoDeVenta vehicleId={id!} alCambiar={setEncargo} />
