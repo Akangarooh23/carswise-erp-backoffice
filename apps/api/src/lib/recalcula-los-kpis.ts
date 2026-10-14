@@ -12,7 +12,7 @@
  * dos números viejos en vez de uno.
  */
 
-import { query } from '../db/pool.js';
+import { consultaLarga } from '../db/pool.js';
 import { guardaKpi, KPI } from './kpis-guardados.js';
 
 /** Cuántos días sin que el rastreador pase para dar un portal por parado. */
@@ -115,7 +115,7 @@ export interface FilaDePortal {
  * mismo día.
  */
 export async function recalculaLosPortales(): Promise<PortalesParados | null> {
-  const r = await query<FilaDePortal>(SQL_ANALISIS_DE_PORTALES, [])
+  const r = await consultaLarga<FilaDePortal>(SQL_ANALISIS_DE_PORTALES, [])
     .catch(seQuedoSinCalcular('portales'));
   const valor = losParados(r.rows as unknown as { portal: unknown; ultima: unknown }[]);
   // Sin filas no se guarda nada: un cero aquí diría «ningún portal parado»
@@ -202,7 +202,7 @@ export const SQL_PRECIO_CONTRA_EL_MERCADO = `
 `;
 
 export async function recalculaPrecioContraElMercado(): Promise<Record<string, unknown> | null> {
-  const r = await query<Record<string, unknown>>(SQL_PRECIO_CONTRA_EL_MERCADO, [])
+  const r = await consultaLarga<Record<string, unknown>>(SQL_PRECIO_CONTRA_EL_MERCADO, [])
     .catch(seQuedoSinCalcular<Record<string, unknown>>('precio contra el mercado'));
   const valor = r.rows[0] ?? null;
   // Y aquí igual: sin coches comparables no hay número, y guardar un cero diría

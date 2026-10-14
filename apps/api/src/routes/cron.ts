@@ -63,13 +63,29 @@ cronRouter.get('/cron/kpis', async (req, res) => {
     /*
      * Uno detrás de otro y no a la vez.
      *
-     * El de precios tarda ocho segundos sobre 798.000 anuncios y el de
+     * El de precios tarda veintitrés segundos sobre 798.000 anuncios y el de
      * portales unos veinte sobre 2,6 millones de ofertas. Lanzarlos juntos es
      * pedirle a la base las dos cosas caras al mismo tiempo, de noche,
      * mientras corren los rastreadores.
      *
      * Y cada uno con su resultado: si el segundo se cae, el primero ya está
      * guardado y se dice cuál falló.
+     *
+     * ## Los dos topes que tenía esto en contra
+     *
+     * Cuarenta y siete segundos de trabajo no caben en treinta, y ahí había
+     * DOS techos de treinta segundos, no uno:
+     *
+     * - El de la **base**, que mata cualquier consulta a los 30 s. Ése se
+     *   esquiva por consulta con `consultaLarga`, que es lo que usan los dos
+     *   recálculos: las tareas de madrugada no le contestan a nadie.
+     * - El de la **función** de Vercel, que estaba en 30 s en `vercel.json` y
+     *   ahora está en 120.
+     *
+     * Subir el de la función no quita la red de las pantallas, que es lo que
+     * daba miedo: las consultas normales siguen pasando por `query`, y a ésas
+     * las sigue cortando la base a los 30 s. Lo único que puede tardar más es
+     * lo que pide tardar más, a mano y por escrito.
      */
     /*
      * El barato primero, y no es un detalle de estilo.

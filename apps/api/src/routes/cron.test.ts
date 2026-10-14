@@ -87,6 +87,42 @@ describe('cómo está montada', () => {
     assert.ok(hora >= 2 && hora <= 6, `corre a las ${hora} UTC, que es horario de trabajo`);
   });
 
+  test('la función tiene tiempo para las dos', () => {
+    /*
+     * Cuarenta y siete segundos de trabajo no caben en treinta, y ahí llevaba
+     * parada esta tarea: `precio_contra_el_mercado` sin moverse desde el 22 de
+     * septiembre. No se notó porque el fallo se tragaba, y un número viejo se
+     * ve exactamente igual que uno nuevo.
+     *
+     * Con margen y no al milímetro: estas consultas crecen con la tabla, y
+     * ajustar el tope a lo que tardan hoy es volver a quedarse corto en enero.
+     */
+    assert.ok(
+      Number(VERCEL.functions['api/index.js'].maxDuration) >= 90,
+      'la funcion no tiene tiempo para los dos recalculos',
+    );
+  });
+
+  test('y los dos recálculos le piden más tiempo a la base, que corta a los 30 s', () => {
+    /*
+     * Hay DOS topes de treinta segundos y hay que esquivar los dos: el de
+     * Vercel, que es el de arriba, y el de la base, que mata la consulta
+     * aunque la función siga viva.
+     *
+     * `consultaLarga` lo sube **solo para esa consulta**, dentro de su
+     * transacción. Las pantallas siguen yendo por `query` y siguen protegidas:
+     * ésa es la mitad que no se puede perder al subir el tope de la función.
+     */
+    const kpis = readFileSync(new URL('../lib/recalcula-los-kpis.ts', import.meta.url), 'utf8');
+    assert.match(kpis, /consultaLarga<FilaDePortal>/);
+    assert.match(kpis, /consultaLarga<Record<string, unknown>>/);
+
+    // LOCAL y no a secas: el cliente sale de un montón compartido, y un SET
+    // suelto se quedaría pegado a la conexión que coja la siguiente pantalla.
+    const pool = readFileSync(new URL('../db/pool.ts', import.meta.url), 'utf8');
+    assert.match(pool, /SET LOCAL statement_timeout/);
+  });
+
   test('las dos consultas van una detrás de otra, no a la vez', () => {
     // Lanzarlas juntas es pedirle a la base las dos cosas caras al mismo
     // tiempo, de noche, mientras corren los rastreadores.
