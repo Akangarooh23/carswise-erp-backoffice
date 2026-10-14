@@ -436,6 +436,22 @@ describe('el correo del precio de salida', () => {
     assert.match(c().subject, /13\.500 €/);
   });
 
+  test('y dice que también se sube desde la app, con el sitio exacto', () => {
+    /*
+     * Un correo se lee en el móvil. Esto decía solo «súbelo desde tu panel»,
+     * que es el mismo descuido ya arreglado en el correo del mandato y que
+     * aquí se quedó sin copiar: quien usa la app lee «panel», no sabe que
+     * allí también se puede, y el papel se queda sin devolver.
+     *
+     * Y el sitio exacto, no «entra en la app y búscalo», que es donde se
+     * pierde la mitad de la gente.
+     */
+    const t = soloTexto(c().html);
+    assert.match(t, /la app de PopCar/i);
+    assert.match(t, /Coches .{0,3} PopCar/i);
+    assert.match(c().html, /app\.popcar\.com\.es/);
+  });
+
   test('dice por qué le interesa firmarlo, no lo que le pedimos', () => {
     /*
      * Aceptar el precio por escrito es lo único que le abre la puerta de irse

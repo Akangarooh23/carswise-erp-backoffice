@@ -436,6 +436,20 @@ export function elCorreoDelPrecioDeSalida(
         parrafo(`Te adjuntamos el documento. Fírmalo y súbelo desde tu panel: `
           + `${enlace('tus solicitudes', d.panel)}. No hace falta que nos escribas.`) +
         boton('Subir el precio firmado', d.panel) +
+        /*
+         * Y desde el móvil, que es desde donde se lee un correo.
+         *
+         * Esto decía solo «súbelo desde tu panel». Es el mismo descuido que ya
+         * se arregló en el correo del mandato y que aquí se quedó sin copiar:
+         * quien usa la app lee «panel», no sabe que allí también se puede, y
+         * el papel se queda sin devolver.
+         *
+         * Se dice dónde está exactamente —«Coches → PopCar»— y no «entra en la
+         * app y búscalo», que es donde se pierde la mitad de la gente.
+         */
+        parrafo(`¿Lo llevas en el móvil? En ${enlace('la app de PopCar', APP_URL)} lo tienes en `
+          + `<strong>Coches → PopCar</strong>, y además te sale en tu resumen como pendiente. `
+          + `Vale una foto del papel firmado.`) +
         parrafo('Si no estás de acuerdo con el precio, contesta a este correo y lo hablamos.'),
     }),
   };
