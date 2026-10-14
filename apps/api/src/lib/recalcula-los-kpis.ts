@@ -116,7 +116,7 @@ export interface FilaDePortal {
  */
 export async function recalculaLosPortales(): Promise<PortalesParados | null> {
   const r = await query<FilaDePortal>(SQL_ANALISIS_DE_PORTALES, [])
-    .catch(() => ({ rows: [] as FilaDePortal[] }));
+    .catch(seQuedoSinCalcular('portales'));
   const valor = losParados(r.rows as unknown as { portal: unknown; ultima: unknown }[]);
   // Sin filas no se guarda nada: un cero aquí diría «ningún portal parado»
   // cuando lo que ha pasado es que la consulta no ha traído nada. Y lo mismo
@@ -128,6 +128,30 @@ export async function recalculaLosPortales(): Promise<PortalesParados | null> {
 }
 
 /**
+ * Un cálculo que se cae deja rastro, y eso costó tres semanas de número viejo.
+ *
+ * Estos dos `catch` devolvían cero filas sin decir nada, así que el cron
+ * contestaba `false` y su propio comentario lo leía como «no había con qué
+ * calcularlo». Son dos cosas distintas y se veían igual: no hay datos, o la
+ * consulta ha muerto.
+ *
+ * Y había muerto. El 14-oct-2026 `precio_contra_el_mercado` llevaba desde el
+ * 22 de septiembre sin moverse: la base corta a los **30 segundos** y esa
+ * consulta tarda 23 de media, así que unas veces entra y otras no. La que no
+ * entra no se quejaba a nadie.
+ *
+ * Esto no lo arregla —eso es tiempo, y el tiempo hay que dárselo en otro
+ * sitio—, pero lo deja escrito en el registro con su mensaje, que es la
+ * diferencia entre buscarlo una tarde y verlo en la primera línea.
+ */
+function seQuedoSinCalcular<T>(cual: string) {
+  return (err: unknown) => {
+    console.error(`[kpis] ${cual}: la consulta no ha terminado —`, (err as Error).message);
+    return { rows: [] as T[] };
+  };
+}
+
+/**
  * Cuánto se separan nuestros precios de los del mercado.
  *
  * Compara cada coche nuestro con la media de los anuncios de la misma marca,
@@ -135,7 +159,12 @@ export async function recalculaLosPortales(): Promise<PortalesParados | null> {
  * que comparar. Sin el tramo, un Golf de 110 CV se comparaba con uno de 245 y
  * el top de «los más caros» era una lista de acabados altos.
  *
- * Son ocho segundos sobre 798.000 anuncios. Por eso se guarda con su fecha.
+ * Eran ocho segundos sobre 798.000 anuncios. Medido el 14-oct-2026 son **23**,
+ * y la base corta a los 30: unas veces entra y otras la matan. Por eso ese
+ * número llevaba desde el 22 de septiembre sin moverse, y por eso ahora el
+ * fallo se escribe en el registro en vez de devolver cero filas calladamente.
+ *
+ * Se guarda con su fecha, que es la mitad del dato.
  */
 export const SQL_PRECIO_CONTRA_EL_MERCADO = `
   WITH mercado AS (
@@ -174,7 +203,7 @@ export const SQL_PRECIO_CONTRA_EL_MERCADO = `
 
 export async function recalculaPrecioContraElMercado(): Promise<Record<string, unknown> | null> {
   const r = await query<Record<string, unknown>>(SQL_PRECIO_CONTRA_EL_MERCADO, [])
-    .catch(() => ({ rows: [] as Record<string, unknown>[] }));
+    .catch(seQuedoSinCalcular<Record<string, unknown>>('precio contra el mercado'));
   const valor = r.rows[0] ?? null;
   // Y aquí igual: sin coches comparables no hay número, y guardar un cero diría
   // que estamos justo en el precio del mercado.

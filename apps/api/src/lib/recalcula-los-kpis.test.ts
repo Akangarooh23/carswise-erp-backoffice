@@ -11,6 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { losParados, DIAS_PARA_PARADO, SQL_ANALISIS_DE_PORTALES } from './recalcula-los-kpis.js';
 
 const AHORA = new Date('2026-09-07T12:00:00Z');
@@ -110,5 +111,40 @@ describe('el análisis de portales, que ahora se guarda', () => {
   test('se mira last_checked_at y no updated_at', () => {
     // Lo que importa no es que la pasada arrancara, sino que comprobara algo.
     assert.ok(!/updated_at/.test(SQL_ANALISIS_DE_PORTALES));
+  });
+});
+
+/**
+ * Y que un cálculo que se cae deje rastro.
+ *
+ * Los dos `catch` devolvían cero filas sin decir nada, así que el cron
+ * contestaba `false` y su propio comentario lo leía como «no había con qué
+ * calcularlo». No hay datos y la consulta ha muerto son dos cosas distintas, y
+ * se veían igual.
+ *
+ * Y había muerto: el 14-oct-2026 `precio_contra_el_mercado` llevaba desde el
+ * 22 de septiembre sin moverse. La base corta a los 30 segundos y esa consulta
+ * tarda 23 de media, así que unas veces entra y otras no — y la que no entra
+ * no se quejaba a nadie.
+ */
+describe('un cálculo que se cae no se calla', () => {
+  const FUENTE = readFileSync(new URL('./recalcula-los-kpis.ts', import.meta.url), 'utf8');
+
+  test('ningún catch devuelve filas vacías sin decir nada', () => {
+    /*
+     * `.catch(() => ({ rows: [] }))` es exactamente el patrón que escondió el
+     * fallo tres semanas. Si vuelve a aparecer, esto lo para.
+     */
+    assert.ok(
+      !/\.catch\(\(\)\s*=>\s*\(\{\s*rows:/.test(FUENTE),
+      'ha vuelto un catch que se traga el error',
+    );
+  });
+
+  test('y el fallo se escribe con su mensaje', () => {
+    // Sin el mensaje de Postgres, «no ha terminado» no distingue un timeout de
+    // una columna que ya no existe, que se arreglan de maneras muy distintas.
+    assert.match(FUENTE, /console\.error\(`\[kpis\] \$\{cual\}/);
+    assert.match(FUENTE, /\(err as Error\)\.message/);
   });
 });
