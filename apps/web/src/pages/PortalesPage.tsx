@@ -32,6 +32,27 @@ interface Portal {
 interface Datos {
   portales: Portal[];
   leads: { portal: string; n: number }[];
+  /** Cuándo se contaron. Null si no se ha contado nunca. */
+  calculado?: string | null;
+  horas?: number | null;
+}
+
+/**
+ * De cuándo es lo que se está enseñando.
+ *
+ * Contar 2,6 millones de ofertas son veinte segundos, así que se cuenta de
+ * madrugada y aquí se lee lo guardado. Eso obliga a decir la fecha: «133.848
+ * anuncios» de esta noche y de hace tres semanas se leen exactamente igual, y
+ * la segunda lleva a cerrar un portal que no estaba parado.
+ */
+function deCuandoEs(cuando: string | null | undefined, horas: number | null | undefined): string {
+  if (!cuando) return 'todavía sin calcular';
+  const d = new Date(cuando);
+  if (Number.isNaN(d.getTime())) return 'todavía sin calcular';
+  const h = typeof horas === 'number' ? horas : null;
+  const cuanto = h === null ? '' : h < 1 ? 'hace un rato' : h < 24 ? `hace ${Math.round(h)} h` : `hace ${Math.floor(h / 24)} d`;
+  const reloj = d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return cuanto ? `${reloj} · ${cuanto}` : reloj;
 }
 
 const num = (n: number) => (n ?? 0).toLocaleString('es-ES');
@@ -75,6 +96,25 @@ export default function PortalesPage() {
   const [fallo, setFallo] = useState('');
   const [porRetirar, setPorRetirar] = useState<PorRetirar[]>([]);
   const [retirando, setRetirando] = useState<string | null>(null);
+  const [recontando, setRecontando] = useState(false);
+
+  /**
+   * Volver a contarlos ahora, que lo pide una persona.
+   *
+   * Son veinte segundos que paga quien pulsa, sabiéndolo. Hace falta cuando un
+   * rastreador se arregla a media mañana: esperar a la noche para ver si ha
+   * vuelto a traer anuncios no vale.
+   */
+  async function recuenta() {
+    setRecontando(true);
+    const r = await api.post<{ portales: Portal[]; calculado: string | null; horas: number | null }>(
+      '/portales/analisis/recalcular', {},
+    );
+    setRecontando(false);
+    if (!r.ok) { setFallo('No se ha podido volver a contar. Lo de anoche sigue siendo válido.'); return; }
+    // Los leads no se recalculan -van en vivo-, así que se quedan los que había.
+    setDatos((d) => (d ? { ...d, portales: r.data.portales, calculado: r.data.calculado, horas: r.data.horas } : d));
+  }
 
   function cargaPorRetirar() {
     api.get<PorRetirar[]>('/anuncios-portal/por-retirar')
@@ -121,8 +161,41 @@ export default function PortalesPage() {
 
   return (
     <div className="space-y-6">
+      {/*
+        * La fecha va en la cabecera, no escondida al final.
+        *
+        * Lo que se enseña se contó de madrugada: contar 2,6 millones de
+        * ofertas son veinte segundos y eso no puede colgar de una pantalla.
+        * Pero un número guardado sin su fecha miente por omisión — «133.848
+        * anuncios» de anoche y de hace tres semanas se leen igual, y lo que
+        * se mira aquí es justo si el dato sigue vivo.
+        */}
       <PageHeader title="Portales"
-        subtitle="Los anuncios que se rastrean para saber a qué precio está el mercado. No son nuestro stock." />
+        subtitle="Los anuncios que se rastrean para saber a qué precio está el mercado. No son nuestro stock."
+        actions={
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-brand-400">
+              Contado {deCuandoEs(datos.calculado, datos.horas)}
+            </span>
+            <button type="button" onClick={recuenta} disabled={recontando}
+                    className="px-3 py-1.5 text-xs font-bold text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 disabled:opacity-60">
+              {recontando ? 'Contando… (~20 s)' : 'Volver a contar'}
+            </button>
+          </div>
+        } />
+
+      {/*
+        * Y la primera vez, cuando la tarea nocturna todavía no ha pasado.
+        *
+        * Una pantalla vacía sin explicación se lee como «no hay portales».
+        * Esto dice qué falta y deja el arreglo a mano.
+        */}
+      {portales.length === 0 && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-600">
+          Todavía no se ha contado ningún portal. Lo hace la tarea de madrugada;
+          si no quieres esperar, pulsa <strong>Volver a contar</strong>.
+        </div>
+      )}
 
       {/*
         * Nuestros anuncios que hay que quitar de los portales.

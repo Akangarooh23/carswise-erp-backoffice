@@ -22,8 +22,10 @@ import { query } from '../db/pool.js';
 import { requireRole } from '../middleware/auth.js';
 import { falloInterno } from '../lib/fallos.js';
 import { lasSecciones, SQL_DE_LA_SECCION, SQL_ES_RENTING } from '../lib/secciones-del-marketplace.js';
-import { leeKpi, guardaKpi, KPI } from '../lib/kpis-guardados.js';
-import { losParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
+import { leeKpi, KPI } from '../lib/kpis-guardados.js';
+import {
+  recalculaPrecioContraElMercado, recalculaLosPortales, type FilaDePortal,
+} from '../lib/recalcula-los-kpis.js';
 
 export const analisisRouter = Router();
 
@@ -105,7 +107,7 @@ analisisRouter.get('/marketplace/analisis', requireRole(['admin', 'operations', 
 });
 
 /**
- * Y los portales, plataforma a plataforma.
+ * Y los portales, plataforma a plataforma. **De lo guardado anoche.**
  *
  * «Cuándo se vio por última vez» no sale de la tabla de pasadas del rastreador
  * —ahí el portal a veces es una lista separada por comas, así que no se puede
@@ -113,27 +115,29 @@ analisisRouter.get('/marketplace/analisis', requireRole(['admin', 'operations', 
  * honesta: lo que importa no es que la pasada arrancara, sino que comprobara
  * algo.
  *
- * Y es la barata. Con `updated_at` esta consulta tarda **ocho segundos**: no
- * hay índice y hay que recorrer los 2,5 GB de la tabla. `last_checked_at` sí
- * lo tiene y baja a uno. Aun así, un segundo es demasiado para el panel: allí
- * el resumen se pide aparte y se rellena cuando llega, sin retener lo demás.
+ * ## Por qué ya no se cuenta aquí
+ *
+ * Aquí ponía que esta consulta era «la barata», de un segundo. Lo fue. Con
+ * 2,6 millones de ofertas y 4,4 GB pasó a tardar entre 72 y 113 segundos, y
+ * la función de Vercel corta a los 30: la pantalla llevaba semanas enseñando
+ * «No se pudo cargar el análisis», que no dice de qué se ha muerto.
+ *
+ * No hay índice que lo arregle, y no por falta de intentarlo: un índice con
+ * las cinco columnas dentro se midió en **162 segundos**, siete veces peor que
+ * recorrer la tabla. Contar todas las filas es leerlas todas.
+ *
+ * Así que se cuentan de madrugada, una vez, y la pantalla lee once filas
+ * guardadas. Se sirve **con su fecha**, porque un número sin fecha no se puede
+ * juzgar: «133.848 anuncios» puede ser de esta noche o de hace tres semanas y
+ * se lee exactamente igual.
+ *
+ * Los leads sí van en vivo: son otra tabla, mucho más pequeña, y los pide la
+ * misma pantalla.
  */
 analisisRouter.get('/portales/analisis', requireRole(['admin', 'operations', 'sales']), async (_req, res) => {
   try {
-    const [porPortal, leads] = await Promise.all([
-      query(`
-        SELECT portal,
-               COUNT(*)::int                                                AS total,
-               COUNT(*) FILTER (WHERE COALESCE(is_active, TRUE))::int       AS activos,
-               COUNT(*) FILTER (WHERE NOT COALESCE(is_active, TRUE))::int   AS inactivos,
-               COUNT(*) FILTER (WHERE country = 'DE')::int                  AS alemanas,
-               AVG(price) FILTER (WHERE COALESCE(is_active, TRUE) AND price > 0)::numeric AS precio_medio,
-               MAX(last_checked_at)::date                                   AS ultima
-          FROM moveadvisor_market_offers
-         WHERE COALESCE(portal, '') <> ''
-         GROUP BY 1
-         ORDER BY 2 DESC
-      `).catch(vacio),
+    const [guardado, leads] = await Promise.all([
+      leeKpi<FilaDePortal[]>(KPI.portalesAnalisis),
 
       query(`
         SELECT COALESCE(NULLIF(portal, ''), '(directo)') AS portal, COUNT(*)::int AS n
@@ -142,19 +146,52 @@ analisisRouter.get('/portales/analisis', requireRole(['admin', 'operations', 'sa
       `).catch(vacio),
     ]);
 
-    /*
-     * De paso se guarda cuántas plataformas están paradas.
-     *
-     * Ese número lo quiere Pendientes, y allí no se puede calcular: esta
-     * consulta tarda un segundo y el panel no puede esperarlo en cada carga.
-     * Aquí ya está hecho, así que se apunta con su fecha y Pendientes lo lee.
-     */
-    const parados = losParados(porPortal.rows as { portal: unknown; ultima: unknown }[]);
-    if (parados) await guardaKpi(KPI.portalesParados, parados);
-
-    res.json({ ok: true, data: { portales: porPortal.rows, leads: leads.rows } });
+    res.json({
+      ok: true,
+      data: {
+        portales: guardado?.valor ?? [],
+        leads: leads.rows,
+        /*
+         * Cuándo se contó, y null si no se ha contado nunca.
+         *
+         * Null y «hoy» son cosas distintas: la pantalla dice «todavía no se ha
+         * calculado» en el primer caso, que es lo que pasa la primera vez y
+         * tiene arreglo —el botón—, y una fecha en el segundo.
+         */
+        calculado: guardado?.cuando ?? null,
+        horas: guardado?.horas ?? null,
+      },
+    });
   } catch (err) {
     falloInterno(res, 'portales_analisis_failed', err);
+  }
+});
+
+/**
+ * Y volver a contarlos, que lo pide una persona.
+ *
+ * Los veinte segundos los paga quien pulsa, sabiéndolo, en vez de cobrárselos
+ * a quien entraba a mirar otra cosa. Es lo mismo que el botón del precio
+ * contra el mercado, y corre **la misma función que la tarea nocturna**: dos
+ * copias del mismo cálculo acaban dando dos cifras.
+ *
+ * Hace falta aunque haya tarea: cuando un rastreador se arregla a media
+ * mañana, esperar a la noche para ver si ha vuelto a traer anuncios no vale.
+ */
+analisisRouter.post('/portales/analisis/recalcular', requireRole(['admin', 'operations']), async (_req, res) => {
+  try {
+    await recalculaLosPortales();
+    const guardado = await leeKpi<FilaDePortal[]>(KPI.portalesAnalisis);
+    res.json({
+      ok: true,
+      data: {
+        portales: guardado?.valor ?? [],
+        calculado: guardado?.cuando ?? null,
+        horas: guardado?.horas ?? null,
+      },
+    });
+  } catch (err) {
+    falloInterno(res, 'portales_recalculo_failed', err);
   }
 });
 

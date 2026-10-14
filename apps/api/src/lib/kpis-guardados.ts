@@ -86,4 +86,12 @@ export const KPI = {
   portalesParados: 'portales_parados',
   /** Cuánto se separan nuestros precios de los del mercado. */
   precioContraElMercado: 'precio_contra_el_mercado',
+  /**
+   * La tabla entera de la pantalla de Portales, una fila por plataforma.
+   *
+   * Sale del mismo recorrido del que sale `portalesParados`, así que se
+   * calculan juntos: antes eran dos consultas que leían la misma tabla de
+   * 2,6 millones de filas, una detrás de otra, para sacar lo mismo.
+   */
+  portalesAnalisis: 'portales_analisis',
 } as const;

@@ -18,7 +18,7 @@
 import { Router } from 'express';
 import type { Request } from 'express';
 import { falloInterno } from '../lib/fallos.js';
-import { recalculaPortalesParados, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
+import { recalculaLosPortales, recalculaPrecioContraElMercado } from '../lib/recalcula-los-kpis.js';
 import { recuerdaLasCitasDelTaller } from '../lib/recuerda-las-citas-del-taller.js';
 import { pideLosResultadosQueFalten } from '../lib/pide-el-resultado-de-la-revision.js';
 import { leeLasPendientes } from '../lib/la-ficha-leida.js';
@@ -63,9 +63,10 @@ cronRouter.get('/cron/kpis', async (req, res) => {
     /*
      * Uno detrás de otro y no a la vez.
      *
-     * El de precios tarda ocho segundos sobre 798.000 anuncios y el de portales
-     * uno sobre 2,5 GB. Lanzarlos juntos es pedirle a la base las dos cosas
-     * caras al mismo tiempo, de noche, mientras corren los rastreadores.
+     * El de precios tarda ocho segundos sobre 798.000 anuncios y el de
+     * portales unos veinte sobre 2,6 millones de ofertas. Lanzarlos juntos es
+     * pedirle a la base las dos cosas caras al mismo tiempo, de noche,
+     * mientras corren los rastreadores.
      *
      * Y cada uno con su resultado: si el segundo se cae, el primero ya está
      * guardado y se dice cuál falló.
@@ -81,9 +82,15 @@ cronRouter.get('/cron/kpis', async (req, res) => {
      *
      * Con el barato delante, el dia que el caro vuelva a pasarse de tiempo se
      * pierde el caro, que es el que ya sabemos que puede.
+     *
+     * Y desde el 14-oct-2026 el caro importa el doble: ya no guarda solo
+     * cuantos portales estan parados, sino la tabla entera que enseña la
+     * pantalla de Portales. Si este recalculo no corre, esa pantalla se queda
+     * con la foto de anoche -que se nota, porque lleva su fecha- y Pendientes
+     * con un numero viejo -que no se nota-.
      */
     const precios = await recalculaPrecioContraElMercado();
-    const parados = await recalculaPortalesParados();
+    const parados = await recalculaLosPortales();
 
     /*
      * Y las fichas técnicas que se hayan quedado sin leer.

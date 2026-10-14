@@ -11,7 +11,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { losParados, DIAS_PARA_PARADO } from './recalcula-los-kpis.js';
+import { losParados, DIAS_PARA_PARADO, SQL_ANALISIS_DE_PORTALES } from './recalcula-los-kpis.js';
 
 const AHORA = new Date('2026-09-07T12:00:00Z');
 const haceDias = (d: number) => new Date(AHORA.getTime() - d * 86400000).toISOString();
@@ -61,5 +61,54 @@ describe('los portales parados', () => {
     // se calla porque su fecha estaba rota no lo mira nadie.
     const r = losParados([{ portal: 'raro', ultima: 'el jueves' }], AHORA);
     assert.deepEqual(r?.cuales, ['raro']);
+  });
+});
+
+/**
+ * La pantalla de Portales lee lo guardado, y eso hay que protegerlo.
+ *
+ * El 13-oct-2026 esa pantalla llevaba semanas diciendo «No se pudo cargar el
+ * análisis». La consulta tardaba entre 72 y 113 segundos sobre 2,6 millones de
+ * ofertas y la función de Vercel corta a los 30. No hay índice que lo arregle
+ * -el que se probó, con las cinco columnas dentro, midió 162 segundos, siete
+ * veces peor-: contar todas las filas es leerlas todas.
+ *
+ * Así que se cuentan de madrugada y la pantalla lee once filas. Lo que se
+ * comprueba aquí es lo que haría que eso volviera a romperse en silencio.
+ */
+describe('el análisis de portales, que ahora se guarda', () => {
+  test('la pantalla y la tarea cuentan lo mismo', async () => {
+    /*
+     * Dos copias del mismo cálculo acaban dando dos cifras, y el día que
+     * difieran hay que decidir cuál vale. La ruta no tiene su propia consulta:
+     * lee lo que guardó esta.
+     */
+    const fuente = await import('node:fs').then((fs) =>
+      fs.readFileSync(new URL('../routes/analisis.ts', import.meta.url), 'utf8'));
+    /*
+     * Se mira por las columnas del recuento —«inactivos» y «alemanas» solo
+     * salen de él— y no por el nombre de la tabla: en ese mismo fichero hay
+     * otra consulta sobre `moveadvisor_market_offers`, la de importación, que
+     * es estrecha, va por índice y tiene que seguir en vivo.
+     */
+    assert.ok(!/AS +inactivos/.test(fuente), 'la ruta ha vuelto a contar los portales ella misma');
+    assert.ok(!/AS +alemanas/.test(fuente), 'la ruta ha vuelto a contar los portales ella misma');
+    assert.match(SQL_ANALISIS_DE_PORTALES, /AS +inactivos/);
+    assert.match(fuente, /KPI\.portalesAnalisis/);
+  });
+
+  test('y es un solo recorrido para los dos números', () => {
+    /*
+     * «Portales parados» es un trozo del análisis: `portal` y la última fecha.
+     * Eran dos consultas recorriendo la misma tabla de 4,4 GB, una detrás de
+     * otra, en la misma tarea nocturna.
+     */
+    assert.match(SQL_ANALISIS_DE_PORTALES, /MAX\(last_checked_at\)/);
+    assert.match(SQL_ANALISIS_DE_PORTALES, /GROUP BY 1/);
+  });
+
+  test('se mira last_checked_at y no updated_at', () => {
+    // Lo que importa no es que la pasada arrancara, sino que comprobara algo.
+    assert.ok(!/updated_at/.test(SQL_ANALISIS_DE_PORTALES));
   });
 });

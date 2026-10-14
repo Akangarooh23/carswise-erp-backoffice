@@ -24,11 +24,43 @@ export interface PortalesParados {
   cuales: string[];
 }
 
-const SQL_PORTALES = `
-  SELECT portal, MAX(last_checked_at)::date AS ultima
+/**
+ * La tabla de Portales, de un solo recorrido.
+ *
+ * Esto es **lo que enseña la pantalla**, y vive aquí y no en la ruta por la
+ * razón de arriba: lo que corre la tarea tiene que ser la misma consulta.
+ *
+ * ## Por qué se guarda en vez de calcularse al abrir
+ *
+ * Cuenta todas las filas de `moveadvisor_market_offers`: 2,6 millones, 4,4 GB,
+ * entre 15 y 20 segundos. No hay índice que lo evite —contar todo es leer
+ * todo, y el índice que lo cubría se midió en 162 segundos, siete veces peor—.
+ * El 13-oct-2026 llegó a tardar entre 72 y 113 segundos con la función de
+ * Vercel cortando a los 30, y la pantalla decía «No se pudo cargar el
+ * análisis» sin decir por qué.
+ *
+ * Lo que sobra no es la consulta: es hacerla **cuando alguien abre la
+ * pantalla**. Once filas que cambian una vez al día no hace falta volver a
+ * contarlas en cada visita.
+ *
+ * ## Y por qué sale de aquí también «portales parados»
+ *
+ * Porque es un trozo de esto: `portal` y `MAX(last_checked_at)`. Eran dos
+ * consultas distintas recorriendo la misma tabla, una detrás de otra, en la
+ * misma tarea nocturna. Ahora es un recorrido y dos números.
+ */
+export const SQL_ANALISIS_DE_PORTALES = `
+  SELECT portal,
+         COUNT(*)::int                                                AS total,
+         COUNT(*) FILTER (WHERE COALESCE(is_active, TRUE))::int       AS activos,
+         COUNT(*) FILTER (WHERE NOT COALESCE(is_active, TRUE))::int   AS inactivos,
+         COUNT(*) FILTER (WHERE country = 'DE')::int                  AS alemanas,
+         AVG(price) FILTER (WHERE COALESCE(is_active, TRUE) AND price > 0)::numeric AS precio_medio,
+         MAX(last_checked_at)::date                                   AS ultima
     FROM moveadvisor_market_offers
    WHERE COALESCE(portal, '') <> ''
-   GROUP BY 1`;
+   GROUP BY 1
+   ORDER BY 2 DESC`;
 
 /**
  * Cuántas plataformas llevan una semana sin que el rastreador pase.
@@ -63,13 +95,34 @@ export function losParados(
   };
 }
 
-export async function recalculaPortalesParados(): Promise<PortalesParados | null> {
-  const r = await query<{ portal: unknown; ultima: unknown }>(SQL_PORTALES, [])
-    .catch(() => ({ rows: [] as { portal: unknown; ultima: unknown }[] }));
-  const valor = losParados(r.rows);
+/** Una fila de la tabla de Portales, tal como la enseña la pantalla. */
+export interface FilaDePortal {
+  portal: string;
+  total: number;
+  activos: number;
+  inactivos: number;
+  alemanas: number;
+  precio_medio: string | number | null;
+  ultima: string | null;
+}
+
+/**
+ * El recorrido de Portales: la tabla y, del mismo viaje, cuántos están parados.
+ *
+ * Los dos se guardan o no se guarda ninguno. Guardar media foto —la tabla
+ * nueva y los parados viejos— es peor que no guardar nada: las dos cifras se
+ * enseñan en pantallas distintas y nadie sabría que no se están mirando el
+ * mismo día.
+ */
+export async function recalculaLosPortales(): Promise<PortalesParados | null> {
+  const r = await query<FilaDePortal>(SQL_ANALISIS_DE_PORTALES, [])
+    .catch(() => ({ rows: [] as FilaDePortal[] }));
+  const valor = losParados(r.rows as unknown as { portal: unknown; ultima: unknown }[]);
   // Sin filas no se guarda nada: un cero aquí diría «ningún portal parado»
-  // cuando lo que ha pasado es que la consulta no ha traído nada.
+  // cuando lo que ha pasado es que la consulta no ha traído nada. Y lo mismo
+  // con la tabla: vaciarla diría que no hay portales rastreándose.
   if (!valor) return null;
+  await guardaKpi(KPI.portalesAnalisis, r.rows);
   await guardaKpi(KPI.portalesParados, valor);
   return valor;
 }

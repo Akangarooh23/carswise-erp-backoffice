@@ -124,7 +124,7 @@ describe('la tarea diaria no toca los encargos', () => {
   test('solo recalcula, que es para lo que esta', () => {
     // Mientras solo recalcule, la puerta debil de `autorizado` basta: lo peor
     // que consigue quien se cuele es que los numeros esten mas frescos.
-    assert.match(FUENTE, /recalculaPortalesParados/);
+    assert.match(FUENTE, /recalculaLosPortales/);
     assert.match(FUENTE, /recalculaPrecioContraElMercado/);
   });
 });
