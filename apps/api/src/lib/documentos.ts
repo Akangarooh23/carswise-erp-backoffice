@@ -22,8 +22,21 @@
  * `encargo` entró con el mandato firmado que sube el cliente desde su panel.
  * Sin él, ese papel se guardaba y no se podía ni listar ni descargar: el ámbito
  * no pasaba la validación y el ERP seguía ofreciendo el mandato en blanco.
+ *
+ * Y `revision` es la visita que mira el coche antes de publicarlo: el taller,
+ * o el perito que va a casa del cliente. Va **aparte de `peritacion`** aunque
+ * de palabra todos la llamemos así: `peritacion` es la pantalla de las
+ * importaciones alemanas, que es otra tabla y otro expediente. Colgar de ahí
+ * el informe de una visita a domicilio sería perderlo — lo buscaría quien abre
+ * el IDCar del coche y estaría guardado en un expediente de importación que no
+ * existe.
+ *
+ * Es la misma colisión de nombres que nos tiene pendiente renombrar una de las
+ * dos. Hasta que se haga, cada cosa en su cajón.
  */
-export const AMBITOS = ['lead', 'pedido', 'tramite', 'transporte', 'peritacion', 'encargo'] as const;
+export const AMBITOS = [
+  'lead', 'pedido', 'tramite', 'transporte', 'peritacion', 'encargo', 'revision',
+] as const;
 export type Ambito = (typeof AMBITOS)[number];
 
 export function esAmbito(v: string): v is Ambito {

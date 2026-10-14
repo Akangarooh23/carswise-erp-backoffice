@@ -17,6 +17,24 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/client.js';
 import Icono from '../../components/ui/Icono.js';
 import { partirLaCita, juntarLaCita, cuando, cuandoConHora } from '../../lib/la-cita-del-taller.js';
+import Documentos from '../../components/Documentos.js';
+
+/**
+ * Lo que se espera que mande quien ha visto el coche.
+ *
+ * Es una propuesta, no una aduana: se puede subir otra cosa y se puede cerrar
+ * la revisión sin ninguno. Lo que no puede es no saberse cuáles faltan.
+ *
+ * El informe va primero porque es el que justifica el resultado; las fotos,
+ * porque son lo que se enseña cuando el cliente pregunta; y el presupuesto
+ * porque «con reparos» sin una cifra no es una conversación que se pueda
+ * tener con nadie.
+ */
+const PAPELES_DE_LA_VISITA = [
+  'Informe de la revisión',
+  'Fotos de los daños',
+  'Presupuesto de la reparación',
+];
 
 export interface Revision {
   id: string;
@@ -873,6 +891,32 @@ export default function RevisionDelTaller({
             </p>
           )}
           <p className="mt-1.5 text-[11.5px] opacity-75">Revisada el {cuando(rev.hecha_at)}</p>
+        </div>
+      )}
+
+      {/*
+        * Lo que manda quien ha visto el coche.
+        *
+        * Hasta ahora el resultado cabía en tres botones y una caja de notas, y
+        * eso basta para decidir si se publica. Lo que no basta es para lo que
+        * viene después: el perito manda un informe con fotos y una lista de
+        * daños, y eso acababa en el correo de quien lo recibiera. El día que
+        * el cliente pregunta por qué su coche sale «con reparos», la respuesta
+        * está en un adjunto que hay que ir a buscar a una bandeja de entrada.
+        *
+        * Va al cajón privado y no al público de las fotos: lleva la matrícula
+        * y la dirección de una persona.
+        *
+        * Y sale en cuanto hay visita, no solo cuando está cerrada: el informe
+        * puede llegar antes de que nadie pulse el resultado, y entonces es
+        * justamente lo que hace falta para poder pulsarlo.
+        */}
+      {rev && (
+        <div className="mt-4 pt-3 border-t border-brand-100">
+          <h4 className="text-[12.5px] font-semibold text-brand-600 mb-1.5">
+            {rev.modalidad === 'a_domicilio' ? 'Lo que mandó el perito' : 'Lo que mandó el taller'}
+          </h4>
+          <Documentos ambito="revision" id={rev.id} papeles={PAPELES_DE_LA_VISITA} />
         </div>
       )}
 

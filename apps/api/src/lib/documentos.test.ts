@@ -96,3 +96,43 @@ describe('qué falta por reunir', () => {
     assert.equal(faltaAlgoImprescindible('concesionario', []), true);
   });
 });
+
+/**
+ * El informe de quien ha visto el coche.
+ *
+ * El resultado de una revisión cabía en tres botones y una caja de notas, y
+ * eso basta para decidir si se publica. Lo que no basta es para lo que viene
+ * después: el perito manda un informe con fotos y una lista de daños, y eso
+ * se quedaba en el correo de quien lo recibiera. El día que el cliente
+ * pregunta por qué su coche sale «con reparos», la respuesta está en un
+ * adjunto que hay que ir a buscar a una bandeja de entrada.
+ */
+describe('los papeles de una revisión', () => {
+  test('cuelgan de su propio ámbito', () => {
+    assert.ok(esAmbito('revision'));
+  });
+
+  test('y NO del de peritación, que es otra cosa', () => {
+    /*
+     * De palabra las dos son «la peritación», y ahí está la trampa.
+     * `peritacion` es la pantalla de las importaciones alemanas: otra tabla y
+     * otro expediente. Un informe de una visita a domicilio colgado de ahí
+     * está perdido — lo busca quien abre el IDCar del coche y está guardado
+     * en un expediente de importación que no existe.
+     *
+     * Si algún día se unifican, que sea una decisión y no un descuido: esto
+     * obliga a venir aquí a borrar la prueba.
+     */
+    assert.ok((AMBITOS as readonly string[]).includes('peritacion'));
+    assert.ok((AMBITOS as readonly string[]).includes('revision'));
+    assert.notEqual('peritacion', 'revision');
+  });
+
+  test('los ámbitos de antes siguen valiendo', () => {
+    // Añadir uno no puede dejar fuera a los que ya tienen papeles guardados:
+    // el ámbito que no pasa la validación no se puede ni listar ni descargar.
+    for (const a of ['lead', 'pedido', 'tramite', 'transporte', 'peritacion', 'encargo']) {
+      assert.ok(esAmbito(a), `se ha perdido el ámbito ${a}`);
+    }
+  });
+});
