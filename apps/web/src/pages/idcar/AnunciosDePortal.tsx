@@ -30,6 +30,8 @@ interface LoDeLosPortales {
   anuncios: Anuncio[];
   portales: string[];
   matricula: string;
+  /** Si el coche tiene anuncio activo en nuestro marketplace. */
+  publicado?: boolean;
   enlaces: { portal: string; url: string }[];
 }
 
@@ -132,6 +134,29 @@ export default function AnunciosDePortal({ vehicleId }: { vehicleId: string }) {
         * del portal entra como «directo» y no hay forma de saber si el portal
         * trae gente o solo cuesta dinero.
         */}
+      {/*
+        * Sin publicar no hay enlaces, y se dice por qué.
+        *
+        * El enlace lleva a la ficha pública del coche, que solo existe
+        * mientras el anuncio está activo. Antes se daban igual, y pegado en
+        * coches.net llevaba a «este coche ya no está a la venta» — que encima
+        * es mentira: no es que se haya vendido, es que no ha salido todavía.
+        *
+        * Quien lo pega no lo ve. Lo ve el comprador.
+        */}
+      {datos.publicado === false ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 mb-3">
+          <p className="text-[12px] font-semibold text-amber-900">
+            Todavía no hay enlaces que pegar
+          </p>
+          <p className="text-[11.5px] text-amber-800/90 mt-0.5">
+            Este coche no está publicado en nuestro marketplace, así que su ficha
+            no existe y el enlace llevaría a «este coche ya no está a la venta».
+            Publícalo arriba y aparecerán aquí.
+          </p>
+        </div>
+      ) : null}
+
       {datos.enlaces.length > 0 ? (
         <div className="rounded-lg bg-brand-50 px-2.5 py-2 mb-3">
           <p className="text-[11.5px] text-brand-500 mb-1.5">

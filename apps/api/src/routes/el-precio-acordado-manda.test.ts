@@ -31,6 +31,16 @@ import { join } from 'node:path';
 const RUTA = readFileSync(join(import.meta.dirname, 'encargos.ts'), 'utf8').replace(/\r\n/g, '\n');
 const IDCARS = readFileSync(join(import.meta.dirname, 'idcars.ts'), 'utf8').replace(/\r\n/g, '\n');
 
+/*
+ * Publicar se mudo a `lib/publica-el-idcar` el 15-oct-2026: hace falta en
+ * dos sitios, el boton y la firma del precio del cliente. Lo que se
+ * comprueba es lo mismo; lo que cambia es donde esta escrito.
+ */
+const PUBLICA = readFileSync(
+  join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+  'utf8',
+).replace(/\r\n/g, '\n');
+
 /** Lo que hace el endpoint del precio, de principio a fin. */
 const PRECIO = (() => {
   const desde = RUTA.indexOf("'/encargos/:id/precio'");
@@ -62,11 +72,11 @@ describe('al acordar el precio', () => {
 describe('al publicar, el precio firmado llega al coche', () => {
   test('que es lo que mira el listado del marketplace', () => {
     // Sin precio en el coche, no sale en el listado aunque su ficha se abra.
-    assert.match(IDCARS, /if \(acordado !== null\) \{\s*await query\(\s*`UPDATE moveadvisor_user_vehicles SET price = \$2/);
+    assert.match(PUBLICA, /if \(acordado !== null\) \{\s*await query\(\s*`UPDATE moveadvisor_user_vehicles SET price = \$2/);
   });
 
   test('y si falla, el anuncio sigue publicado', () => {
-    const trozo = IDCARS.slice(IDCARS.indexOf('if (acordado !== null) {'));
+    const trozo = PUBLICA.slice(PUBLICA.indexOf('if (acordado !== null) {'));
     assert.match(trozo.slice(0, 400), /\.catch\(/);
   });
 });
@@ -77,15 +87,19 @@ describe('y al publicar, manda el acordado', () => {
    * aunque hubiera un papel firmado a 17.900 €. Y el portero de publicar ya
    * exige que el acordado sea el firmado, así que el acordado es el firmado.
    */
-  const PUBLICAR = (() => {
-    const desde = IDCARS.indexOf("idcarsRouter.post('/idcars/:id/publish'");
-    assert.ok(desde > 0, 'no encuentro el endpoint de publicar');
-    const siguiente = IDCARS.indexOf('idcarsRouter.', desde + 20);
-    return IDCARS.slice(desde, siguiente > 0 ? siguiente : undefined);
-  })();
+  /*
+ * Publicar ya no vive en la ruta: se mudó a `lib/publica-el-idcar` el
+ * 15-oct-2026, porque hace falta en dos sitios —el botón y la firma del
+ * precio del cliente, que publica el coche sola—. Lo que se comprueba aquí
+ * es lo mismo; lo que cambia es dónde está escrito.
+ */
+const PUBLICAR = readFileSync(
+  join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
   test('se pregunta por el acordado', () => {
-    assert.match(PUBLICAR, /await elPrecioAcordadoDe\(req\.params\.id\)/);
+    assert.match(PUBLICAR, /await elPrecioAcordadoDe\(vehicleId\)/);
   });
 
   test('y gana al del panel', () => {

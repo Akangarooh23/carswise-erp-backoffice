@@ -16,12 +16,35 @@ import { join } from 'node:path';
 import { loQueVaAlAnuncio } from '../lib/caracteristicas-del-coche.js';
 
 const IDCARS = readFileSync(join(import.meta.dirname, 'idcars.ts'), 'utf8').replace(/\r\n/g, '\n');
-const PUBLICAR = (() => {
-  const desde = IDCARS.indexOf("idcarsRouter.post('/idcars/:id/publish'");
-  assert.ok(desde > 0, 'no encuentro el endpoint de publicar');
-  const siguiente = IDCARS.indexOf('idcarsRouter.', desde + 20);
-  return IDCARS.slice(desde, siguiente > 0 ? siguiente : undefined);
-})();
+
+
+/*
+
+ * Publicar se mudo a `lib/publica-el-idcar` el 15-oct-2026: hace falta en
+
+ * dos sitios, el boton y la firma del precio del cliente. Lo que se
+
+ * comprueba es lo mismo; lo que cambia es donde esta escrito.
+
+ */
+
+const PUBLICA = readFileSync(
+
+  join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+
+  'utf8',
+
+).replace(/\r\n/g, '\n');
+/*
+ * Publicar ya no vive en la ruta: se mudó a `lib/publica-el-idcar` el
+ * 15-oct-2026, porque hace falta en dos sitios —el botón y la firma del
+ * precio del cliente, que publica el coche sola—. Lo que se comprueba aquí
+ * es lo mismo; lo que cambia es dónde está escrito.
+ */
+const PUBLICAR = readFileSync(
+  join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('cómo se llama el anuncio', () => {
   test('se construye con marca, modelo y versión', () => {
@@ -39,7 +62,7 @@ describe('cómo se llama el anuncio', () => {
      * puesto. La segunda es la que más importa: arregla los que salieron mal.
      */
     assert.match(PUBLICAR, /const anuncio = loQueVaAlAnuncio\(v\)/);
-    assert.match(PUBLICAR, /await llevaLasCaracteristicasAlAnuncio\(req\.params\.id, anuncio\)/);
+    assert.match(PUBLICAR, /await llevaLasCaracteristicasAlAnuncio\(vehicleId, anuncio\)/);
     assert.match(PUBLICAR, /anuncio\.title \|\| `\$\{brand\} \$\{model\} \$\{year\}`/);
     assert.doesNotMatch(PUBLICAR, /\n\s+title \|\| `\$\{brand\}/);
   });
@@ -47,6 +70,6 @@ describe('cómo se llama el anuncio', () => {
   test('y la versión se guarda en el anuncio', () => {
     assert.equal(loQueVaAlAnuncio({ brand: 'VW', model: 'T-Roc', version: 'R-Line' }).version, 'R-Line');
     assert.match(PUBLICAR, /\(id, title, brand, model, version,/);
-    assert.match(IDCARS, /title = \$2, brand = \$3, model = \$4, version = \$5/);
+    assert.match(PUBLICA, /title = \$2, brand = \$3, model = \$4, version = \$5/);
   });
 });

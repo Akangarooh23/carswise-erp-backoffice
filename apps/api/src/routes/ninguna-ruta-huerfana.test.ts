@@ -47,6 +47,7 @@ const LAS_QUE_LLAMA_OTRO: Record<string, string> = {
   '/cron/kpis': 'la dispara Vercel Cron',
   '/cron/recordatorios-taller': 'la dispara Vercel Cron',
   '/interno/ficha-tecnica': 'la llama PopCar cuando el cliente sube su ficha técnica',
+  '/interno/publicar-idcar': 'la llama PopCar cuando el cliente firma el precio de salida, para que el coche salga solo',
   '/whatsapp/webhook': 'la llama Meta cuando entra un mensaje de un cliente',
   '/proveedores/tipos': 'la web tiene su propia lista de tipos; que no se separen lo vigila `tipos-de-proveedor-gemelos.test.ts`',
 };

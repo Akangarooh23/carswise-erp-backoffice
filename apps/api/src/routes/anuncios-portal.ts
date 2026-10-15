@@ -65,13 +65,28 @@ anunciosPortalRouter.get(
       await prepara();
       const [anuncios, coche] = await Promise.all([
         query(SQL_LOS_DEL_COCHE, [req.params.vehicleId]).catch(() => ({ rows: [] })),
+        /*
+         * La matrícula y **si el coche está publicado**, que van juntas.
+         *
+         * El enlace del portal apunta a la ficha pública del coche, y esa
+         * ficha solo existe mientras el anuncio está activo. Sin publicar
+         * contesta «este coche ya no está a la venta» — que además es mentira:
+         * no es que se haya vendido, es que no ha salido todavía.
+         *
+         * Y quien pega eso en coches.net no se entera. Lo ve el comprador.
+         */
         query(
-          `SELECT plate FROM moveadvisor_user_vehicles WHERE id = $1`,
+          `SELECT v.plate,
+                  (o.id IS NOT NULL AND COALESCE(o.is_active, FALSE)) AS publicado
+             FROM moveadvisor_user_vehicles v
+             LEFT JOIN moveadvisor_marketplace_vo_offers o ON o.id = CONCAT('idcar-', v.id)
+            WHERE v.id = $1`,
           [req.params.vehicleId]
         ).catch(() => ({ rows: [] })),
       ]);
 
       const matricula = String(coche.rows[0]?.plate ?? '');
+      const publicado = coche.rows[0]?.publicado === true;
       res.json({
         ok: true,
         data: {
@@ -85,10 +100,21 @@ anunciosPortalRouter.get(
            * mano, la fuente sale unas veces «coches.net» y otras «Coches.net»,
            * y en el informe son dos filas distintas que nadie suma.
            */
-          enlaces: PORTALES.map((p) => ({
-            portal: p,
-            url: elEnlaceParaElPortal(config.PUBLIC_SITE_URL, matricula, p),
-          })).filter((e) => e.url),
+          publicado,
+          /*
+           * Y sin publicar no se dan.
+           *
+           * Un enlace que lleva a «este coche ya no está a la venta», pegado
+           * en un portal de pago, es peor que no tener enlace: el anuncio
+           * queda puesto, el comprador llega y se va, y nadie se entera hasta
+           * que alguien lo abre por casualidad.
+           */
+          enlaces: publicado
+            ? PORTALES.map((p) => ({
+              portal: p,
+              url: elEnlaceParaElPortal(config.PUBLIC_SITE_URL, matricula, p),
+            })).filter((e) => e.url)
+            : [],
         },
       });
     } catch (err) {

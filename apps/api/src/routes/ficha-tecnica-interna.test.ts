@@ -106,7 +106,20 @@ describe('quién puede entrar', () => {
     const sinPuerta = rutas
       .filter((m) => !m[3].includes('requireRole'))
       .map((m) => m[2]);
-    assert.deepEqual(sinPuerta, ['/interno/ficha-tecnica']);
+    /*
+     * Las dos que hay, y las dos las llama PopCar. `publicar-idcar` entró el
+     * 15-oct-2026: publica el coche en cuanto el cliente firma el precio de
+     * salida, y eso pasa en PopCar, que no tiene sesión del ERP.
+     *
+     * Lo que esta prueba protege sigue siendo lo mismo: que no se cuele una
+     * **sin ninguna** de las dos puertas —ni rol ni secreto—, porque entonces
+     * queda abierta a cualquiera con la dirección.
+     */
+    assert.deepEqual(sinPuerta, ['/interno/ficha-tecnica', '/interno/publicar-idcar']);
+
+    // Y que la nueva comprueba el secreto de verdad, no solo que exista.
+    const laNueva = IDCARS.slice(IDCARS.indexOf("idcarsRouter.post('/interno/publicar-idcar'"));
+    assert.match(laNueva.slice(0, 1400), /elSecretoCuadra\(/);
   });
 });
 

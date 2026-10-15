@@ -27,12 +27,16 @@ const IDCARS = leer('idcars.ts');
 const ENCARGOS = leer('encargos.ts');
 
 /** Lo que hace el endpoint de publicar, de principio a fin. */
-const PUBLICAR = (() => {
-  const desde = IDCARS.indexOf("idcarsRouter.post('/idcars/:id/publish'");
-  assert.ok(desde > 0, 'no encuentro el endpoint de publicar');
-  const siguiente = IDCARS.indexOf('idcarsRouter.', desde + 20);
-  return IDCARS.slice(desde, siguiente > 0 ? siguiente : undefined);
-})();
+/*
+ * Publicar ya no vive en la ruta: se mudó a `lib/publica-el-idcar` el
+ * 15-oct-2026, porque hace falta en dos sitios —el botón y la firma del
+ * precio del cliente, que publica el coche sola—. Lo que se comprueba aquí
+ * es lo mismo; lo que cambia es dónde está escrito.
+ */
+const PUBLICAR = readFileSync(
+  join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('publicar un coche con encargo', () => {
   test('el portero está puesto', () => {
@@ -54,7 +58,12 @@ describe('publicar un coche con encargo', () => {
   test('y si dice que no, se corta ahí', () => {
     assert.match(
       PUBLICAR,
-      /const noPuede = await porQueNoSePuedePublicar\([\s\S]{0,80}if \(noPuede\)[\s\S]{0,200}return;/,
+      /*
+       * Fuera de la ruta ya no se corta con un `return;` a secas: se devuelve
+       * el motivo, para que cada sitio lo cuente como le toca — la pantalla
+       * con un error y la firma del cliente con una línea en el registro.
+       */
+      /const noPuede = await porQueNoSePuedePublicar\([\s\S]{0,80}if \(noPuede\)[\s\S]{0,260}return \{ ok: false/,
       'el portero contesta pero nadie le hace caso',
     );
   });

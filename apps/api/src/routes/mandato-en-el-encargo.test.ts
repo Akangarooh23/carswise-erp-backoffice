@@ -149,6 +149,16 @@ describe('los correos salen de verdad', () => {
   const IDCARS = readFileSync(join(import.meta.dirname, 'idcars.ts'), 'utf8')
     .replace(/\r\n/g, '\n');
 
+  /*
+   * Publicar se mudo a `lib/publica-el-idcar` el 15-oct-2026: hace falta en
+   * dos sitios, el boton y la firma del precio del cliente. Lo que se
+   * comprueba es lo mismo; lo que cambia es donde esta escrito.
+   */
+  const PUBLICA = readFileSync(
+    join(import.meta.dirname, '..', 'lib', 'publica-el-idcar.ts'),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+
   test('el del mandato, con el documento adjunto', () => {
     // Sin adjunto es un correo pidiendo que firme algo que no va dentro.
     const trozo = ENCARGOS.slice(ENCARGOS.indexOf("'/encargos/:id/mandato/enviar'"));
@@ -210,8 +220,8 @@ describe('los correos salen de verdad', () => {
     // Sin esto, cada retoque del anuncio le manda otro correo. Y se mira el
     // encargo, no la oferta: la oferta puede existir de antes del encargo, y
     // entonces el correo no salía nunca.
-    assert.match(IDCARS, /const primeraVez = await apuntaQueSePublico\(/);
-    assert.match(IDCARS, /if \(primeraVez\) \{\s*\n\s*await avisaDeQueSePublico\(/);
+    assert.match(PUBLICA, /const primeraVez = await apuntaQueSePublico\(/);
+    assert.match(PUBLICA, /if \(primeraVez\) \{\s*\n\s*await avisaDeQueSePublico\(/);
     assert.match(ENCARGOS, /AND publicado_at IS NULL/);
   });
 });
