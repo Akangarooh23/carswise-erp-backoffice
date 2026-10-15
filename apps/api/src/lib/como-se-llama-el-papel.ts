@@ -32,6 +32,36 @@
 /** Entre lo que ponemos nosotros y lo que traía el fichero. */
 const SEPARADOR = ' — ';
 
+/**
+ * Los papeles que se guardan con su clave de máquina, no con su nombre.
+ *
+ * El `papel` de un documento viene de dos sitios. Desde el ERP lo elige una
+ * persona en un desplegable, y ya es legible: «Informe de la revisión». Desde
+ * PopCar lo pone el código al recibir lo que sube el cliente, y es una clave:
+ * `mandato_firmado`.
+ *
+ * Sin traducirlas, un mandato se llamaría «mandato_firmado · 5228HNS», que es
+ * exactamente lo que esto venía a evitar. Lo descubrí al probar el renombrado
+ * sobre los cuatro documentos que ya había: tres salían peor de lo que
+ * estaban.
+ */
+const COMO_SE_LLAMAN: Record<string, string> = {
+  mandato_firmado: 'Mandato firmado',
+  clausula_precio_firmada: 'Precio de salida firmado',
+  technical_sheet: 'Ficha técnica',
+  circulation_permit: 'Permiso de circulación',
+  itv: 'ITV',
+  insurance: 'Seguro',
+  maintenance: 'Factura de mantenimiento',
+  document: 'Documento',
+};
+
+/** El papel, dicho como lo leería una persona. */
+export function comoSeDice(papel: unknown): string {
+  const p = texto(papel);
+  return COMO_SE_LLAMAN[p] ?? p;
+}
+
 const texto = (v: unknown) => String(v ?? '').trim();
 
 /**
@@ -100,9 +130,27 @@ export function diceAlgo(nombre: unknown): boolean {
  */
 export function yaEsNuestro(nombre: unknown, papel: unknown): boolean {
   const n = texto(nombre);
-  const p = texto(papel);
-  if (!p) return false;
-  return n.startsWith(`${p} · `) || n === p || n.startsWith(`${p}${SEPARADOR}`);
+  // Por su nombre legible, que es el que está escrito en el fichero guardado.
+  // Comparando con la clave -«mandato_firmado»- no reconocería «Mandato
+  // firmado · 5228HNS — …» y lo volvería a prefijar en cada guardado.
+  const p = comoSeDice(papel);
+
+  /*
+   * Contra TODAS las etiquetas que ponemos, no solo contra la de este papel.
+   *
+   * El mismo documento puede haberse guardado con otra: la cláusula del
+   * precio llegó de PopCar como «Documento · 5228HNS — …» porque allí esa
+   * clave no estaba traducida. Mirando solo la suya, no se reconocería y se
+   * volvería a prefijar — «Precio de salida firmado · 5228HNS — Documento ·
+   * 5228HNS — …».
+   *
+   * Lo que se exige es el patrón entero: la etiqueta **y detrás algo nuestro**
+   * —el punto medio o el guion largo—. Sin eso pasa lo contrario, que es
+   * peor: «ITV _ 2026.04.27.pdf» empieza por «ITV», lo trajo el cliente y es
+   * lo único que distingue ese papel de los otros dos suyos.
+   */
+  const etiquetas = [p, ...Object.values(COMO_SE_LLAMAN)].filter(Boolean);
+  return etiquetas.some((e) => n === e || n.startsWith(`${e} · `) || n.startsWith(`${e}${SEPARADOR}`));
 }
 
 /**
@@ -116,7 +164,7 @@ export function comoSeLlama(
   { papel, matricula, original }: { papel?: unknown; matricula?: unknown; original?: unknown },
 ): string {
   const limpio = comoLoEscribioUnaPersona(original);
-  const p = texto(papel);
+  const p = comoSeDice(papel);
 
   // Sin papel elegido no hay nada mejor que el nombre del fichero: inventar
   // una etiqueta seria peor que no poner ninguna.

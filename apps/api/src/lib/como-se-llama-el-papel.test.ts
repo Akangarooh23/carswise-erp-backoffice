@@ -10,6 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   comoSeLlama, comoLoEscribioUnaPersona, diceAlgo, laExtension, comoSeEscribe, yaEsNuestro,
+  comoSeDice,
 } from './como-se-llama-el-papel.js';
 
 describe('el nombre que se guarda', () => {
@@ -113,5 +114,42 @@ describe('las piezas sueltas', () => {
     // «ITV _ 2026.04.27.pdf» empieza por «ITV» y lo trajo él: es lo único que
     // distingue ese papel de los otros dos suyos.
     assert.equal(yaEsNuestro('ITV _ 2026.04.27.pdf', 'ITV'), false);
+  });
+});
+
+describe('las claves de máquina y las etiquetas', () => {
+  /*
+   * El `papel` viene de dos sitios: desde el ERP lo elige una persona en un
+   * desplegable y ya es legible; desde PopCar lo pone el código al recibir lo
+   * que sube el cliente, y es una clave.
+   *
+   * Lo descubrí probando el renombrado sobre los cuatro documentos que ya
+   * había: tres salían peor de lo que estaban.
+   */
+  test('una clave se dice por su nombre', () => {
+    assert.equal(
+      comoSeLlama({ papel: 'mandato_firmado', matricula: '5228HNS', original: 'scan_1.pdf' }),
+      'Mandato firmado · 5228HNS.pdf',
+    );
+  });
+
+  test('y lo ya nombrado con OTRA etiqueta nuestra no se vuelve a prefijar', () => {
+    /*
+     * La cláusula del precio llegó de PopCar como «Documento · …» porque allí
+     * esa clave no estaba traducida. Mirando solo su etiqueta, se prefijaría
+     * otra vez: «Precio de salida firmado · 5228HNS — Documento · 5228HNS — …».
+     */
+    const yaPuesto = 'Documento · 5228HNS — precio-firmado.docx';
+    assert.equal(yaEsNuestro(yaPuesto, 'clausula_precio_firmada'), true);
+    assert.equal(
+      comoSeLlama({ papel: 'clausula_precio_firmada', matricula: '5228HNS', original: yaPuesto }),
+      yaPuesto,
+    );
+  });
+
+  test('pero el papel del cliente que empieza por una etiqueta sigue siendo suyo', () => {
+    // Hace falta el patrón entero: la etiqueta y detrás algo nuestro.
+    assert.equal(yaEsNuestro('Seguro 2026 renovado.pdf', 'itv'), false);
+    assert.equal(yaEsNuestro('ITV _ 2026.04.27.pdf', 'mandato_firmado'), false);
   });
 });
