@@ -14,6 +14,7 @@ import { LO_QUE_NO_TRAE } from '../lib/la-ficha-tecnica.js';
 import { leeYGuarda, comoQuedaContraElCoche, etiquetaDe, lasVersionesPosibles } from '../lib/la-ficha-leida.js';
 import { timingSafeEqual } from 'node:crypto';
 import { elExpedienteDe } from '../lib/expediente-del-vehiculo.js';
+import { sirveGuardado } from '../lib/sirve-lo-guardado.js';
 
 const FILES_TABLE = 'moveadvisor_user_vehicle_files';
 const DOCS_TABLE  = 'moveadvisor_user_vehicle_documents';
@@ -252,6 +253,57 @@ idcarsRouter.get('/idcars/:id/expediente', requireRole(['admin', 'support', 'ope
     falloInterno(res, 'expediente_failed', err);
   }
 });
+
+/**
+ * Y abrir uno de esos papeles, cuando está en el cajón privado.
+ *
+ * Su dirección es la del almacén y pide una llave que el navegador de quien
+ * mira el ERP no tiene: enlazarla directamente da un 400 y parece que el
+ * fichero se ha perdido. Esto comprueba la sesión y lo trae con la llave del
+ * servidor, igual que ya hacen las facturas y las peritaciones.
+ *
+ * ## Por qué se vuelve a buscar la fila en vez de aceptar la dirección
+ *
+ * Porque una ruta que acepta una URL y la descarga con la llave del servidor
+ * es un agujero: quien tenga sesión del ERP podría pedir cualquier cosa del
+ * almacén, de cualquier coche, pasando por nuestra llave. Aquí se pide el
+ * identificador de la fila y **se comprueba que esa fila es de ese coche**;
+ * la dirección sale de la base, no de quien llama.
+ */
+const DE_DONDE_SALE: Record<string, { tabla: string; porElCoche: string }> = {
+  fichero: { tabla: 'moveadvisor_user_vehicle_files', porElCoche: 'vehicle_id = $2' },
+  documento: { tabla: 'moveadvisor_user_vehicle_documents', porElCoche: 'vehicle_id = $2' },
+  seguro: {
+    tabla: 'moveadvisor_user_insurance_documents d JOIN moveadvisor_user_insurances s ON s.id = d.insurance_id',
+    porElCoche: 's.vehicle_id = $2',
+  },
+  mantenimiento: {
+    tabla: 'moveadvisor_user_maintenance_invoices f JOIN moveadvisor_user_maintenances m ON m.id = f.maintenance_id',
+    porElCoche: 'm.vehicle_id = $2',
+  },
+};
+
+idcarsRouter.get(
+  '/idcars/:id/expediente/:fuente/:docId',
+  requireRole(['admin', 'support', 'operations', 'sales']),
+  async (req, res) => {
+    const de = DE_DONDE_SALE[String(req.params.fuente)];
+    if (!de) { res.status(400).json({ ok: false, error: 'fuente_no_valida' }); return; }
+    try {
+      const alias = de.tabla.includes(' JOIN ') ? de.tabla.split(' ')[1] : '';
+      const r = await query<{ file_url: string; file_name: string }>(
+        `SELECT ${alias ? `${alias}.` : ''}file_url, ${alias ? `${alias}.` : ''}file_name
+           FROM ${de.tabla}
+          WHERE ${alias ? `${alias}.` : ''}id = $1 AND ${de.porElCoche}`,
+        [req.params.docId, req.params.id]
+      );
+      if (!r.rows.length) { res.status(404).json({ ok: false, error: 'papel_no_encontrado' }); return; }
+      await sirveGuardado(r.rows[0].file_url, res, r.rows[0].file_name || 'documento');
+    } catch (err) {
+      falloInterno(res, 'papel_del_expediente_failed', err);
+    }
+  }
+);
 
 idcarsRouter.get('/idcars/:id/files', requireRole(['admin', 'support', 'operations', 'sales']), async (req, res) => {
   try {

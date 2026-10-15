@@ -110,6 +110,48 @@ const numero = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fecha = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
 
 /**
+ * Dónde vive un fichero, **mirándolo** en vez de deducirlo de su tabla.
+ *
+ * Esto se escribió al revés: se daba por público todo lo que saliera de las
+ * tablas del cliente, porque «ésas van al almacén público». Y no. Los papeles
+ * se mudaron al privado hace tiempo —está escrito en `subir-al-almacen`— y en
+ * esas tablas solo quedan públicas las fotos, que es lo correcto: son el
+ * anuncio.
+ *
+ * Resultado, el 14-oct-2026: esta pantalla avisaba en ámbar de que diez
+ * papeles del coche —la póliza y ocho facturas— se abrían con el enlace. Era
+ * falso. Comprobado pidiéndolos sin sesión: la foto contesta 200 y la póliza
+ * 400.
+ *
+ * Un aviso falso en la pantalla que existe para que nadie se fíe de su
+ * memoria es el peor sitio posible para dejar una suposición. La dirección lo
+ * dice sin suponer nada: la ruta pública de Supabase lleva `object/public`
+ * dentro, y cualquier otra pide sesión.
+ */
+/**
+ * Por dónde se abre un papel del cliente.
+ *
+ * El público —una foto— se abre por su dirección, que para eso lo es. El
+ * privado NO: su dirección es la del almacén y pide una llave que el navegador
+ * de quien mira el ERP no tiene. Enlazarla directamente da un 400 y parece que
+ * el fichero se ha perdido.
+ *
+ * Para esos se da la ruta del ERP, que comprueba la sesión y lo trae con la
+ * llave del servidor. Es la misma que ya usan las facturas y las peritaciones.
+ */
+function porDondeSeAbre(fuente: string, vehicleId: string, id: string, url: unknown): string {
+  return dondeVive(url) === "publico"
+    ? texto(url)
+    : `/idcars/${encodeURIComponent(vehicleId)}/expediente/${fuente}/${encodeURIComponent(id)}`;
+}
+
+function dondeVive(url: unknown): Donde {
+  const u = texto(url);
+  if (!u) return 'privado';
+  return u.includes('/object/public/') ? 'publico' : 'privado';
+}
+
+/**
  * Cómo se llama cada tipo de papel del cliente.
  *
  * El nombre guardado es el de la máquina —`circulation_permit`— y el que se
@@ -230,8 +272,8 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
       tamano: numero(f.file_size),
       cuando: fecha(f.created_at),
       deQue: 'Lo subió el cliente',
-      donde: 'publico',
-      comoSeAbre: texto(f.file_url),
+      donde: dondeVive(f.file_url),
+      comoSeAbre: porDondeSeAbre("fichero", id, texto(f.id), f.file_url),
       loVeElCliente: true,
     });
   }
@@ -247,8 +289,8 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
       tamano: numero(d.file_size),
       cuando: fecha(d.created_at),
       deQue: 'Lo subió el cliente',
-      donde: 'publico',
-      comoSeAbre: texto(d.file_url),
+      donde: dondeVive(d.file_url),
+      comoSeAbre: porDondeSeAbre("documento", id, texto(d.id), d.file_url),
       loVeElCliente: true,
     });
   }
@@ -262,8 +304,8 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
       tamano: numero(s.file_size),
       cuando: fecha(s.created_at),
       deQue: [texto(s.provider), texto(s.policy_number)].filter(Boolean).join(' · ') || 'Su seguro',
-      donde: 'publico',
-      comoSeAbre: texto(s.file_url),
+      donde: dondeVive(s.file_url),
+      comoSeAbre: porDondeSeAbre("seguro", id, texto(s.id), s.file_url),
       loVeElCliente: true,
     });
   }
@@ -287,8 +329,8 @@ export async function elExpedienteDe(vehicleId: string): Promise<Expediente> {
         texto(m.workshop_name),
         texto(m.title).toLowerCase() === 'mantenimiento' ? '' : texto(m.title),
       ].filter(Boolean).join(' · ') || `Del ${elDia(m.created_at)}`,
-      donde: 'publico',
-      comoSeAbre: texto(m.file_url),
+      donde: dondeVive(m.file_url),
+      comoSeAbre: porDondeSeAbre("mantenimiento", id, texto(m.id), m.file_url),
       loVeElCliente: true,
     });
   }

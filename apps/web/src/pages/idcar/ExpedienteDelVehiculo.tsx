@@ -99,8 +99,16 @@ export default function ExpedienteDelVehiculo({ vehicleId }: { vehicleId: string
    * Los abiertos que no deberían serlo.
    *
    * Las fotos sí: son el anuncio. Lo demás que esté en el almacén público
-   * lleva matrícula, nombre o dirección, y está ahí sin que nadie lo
-   * decidiera. Se cuenta arriba para que se vea sin abrir cajón por cajón.
+   * lleva matrícula, nombre o dirección, y ahí no pinta nada.
+   *
+   * Hoy esto sale a cero, y conviene saber por qué estaba mal antes: el
+   * servidor daba por público todo lo que saliera de las tablas del cliente,
+   * en vez de mirar la dirección del fichero. Con eso, esta caja avisó de
+   * diez papeles abiertos que llevaban tiempo en el cajón privado.
+   *
+   * Se queda, porque la pregunta sigue siendo buena y ahora la contesta
+   * mirando: el día que algo sensible aparezca en el almacén abierto, aquí se
+   * ve sin abrir cajón por cajón.
    */
   const sueltos = exp.papeles.filter((p) => p.donde === 'publico' && p.cajon !== 'Fotos').length;
 

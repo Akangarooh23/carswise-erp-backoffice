@@ -67,7 +67,13 @@ describe('lo que este fichero NO hace', () => {
      * póliza de alguien, y una que no pasa por la ruta que ya comprueba de
      * quién es cada papel.
      */
-    assert.ok(!/supabase|createClient|storage|signedUrl|download/i.test(FUENTE),
+    /*
+     * Se mira que no HAGA nada con el almacén, no que no lo NOMBRE: la
+     * versión anterior buscaba la palabra «supabase» y acabó saltando por un
+     * comentario que explicaba justamente por qué no se toca.
+     */
+    assert.ok(!/\bfetch\s*\(/.test(FUENTE), 'el reunidor ha empezado a bajarse ficheros');
+    assert.ok(!/createClient|signedUrl|getPublicUrl/i.test(FUENTE),
       'el reunidor ha empezado a tocar el almacén');
   });
 
@@ -179,5 +185,46 @@ describe('qué ve el cliente de los papeles del ERP', () => {
     assert.ok(sql.length > 50, 'no encuentro la consulta de erp_documentos');
     assert.ok(!/\bd\.visible_cliente\b/.test(sql), 'el SQL nombra la columna a pelo');
     assert.match(FUENTE, /to_jsonb\(d\)->>'visible_cliente'/);
+  });
+});
+
+/**
+ * Dónde vive cada fichero: mirándolo, no deduciéndolo de su tabla.
+ *
+ * Esto se escribió al revés y dio un susto falso. Se daba por público todo lo
+ * que saliera de las tablas del cliente —«ésas van al almacén público»— y la
+ * pantalla avisó en ámbar de que diez papeles del coche, la póliza y ocho
+ * facturas, se abrían con el enlace.
+ *
+ * Era mentira. Los papeles se mudaron al cajón privado hace tiempo; lo único
+ * público son las fotos, que es lo correcto porque son el anuncio. Comprobado
+ * el 15-oct-2026 pidiéndolos sin sesión: la foto contesta 200 y la póliza 400.
+ *
+ * Un aviso falso en la pantalla que existe para que nadie se fíe de su memoria
+ * es el peor sitio donde dejar una suposición.
+ */
+describe('dónde vive cada papel', () => {
+  test('la dirección lo dice, y se mira', () => {
+    assert.match(FUENTE, /function dondeVive/);
+    assert.match(FUENTE, /\/object\/public\//);
+    assert.ok(!/donde: 'publico'/.test(FUENTE), 'ha vuelto a darse por público sin mirarlo');
+  });
+
+  test('sin dirección se supone privado, no público', () => {
+    /*
+     * El lado seguro de equivocarse. Un papel sin dirección marcado como
+     * «abierto» manda a alguien a buscar una fuga que no existe; marcado como
+     * protegido, a lo sumo sobra una comprobación.
+     */
+    assert.match(FUENTE, /if \(!u\) return 'privado';/);
+  });
+
+  test('y el privado se abre por la ruta del ERP, no por la del almacén', () => {
+    /*
+     * La dirección del almacén pide una llave que el navegador no tiene: el
+     * enlace directo da un 400 y parece que el fichero se ha perdido.
+     */
+    assert.match(FUENTE, /function porDondeSeAbre/);
+    assert.match(FUENTE, /\/idcars\/\$\{encodeURIComponent\(vehicleId\)\}\/expediente\//);
   });
 });
