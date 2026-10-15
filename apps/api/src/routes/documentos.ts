@@ -20,6 +20,7 @@ import { cajonesDelCoche } from '../lib/cajones-del-coche.js';
 import { config } from '../config.js';
 import { revisaFichero, tamanoDeBase64, TIPOS_ACEPTADOS } from '../lib/ficheros.js';
 import { esAmbito, papelesEsperados, papelesQueFaltan } from '../lib/documentos.js';
+import { comoSeLlama, DE_QUE_COCHE } from '../lib/como-se-llama-el-papel.js';
 
 export const documentosRouter = Router();
 
@@ -206,7 +207,30 @@ documentosRouter.post(
       return;
     }
 
-    const ruta = rutaDe(req.params.ambito, req.params.id, nombre);
+    /*
+     * El nombre con el que se guarda: el papel elegido, la matrícula y, si
+     * aporta algo, el original detrás.
+     *
+     * Sin esto se quedaba el del fichero tal cual, y lo que manda un navegador
+     * puede ser «Peritaci%C3%B3n%20Oficial.pdf» o «scan_0007.jpg». Cinco
+     * papeles así en un coche no se distinguen sin abrirlos uno a uno.
+     *
+     * La matrícula se busca aquí y no se le pide a quien sube: lo que manda el
+     * navegador acabaría poniéndole a un papel la matrícula de otro coche el
+     * día que alguien tenga dos pestañas abiertas.
+     */
+    const matricula = await (async () => {
+      const sql = DE_QUE_COCHE[req.params.ambito];
+      if (!sql) return "";
+      const r = await query<{ plate: string }>(sql, [req.params.id])
+        .catch(() => ({ rows: [] as { plate: string }[] }));
+      return r.rows[0]?.plate ?? "";
+    })();
+    const comoSeGuarda = comoSeLlama({ papel, matricula, original: nombre });
+
+    // La ruta en el almacén lleva ya el nombre puesto: así el fichero suelto
+    // también se reconoce el día que alguien mire el cubo por dentro.
+    const ruta = rutaDe(req.params.ambito, req.params.id, comoSeGuarda);
     try {
       const subida = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${ruta}`, {
         method: 'POST',
@@ -236,7 +260,7 @@ documentosRouter.post(
         `INSERT INTO erp_documentos (ambito, ambito_id, papel, nombre, tipo, ruta, tamano, subido_por)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          RETURNING id, papel, nombre, tipo, tamano, subido_por, created_at`,
-        [req.params.ambito, req.params.id, papel, nombre, tipo, ruta, tamano,
+        [req.params.ambito, req.params.id, papel, comoSeGuarda, tipo, ruta, tamano,
          req.actor?.name ?? req.actor?.sub ?? '']
       );
       res.json({ ok: true, data: r.rows[0] });
